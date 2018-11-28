@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.11.27.01
+// @version     2018.11.27.02
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -18,11 +18,13 @@
 /* global $ */
 /* global WazeWrap */
 
+/* TODO: Toggle settings that rely on other settings to be enabled during toggles */
+
 (function() {
     'use strict';
 
     const SCRIPT_AUTHOR = 'dBsooner';
-    const SETTINGS_STORE_NAME = "wme_urc-e";
+    const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
     const SCRIPT_VERSION_CHANGES = [
@@ -39,37 +41,38 @@
     function loadSettingsFromStorage() {
         let loadedSettings = $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
         let defaultSettings = {
-            AutoCenterOnUr: false,
-            AutoClickOpenSolvedNi: false,
-            AutoCloseCommentWindow: false,
-            AutoSaveAfterSolvedOrNiComment: false,
-            AutoSendReminders: false,
-            AutoSetNewUrComment: false,
-            AutoSetReminderUrComment: false,
-            AutoSwitchToUrCommentsTab: false,
-            AutoZoomInOnNewUr: false,
-            AutoZoomOutAfterComment: false,
-            DisableDoneNextButtons: false,
-            DoNotShowTagNameOnPill: false,
-            DoubleClickLinkCloseMessages: false,
-            DoubleClickLinkAllComments: false,
-            ReplaceTagNameWithEditorName: false,
-            UnfollowUrAfterSend: false,
-            ReminderDays: 3,
-            CloseDays: 7,
-            EnableUrceUrFiltering: false,
-            EnableUrPillCounts: false,
-            OnlyShowMyUrs: false,
-            ShowOthersUrsPastReminderClose: false,
-            HideClosedUrs: false,
-            HideTaggedUrs: false,
-            HideWaiting: false,
-            HideUrsCloseNeeded: false,
-            HideUrsReminderNeeded: false,
-            HideUrsWithUserReplies: false,
-            HideUrsWoComments: false,
-            HideUrsWoCommentsOrDescriptions: false,
-            HideUrsWoCommentsWithDescriptions: false,
+            CustomList: localStorage.getItem('BoilerPlateCreators') ? localStorage.getItem('BoilerPlateCreators') : 'CommentTeam',
+            AutoCenterOnUr: localStorage.getItem('WithCommentRecenter') ? (localStorage.getItem('WithCommentRecenter') === 'yes' ? true : false) : false,
+            AutoClickOpenSolvedNi: localStorage.getItem('AutoClickURStatus') ? (localStorage.getItem('AutoClickURStatus') === 'yes' ? true : false) : false,
+            AutoCloseCommentWindow: localStorage.getItem('UrCommentAutoCloseComment') ? (localStorage.getItem('UrCommentAutoCloseComment') === 'yes' ? true : false) : false,
+            AutoSaveAfterSolvedOrNiComment: localStorage.getItem('SaveAfterComment') ? (localStorage.getItem('SaveAfterComment') === 'yes' ? true : false) : false,
+            AutoSendReminders: localStorage.getItem('URCommentsAutoSendMyReminders') ? $.parseJSON(localStorage.getItem('URCommentsAutoSendMyReminders')) : false,
+            AutoSetNewUrComment: localStorage.getItem('AutoSetNewComment') ? (localStorage.getItem('AutoSetNewComment') === 'yes' ? true : false) : false,
+            AutoSetReminderUrComment: localStorage.getItem('UrCommentAutoSet4dayComment') ? (localStorage.getItem('UrCommentAutoSet4dayComment') === 'yes' ? true : false) : false,
+            AutoSwitchToUrCommentsTab: localStorage.getItem('AutoSwitchToURCommentsTab') ? (localStorage.getItem('AutoSwitchToURCommentsTab') === 'yes' ? true : false) : false,
+            AutoZoomInOnNewUr: localStorage.getItem('NewZoomIn') ? (localStorage.getItem('NewZoomIn') === 'yes' ? true : false) : false,
+            AutoZoomOutAfterComment: localStorage.getItem('ZoomOutAfterComment') ? (localStorage.getItem('ZoomOutAfterComment') === 'yes' ? true : false) : false,
+            DisableDoneNextButtons: localStorage.getItem('UrCommentDisableURDoneBtn') ? $.parseJSON(localStorage.getItem('UrCommentDisableURDoneBtn')) : false,
+            DoNotShowTagNameOnPill: localStorage.getItem('URCommentsDontShowTaggedText') ? $.parseJSON(localStorage.getItem('URCommentsDontShowTaggedText')) : false,
+            DoubleClickLinkCloseMessages: localStorage.getItem('DBLClk7DCAutoSend') ? (localStorage.getItem('DBLClk7DCAutoSend') === 'yes' ? true : false) : false,
+            DoubleClickLinkAllComments: localStorage.getItem('DBLClkAll') ? (localStorage.getItem('DBLClkAll') === 'yes' ? true : false) : false,
+            ReplaceTagNameWithEditorName: localStorage.getItem('URCommentsReplaceTagWithEditorName') ? $.parseJSON(localStorage.getItem('URCommentsReplaceTagWithEditorName')) : false,
+            UnfollowUrAfterSend: localStorage.getItem('URCommentURUnfollow') ? $.parseJSON(localStorage.getItem('URCommentURUnfollow')) : false,
+            ReminderDays: localStorage.getItem('ReminderDays') ? $.parseJSON(localStorage.getItem('ReminderDays')) : 3,
+            CloseDays: localStorage.getItem('CloseDays') ? $.parseJSON(localStorage.getItem('CloseDays')) : 7,
+            EnableUrceUrFiltering: localStorage.getItem('URCommentsFilterEnabled') ? $.parseJSON(localStorage.getItem('URCommentsFilterEnabled')) : false,
+            EnableUrPillCounts: localStorage.getItem('URCommentsPillEnabled') ? $.parseJSON(localStorage.getItem('URCommentsPillEnabled')) : false,
+            OnlyShowMyUrs: localStorage.getItem('URCommentsHideNotMyUR') ? $.parseJSON(localStorage.getItem('URCommentsHideNotMyUR')) : false,
+            ShowOthersUrsPastReminderClose: localStorage.getItem('URCommentsShowPastClose') ? $.parseJSON(localStorage.getItem('URCommentsShowPastClose')) : false,
+            HideClosedUrs: localStorage.getItem('URCommentsHideClosed') ? $.parseJSON(localStorage.getItem('URCommentsHideClosed')) : false,
+            HideTaggedUrs: localStorage.getItem('URCommentsHideNotes') ? $.parseJSON(localStorage.getItem('URCommentsHideNotes')) : false,
+            HideWaiting: localStorage.getItem('URCommentsHideInbetween') ? $.parseJSON(localStorage.getItem('URCommentsHideInbetween')) : false,
+            HideUrsCloseNeeded: localStorage.getItem('URCommentsHideCloseNeeded') ? $.parseJSON(localStorage.getItem('URCommentsHideCloseNeeded')) : false,
+            HideUrsReminderNeeded: localStorage.getItem('URCommentsHideReminderNeeded') ? $.parseJSON(localStorage.getItem('URCommentsHideReminderNeeded')) : false,
+            HideUrsWithUserReplies: localStorage.getItem('URCommentsHideReplies') ? $.parseJSON(localStorage.getItem('URCommentsHideReplies')) : false,
+            HideUrsWoComments: localStorage.getItem('URCommentsHideInital') ? $.parseJSON(localStorage.getItem('URCommentsHideInital')) : false,
+            HideUrsWoCommentsOrDescriptions: localStorage.getItem('URCommentsHideWithoutDescript') ? $.parseJSON(localStorage.getItem('URCommentsHideWithoutDescript')) : false,
+            HideUrsWoCommentsWithDescriptions: localStorage.getItem('URCommentsHideWithDescript') ?$.parseJSON( localStorage.getItem('URCommentsHideWithDescript')) : false,
             lastVersion: null
         };
         settings = loadedSettings ? loadedSettings : defaultSettings;
@@ -78,7 +81,6 @@
                 settings[prop] = defaultSettings[prop];
             }
         }
-        if(!loadedSettings) saveSettingsToStorage();
     }
 
     function saveSettingsToStorage() {
@@ -152,7 +154,8 @@
                         $('<div>', {title:I18n.t('urce.prefs.ReminderDaysTitle')}).css({'white-space':'pre-line'}).append(I18n.t('urce.prefs.ReminderDays') + ': ').append(
                             $('<input>', {type:'number', id:'_numReminderDays', min:'1', max:'14', step:'1', value:settings.ReminderDays, title:I18n.t('urce.prefs.ReminderDaysTitle')}).css({'width':'38px', 'height':'20px'}).on('change', function() { // tried keyup, mousup, but this works good enough
                                 var numReminderDays = Math.abs(parseInt(this.value, 10) || 1);
-                                numReminderDays = numReminderDays > 14 ? 14 : numReminderDays;
+                                if (numReminderDays >= settings.CloseDays) numReminderDays = (settings.CloseDays - 1) < 1 ? 1 : (settings.CloseDays - 1);
+                                numReminderDays = numReminderDays > 13 ? 13 : numReminderDays;
                                 numReminderDays = numReminderDays < 1 ? 1 : numReminderDays;
                                 settingsCheckedChanged('ReminderDays', numReminderDays);
                                 this.value = numReminderDays;
@@ -161,8 +164,9 @@
                         $('<div>', {title:I18n.t('urce.prefs.CloseDaysTitle')}).css({'white-space':'pre-line'}).append(I18n.t('urce.prefs.CloseDays') + ': ').append(
                             $('<input>', {type:'number', id:'_numCloseDays', min:'1', max:'14', step:'1', value:settings.CloseDays, title:I18n.t('urce.prefs.CloseDaysTitle')}).css({'width':'38px', 'height':'20px'}).on('change', function() { // tried keyup, mousup, but this works good enough
                                 var numCloseDays = Math.abs(parseInt(this.value, 10) || 1);
+                                if (numCloseDays <= settings.ReminderDays) numCloseDays = (settings.ReminderDays + 1) > 14 ? 14 : (settings.ReminderDays + 1);
                                 numCloseDays = numCloseDays > 14 ? 14 : numCloseDays;
-                                numCloseDays = numCloseDays < 1 ? 1 : numCloseDays;
+                                numCloseDays = numCloseDays < 2 ? 2 : numCloseDays;
                                 settingsCheckedChanged('CloseDays', numCloseDays);
                                 this.value = numCloseDays;
                             })
@@ -248,6 +252,7 @@
         loadTranslations();
         initGui();
         log('Initialized.');
+        saveSettingsToStorage();
     }
 
     function bootstrap(tries) {
@@ -306,9 +311,9 @@
                     DoubleClickLinkAllComments: 'Double click link - All comments',
                     DoubleClickLinkAllCommentsTitle: 'Add an extra link to each comment in the list that when double clicked will auto send the comment to the UR windows and click send, and then will launch all of the other options that are enabled',
                     ReminderDays: 'Reminder days',
-                    ReminderDaysTitle: 'Number of days to (auto) set reminder comment.',
+                    ReminderDaysTitle: 'Number of days to (auto) set reminder comment. Must be between 1 and 13 and less than \'Close days\'.',
                     CloseDays: 'Close days',
-                    CloseDaysTitle: 'Number of days to (auto) close URs.',
+                    CloseDaysTitle: 'Number of days to (auto) close URs. Must be between 2 and 14 and greater than \'Reminder days\'.',
                     ReplaceTagNameWithEditorName: 'Replace tag name with editor name',
                     ReplaceTagNameWithEditorNameTitle: 'When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds when commenting) replace the tag type with the editors name',
                     UnfollowUrAfterSend: 'Unfollow UR after send',
@@ -351,7 +356,6 @@
                     DoubleClick: '(double click)'
                 },
                 prompts: {
-                    CloseDaysZero: 'URC-E - You cannot set the close days to zero.',
                     DoubleClick: 'URC-E - To use the double click links, you must have the \'Auto click open, solved, not identified\' option enabled.',
                     FilterUrs2Abort: 'URC-E - Aborting FilterURs2 because filtering, counts and auto reminders are disabled.',
                     LoadingUrDataTimeout: 'URC-E: Loading UR data has timed out, retrying.',
