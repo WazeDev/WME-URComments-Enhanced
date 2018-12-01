@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.11.29.02
+// @version     2018.11.30.01
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -12,6 +12,8 @@
 // @contributionURL https://github.com/WazeDev/Thank-The-Authors
 // ==/UserScript==
 
+/* eslint curly: ["warn", "multi-or-nest"] */
+
 /* global GM_info */
 /* global W */
 /* global I18n */
@@ -21,7 +23,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_AUTHOR = 'dBsooner';
+    const SCRIPT_AUTHOR = GM_info.script.author;
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
@@ -29,16 +31,17 @@
         GM_info.script.name + '\nv' + SCRIPT_VERSION + '\n\nWhat\'s New\n------------------------------\n',
         '- Initial release of URComments-Enhanced.'
         ].join('');
+    const doublClickIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
-    var settings = {};
-    var commentList = [];
-    var urceInitialized = false;
-    var COMMENT_LISTS = [{idx:0, name:'CommentTeam', type:'gsheet', oldVarName: 'CommentTeam',
+    let settings = {};
+    let commentList = [];
+    let urceInitialized = false;
+    let COMMENT_LISTS = [{idx:0, name:'CommentTeam', type:'gsheet', oldVarName: 'CommentTeam', listOwner: 'CommentTeam',
                             gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/3/public/values?alt=json' },
-                           {idx:1, name:'Custom', type:'static', oldVarName:'Custom',
+                           {idx:1, name:'Custom', type:'static', oldVarName:'Custom', listOwner: 'Custom',
                             gSheetUrl: '' },
-                           {idx:2, name:'USA - SCR', type:'gsheet', oldVarName: 'USA_SouthCentral',
-                            gSheetUrl: '' },
+                           {idx:2, name:'USA - SCR', type:'gsheet', oldVarName: 'USA_SouthCentral', listOwner: 'SCR CommentTeam',
+                            gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/5/public/values?alt=json' },
                            {idx:3, name:'Alpha', type:'gsheet', oldVarName: 'Alpha',
                             gSheetUrl: '' }
                           ].sort(dynamicSort('name'));
@@ -49,7 +52,7 @@
     function logWarning(message) { console.warn('URC-E:', message); }
 
     function dynamicSort(property) {
-        var sortOrder = 1;
+        let sortOrder = 1;
         if(property[0] === "-") {
             sortOrder = -1;
             property = property.substr(1);
@@ -104,9 +107,8 @@
         defaultSettings.CloseDays = Math.min(14,Math.max(2,parseInt(defaultSettings.CloseDays)));
         settings = loadedSettings ? loadedSettings : defaultSettings;
         for (let prop in defaultSettings) {
-            if (!settings.hasOwnProperty(prop)) {
+            if (!settings.hasOwnProperty(prop))
                 settings[prop] = defaultSettings[prop];
-            }
         }
     }
 
@@ -120,11 +122,10 @@
 
     function showScriptInfoAlert() {
         if (ALERT_UPDATE && SCRIPT_VERSION !== settings.lastVersion) {
-            if (!settings.lastVersion) {
+            if (!settings.lastVersion)
                 alert(SCRIPT_VERSION_CHANGES + '\n\nThis is the first time you have loaded URComments-Enhanced. If you have previously used URC, your URC settings have been copied into URC-E.');
-            } else {
+            else
                 alert(SCRIPT_VERSION_CHANGES);
-            }
         }
     }
 
@@ -145,26 +146,35 @@
         saveSettingsToStorage();
     }
 
-    function changeCommentList(idx) {
-        idx = idx || 0;
-        settings.CommentList = parseInt(idx);
-        saveSettingsToStorage();
+    function changeCommentList(commentListIdx) {
+        commentListIdx = parseInt(commentListIdx || 0);
+        if (commentListIdx != settings.CommentList) {
+            settings.CommentList = parseInt(commentListIdx);
+            buildCommentList(commentListIdx);
+            saveSettingsToStorage();
+        }
     }
 
-    function getCommentListInfo() {
-        return COMMENT_LISTS.find(cList => { return cList.idx === settings.CommentList });
+    function getCommentListInfo(commentListIdx) {
+        commentListIdx = parseInt(commentListIdx || settings.CommentList);
+        return COMMENT_LISTS.find(cList => { return cList.idx === commentListIdx });
     }
 
     function injectCss() {
-        var css = [
+        let css = [
             // Comments tab
             '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:12px; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:11px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divCC { text-align:center; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-icon { cursor:default; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-chevron { cursor:pointer; font-size:12px; margin-right: 4px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-solvedLink { color:#008F00; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-niLink { color:#E68A00; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-openLink { color:#000000; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-bottom:6px; height:16px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; margin-left:5px; }',
             // Settings tab
-            '#sidepanel-urc-e #panel-urce-settings .URCE-span { text-transform:uppercase; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }',
@@ -175,7 +185,8 @@
             '#sidepanel-urc-e .URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }',
             '#sidepanel-urc-e .URCE-divCC { padding-top:2px !important; }',
             '#sidepanel-urc-e .URCE-label { white-space:pre-line; }',
-            '#sidepanel-urc-e .URCE-span { font-size:14px; font-weight:600; }',
+            '#sidepanel-urc-e .URCE-span { font-size:14px; font-weight:600; text-transform:uppdercase; }',
+            '#sidepanel-urc-e .URCE-spanTitle { font-size:14px; font-weight:600; }',
             '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:10px; color:#aaa; }',
             '#sidepanel-urc-e .URCE-divTabs { padding:8px; padding-top:2px; }',
             // Main Tabs
@@ -184,57 +195,119 @@
         $('<style = type="text/css">' + css + '</style>').appendTo('head');
     }
 
-    function commentListAsync() {
+    function commentListAsync(commentListIdx) {
         logDebug('Running Async.');
+        commentListIdx = parseInt(commentListIdx || settings.CommentList);
         return new Promise((resolve, reject) => {
             $.get({
-                url: getCommentListInfo().gSheetUrl,
+                url: getCommentListInfo(commentListIdx).gSheetUrl,
                 success: function(data) {
                     // Critical fields that must be present in the spreadsheet, or script cannot process the data correctly.
                     // If any of these are still null after processing the fields entry, there's a problem.
                     const EXPECTED_FIELD_NAMES = ['TITLE','COMMENT','URSTATUS','DR','DC','IT','IA','IR','MRA','GE','TNA','IJ','MBO','WDD','ME','MR','ML','SL'];
-                    let ssFieldNames;
+                    let ssFieldNames, groupDivId;
                     let result = {error:null};
                     let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
+                    let commentId, blankGroup = 0;
+                    let doubleClickLinkCloseComments = settings.DoubleClickLinkCloseComments;
+                    let doubleClickLinkAllComments = settings.DoubleClickLinkAllComments;
                     for (let entryIdx = 0; entryIdx < data.feed.entry.length && !result.error; entryIdx++) {
+                        let rObj = {};
                         let cellValue = data.feed.entry[entryIdx].title.$t;
                         if (entryIdx === 0) {
                             // The minimum script version the returned spreadsheet json supports,
-                            if (SCRIPT_VERSION < cellValue) {
+                            if (SCRIPT_VERSION < cellValue)
                                 result.error = 'Script must be updated to at least version ' + cellValue + ' before comment definitions can be loaded.';
-                            }
                         } else if(entryIdx === 1) {
                             // Process / check field names
                             ssFieldNames = cellValue.split('|').map(fldName => fldName.trim());
-                            if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length) {
+                            if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length)
                                 result.error = 'Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment definition data. Spreadsheet returned ' + ssFieldNames.length + '.';
-                            } else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName))) {
+                            else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName)))
                                 result.error = 'Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', ');
-                            }
                         } else {
-                            let splitRow = cellValue.split('|').map(fldName => fldName.trim()).map((obj,index) => {
-                                index = index || 0;
-                                let rObj = {};
-                                let rObjKey = ssFieldNames[index].toLowerCase();
-                                rObj[rObjKey] = obj;
-                                index++;
-                                return rObj;
-                            }).reduce((result,curObj) => {
-                                for (var key in curObj) {
-                                    if (curObj.hasOwnProperty(key)) {
-                                        result[key] = curObj[key];
+                            let splitRow = cellValue.split('|');
+                            let rObj = {};
+                            for (let i=0; i<splitRow.length; i++) {
+                                let rObjKey = ssFieldNames[i].trim().toLowerCase();
+                                rObj[rObjKey] = rObjKey === 'comment' ? splitRow[i] : rObjKey === 'title' ? splitRow[i].trim() : splitRow[i].trim().toLowerCase();
+                            }
+                            splitRow = rObj;
+                            if (splitRow.title === 'URCE_REMOVED_SO_SKIP')
+                                // Nothing to do here. Move along. This is a comment that has been set to 'REMOVED' in the spreadsheet.
+                                logDebug('SKIPPING a removed comment.');
+                            else if (splitRow.title === 'URCE_ERROR')
+                                // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
+                                result.error('There is an unknown error in the spreadsheet output. Please contact the list owner.');
+                            else if (splitRow.urstatus === 'group title') {
+                                // Group title row. Nothing to set in the arrays, but build html.
+                                groupDivId = 'urceComments-for-';
+                                if (splitRow.title != '') {
+                                    groupDivId += splitRow.title.replace(/[^\w]+/gi, '').toLowerCase();
+                                    if (splitRow.title === splitRow.title.toUpperCase()) {
+                                        if (splitRow.title.length > 25) {
+                                            splitRow.titleMouseOver = splitRow.title;
+                                            splitRow.title = splitRow.title.substring(0, 25) + '...';
+                                        }
+                                    } else if (splitRow.title.length > 30) {
+                                        splitRow.titleMouseOver = splitRow.title;
+                                        splitRow.title = splitRow.title.substring(0, 30) + '...';
                                     }
                                 }
-                                return result;
-                            });
-                            if (splitRow.title === 'URCE_REMOVED_SO_SKIP') {
-                                // Nothing to do here. Move along. This is a comment that has been set to 'REMOVED' in the spreadsheet.
-                            } else if (splitRow.title === 'URCE_ERROR') {
-                                // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
-                            } else if (splitRow.title === 'GROUP TITLE') {
-                                // Group title row. Nothing to set in the arrays, but build html.
+                                else
+                                    groupDivId += 'blankGroup' + (++blankGroup);
+                                $('#_commentList').append(
+                                    $('<fieldset>', {id:groupDivId, class:'URCE-field'}).append(
+                                        $('<legend>', {class:'URCE-legend'}).append($('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}).click(function() {
+                                            $(this).toggleClass('fa fa-fw fa-chevron-down');
+                                            $(this).toggleClass('fa fa-fw fa-chevron-right');
+                                            $($(this).parent().siblings()[0]).toggleClass('collapse');
+                                        }),
+                                            $('<span>', {class:'URCE-span', title:splitRow.titleMouseOver}).text(splitRow.title))
+                                    ).append(
+                                        $('<div>', {id:groupDivId+'_body'})
+                                    )
+                                )
                             } else {
                                 // SHOULD be a normal comments row, push values to arrays and build html.
+                                if (splitRow.urstatus !== 'solved' && splitRow.urstatus !== 'notidentified' && splitRow.urstatus !== 'open')
+                                    result.error = 'Your current selected list does not have a status set for ' + splitRow.title + '. Please contact list owner.';
+                                else {
+                                    commentList[commentId] = { 'title':splitRow.title, 'comment':splitRow.comment, 'urstatus':splitRow.urstatus };
+                                    let linkClass;
+                                    let divDoubleClickId;
+                                    let divDoubleClickStyle = 'display:initial;';
+                                    if (splitRow.urstatus === 'solved') {
+                                        linkClass = 'URCE-solvedLink';
+                                        divDoubleClickId = 'URCE-divDoubleClickClose';
+                                        if (!doubleClickLinkCloseComments && !doubleClickLinkAllComments)
+                                            divDoubleClickStyle = 'display:none;';
+                                    } else if (splitRow.urstatus === 'notidentified') {
+                                        linkClass = 'URCE-niLink';
+                                        divDoubleClickId = 'URCE-divDoubleClickClose';
+                                        if (!doubleClickLinkCloseComments && !doubleClickLinkAllComments)
+                                            divDoubleClickStyle = 'display:none;';
+                                    } else {
+                                        linkClass = 'URCE-openLink';
+                                        divDoubleClickId = 'URCE-divDoubleClickAll';
+                                        if (!doubleClickLinkAllComments)
+                                            divDoubleClickStyle = 'display:none;';
+                                    }
+                                    $(`#${groupDivId}_body`).append(
+                                        $('<div>').append(
+                                            $('<a>', {class:'URCE-Comments', id:'urce-cid-'+commentId, title:splitRow.comment, class:linkClass + ' URCE-Comments'}).text(splitRow.title).click(function() {
+                                                // do something
+                                            })
+                                        ).append(
+                                            $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + '\n' + splitRow.comment}).append(
+                                                $('<img>', {src:doublClickIcon, class:'URCE-doubleClickIcon'})
+                                            )
+                                        ).append(
+                                            $('<br>')
+                                        )
+                                    )
+                                    commentId++;
+                                }
                             }
                         }
                     }
@@ -248,13 +321,29 @@
     }
 
 
-    async function buildCommentList() {
-        await commentListAsync().then().catch();
+    async function buildCommentList(commentListIdx) {
+        commentListIdx = parseInt(commentListIdx || settings.CommentList);
+        log(commentListIdx);
+        try {
+            $('#_commentList').empty();
+            let result = await commentListAsync(commentListIdx);
+            if (result.error) {
+                // We got an error returned from the promise in the result object. Clear the contents of the _commentList div and load error message.
+                logError(result.error);
+                return;
+            }
+            $('#_selCommentList').prop('disabled', false).val(settings.CommentList);
+            $('#_selCommentList option[value="loading"]').remove();
+        }
+        catch(err) {
+            logError(err);
+            // We received a reject from the promise. Clear the contents of the _commentList div and load error message.
+        }
     }
 
     function initCommentsTab() {
         $('#panel-urce-comments').append(
-            $('<div>', {id:'_divZoomOutLinks', class:'controls-container URCE-divCC'}).append(
+            $('<div>', {id:'_divZoomOutLinks', class:'controls-container URCE-divCCLinks'}).append(
                 $('<div>', {id:'urceIcon', class:'URCE-divIcon'}).append(
                     $('<img>', {src:GM_info.script.icon, class:'URCE-icon'})
                 ),
@@ -289,7 +378,7 @@
                     });
                 }),
             ),
-            // URC-E Prefereences
+            // URC-E Preferences
             $('<fieldset>', {class:'URCE-field'}).append(
                 $('<legend>', {class:'URCE-legend'}).append(
                     $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.UrcePrefs'))
@@ -366,6 +455,16 @@
                             settings.AutoClickOpenSolvedNi = true;
                             $('#_cbAutoClickOpenSolvedNi').prop('checked', true);
                         }
+                        if (!$(this).is(':checked')) {
+                            if(isChecked('_cbDoubleClickLinkAllComments')) {
+                               settings.DoubleClickLinkAllComments = false;
+                               $('#_cbDoubleClickLinkAllComments').prop('checked', false);
+                               $('div#URCE-divDoubleClickAll').hide();
+                            }
+                            $('div#URCE-divDoubleClickClose').hide();
+                        }
+                        else
+                            $('div#URCE-divDoubleClickClose').show();
                         saveSettingsToStorage();
                     }).prop('checked', settings.DoubleClickLinkCloseComments),
                     $('<label>', {for:'_cbDoubleClickLinkCloseComments', title:I18n.t('urce.prefs.DoubleClickLinkCloseCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkCloseComments')),
@@ -376,6 +475,18 @@
                             settings.AutoClickOpenSolvedNi = true;
                             $('#_cbAutoClickOpenSolvedNi').prop('checked', true);
                         }
+                        if ($(this).is(':checked') && !isChecked('_cbDoubleClickLinkCloseComments')) {
+                            settings.DoubleClickLinkCloseComments = true;
+                            $('#_cbDoubleClickLinkCloseComments').prop('checked', true);
+                        }
+                        if (!$(this).is(':checked'))
+                            $('div#URCE-divDoubleClickAll').hide();
+                        else
+                            $('div#URCE-divDoubleClickAll').show();
+                        if (!isChecked('_cbDoubleClickLinkCloseComments'))
+                            $('div#URCE-divDoubleClickClose').hide();
+                        else
+                            $('div#URCE-divDoubleClickClose').show();
                         saveSettingsToStorage();
                     }).prop('checked', settings.DoubleClickLinkAllComments),
                     $('<label>', {for:'_cbDoubleClickLinkAllComments', title:I18n.t('urce.prefs.DoubleClickLinkAllCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkAllComments')),
@@ -393,7 +504,7 @@
                     $('<div>', {class:'URCE-divDaysInput'}).append(
                         $('<div>', {title:I18n.t('urce.prefs.ReminderDaysTitle'), class:'URCE-label'}).append(I18n.t('urce.prefs.ReminderDays') + ': ').append(
                             $('<input>', {type:'number', id:'_numReminderDays', class:'URCE-daysInput', min:'1', max:'14', step:'1', value:settings.ReminderDays, title:I18n.t('urce.prefs.ReminderDaysTitle')}).on('change', function() { // tried keyup, mousup, but this works good enough
-                                var numReminderDays = Math.abs(parseInt(this.value, 10) || 1);
+                                let numReminderDays = Math.abs(parseInt(this.value, 10) || 1);
                                 if (numReminderDays >= settings.CloseDays) numReminderDays = (settings.CloseDays - 1) < 1 ? 1 : (settings.CloseDays - 1);
                                 numReminderDays = Math.min(13,Math.max(1,parseInt(numReminderDays)));
                                 changeSetting('ReminderDays', numReminderDays);
@@ -402,7 +513,7 @@
                         ),
                         $('<div>', {title:I18n.t('urce.prefs.CloseDaysTitle'), class:'URCE-label'}).append(I18n.t('urce.prefs.CloseDays') + ': ').append(
                             $('<input>', {type:'number', id:'_numCloseDays', class:'URCE-daysInput', min:'1', max:'14', step:'1', value:settings.CloseDays, title:I18n.t('urce.prefs.CloseDaysTitle')}).on('change', function() { // tried keyup, mousup, but this works good enough
-                                var numCloseDays = Math.abs(parseInt(this.value, 10) || 1);
+                                let numCloseDays = Math.abs(parseInt(this.value, 10) || 1);
                                 if (numCloseDays <= settings.ReminderDays) numCloseDays = (settings.ReminderDays + 1) > 14 ? 14 : (settings.ReminderDays + 1);
                                 numCloseDays = Math.min(14,Math.max(2,parseInt(numCloseDays)));
                                 changeSetting('CloseDays', numCloseDays);
@@ -471,7 +582,7 @@
 
     function initGui() {
         let content = $('<div>').append(
-            $('<span>', {class:'URCE-span'}).text(I18n.t('urce.common.title')),
+            $('<span>', {class:'URCE-spanTitle'}).text(I18n.t('urce.common.title')),
             $('<span>', {class:'URCE-spanVersion'}).text(GM_info.script.version),
             '<ul class="nav nav-tabs">' +
             '<li class="active"><a data-toggle="tab" href="#panel-urce-comments" aria-expanded="true">' + I18n.t('urce.tabs.Comments') + '</a></li>' +
@@ -512,9 +623,8 @@
         } else if (tries < 1000) {
             logDebug('Bootstrap failed. Retrying ' + tries + ' of 1000');
             setTimeout(function () { bootstrap(++tries); }, 200);
-        } else {
+        } else
             logError('Bootstrap timed out waiting for WME to become ready.');
-        }
     }
 
     bootstrap();
@@ -603,7 +713,7 @@
                 },
                 common: {
                     title: 'URComments-Enhanced',
-                    DoubleClick: '(double click)',
+                    DoubleClickTitle: 'Double click here to send this comment:',
                     loading: 'Loading',
                     pleaseWait: 'Please wait'
                 },
@@ -633,8 +743,8 @@
 
     function setTranslations(translations) {
         I18n.translations[I18n.currentLocale()].urce = translations.en;
-        for (var i = 0; i < Object.keys(translations).length; i++) {
-            var locale = Object.keys(translations)[i];
+        for (let i = 0; i < Object.keys(translations).length; i++) {
+            let locale = Object.keys(translations)[i];
             if (I18n.currentLocale() == locale) {
                 I18n.translations[locale].urce.prefs = translations[locale].prefs;
                 return;
