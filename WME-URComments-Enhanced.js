@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.11.30.01
+// @version     2018.12.01.01
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -11,8 +11,6 @@
 // @icon        data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC0AAAAwCAYAAACFUvPfAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNS1jMDIxIDc5LjE1NTc3MiwgMjAxNC8wMS8xMy0xOTo0NDowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTQgKFdpbmRvd3MpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjQyQjZDNjdEODYzODExRTRBRDY0Q0I2QjA1MjU4N0EyIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOjQyQjZDNjdFODYzODExRTRBRDY0Q0I2QjA1MjU4N0EyIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6NDJCNkM2N0I4NjM4MTFFNEFENjRDQjZCMDUyNTg3QTIiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6NDJCNkM2N0M4NjM4MTFFNEFENjRDQjZCMDUyNTg3QTIiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz6++Bk8AAANOElEQVR42tRZ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
 // @contributionURL https://github.com/WazeDev/Thank-The-Authors
 // ==/UserScript==
-
-/* eslint curly: ["warn", "multi-or-nest"] */
 
 /* global GM_info */
 /* global W */
@@ -35,6 +33,22 @@
     const DEBUG = true;
     let settings = {};
     let commentList = [];
+    let defaultComments = {'dr':null, // Default reminder
+                           'dc':null, // Default closed / not identified
+                           'it':null, // Incorrect turn
+                           'ia':null, // Incorrect address
+                           'ir':null, // Incorrect route
+                           'mra':null, // Missing roundabout
+                           'ge':null, // General error
+                           'tna':null, // Turn not allowed
+                           'ij':null, // Incorrect junction
+                           'mbo':null, // Missing bridge overpass
+                           'wdd':null, // Wrong driving direction
+                           'me':null, // Missing exit
+                           'mr':null, // Missing road
+                           'ml':null, // Missing landmark
+                           'sl':null // Speed Limit
+                          };
     let urceInitialized = false;
     let COMMENT_LISTS = [{idx:0, name:'CommentTeam', type:'gsheet', oldVarName: 'CommentTeam', listOwner: 'CommentTeam',
                             gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/3/public/values?alt=json' },
@@ -58,8 +72,10 @@
             property = property.substr(1);
         }
         return function (a,b) {
-            if(sortOrder == -1) return b[property].localeCompare(a[property]);
-            else return a[property].localeCompare(b[property]);
+            if (sortOrder == -1)
+                return b[property].localeCompare(a[property]);
+            else
+                return a[property].localeCompare(b[property]);
         }
     }
 
@@ -132,8 +148,10 @@
     function convertOldVarName(oldVarName) {
         let newIdxNum;
         let filterArr = COMMENT_LISTS.filter(obj => obj.oldVarName === oldVarName);
-        if (filterArr.length > 0) newIdxNum = filterArr[0].idx;
-        else newIdxNum = 0;
+        if (filterArr.length > 0)
+            newIdxNum = filterArr[0].idx;
+        else
+            newIdxNum = 0;
         return newIdxNum;
     }
 
@@ -172,20 +190,22 @@
             '#sidepanel-urc-e #panel-urce-comments .URCE-solvedLink { color:#008F00; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-niLink { color:#E68A00; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-openLink { color:#000000; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-bottom:6px; height:16px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-bottom:6px; height:16px; float:right; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; margin-left:5px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }',
             // Settings tab
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-divDaysInput { padding-left:25px !important; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-daysInput { width:38px; height:20px; }',
+            '#sidepanel-urc-e #panel-urce-settings .URCE-span { text-transform:uppercase; }',
             // Common
             '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:8px; border-radius:4px; -webkit-padding-before:0; }',
             '#sidepanel-urc-e .URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }',
             '#sidepanel-urc-e .URCE-divCC { padding-top:2px !important; }',
             '#sidepanel-urc-e .URCE-label { white-space:pre-line; }',
-            '#sidepanel-urc-e .URCE-span { font-size:14px; font-weight:600; text-transform:uppdercase; }',
+            '#sidepanel-urc-e .URCE-span { font-size:14px; font-weight:600; }',
             '#sidepanel-urc-e .URCE-spanTitle { font-size:14px; font-weight:600; }',
             '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:10px; color:#aaa; }',
             '#sidepanel-urc-e .URCE-divTabs { padding:8px; padding-top:2px; }',
@@ -195,137 +215,176 @@
         $('<style = type="text/css">' + css + '</style>').appendTo('head');
     }
 
+    function convertCommentListStatic(commentListIdx) {
+        commentListIdx = parseInt(commentListIdx || settings.CommentList);
+        let oldVarName = getCommentListInfo(commentListIdx).oldVarName;
+       //1696
+        let oldUrcArr = window['Urcomments' + oldVarName + 'Array2'];
+    }
+
+    function processCommentListJson(data) {
+        let result = {error:null};
+        if (!data)
+            result.error = 'No data passed to the JSON processing function.';
+        else {
+            const EXPECTED_FIELD_NAMES = ['TITLE','COMMENT','URSTATUS','DR','DC','IT','IA','IR','MRA','GE','TNA','IJ','MBO','WDD','ME','MR','ML','SL'];
+            let ssFieldNames, groupDivId;
+            let result = {error:null};
+            let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
+            let commentId = 0
+            let blankGroup = 0;
+            let doubleClickLinkCloseComments = settings.DoubleClickLinkCloseComments;
+            let doubleClickLinkAllComments = settings.DoubleClickLinkAllComments;
+            for (let entryIdx = 0; entryIdx < data.feed.entry.length && !result.error; entryIdx++) {
+                let rObj = {};
+                let cellValue = data.feed.entry[entryIdx].title.$t;
+                if (entryIdx === 0) {
+                    // The minimum script version the returned spreadsheet json supports,
+                    if (SCRIPT_VERSION < cellValue)
+                        result.error = 'Script must be updated to at least version ' + cellValue + ' before comment definitions can be loaded.';
+                } else if(entryIdx === 1) {
+                    // Process / check field names
+                    ssFieldNames = cellValue.split('|').map(fldName => fldName.trim());
+                    if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length)
+                        result.error = 'Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment definition data. Spreadsheet returned ' + ssFieldNames.length + '.';
+                    else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName)))
+                        result.error = 'Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', ');
+                } else {
+                    let splitRow = cellValue.split('|');
+                    let rObj = {};
+                    for (let i=0; i<splitRow.length; i++) {
+                        let rObjKey = ssFieldNames[i].trim().toLowerCase();
+                        rObj[rObjKey] = rObjKey === 'comment' ? splitRow[i] : rObjKey === 'title' ? splitRow[i].trim() : splitRow[i].trim().toLowerCase();
+                    }
+                    splitRow = rObj;
+                    if (splitRow.title === 'URCE_REMOVED_SO_SKIP')
+                        // Nothing to do here. Move along. This is a comment that has been set to 'REMOVED' in the spreadsheet.
+                        logDebug('SKIPPING a removed comment.');
+                    else if (splitRow.title === 'URCE_ERROR')
+                        // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
+                        result.error('There is an unknown error in the spreadsheet output. Please contact the list owner.');
+                    else if (splitRow.urstatus === 'group title') {
+                        // Group title row. Nothing to set in the arrays, but build html.
+                        groupDivId = 'urceComments-for-';
+                        if (splitRow.title != '') {
+                            groupDivId += splitRow.title.replace(/[^\w]+/gi, '').toLowerCase();
+                            if (splitRow.title === splitRow.title.toUpperCase()) {
+                                if (splitRow.title.length > 25) {
+                                    splitRow.titleMouseOver = splitRow.title;
+                                    splitRow.title = splitRow.title.substring(0, 25) + '...';
+                                }
+                            } else if (splitRow.title.length > 30) {
+                                splitRow.titleMouseOver = splitRow.title;
+                                splitRow.title = splitRow.title.substring(0, 30) + '...';
+                            }
+                        }
+                        else
+                            groupDivId += 'blankGroup' + (++blankGroup);
+                        $('#_commentList').append(
+                            $('<fieldset>', {id:groupDivId, class:'URCE-field'}).append(
+                                $('<legend>', {class:'URCE-legend'}).append(
+                                    $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
+                                    $('<span>', {class:'URCE-span', title:splitRow.titleMouseOver}).text(splitRow.title)
+                                ).click(function() {
+                                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
+                                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
+                                    $($(this).siblings()[0]).toggleClass('collapse');
+                                })
+                            ).append(
+                                $('<div>', {id:groupDivId+'_body'})
+                            )
+                        )
+                    } else {
+                        // SHOULD be a normal comments row, push values to arrays and build html.
+                        if (splitRow.urstatus !== 'solved' && splitRow.urstatus !== 'notidentified' && splitRow.urstatus !== 'open')
+                            result.error = 'Your current selected list does not have a status set for ' + splitRow.title + '. Please contact list owner.';
+                        else {
+                            commentList[commentId] = { 'title':splitRow.title, 'comment':splitRow.comment, 'urstatus':splitRow.urstatus };
+                            if (Object.values(splitRow).indexOf('default_is_true') > -1) {
+                                let drIdx = ssFieldNames.indexOf('DR');
+                                let splitRowDefaultCommentsBoolean = Object.values(splitRow).slice(drIdx);
+                                for (let boolIdx = 0; boolIdx < splitRowDefaultCommentsBoolean.length; boolIdx++) {
+                                    if (splitRowDefaultCommentsBoolean[boolIdx].toLowerCase() === 'default_is_true')
+                                        defaultComments[ssFieldNames[(boolIdx+drIdx)].toLowerCase()] = commentId;
+                                }
+                            }
+                            let linkClass;
+                            let divDoubleClickId;
+                            let divDoubleClickStyle = 'display:initial;';
+                            if (splitRow.urstatus === 'solved') {
+                                linkClass = 'URCE-solvedLink';
+                                divDoubleClickId = 'URCE-divDoubleClickClose';
+                                if (!doubleClickLinkCloseComments && !doubleClickLinkAllComments)
+                                    divDoubleClickStyle = 'display:none;';
+                            } else if (splitRow.urstatus === 'notidentified') {
+                                linkClass = 'URCE-niLink';
+                                divDoubleClickId = 'URCE-divDoubleClickClose';
+                                if (!doubleClickLinkCloseComments && !doubleClickLinkAllComments)
+                                    divDoubleClickStyle = 'display:none;';
+                            } else {
+                                linkClass = 'URCE-openLink';
+                                divDoubleClickId = 'URCE-divDoubleClickAll';
+                                if (!doubleClickLinkAllComments)
+                                    divDoubleClickStyle = 'display:none;';
+                            }
+                            $(`#${groupDivId}_body`).append(
+                                $('<div>').append(
+                                    $('<a>', {class:'URCE-Comments', id:'urce-cid-'+commentId, title:splitRow.comment, class:linkClass + ' URCE-Comments'}).text(splitRow.title).click(function() {
+                                        // do something
+                                    })
+                                ).append(
+                                    $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + '\n' + splitRow.comment}).append(
+                                        $('<img>', {src:doublClickIcon, class:'URCE-doubleClickIcon'})
+                                    )
+                                ).append(
+                                    $('<br>')
+                                )
+                            )
+                            commentId++;
+                        }
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
     function commentListAsync(commentListIdx) {
         logDebug('Running Async.');
         commentListIdx = parseInt(commentListIdx || settings.CommentList);
         return new Promise((resolve, reject) => {
-            $.get({
-                url: getCommentListInfo(commentListIdx).gSheetUrl,
-                success: function(data) {
-                    // Critical fields that must be present in the spreadsheet, or script cannot process the data correctly.
-                    // If any of these are still null after processing the fields entry, there's a problem.
-                    const EXPECTED_FIELD_NAMES = ['TITLE','COMMENT','URSTATUS','DR','DC','IT','IA','IR','MRA','GE','TNA','IJ','MBO','WDD','ME','MR','ML','SL'];
-                    let ssFieldNames, groupDivId;
-                    let result = {error:null};
-                    let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
-                    let commentId, blankGroup = 0;
-                    let doubleClickLinkCloseComments = settings.DoubleClickLinkCloseComments;
-                    let doubleClickLinkAllComments = settings.DoubleClickLinkAllComments;
-                    for (let entryIdx = 0; entryIdx < data.feed.entry.length && !result.error; entryIdx++) {
-                        let rObj = {};
-                        let cellValue = data.feed.entry[entryIdx].title.$t;
-                        if (entryIdx === 0) {
-                            // The minimum script version the returned spreadsheet json supports,
-                            if (SCRIPT_VERSION < cellValue)
-                                result.error = 'Script must be updated to at least version ' + cellValue + ' before comment definitions can be loaded.';
-                        } else if(entryIdx === 1) {
-                            // Process / check field names
-                            ssFieldNames = cellValue.split('|').map(fldName => fldName.trim());
-                            if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length)
-                                result.error = 'Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment definition data. Spreadsheet returned ' + ssFieldNames.length + '.';
-                            else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName)))
-                                result.error = 'Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', ');
-                        } else {
-                            let splitRow = cellValue.split('|');
-                            let rObj = {};
-                            for (let i=0; i<splitRow.length; i++) {
-                                let rObjKey = ssFieldNames[i].trim().toLowerCase();
-                                rObj[rObjKey] = rObjKey === 'comment' ? splitRow[i] : rObjKey === 'title' ? splitRow[i].trim() : splitRow[i].trim().toLowerCase();
-                            }
-                            splitRow = rObj;
-                            if (splitRow.title === 'URCE_REMOVED_SO_SKIP')
-                                // Nothing to do here. Move along. This is a comment that has been set to 'REMOVED' in the spreadsheet.
-                                logDebug('SKIPPING a removed comment.');
-                            else if (splitRow.title === 'URCE_ERROR')
-                                // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
-                                result.error('There is an unknown error in the spreadsheet output. Please contact the list owner.');
-                            else if (splitRow.urstatus === 'group title') {
-                                // Group title row. Nothing to set in the arrays, but build html.
-                                groupDivId = 'urceComments-for-';
-                                if (splitRow.title != '') {
-                                    groupDivId += splitRow.title.replace(/[^\w]+/gi, '').toLowerCase();
-                                    if (splitRow.title === splitRow.title.toUpperCase()) {
-                                        if (splitRow.title.length > 25) {
-                                            splitRow.titleMouseOver = splitRow.title;
-                                            splitRow.title = splitRow.title.substring(0, 25) + '...';
-                                        }
-                                    } else if (splitRow.title.length > 30) {
-                                        splitRow.titleMouseOver = splitRow.title;
-                                        splitRow.title = splitRow.title.substring(0, 30) + '...';
-                                    }
-                                }
-                                else
-                                    groupDivId += 'blankGroup' + (++blankGroup);
-                                $('#_commentList').append(
-                                    $('<fieldset>', {id:groupDivId, class:'URCE-field'}).append(
-                                        $('<legend>', {class:'URCE-legend'}).append($('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}).click(function() {
-                                            $(this).toggleClass('fa fa-fw fa-chevron-down');
-                                            $(this).toggleClass('fa fa-fw fa-chevron-right');
-                                            $($(this).parent().siblings()[0]).toggleClass('collapse');
-                                        }),
-                                            $('<span>', {class:'URCE-span', title:splitRow.titleMouseOver}).text(splitRow.title))
-                                    ).append(
-                                        $('<div>', {id:groupDivId+'_body'})
-                                    )
-                                )
-                            } else {
-                                // SHOULD be a normal comments row, push values to arrays and build html.
-                                if (splitRow.urstatus !== 'solved' && splitRow.urstatus !== 'notidentified' && splitRow.urstatus !== 'open')
-                                    result.error = 'Your current selected list does not have a status set for ' + splitRow.title + '. Please contact list owner.';
-                                else {
-                                    commentList[commentId] = { 'title':splitRow.title, 'comment':splitRow.comment, 'urstatus':splitRow.urstatus };
-                                    let linkClass;
-                                    let divDoubleClickId;
-                                    let divDoubleClickStyle = 'display:initial;';
-                                    if (splitRow.urstatus === 'solved') {
-                                        linkClass = 'URCE-solvedLink';
-                                        divDoubleClickId = 'URCE-divDoubleClickClose';
-                                        if (!doubleClickLinkCloseComments && !doubleClickLinkAllComments)
-                                            divDoubleClickStyle = 'display:none;';
-                                    } else if (splitRow.urstatus === 'notidentified') {
-                                        linkClass = 'URCE-niLink';
-                                        divDoubleClickId = 'URCE-divDoubleClickClose';
-                                        if (!doubleClickLinkCloseComments && !doubleClickLinkAllComments)
-                                            divDoubleClickStyle = 'display:none;';
-                                    } else {
-                                        linkClass = 'URCE-openLink';
-                                        divDoubleClickId = 'URCE-divDoubleClickAll';
-                                        if (!doubleClickLinkAllComments)
-                                            divDoubleClickStyle = 'display:none;';
-                                    }
-                                    $(`#${groupDivId}_body`).append(
-                                        $('<div>').append(
-                                            $('<a>', {class:'URCE-Comments', id:'urce-cid-'+commentId, title:splitRow.comment, class:linkClass + ' URCE-Comments'}).text(splitRow.title).click(function() {
-                                                // do something
-                                            })
-                                        ).append(
-                                            $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + '\n' + splitRow.comment}).append(
-                                                $('<img>', {src:doublClickIcon, class:'URCE-doubleClickIcon'})
-                                            )
-                                        ).append(
-                                            $('<br>')
-                                        )
-                                    )
-                                    commentId++;
-                                }
-                            }
-                        }
+            if (getCommentListInfo(commentListIdx).type === 'static') {
+                let fakeJSON = convertCommentListStatic(commentListIdx);
+                processCommentListJson(fakeJSON);
+            } else {
+                $.get({
+                    url: getCommentListInfo(commentListIdx).gSheetUrl,
+                    success: function(data) {
+                        // Critical fields that must be present in the spreadsheet, or script cannot process the data correctly.
+                        // If any of these are still null after processing the fields entry, there's a problem.
+                        let result = processCommentListJson(data);
+                        if (!result.error)
+                            resolve(result);
+                        else
+                            reject(result);
+                    },
+                    error: function() {
+                        reject({message: 'An error occurred while loading the selected comment lists definition spreadsheet.'});
                     }
-                    resolve(result);
-                },
-                error: function() {
-                    reject({message: 'An error occurred while loading the selected comment lists definition spreadsheet.'});
-                }
-            });
+                });
+            }
         });
     }
 
 
     async function buildCommentList(commentListIdx) {
         commentListIdx = parseInt(commentListIdx || settings.CommentList);
-        log(commentListIdx);
         try {
+            // Clear out the _commentList div so we can rebuild it with the new content
             $('#_commentList').empty();
+            // Re-initialize the commentList array.
+            commentList = [];
+            // Get it done.
             let result = await commentListAsync(commentListIdx);
             if (result.error) {
                 // We got an error returned from the promise in the result object. Clear the contents of the _commentList div and load error message.
@@ -369,8 +428,10 @@
                 $('<div>', {class:'controls-container URCE-divCC'}).append(function() {
                     let selList = $('<select>', {id:'_selCommentList'});
                     COMMENT_LISTS.forEach(cList => {
-                        if (cList.idx === settings.CommentList) selList.append($('<option>', {value:cList.idx, selected:true}).text(cList.name));
-                        else selList.append($('<option>', {value:cList.idx}).text(cList.name));
+                        if (cList.idx === settings.CommentList)
+                            selList.append($('<option>', {value:cList.idx, selected:true}).text(cList.name));
+                        else
+                            selList.append($('<option>', {value:cList.idx}).text(cList.name));
                     });
                     selList.append($('<option>', {value:'loading'}).text('...' + I18n.t('urce.common.loading') + '...'));
                     return selList.prop('disabled', true).val('loading').change(function() {
@@ -493,8 +554,10 @@
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbHideZoomOutLinks'}).change(function() {
                         changeSetting('HideZoomOutLinks', $(this).is(':checked'));
-                        if ($(this).is(':checked')) $('div#_divZoomOutLinks').hide();
-                        else $('div#_divZoomOutLinks').show();
+                        if ($(this).is(':checked'))
+                            $('div#_divZoomOutLinks').hide();
+                        else
+                            $('div#_divZoomOutLinks').show();
                     }).prop('checked', settings.HideZoomOutLinks),
                     $('<label>', {for:'_cbHideZoomOutLinks', title:I18n.t('urce.prefs.HideZoomOutLinksTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideZoomOutLinks')),
                     $('<br>'),
@@ -623,7 +686,8 @@
         } else if (tries < 1000) {
             logDebug('Bootstrap failed. Retrying ' + tries + ' of 1000');
             setTimeout(function () { bootstrap(++tries); }, 200);
-        } else
+        }
+        else
             logError('Bootstrap timed out waiting for WME to become ready.');
     }
 
