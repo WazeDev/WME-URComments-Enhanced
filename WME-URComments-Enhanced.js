@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.03.01
+// @version     2018.12.03.02
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -52,16 +52,11 @@
                             'isps':null, // Incorrect street prefix or suffix
                             'sl':null // Speed Limit
                           };
-    let _translations = {};
     let _urceInitialized = false;
-    const _CommentLists = [{idx:0, name:'CommentTeam', type:'gsheet', oldVarName: 'CommentTeam', listOwner: 'CommentTeam',
-                            gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/3/public/values?alt=json' },
-                           {idx:1, name:'Custom', type:'static', oldVarName:'Custom', listOwner: 'Custom',
-                            gSheetUrl: '' },
-                           {idx:2, name:'USA - SCR', type:'gsheet', oldVarName: 'USA_SouthCentral', listOwner: 'SCR CommentTeam',
-                            gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/5/public/values?alt=json' },
-                           {idx:3, name:'USA - SER', type:'static', oldVarName: 'USA_Southeast',
-                            gSheetUrl: '' }
+    const _CommentLists = [{idx:0, name:'CommentTeam', oldVarName: 'CommentTeam', listOwner: 'CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/oz10sdb/public/values?alt=json' },
+                           {idx:1, name:'Custom', oldVarName:'Custom', listOwner: 'Custom', gSheetUrl: '' },
+                           {idx:2, name:'USA - SCR', oldVarName: 'USA_SouthCentral', listOwner: 'SCR CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/ope05au/public/values?alt=json' },
+                           {idx:3, name:'USA - SER', oldVarName: 'USA_Southeast', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/o35ezyr/public/values?alt=json' }
                           ].sort(dynamicSort('name'));
 
     function log(message) { console.log('URC-E:', message); }
@@ -196,6 +191,7 @@
         let css = [
             // Comments tab
             '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:12px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-commentListName { padding-left:12px; font-size:12px; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:11px; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }',
@@ -229,7 +225,7 @@
         $('<style = type="text/css">' + css + '</style>').appendTo('head');
     }
 
-    function convertCommentListStatic(commentListIdx) {
+/*    function convertCommentListStatic(commentListIdx) {
         commentListIdx = parseInt(commentListIdx || _settings.CommentList);
         let oldVarName = getCommentListInfo(commentListIdx).oldVarName;
         let oldUrcArr = window['Urcomments' + oldVarName + 'Array2'];
@@ -261,7 +257,7 @@
             entryIdx++;
         }
         return data;
-    }
+    } */
 
     function processCommentListJson(data) {
         let result = {error:null};
@@ -337,7 +333,7 @@
                         )
                     } else {
                         // SHOULD be a normal comments row, push values to arrays and build html.
-                        if (splitRow.urstatus !== 'solved' && splitRow.urstatus !== 'notidentified' && splitRow.urstatus !== 'open') {
+                        if (splitRow.urstatus !== 'solved' && splitRow.urstatus !== 'notidentified' && splitRow.urstatus !== 'open' && splitRow.urstatus !== 'blank line') {
                             result.error = 'Your current selected list does not have a status set for ' + splitRow.title + '. Please contact list owner.';
                         } else {
                             _commentList[commentId] = { 'title':splitRow.title, 'comment':splitRow.comment, 'urstatus':splitRow.urstatus };
@@ -399,7 +395,7 @@
     function commentListAsync(commentListIdx) {
         commentListIdx = parseInt(commentListIdx || _settings.CommentList);
         return new Promise((resolve, reject) => {
-            if (getCommentListInfo(commentListIdx).type === 'static') {
+/*            if (getCommentListInfo(commentListIdx).type === 'static') {
                 let data = convertCommentListStatic(commentListIdx);
                 let result = processCommentListJson(data);
                 if (!result.error) {
@@ -407,7 +403,7 @@
                 } else {
                     reject(result);
                 }
-            } else {
+            } else { */
                 $.get({
                     url: getCommentListInfo(commentListIdx).gSheetUrl,
                     success: function(data) {
@@ -424,7 +420,7 @@
                         reject({message: 'An error occurred while loading the selected comment lists definition spreadsheet.'});
                     }
                 });
-            }
+//            }
         });
     }
 
@@ -434,6 +430,9 @@
         try {
             // Clear out the _commentList div so we can rebuild it with the new content
             $('#_commentList').empty();
+            $('#_commentList').append(
+                $('<div>', {class:'URCE-commentListName'}).text(I18n.t('urce.prefs.CommentList') + ': ' + getCommentListInfo(_settings.CommentList).name)
+            );
             // Re-initialize the commentList array.
             _commentList = [];
             // Get it done.
@@ -441,7 +440,7 @@
             if (result.error) {
                 // We got an error returned from the promise in the result object. Clear the contents of the _commentList div and load error message.
                 logError(result.error);
-                return;
+                //return; // Might as well continue on down and remove the lock on the dropdown and remove the loading selection.
             }
             $('#_selCommentList').prop('disabled', false).val(_settings.CommentList);
             $('#_selCommentList option[value="loading"]').remove();
@@ -754,7 +753,7 @@
     bootstrap();
 
     function loadTranslations() {
-        _translations = {
+        setTranslations({
             en: {
                 prefs: {
                     // Comment List
@@ -865,8 +864,7 @@
             },
             fr: {
             }
-        };
-        setTranslations(_translations);
+        });
     }
 
     function setTranslations(translations) {
