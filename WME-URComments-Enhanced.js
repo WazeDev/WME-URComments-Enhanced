@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.02.02
+// @version     2018.12.03.01
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -52,6 +52,7 @@
                             'isps':null, // Incorrect street prefix or suffix
                             'sl':null // Speed Limit
                           };
+    let _translations = {};
     let _urceInitialized = false;
     const _CommentLists = [{idx:0, name:'CommentTeam', type:'gsheet', oldVarName: 'CommentTeam', listOwner: 'CommentTeam',
                             gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/3/public/values?alt=json' },
@@ -753,62 +754,64 @@
     bootstrap();
 
     function loadTranslations() {
-        setTranslations({
+        _translations = {
             en: {
                 prefs: {
                     // Comment List
                     CommentList: 'Comment List',
-                    CommentListTitle: 'This shows the selected comment list. There is support for a custom list. If you would like your comment list built into this script or have suggestions on the Comments team’s list, please contact dBsooner on Discord or via PM.',
+                    CommentListTitle: 'Select the custom list you would like to use. CommentTeam is the default. If you would like your comment list built into this script or have suggestions on the CommentTeam list, please contact dBsooner on Discord or via PM.',
                     // URC-E Preferences
                     UrcePrefs: 'URC-E Preferences',
                     AutoCenterOnUr: 'Auto center on UR',
-                    AutoCenterOnUrTitle: 'Auto Center the map at the current map zoom when UR has comments and the zoom is less than 3',
-                    AutoClickOpenSolvedNi: 'Auto click open, solved, not identified',
-                    AutoClickOpenSolvedNiTitle: 'Suppress the message about recent pending questions to the reporter and then depending on the choice set for that comment Clicks Open, Solved, Not Identified',
+                    AutoCenterOnUrTitle: 'Auto Center the map at the current map zoom to the selected UR when it has comments and the zoom is less than 3.',
+                    AutoClickOpenSolvedNi: 'Auto click open, solved or not identified',
+                    AutoClickOpenSolvedNiTitle: 'Suppress the message about recent pending questions to the reporter and then, depending on the choice set for that comment, clicks Open, Solved or Not Identified.',
                     AutoCloseCommentWindow: 'Auto close comment window',
-                    AutoCloseCommentWindowTitle: 'For the user requests that do not require saving this will close the user request after clicking on a UR-Comment and then the send button',
+                    AutoCloseCommentWindowTitle: 'This will automatically close the UR window for user requests that do not require saving after you click a UR comment in the list and then the send button.',
                     AutoSaveAfterSolvedOrNiComment: 'Auto save after solved or NI comment',
-                    AutoSaveAfterSolvedOrNiCommentTitle: 'If Auto Click Open, Solved, Not Identified is also checked, this option will click the save button after clicking on a UR-Comment and then the send button',
+                    AutoSaveAfterSolvedOrNiCommentTitle: 'If \'Auto Click Open, Solved or Not Identified\' is also checked, this will click the save button after clicking a UR comment in the list and then the send button.',
                     AutoSendReminders: 'Auto send reminders',
-                    AutoSendRemindersTitle: 'Auto send reminders to my URs on the screen',
+                    AutoSendRemindersTitle: 'Auto send reminders to your URs on the screen.',
                     AutoSendRemindersWarning: 'WARNING',
                     AutoSendRemindersWarningTitle: 'This will AUTOMATICALLY send reminders at the reminder days setting (currently: ' + _settings.ReminderDays + ' days).\nThis only happens when they are visible on your screen.\n\nNOTE: When using this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to all open URs\nafter \'Reminder days\'.',
                     AutoSetNewUrComment: 'Auto set new UR comment',
-                    AutoSetNewUrCommentTitle: 'Auto set the UR comment on new URs that do not already have comments',
+                    AutoSetNewUrCommentTitle: 'Auto set the default UR comment for the UR type on new URs that do not already have comments.',
                     AutoSetReminderUrComment: 'Auto set reminder UR comment',
-                    AutoSetReminderUrCommentTitle: 'Auto set the UR reminder comment for URs that are older than reminder days setting and have only one comment',
+                    AutoSetReminderUrCommentTitle: 'Auto set the UR reminder comment for URs that are older than the \'Reminder days\' setting and have only one comment.',
                     AutoSwitchToUrCommentsTab: 'Auto switch to the URC-E tab',
-                    AutoSwitchToUrCommentsTabTitle: 'Auto switch to the URComments-Enhanced tab when opening a UR, when the UR window is closed you will be switched to your previous tab',
+                    AutoSwitchToUrCommentsTabTitle: 'Auto switch to the URComments-Enhanced tab when opening a UR. When the UR window is closed you will be switched back to your previous tab.',
                     AutoZoomInOnNewUr: 'Auto zoom in on new UR',
-                    AutoZoomInOnNewUrTitle: 'Auto zoom in when opening URs with no comments and when sending UR reminders',
+                    AutoZoomInOnNewUrTitle: 'Auto zoom in when opening URs with no comments and when sending UR reminders.',
                     AutoZoomOutAfterComment: 'Auto zoom out after comment',
-                    AutoZoomOutAfterCommentTitle: 'After clicking on a UR-Comment in the list and clicking send on the UR the map zoom will be set back to your previous zoom',
+                    AutoZoomOutAfterCommentTitle: 'After clicking on a UR comment in the list and then clicking send on the UR, the map zoom will be set back to your previous zoom.',
                     DisableDoneNextButtons: 'Disable done / next buttons',
-                    DisableDoneNextButtonsTitle: 'Disable the done / next buttons at the bottom of the new UR window',
+                    DisableDoneNextButtonsTitle: 'Disable the done / next buttons at the bottom of the new UR window.',
                     DoNotShowTagNameOnPill: 'Don\'t show tag name on pill',
-                    DoNotShowTagNameOnPillTitle: 'Do not show tag name on pill where there is a URO tag',
-                    DoubleClickLinkCloseComments: 'Double click link - Close comments',
-                    DoubleClickLinkCloseCommentsTitle: 'Add an extra link to the close comment when double clicked will auto send the comment to the UR windows and click send, and then will launch all of the other options that are enabled',
-                    DoubleClickLinkAllComments: 'Double click link - All comments',
-                    DoubleClickLinkAllCommentsTitle: 'Add an extra link to each comment in the list that when double clicked will auto send the comment to the UR windows and click send, and then will launch all of the other options that are enabled',
+                    DoNotShowTagNameOnPillTitle: 'Do not show the tag name on the pill where there is a URO tag.',
+                    DoubleClickLinkNiComments: 'Double click link - Not identified comments',
+                    DoubleClickLinkNiCommentsTitle: 'Add an extra link to the \'not identified\' comments. When double clicked it will automatically send the comment to the UR window, click send, and then will launch all of the other options that are enabled.',
+                    DoubleCLickLinkOpenComments: 'Double click link - Open comments',
+                    DoubleClickLinkOpenCommentsTitle: 'Add an extra link to the \'open\' comments. When double clicked it will automatically send the comment to the UR window, click send, and then will launch all of the other options that are enabled.',
+                    DoubleClickLinkSolvedComments: 'Double click link - Solved comments',
+                    DoubleClickLinkSolvedCommentsTitle: 'Add an extra link to the \'solved\' comments. When double clicked it will automatically send the comment to the UR window, click send, and then will launch all of the other options that are enabled.',
                     HideZoomOutLinks: 'Hide zoom out links',
                     HideZoomOutLinksTitle: 'Hide the zoom out links on the comments tab.',
                     UnfollowUrAfterSend: 'Unfollow UR after send',
-                    UnfollowUrAfterSendTitle: 'Unfollow UR after sending comment',
+                    UnfollowUrAfterSendTitle: 'Unfollow the UR after sending a comment.',
                     ReminderDays: 'Reminder days',
-                    ReminderDaysTitle: 'Number of days to (auto) set reminder comment. Must be between 1 and 13 and less than \'Close days\'.',
+                    ReminderDaysTitle: 'Number of days to (automatically) set reminder comment. Must be between 1 and 13 and less than \'Close days\'.',
                     CloseDays: 'Close days',
-                    CloseDaysTitle: 'Number of days to (auto) close URs. Must be between 2 and 14 and greater than \'Reminder days\'.',
+                    CloseDaysTitle: 'Number of days to (automatically) close URs. Must be between 2 and 14 and greater than \'Reminder days\'.',
                     // UR Filtering Preferences
                     UrFilteringPrefs: 'UR Filtering Preferences',
                     EnableUrceUrFiltering: 'Enable URC-E UR filtering',
-                    EnableUrceUrFilteringTitle: 'Enable or disable URComments filtering.',
+                    EnableUrceUrFilteringTitle: 'Enable or disable URComments-Enhanced built-in UR filtering.',
                     EnableUrPillCounts: 'Enable UR pill counts',
                     EnableUrPillCountsTitle: 'Enable or disable the pill with UR counts.',
                     HideClosedUrs: 'Hide closed URs',
                     HideClosedUrsTitle: 'Hide closed URs.',
                     HideTaggedUrs: 'Hide tagged URs',
-                    HideTaggedUrsTitle: 'Hide URs that are tagged with URO+ style tags ex. [NOTE].',
+                    HideTaggedUrsTitle: 'Hide URs that are tagged with URO+ style tags. Ex: [NOTE].',
                     HideWaiting: 'Hide waiting',
                     HideWaitingTitle: 'Only show URs that need work (hide URs in other parts of the life-cycle).',
                     HideUrsCloseNeeded: 'Hide URs where close needed',
@@ -826,9 +829,9 @@
                     OnlyShowMyUrs: 'Only show my URs',
                     OnlyShowMyUrsTitle: 'Hide URs where you have no comments.',
                     ShowOthersUrsPastReminderClose: 'Show others URs past remind+close',
-                    ShowOthersUrsPastReminderCloseTitle: 'Show URs that other commented on that have gone past the reminder and close day settings added together.',
+                    ShowOthersUrsPastReminderCloseTitle: 'Show URs that others commented on that have gone past the reminder and close day settings added together.',
                     ReplaceTagNameWithEditorName: 'Replace tag name with editor name',
-                    ReplaceTagNameWithEditorNameTitle: 'When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds when commenting) replace the tag type with the editors name'
+                    ReplaceTagNameWithEditorNameTitle: 'When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds when commenting), replace the tag type with the editors name.'
                 },
                 tabs: {
                     Comments: 'Comments',
@@ -838,7 +841,8 @@
                     title: 'URComments-Enhanced',
                     DoubleClickTitle: 'Double click here to send this comment:',
                     loading: 'Loading',
-                    pleaseWait: 'Please wait'
+                    pleaseWait: 'Please wait',
+                    errorGeneric: 'An error has occurred within URC-E. Please contact dBsooner via Discord or PM.'
                 },
                 prompts: {
                     FilterUrs2Abort: 'URC-E - Aborting FilterURs2 because filtering, counts and auto reminders are disabled.',
@@ -861,7 +865,8 @@
             },
             fr: {
             }
-        });
+        };
+        setTranslations(_translations);
     }
 
     function setTranslations(translations) {
