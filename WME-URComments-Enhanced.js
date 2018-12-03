@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.01.01
+// @version     2018.12.02.01
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -31,32 +31,35 @@
         ].join('');
     const doublClickIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
-    let settings = {};
-    let commentList = [];
-    let defaultComments = {'dr':null, // Default reminder
-                           'dc':null, // Default closed / not identified
-                           'it':null, // Incorrect turn
-                           'ia':null, // Incorrect address
-                           'ir':null, // Incorrect route
-                           'mra':null, // Missing roundabout
-                           'ge':null, // General error
-                           'tna':null, // Turn not allowed
-                           'ij':null, // Incorrect junction
-                           'mbo':null, // Missing bridge overpass
-                           'wdd':null, // Wrong driving direction
-                           'me':null, // Missing exit
-                           'mr':null, // Missing road
-                           'ml':null, // Missing landmark
-                           'sl':null // Speed Limit
+    let _settings = {};
+    let _commentList = [];
+    let _defaultComments = {'dr':null, // Default reminder
+                            'dc':null, // Default closed / not identified
+                            'it':null, // Incorrect turn
+                            'ia':null, // Incorrect address
+                            'ir':null, // Incorrect route
+                            'mra':null, // Missing roundabout
+                            'ge':null, // General error
+                            'tna':null, // Turn not allowed
+                            'ij':null, // Incorrect junction
+                            'mbo':null, // Missing bridge overpass
+                            'wdd':null, // Wrong driving direction
+                            'me':null, // Missing exit
+                            'mr':null, // Missing road
+                            'ml':null, // Missing landmark
+                            'br':null, // Blocked road
+                            'msn':null, // Missing street name
+                            'isps':null, // Incorrect street prefix or suffix
+                            'sl':null // Speed Limit
                           };
-    let urceInitialized = false;
-    let COMMENT_LISTS = [{idx:0, name:'CommentTeam', type:'gsheet', oldVarName: 'CommentTeam', listOwner: 'CommentTeam',
+    let _urceInitialized = false;
+    const _CommentLists = [{idx:0, name:'CommentTeam', type:'gsheet', oldVarName: 'CommentTeam', listOwner: 'CommentTeam',
                             gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/3/public/values?alt=json' },
                            {idx:1, name:'Custom', type:'static', oldVarName:'Custom', listOwner: 'Custom',
                             gSheetUrl: '' },
                            {idx:2, name:'USA - SCR', type:'gsheet', oldVarName: 'USA_SouthCentral', listOwner: 'SCR CommentTeam',
                             gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/5/public/values?alt=json' },
-                           {idx:3, name:'Alpha', type:'gsheet', oldVarName: 'Alpha',
+                           {idx:3, name:'USA - SER', type:'static', oldVarName: 'USA_Southeast',
                             gSheetUrl: '' }
                           ].sort(dynamicSort('name'));
 
@@ -72,11 +75,19 @@
             property = property.substr(1);
         }
         return function (a,b) {
-            if (sortOrder == -1)
+            if (sortOrder == -1) {
                 return b[property].localeCompare(a[property]);
-            else
+            } else {
                 return a[property].localeCompare(b[property]);
+            }
         }
+    }
+
+    function encodeHtml(text) {
+        let tempDiv = document.createElement("div");
+        tempDiv.innerText = tempDiv.textContent = text;
+        text = tempDiv.innerHTML;
+        return text;
     }
 
     function loadSettingsFromStorage() {
@@ -117,42 +128,44 @@
             HideUrsWoCommentsWithDescriptions: localStorage.getItem('URCommentsHideWithDescript') ?$.parseJSON( localStorage.getItem('URCommentsHideWithDescript')) : false,
             lastVersion: null
         };
-        if (defaultSettings.ReminderDays >= defaultSettings.CloseDays) defaultSettings.ReminderDays = (defaultSettings.CloseDays - 1) < 1 ? 1 : (defaultSettings.CloseDays - 1);
+        if (defaultSettings.ReminderDays >= defaultSettings.CloseDays) {
+            defaultSettings.ReminderDays = (defaultSettings.CloseDays - 1) < 1 ? 1 : (defaultSettings.CloseDays - 1);
+        }
         defaultSettings.ReminderDays = Math.min(13,Math.max(1,parseInt(defaultSettings.ReminderDays)));
-        if (defaultSettings.CloseDays <= defaultSettings.ReminderDays) defaultSettings.CloseDays = (defaultSettings.ReminderDays + 1) > 14 ? 14 : (defaultSettings.ReminderDays + 1);
+        if (defaultSettings.CloseDays <= defaultSettings.ReminderDays) {
+            defaultSettings.CloseDays = (defaultSettings.ReminderDays + 1) > 14 ? 14 : (defaultSettings.ReminderDays + 1);
+        }
         defaultSettings.CloseDays = Math.min(14,Math.max(2,parseInt(defaultSettings.CloseDays)));
-        settings = loadedSettings ? loadedSettings : defaultSettings;
+        _settings = loadedSettings ? loadedSettings : defaultSettings;
         for (let prop in defaultSettings) {
-            if (!settings.hasOwnProperty(prop))
-                settings[prop] = defaultSettings[prop];
+            if (!_settings.hasOwnProperty(prop)) {
+                _settings[prop] = defaultSettings[prop];
+            }
         }
     }
 
     function saveSettingsToStorage() {
         if(localStorage) {
-            settings.lastVersion = SCRIPT_VERSION;
-            localStorage.setItem(SETTINGS_STORE_NAME, JSON.stringify(settings));
+            _settings.lastVersion = SCRIPT_VERSION;
+            localStorage.setItem(SETTINGS_STORE_NAME, JSON.stringify(_settings));
             logDebug('Settings saved.');
         }
     }
 
     function showScriptInfoAlert() {
-        if (ALERT_UPDATE && SCRIPT_VERSION !== settings.lastVersion) {
-            if (!settings.lastVersion)
+        if (ALERT_UPDATE && SCRIPT_VERSION !== _settings.lastVersion) {
+            if (!_settings.lastVersion) {
                 alert(SCRIPT_VERSION_CHANGES + '\n\nThis is the first time you have loaded URComments-Enhanced. If you have previously used URC, your URC settings have been copied into URC-E.');
-            else
+            } else {
                 alert(SCRIPT_VERSION_CHANGES);
+            }
         }
     }
 
     function convertOldVarName(oldVarName) {
         let newIdxNum;
-        let filterArr = COMMENT_LISTS.filter(obj => obj.oldVarName === oldVarName);
-        if (filterArr.length > 0)
-            newIdxNum = filterArr[0].idx;
-        else
-            newIdxNum = 0;
-        return newIdxNum;
+        let filterArr = _CommentLists.filter(obj => obj.oldVarName === oldVarName);
+        return filterArr.length > 0 ? filterArr[0].idx : 0;
     }
 
     function isChecked(checkboxId) {
@@ -160,22 +173,22 @@
     }
 
     function changeSetting(settingId, settingVal) {
-        settings[settingId] = settingVal;
+        _settings[settingId] = settingVal;
         saveSettingsToStorage();
     }
 
     function changeCommentList(commentListIdx) {
         commentListIdx = parseInt(commentListIdx || 0);
-        if (commentListIdx != settings.CommentList) {
-            settings.CommentList = parseInt(commentListIdx);
+        if (commentListIdx != _settings.CommentList) {
+            _settings.CommentList = parseInt(commentListIdx);
             buildCommentList(commentListIdx);
             saveSettingsToStorage();
         }
     }
 
     function getCommentListInfo(commentListIdx) {
-        commentListIdx = parseInt(commentListIdx || settings.CommentList);
-        return COMMENT_LISTS.find(cList => { return cList.idx === commentListIdx });
+        commentListIdx = parseInt(commentListIdx || _settings.CommentList);
+        return _CommentLists.find(cList => { return cList.idx === commentListIdx });
     }
 
     function injectCss() {
@@ -190,8 +203,8 @@
             '#sidepanel-urc-e #panel-urce-comments .URCE-solvedLink { color:#008F00; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-niLink { color:#E68A00; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-openLink { color:#000000; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-bottom:6px; height:16px; float:right; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; margin-left:5px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-bottom:4px; height:16px; float:right; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }',
             // Settings tab
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }',
@@ -216,39 +229,66 @@
     }
 
     function convertCommentListStatic(commentListIdx) {
-        commentListIdx = parseInt(commentListIdx || settings.CommentList);
+        commentListIdx = parseInt(commentListIdx || _settings.CommentList);
         let oldVarName = getCommentListInfo(commentListIdx).oldVarName;
-       //1696
         let oldUrcArr = window['Urcomments' + oldVarName + 'Array2'];
+        let defaultReminderIdx = window['Urcomments' + oldVarName + 'ReminderPosistion'];
+        let closedNiIdx = window['Urcomments' + oldVarName + 'CloseNotIdentifiedPosistion'];
+        let data = { 'feed': {
+            'entry': [ ]
+        } };
+        data.feed.entry[0] = { 'title': {'$t':'2018.11.28.01'} };
+        data.feed.entry[1] = { 'title': {'$t':'TITLE|COMMENT|URSTATUS|DR|DC|IT|IA|IR|MRA|GE|TNA|IJ|MBO|WDD|ME|MR|ML|BR|MNS|ISPS|SL'} };
+        let entryIdx = '2';
+        for (let oldUrcArrIdx = 0; oldUrcArrIdx < oldUrcArr.length; oldUrcArrIdx = oldUrcArrIdx + 3) {
+            let temp;
+            let title = oldUrcArr[oldUrcArrIdx];
+            let comment = oldUrcArr[oldUrcArrIdx+1];
+            let urstatus = oldUrcArr[oldUrcArrIdx+2] != '' ? oldUrcArr[oldUrcArrIdx+2].toLowerCase() : '';
+            if (title.search(/<br>/gi) > -1) {
+                urstatus = urstatus == '' ? 'open' : 'GROUP TITLE';
+                title = $("<div/>").html(title).text();
+            }
+            temp = title+'|'+comment+'|'+urstatus;
+            temp += (oldUrcArrIdx == defaultReminderIdx) ? '|default_is_true' : '|';
+            temp += (oldUrcArrIdx == closedNiIdx) ? '|default_is_true' : '|';
+            for (let i=6; i<24; i++) {
+                if (i === 17 || i === 20) continue;
+                temp += (window['Urcomments' + oldVarName + 'def_names'][i] == title) ? '|default_is_true' : '|';
+            }
+            data.feed.entry[entryIdx] = { 'title': { '$t':temp} };
+            entryIdx++;
+        }
+        return data;
     }
 
     function processCommentListJson(data) {
         let result = {error:null};
-        if (!data)
-            result.error = 'No data passed to the JSON processing function.';
+        if (!data) result.error = 'No data passed to the JSON processing function.';
         else {
-            const EXPECTED_FIELD_NAMES = ['TITLE','COMMENT','URSTATUS','DR','DC','IT','IA','IR','MRA','GE','TNA','IJ','MBO','WDD','ME','MR','ML','SL'];
+            const EXPECTED_FIELD_NAMES = ['TITLE','COMMENT','URSTATUS','DR','DC','IT','IA','IR','MRA','GE','TNA','IJ','MBO','WDD','ME','MR','ML','BR','MNS','ISPS','SL'];
             let ssFieldNames, groupDivId;
-            let result = {error:null};
             let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
             let commentId = 0
             let blankGroup = 0;
-            let doubleClickLinkCloseComments = settings.DoubleClickLinkCloseComments;
-            let doubleClickLinkAllComments = settings.DoubleClickLinkAllComments;
+            let doubleClickLinkCloseComments = _settings.DoubleClickLinkCloseComments;
+            let doubleClickLinkAllComments = _settings.DoubleClickLinkAllComments;
             for (let entryIdx = 0; entryIdx < data.feed.entry.length && !result.error; entryIdx++) {
                 let rObj = {};
                 let cellValue = data.feed.entry[entryIdx].title.$t;
                 if (entryIdx === 0) {
                     // The minimum script version the returned spreadsheet json supports,
-                    if (SCRIPT_VERSION < cellValue)
+                    if (SCRIPT_VERSION < cellValue) {
                         result.error = 'Script must be updated to at least version ' + cellValue + ' before comment definitions can be loaded.';
+                    }
                 } else if(entryIdx === 1) {
                     // Process / check field names
                     ssFieldNames = cellValue.split('|').map(fldName => fldName.trim());
-                    if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length)
+                    if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length) {
                         result.error = 'Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment definition data. Spreadsheet returned ' + ssFieldNames.length + '.';
-                    else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName)))
+                    } else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName))) {
                         result.error = 'Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', ');
+                    }
                 } else {
                     let splitRow = cellValue.split('|');
                     let rObj = {};
@@ -257,13 +297,13 @@
                         rObj[rObjKey] = rObjKey === 'comment' ? splitRow[i] : rObjKey === 'title' ? splitRow[i].trim() : splitRow[i].trim().toLowerCase();
                     }
                     splitRow = rObj;
-                    if (splitRow.title === 'URCE_REMOVED_SO_SKIP')
+                    if (splitRow.title === 'URCE_REMOVED_SO_SKIP') {
                         // Nothing to do here. Move along. This is a comment that has been set to 'REMOVED' in the spreadsheet.
                         logDebug('SKIPPING a removed comment.');
-                    else if (splitRow.title === 'URCE_ERROR')
+                    } else if (splitRow.title === 'URCE_ERROR') {
                         // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
                         result.error('There is an unknown error in the spreadsheet output. Please contact the list owner.');
-                    else if (splitRow.urstatus === 'group title') {
+                    } else if (splitRow.urstatus === 'group title') {
                         // Group title row. Nothing to set in the arrays, but build html.
                         groupDivId = 'urceComments-for-';
                         if (splitRow.title != '') {
@@ -277,9 +317,9 @@
                                 splitRow.titleMouseOver = splitRow.title;
                                 splitRow.title = splitRow.title.substring(0, 30) + '...';
                             }
-                        }
-                        else
+                        } else {
                             groupDivId += 'blankGroup' + (++blankGroup);
+                        }
                         $('#_commentList').append(
                             $('<fieldset>', {id:groupDivId, class:'URCE-field'}).append(
                                 $('<legend>', {class:'URCE-legend'}).append(
@@ -296,36 +336,42 @@
                         )
                     } else {
                         // SHOULD be a normal comments row, push values to arrays and build html.
-                        if (splitRow.urstatus !== 'solved' && splitRow.urstatus !== 'notidentified' && splitRow.urstatus !== 'open')
+                        if (splitRow.urstatus !== 'solved' && splitRow.urstatus !== 'notidentified' && splitRow.urstatus !== 'open') {
                             result.error = 'Your current selected list does not have a status set for ' + splitRow.title + '. Please contact list owner.';
-                        else {
-                            commentList[commentId] = { 'title':splitRow.title, 'comment':splitRow.comment, 'urstatus':splitRow.urstatus };
+                        } else {
+                            _commentList[commentId] = { 'title':splitRow.title, 'comment':splitRow.comment, 'urstatus':splitRow.urstatus };
                             if (Object.values(splitRow).indexOf('default_is_true') > -1) {
                                 let drIdx = ssFieldNames.indexOf('DR');
                                 let splitRowDefaultCommentsBoolean = Object.values(splitRow).slice(drIdx);
                                 for (let boolIdx = 0; boolIdx < splitRowDefaultCommentsBoolean.length; boolIdx++) {
-                                    if (splitRowDefaultCommentsBoolean[boolIdx].toLowerCase() === 'default_is_true')
-                                        defaultComments[ssFieldNames[(boolIdx+drIdx)].toLowerCase()] = commentId;
+                                    if (splitRowDefaultCommentsBoolean[boolIdx].toLowerCase() === 'default_is_true') {
+                                        _defaultComments[ssFieldNames[(boolIdx+drIdx)].toLowerCase()] = commentId;
+                                    }
                                 }
                             }
                             let linkClass;
                             let divDoubleClickId;
+                            let divDoubleClickClass;
                             let divDoubleClickStyle = 'display:initial;';
                             if (splitRow.urstatus === 'solved') {
                                 linkClass = 'URCE-solvedLink';
                                 divDoubleClickId = 'URCE-divDoubleClickClose';
-                                if (!doubleClickLinkCloseComments && !doubleClickLinkAllComments)
+                                if (!doubleClickLinkCloseComments && !doubleClickLinkAllComments) {
                                     divDoubleClickStyle = 'display:none;';
+                                }
                             } else if (splitRow.urstatus === 'notidentified') {
                                 linkClass = 'URCE-niLink';
                                 divDoubleClickId = 'URCE-divDoubleClickClose';
-                                if (!doubleClickLinkCloseComments && !doubleClickLinkAllComments)
+                                if (!doubleClickLinkCloseComments && !doubleClickLinkAllComments) {
                                     divDoubleClickStyle = 'display:none;';
+                                }
                             } else {
                                 linkClass = 'URCE-openLink';
-                                divDoubleClickId = 'URCE-divDoubleClickAll';
-                                if (!doubleClickLinkAllComments)
+                                divDoubleClickId = splitRow.title != '' ? 'URCE-divDoubleClickAll' : 'URCE-divDoubleClickAll-Hidden';
+                                divDoubleClickClass = splitRow.title != '' ? 'URCE-divDoubleClick' : 'URCE-divDoubleClick-Hidden';
+                                if (!doubleClickLinkAllComments || splitRow.title == '') {
                                     divDoubleClickStyle = 'display:none;';
+                                }
                             }
                             $(`#${groupDivId}_body`).append(
                                 $('<div>').append(
@@ -350,12 +396,16 @@
     }
 
     function commentListAsync(commentListIdx) {
-        logDebug('Running Async.');
-        commentListIdx = parseInt(commentListIdx || settings.CommentList);
+        commentListIdx = parseInt(commentListIdx || _settings.CommentList);
         return new Promise((resolve, reject) => {
             if (getCommentListInfo(commentListIdx).type === 'static') {
-                let fakeJSON = convertCommentListStatic(commentListIdx);
-                processCommentListJson(fakeJSON);
+                let data = convertCommentListStatic(commentListIdx);
+                let result = processCommentListJson(data);
+                if (!result.error) {
+                    resolve(result);
+                } else {
+                    reject(result);
+                }
             } else {
                 $.get({
                     url: getCommentListInfo(commentListIdx).gSheetUrl,
@@ -363,10 +413,11 @@
                         // Critical fields that must be present in the spreadsheet, or script cannot process the data correctly.
                         // If any of these are still null after processing the fields entry, there's a problem.
                         let result = processCommentListJson(data);
-                        if (!result.error)
+                        if (!result.error) {
                             resolve(result);
-                        else
+                        } else {
                             reject(result);
+                        }
                     },
                     error: function() {
                         reject({message: 'An error occurred while loading the selected comment lists definition spreadsheet.'});
@@ -378,12 +429,12 @@
 
 
     async function buildCommentList(commentListIdx) {
-        commentListIdx = parseInt(commentListIdx || settings.CommentList);
+        commentListIdx = parseInt(commentListIdx || _settings.CommentList);
         try {
             // Clear out the _commentList div so we can rebuild it with the new content
             $('#_commentList').empty();
             // Re-initialize the commentList array.
-            commentList = [];
+            _commentList = [];
             // Get it done.
             let result = await commentListAsync(commentListIdx);
             if (result.error) {
@@ -391,7 +442,7 @@
                 logError(result.error);
                 return;
             }
-            $('#_selCommentList').prop('disabled', false).val(settings.CommentList);
+            $('#_selCommentList').prop('disabled', false).val(_settings.CommentList);
             $('#_selCommentList option[value="loading"]').remove();
         }
         catch(err) {
@@ -410,7 +461,7 @@
                 $('<a>', {id:'zoomOutlink2', class:'URCE-Comments', title:I18n.t('urce.commentsTab.ZoomOutLink2Title')}).text(I18n.t('urce.commentsTab.ZoomOutLink2')).append('<br>'),
                 $('<a>', {id:'zoomOutlink3', class:'URCE-Comments', title:I18n.t('urce.commentsTab.ZoomOutLink3Title')}).text(I18n.t('urce.commentsTab.ZoomOutLink3')).append('<br>')
             ).append(function() {
-                if (settings.HideZoomOutLinks) $(this).hide();
+                if (_settings.HideZoomOutLinks) $(this).hide();
             }),
             $('<div>', {id:'_commentList', class:'controls-container URCE-divCC'}).append(
                 $('<div>', {class:'URCE-divLoading'}).text(I18n.t('urce.common.loading') + ' ' + getCommentListInfo().name + ' comment list. ' + I18n.t('urce.common.pleaseWait') + '...')
@@ -427,11 +478,12 @@
                 ),
                 $('<div>', {class:'controls-container URCE-divCC'}).append(function() {
                     let selList = $('<select>', {id:'_selCommentList'});
-                    COMMENT_LISTS.forEach(cList => {
-                        if (cList.idx === settings.CommentList)
+                    _CommentLists.forEach(cList => {
+                        if (cList.idx === _settings.CommentList) {
                             selList.append($('<option>', {value:cList.idx, selected:true}).text(cList.name));
-                        else
+                        } else {
                             selList.append($('<option>', {value:cList.idx}).text(cList.name));
+                        }
                     });
                     selList.append($('<option>', {value:'loading'}).text('...' + I18n.t('urce.common.loading') + '...'));
                     return selList.prop('disabled', true).val('loading').change(function() {
@@ -445,43 +497,43 @@
                     $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.UrcePrefs'))
                 ),
                 $('<div>', {class:'controls-container URCE-divCC'}).append(
-                    $('<input>', {type:'checkbox', id:'_cbAutoCenterOnUr'}).change(function() { changeSetting('AutoCenterOnUr', $(this).is(':checked')); }).prop('checked', settings.AutoCenterOnUr),
+                    $('<input>', {type:'checkbox', id:'_cbAutoCenterOnUr'}).change(function() { changeSetting('AutoCenterOnUr', $(this).is(':checked')); }).prop('checked', _settings.AutoCenterOnUr),
                     $('<label>', {for:'_cbAutoCenterOnUr', title:I18n.t('urce.prefs.AutoCenterOnUrTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoCenterOnUr')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbAutoClickOpenSolvedNi'}).change(function() {
-                        settings.AutoClickOpenSolvedNi = $(this).is(':checked');
+                        _settings.AutoClickOpenSolvedNi = $(this).is(':checked');
                         if (!$(this).is(':checked')) {
                             if (isChecked('_cbAutoSaveAfterSolvedOrNiComment')) {
-                                settings.AutoSaveAfterSolvedOrNiComment = false;
+                                _settings.AutoSaveAfterSolvedOrNiComment = false;
                                 $('#_cbAutoSaveAfterSolvedOrNiComment').prop('checked', false);
                             }
                             if (isChecked('_cbDoubleClickLinkCloseComments')) {
-                                settings.DoubleClickLinkCloseComments = false;
+                                _settings.DoubleClickLinkCloseComments = false;
                                 $('#_cbDoubleClickLinkCloseComments').prop('checked', false);
                             }
                             if (isChecked('_cbDoubleClickLinkAllComments')) {
-                                settings.DoubleClickLinkAllComments = false;
+                                _settings.DoubleClickLinkAllComments = false;
                                 $('#_cbDoubleClickLinkAllComments').prop('checked', false);
                             }
                         }
                         saveSettingsToStorage();
-                    }).prop('checked', settings.AutoClickOpenSolvedNi),
+                    }).prop('checked', _settings.AutoClickOpenSolvedNi),
                     $('<label>', {for:'_cbAutoClickOpenSolvedNi', title:I18n.t('urce.prefs.AutoClickOpenSolvedNiTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoClickOpenSolvedNi')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoCloseCommentWindow'}).change(function() { changeSetting('AutoCloseCommentWindow', $(this).is(':checked')); }).prop('checked', settings.AutoCloseCommentWindow),
+                    $('<input>', {type:'checkbox', id:'_cbAutoCloseCommentWindow'}).change(function() { changeSetting('AutoCloseCommentWindow', $(this).is(':checked')); }).prop('checked', _settings.AutoCloseCommentWindow),
                     $('<label>', {for:'_cbAutoCloseCommentWindow', title:I18n.t('urce.prefs.AutoCloseCommentWindowTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoCloseCommentWindow')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbAutoSaveAfterSolvedOrNiComment'}).change(function() {
-                        settings.AutoSaveAfterSolvedOrNiComment = $(this).is(':checked');
+                        _settings.AutoSaveAfterSolvedOrNiComment = $(this).is(':checked');
                         if ($(this).is(':checked') && !isChecked('_cbAutoClickOpenSolvedNi')) {
-                            settings.AutoClickOpenSolvedNi = true;
+                            _settings.AutoClickOpenSolvedNi = true;
                             $('#_cbAutoClickOpenSolvedNi').prop('checked', true);
                         }
                         saveSettingsToStorage();
-                    }).prop('checked', settings.AutoSaveAfterSolvedOrNiComment),
+                    }).prop('checked', _settings.AutoSaveAfterSolvedOrNiComment),
                     $('<label>', {for:'_cbAutoSaveAfterSolvedOrNiComment', title:I18n.t('urce.prefs.AutoSaveAfterSolvedOrNiCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSaveAfterSolvedOrNiComment')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSendReminders'}).change(function() { changeSetting('AutoSendReminders', $(this).is(':checked')); }).prop('checked', settings.AutoSendReminders),
+                    $('<input>', {type:'checkbox', id:'_cbAutoSendReminders'}).change(function() { changeSetting('AutoSendReminders', $(this).is(':checked')); }).prop('checked', _settings.AutoSendReminders),
                     $('<label>', {for:'_cbAutoSendReminders', title:I18n.t('urce.prefs.AutoSendRemindersTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSendReminders')),
                     $('<div>', {class:'URCE-divWarning URCE-divWarningPre'}).text('(').append(
                         $('<div>', {class:'URCE-divWarning URCE-divWarningTitle', title:I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}).text(I18n.t('urce.prefs.AutoSendRemindersWarning')),
@@ -489,95 +541,102 @@
                         $('<div>', {class:'URCE-divWarning'}).text(')')
                     ),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSetNewUrComment'}).change(function() { changeSetting('AutoSetNewUrComment', $(this).is(':checked')); }).prop('checked', settings.AutoSetNewUrComment),
+                    $('<input>', {type:'checkbox', id:'_cbAutoSetNewUrComment'}).change(function() { changeSetting('AutoSetNewUrComment', $(this).is(':checked')); }).prop('checked', _settings.AutoSetNewUrComment),
                     $('<label>', {for:'_cbAutoSetNewUrComment', title:I18n.t('urce.prefs.AutoSetNewUrCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSetNewUrComment')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSetReminderUrComment'}).change(function() { changeSetting('AutoSetReminderUrComment', $(this).is(':checked')); }).prop('checked', settings.AutoSetReminderUrComment),
+                    $('<input>', {type:'checkbox', id:'_cbAutoSetReminderUrComment'}).change(function() { changeSetting('AutoSetReminderUrComment', $(this).is(':checked')); }).prop('checked', _settings.AutoSetReminderUrComment),
                     $('<label>', {for:'_cbAutoSetReminderUrComment', title:I18n.t('urce.prefs.AutoSetReminderUrCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSetReminderUrComment')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSwitchToUrCommentsTab'}).change(function() { changeSetting('AutoSwitchToUrCommentsTab', $(this).is(':checked')); }).prop('checked', settings.AutoSwitchToUrCommentsTab),
+                    $('<input>', {type:'checkbox', id:'_cbAutoSwitchToUrCommentsTab'}).change(function() { changeSetting('AutoSwitchToUrCommentsTab', $(this).is(':checked')); }).prop('checked', _settings.AutoSwitchToUrCommentsTab),
                     $('<label>', {for:'_cbAutoSwitchToUrCommentsTab', title:I18n.t('urce.prefs.AutoSwitchToUrCommentsTabTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSwitchToUrCommentsTab')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoZoomInOnNewUr'}).change(function() { changeSetting('AutoZoomInOnNewUr', $(this).is(':checked')); }).prop('checked', settings.AutoZoomInOnNewUr),
+                    $('<input>', {type:'checkbox', id:'_cbAutoZoomInOnNewUr'}).change(function() { changeSetting('AutoZoomInOnNewUr', $(this).is(':checked')); }).prop('checked', _settings.AutoZoomInOnNewUr),
                     $('<label>', {for:'_cbAutoZoomInOnNewUr', title:I18n.t('urce.prefs.AutoZoomInOnNewUrTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoZoomInOnNewUr')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoZoomOutAfterComment'}).change(function() { changeSetting('AutoZoomOutAfterComment', $(this).is(':checked')); }).prop('checked', settings.AutoZoomOutAfterComment),
+                    $('<input>', {type:'checkbox', id:'_cbAutoZoomOutAfterComment'}).change(function() { changeSetting('AutoZoomOutAfterComment', $(this).is(':checked')); }).prop('checked', _settings.AutoZoomOutAfterComment),
                     $('<label>', {for:'_cbAutoZoomOutAfterComment', title:I18n.t('urce.prefs.AutoZoomOutAfterCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoZoomOutAfterComment')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDisableDoneNextButtons'}).change(function() { changeSetting('DisableDoneNextButtons', $(this).is(':checked')); }).prop('checked', settings.DisableDoneNextButtons),
+                    $('<input>', {type:'checkbox', id:'_cbDisableDoneNextButtons'}).change(function() { changeSetting('DisableDoneNextButtons', $(this).is(':checked')); }).prop('checked', _settings.DisableDoneNextButtons),
                     $('<label>', {for:'_cbDisableDoneNextButtons', title:I18n.t('urce.prefs.DisableDoneNextButtonsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DisableDoneNextButtons')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoNotShowTagNameOnPill'}).change(function() { changeSetting('DoNotShowTagNameOnPill', $(this).is(':checked')); }).prop('checked', settings.DoNotShowTagNameOnPill),
+                    $('<input>', {type:'checkbox', id:'_cbDoNotShowTagNameOnPill'}).change(function() { changeSetting('DoNotShowTagNameOnPill', $(this).is(':checked')); }).prop('checked', _settings.DoNotShowTagNameOnPill),
                     $('<label>', {for:'_cbDoNotShowTagNameOnPill', title:I18n.t('urce.prefs.DoNotShowTagNameOnPillTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoNotShowTagNameOnPill')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkCloseComments'}).change(function() {
-                        settings.DoubleClickLinkCloseComments = $(this).is(':checked');
+                        _settings.DoubleClickLinkCloseComments = $(this).is(':checked');
                         if ($(this).is(':checked') && !isChecked('_cbAutoClickOpenSolvedNi')) {
-                            settings.AutoClickOpenSolvedNi = true;
+                            _settings.AutoClickOpenSolvedNi = true;
                             $('#_cbAutoClickOpenSolvedNi').prop('checked', true);
                         }
                         if (!$(this).is(':checked')) {
                             if(isChecked('_cbDoubleClickLinkAllComments')) {
-                               settings.DoubleClickLinkAllComments = false;
+                               _settings.DoubleClickLinkAllComments = false;
                                $('#_cbDoubleClickLinkAllComments').prop('checked', false);
                                $('div#URCE-divDoubleClickAll').hide();
                             }
                             $('div#URCE-divDoubleClickClose').hide();
-                        }
-                        else
+                        } else {
                             $('div#URCE-divDoubleClickClose').show();
+                        }
                         saveSettingsToStorage();
-                    }).prop('checked', settings.DoubleClickLinkCloseComments),
+                    }).prop('checked', _settings.DoubleClickLinkCloseComments),
                     $('<label>', {for:'_cbDoubleClickLinkCloseComments', title:I18n.t('urce.prefs.DoubleClickLinkCloseCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkCloseComments')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkAllComments'}).change(function() {
-                        settings.DoubleClickLinkAllComments = $(this).is(':checked');
+                        _settings.DoubleClickLinkAllComments = $(this).is(':checked');
                         if ($(this).is(':checked') && !isChecked('_cbAutoClickOpenSolvedNi')) {
-                            settings.AutoClickOpenSolvedNi = true;
+                            _settings.AutoClickOpenSolvedNi = true;
                             $('#_cbAutoClickOpenSolvedNi').prop('checked', true);
                         }
                         if ($(this).is(':checked') && !isChecked('_cbDoubleClickLinkCloseComments')) {
-                            settings.DoubleClickLinkCloseComments = true;
+                            _settings.DoubleClickLinkCloseComments = true;
                             $('#_cbDoubleClickLinkCloseComments').prop('checked', true);
                         }
-                        if (!$(this).is(':checked'))
+                        if (!$(this).is(':checked')) {
                             $('div#URCE-divDoubleClickAll').hide();
-                        else
+                        } else {
                             $('div#URCE-divDoubleClickAll').show();
-                        if (!isChecked('_cbDoubleClickLinkCloseComments'))
+                        }
+                        if (!isChecked('_cbDoubleClickLinkCloseComments')) {
                             $('div#URCE-divDoubleClickClose').hide();
-                        else
+                        } else {
                             $('div#URCE-divDoubleClickClose').show();
+                        }
                         saveSettingsToStorage();
-                    }).prop('checked', settings.DoubleClickLinkAllComments),
+                    }).prop('checked', _settings.DoubleClickLinkAllComments),
                     $('<label>', {for:'_cbDoubleClickLinkAllComments', title:I18n.t('urce.prefs.DoubleClickLinkAllCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkAllComments')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbHideZoomOutLinks'}).change(function() {
                         changeSetting('HideZoomOutLinks', $(this).is(':checked'));
-                        if ($(this).is(':checked'))
+                        if ($(this).is(':checked')) {
                             $('div#_divZoomOutLinks').hide();
-                        else
+                        } else {
                             $('div#_divZoomOutLinks').show();
-                    }).prop('checked', settings.HideZoomOutLinks),
+                        }
+                    }).prop('checked', _settings.HideZoomOutLinks),
                     $('<label>', {for:'_cbHideZoomOutLinks', title:I18n.t('urce.prefs.HideZoomOutLinksTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideZoomOutLinks')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbUnfollowUrAfterSend'}).change(function() { changeSetting('UnfollowUrAfterSend', $(this).is(':checked')); }).prop('checked', settings.UnfollowUrAfterSend),
+                    $('<input>', {type:'checkbox', id:'_cbUnfollowUrAfterSend'}).change(function() { changeSetting('UnfollowUrAfterSend', $(this).is(':checked')); }).prop('checked', _settings.UnfollowUrAfterSend),
                     $('<label>', {for:'_cbUnfollowUrAfterSend', title:I18n.t('urce.prefs.UnfollowUrAfterSendTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.UnfollowUrAfterSend')),
                     $('<br>'),
                     $('<div>', {class:'URCE-divDaysInput'}).append(
                         $('<div>', {title:I18n.t('urce.prefs.ReminderDaysTitle'), class:'URCE-label'}).append(I18n.t('urce.prefs.ReminderDays') + ': ').append(
-                            $('<input>', {type:'number', id:'_numReminderDays', class:'URCE-daysInput', min:'1', max:'14', step:'1', value:settings.ReminderDays, title:I18n.t('urce.prefs.ReminderDaysTitle')}).on('change', function() { // tried keyup, mousup, but this works good enough
+                            $('<input>', {type:'number', id:'_numReminderDays', class:'URCE-daysInput', min:'1', max:'14', step:'1', value:_settings.ReminderDays, title:I18n.t('urce.prefs.ReminderDaysTitle')}).on('change', function() { // tried keyup, mousup, but this works good enough
                                 let numReminderDays = Math.abs(parseInt(this.value, 10) || 1);
-                                if (numReminderDays >= settings.CloseDays) numReminderDays = (settings.CloseDays - 1) < 1 ? 1 : (settings.CloseDays - 1);
+                                if (numReminderDays >= _settings.CloseDays) {
+                                    numReminderDays = (_settings.CloseDays - 1) < 1 ? 1 : (_settings.CloseDays - 1);
+                                }
                                 numReminderDays = Math.min(13,Math.max(1,parseInt(numReminderDays)));
                                 changeSetting('ReminderDays', numReminderDays);
                                 this.value = numReminderDays;
                             })
                         ),
                         $('<div>', {title:I18n.t('urce.prefs.CloseDaysTitle'), class:'URCE-label'}).append(I18n.t('urce.prefs.CloseDays') + ': ').append(
-                            $('<input>', {type:'number', id:'_numCloseDays', class:'URCE-daysInput', min:'1', max:'14', step:'1', value:settings.CloseDays, title:I18n.t('urce.prefs.CloseDaysTitle')}).on('change', function() { // tried keyup, mousup, but this works good enough
+                            $('<input>', {type:'number', id:'_numCloseDays', class:'URCE-daysInput', min:'1', max:'14', step:'1', value:_settings.CloseDays, title:I18n.t('urce.prefs.CloseDaysTitle')}).on('change', function() { // tried keyup, mousup, but this works good enough
                                 let numCloseDays = Math.abs(parseInt(this.value, 10) || 1);
-                                if (numCloseDays <= settings.ReminderDays) numCloseDays = (settings.ReminderDays + 1) > 14 ? 14 : (settings.ReminderDays + 1);
+                                if (numCloseDays <= _settings.ReminderDays) {
+                                    numCloseDays = (_settings.ReminderDays + 1) > 14 ? 14 : (_settings.ReminderDays + 1);
+                                }
                                 numCloseDays = Math.min(14,Math.max(2,parseInt(numCloseDays)));
                                 changeSetting('CloseDays', numCloseDays);
                                 this.value = numCloseDays;
@@ -592,45 +651,45 @@
                     $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.UrFilteringPrefs'))
                 ),
                 $('<div>', {class:'controls-container URCE-divCC'}).append(
-                    $('<input>', {type:'checkbox', id:'_cbEnableUrceUrFiltering'}).change(function() { changeSetting('EnableUrceUrFiltering', $(this).is(':checked')); }).prop('checked', settings.EnableUrceUrFiltering),
+                    $('<input>', {type:'checkbox', id:'_cbEnableUrceUrFiltering'}).change(function() { changeSetting('EnableUrceUrFiltering', $(this).is(':checked')); }).prop('checked', _settings.EnableUrceUrFiltering),
                     $('<label>', {for:'_cbEnableUrceUrFiltering', title:I18n.t('urce.prefs.EnableUrceUrFilteringTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrceUrFiltering')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbEnableUrPillCounts'}).change(function() { changeSetting('EnableUrPillCounts', $(this).is(':checked')); }).prop('checked', settings.EnableUrPillCounts),
+                    $('<input>', {type:'checkbox', id:'_cbEnableUrPillCounts'}).change(function() { changeSetting('EnableUrPillCounts', $(this).is(':checked')); }).prop('checked', _settings.EnableUrPillCounts),
                     $('<label>', {for:'_cbEnableUrPillCounts', title:I18n.t('urce.prefs.EnableUrPillCountsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrPillCounts')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbOnlyShowMyUrs'}).change(function() { changeSetting('OnlyShowMyUrs', $(this).is(':checked')); }).prop('checked', settings.OnlyShowMyUrs),
+                    $('<input>', {type:'checkbox', id:'_cbOnlyShowMyUrs'}).change(function() { changeSetting('OnlyShowMyUrs', $(this).is(':checked')); }).prop('checked', _settings.OnlyShowMyUrs),
                     $('<label>', {for:'_cbOnlyShowMyUrs', title:I18n.t('urce.prefs.OnlyShowMyUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.OnlyShowMyUrs')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbShowOthersUrsPastReminderClose'}).change(function() { changeSetting('ShowOthersUrsPastReminderClose', $(this).is(':checked')); }).prop('checked', settings.ShowOthersUrsPastReminderClose),
+                    $('<input>', {type:'checkbox', id:'_cbShowOthersUrsPastReminderClose'}).change(function() { changeSetting('ShowOthersUrsPastReminderClose', $(this).is(':checked')); }).prop('checked', _settings.ShowOthersUrsPastReminderClose),
                     $('<label>', {for:'_cbShowOthersUrsPastReminderClose', title:I18n.t('urce.prefs.ShowOthersUrsPastReminderCloseTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.ShowOthersUrsPastReminderClose')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideClosedUrs'}).change(function() { changeSetting('HideClosedUrs', $(this).is(':checked')); }).prop('checked', settings.HideClosedUrs),
+                    $('<input>', {type:'checkbox', id:'_cbHideClosedUrs'}).change(function() { changeSetting('HideClosedUrs', $(this).is(':checked')); }).prop('checked', _settings.HideClosedUrs),
                     $('<label>', {for:'_cbHideClosedUrs', title:I18n.t('urce.prefs.HideClosedUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideClosedUrs')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideTaggedUrs'}).change(function() { changeSetting('HideTaggedUrs', $(this).is(':checked')); }).prop('checked', settings.HideTaggedUrs),
+                    $('<input>', {type:'checkbox', id:'_cbHideTaggedUrs'}).change(function() { changeSetting('HideTaggedUrs', $(this).is(':checked')); }).prop('checked', _settings.HideTaggedUrs),
                     $('<label>', {for:'_cbHideTaggedUrs', title:I18n.t('urce.prefs.HideTaggedUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideTaggedUrs')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideWaiting'}).change(function() { changeSetting('HideWaiting', $(this).is(':checked')); }).prop('checked', settings.HideWaiting),
+                    $('<input>', {type:'checkbox', id:'_cbHideWaiting'}).change(function() { changeSetting('HideWaiting', $(this).is(':checked')); }).prop('checked', _settings.HideWaiting),
                     $('<label>', {for:'_cbHideWaiting', title:I18n.t('urce.prefs.HideWaitingTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideWaiting')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsCloseNeeded'}).change(function() { changeSetting('HideUrsCloseNeeded', $(this).is(':checked')); }).prop('checked', settings.HideUrsCloseNeeded),
+                    $('<input>', {type:'checkbox', id:'_cbHideUrsCloseNeeded'}).change(function() { changeSetting('HideUrsCloseNeeded', $(this).is(':checked')); }).prop('checked', _settings.HideUrsCloseNeeded),
                     $('<label>', {for:'_cbHideUrsCloseNeeded', title:I18n.t('urce.prefs.HideUrsCloseNeededTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsCloseNeeded')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsReminderNeeded'}).change(function() { changeSetting('HideUrsReminderNeeded', $(this).is(':checked')); }).prop('checked', settings.HideUrsReminderNeeded),
+                    $('<input>', {type:'checkbox', id:'_cbHideUrsReminderNeeded'}).change(function() { changeSetting('HideUrsReminderNeeded', $(this).is(':checked')); }).prop('checked', _settings.HideUrsReminderNeeded),
                     $('<label>', {for:'_cbHideUrsReminderNeeded', title:I18n.t('urce.prefs.HideUrsReminderNeededTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsReminderNeeded')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsWithUserReplies'}).change(function() { changeSetting('HideUrsWithUserReplies', $(this).is(':checked')); }).prop('checked', settings.HideUrsWithUserReplies),
+                    $('<input>', {type:'checkbox', id:'_cbHideUrsWithUserReplies'}).change(function() { changeSetting('HideUrsWithUserReplies', $(this).is(':checked')); }).prop('checked', _settings.HideUrsWithUserReplies),
                     $('<label>', {for:'_cbHideUrsWithUserReplies', title:I18n.t('urce.prefs.HideUrsWithUserRepliesTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWithUserReplies')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoComments'}).change(function() { changeSetting('HideUrsWoComments', $(this).is(':checked')); }).prop('checked', settings.HideUrsWoComments),
+                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoComments'}).change(function() { changeSetting('HideUrsWoComments', $(this).is(':checked')); }).prop('checked', _settings.HideUrsWoComments),
                     $('<label>', {for:'_cbHideUrsWoComments', title:I18n.t('urce.prefs.HideUrsWoCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoComments')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsOrDescriptions'}).change(function() { changeSetting('HideUrsWoCommentsOrDescriptions', $(this).is(':checked')); }).prop('checked', settings.HideUrsWoCommentsOrDescriptions),
+                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsOrDescriptions'}).change(function() { changeSetting('HideUrsWoCommentsOrDescriptions', $(this).is(':checked')); }).prop('checked', _settings.HideUrsWoCommentsOrDescriptions),
                     $('<label>', {for:'_cbHideUrsWoCommentsOrDescriptions', title:I18n.t('urce.prefs.HideUrsWoCommentsOrDescriptionsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoCommentsOrDescriptions')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsWithDescriptions'}).change(function() { changeSetting('HideUrsWoCommentsWithDescriptions', $(this).is(':checked')); }).prop('checked', settings.HideUrsWoCommentsWithDescriptions),
+                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsWithDescriptions'}).change(function() { changeSetting('HideUrsWoCommentsWithDescriptions', $(this).is(':checked')); }).prop('checked', _settings.HideUrsWoCommentsWithDescriptions),
                     $('<label>', {for:'_cbHideUrsWoCommentsWithDescriptions', title:I18n.t('urce.prefs.HideUrsWoCommentsWithDescriptionsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoCommentsWithDescriptions')),
-                    $('<input>', {type:'checkbox', id:'_cbReplaceTagNameWithEditorName'}).change(function() { changeSetting('ReplaceTagNameWithEditorName', $(this).is(':checked')); }).prop('checked', settings.ReplaceTagNameWithEditorName),
+                    $('<input>', {type:'checkbox', id:'_cbReplaceTagNameWithEditorName'}).change(function() { changeSetting('ReplaceTagNameWithEditorName', $(this).is(':checked')); }).prop('checked', _settings.ReplaceTagNameWithEditorName),
                     $('<label>', {for:'_cbReplaceTagNameWithEditorName', title:I18n.t('urce.prefs.ReplaceTagNameWithEditorNameTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.ReplaceTagNameWithEditorName'))
                 )
             )
@@ -644,7 +703,7 @@
     }
 
     function initGui() {
-        let content = $('<div>').append(
+        let $content = $('<div>').append(
             $('<span>', {class:'URCE-spanTitle'}).text(I18n.t('urce.common.title')),
             $('<span>', {class:'URCE-spanVersion'}).text(GM_info.script.version),
             '<ul class="nav nav-tabs">' +
@@ -657,7 +716,7 @@
                 )
             ).html();
         injectCss();
-        new WazeWrap.Interface.Tab('URC-E', content, initTab, null);
+        new WazeWrap.Interface.Tab('URC-E', $content, initTab, null);
         $('div#sidepanel-urc-e').width('290px');
         showScriptInfoAlert();
     }
@@ -670,7 +729,7 @@
             saveSettingsToStorage();
         }, false);
         log('Initialized.');
-        urceInitialized = true;
+        _urceInitialized = true;
         saveSettingsToStorage();
         buildCommentList();
     }
@@ -686,9 +745,9 @@
         } else if (tries < 1000) {
             logDebug('Bootstrap failed. Retrying ' + tries + ' of 1000');
             setTimeout(function () { bootstrap(++tries); }, 200);
-        }
-        else
+        } else {
             logError('Bootstrap timed out waiting for WME to become ready.');
+        }
     }
 
     bootstrap();
@@ -713,7 +772,7 @@
                     AutoSendReminders: 'Auto send reminders',
                     AutoSendRemindersTitle: 'Auto send reminders to my URs on the screen',
                     AutoSendRemindersWarning: 'WARNING',
-                    AutoSendRemindersWarningTitle: 'This will AUTOMATICALLY send reminders at the reminder days setting (currently: ' + settings.ReminderDays + ' days).\nThis only happens when they are visible on your screen.\n\nNOTE: When using this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to all open URs\nafter \'Reminder days\'.',
+                    AutoSendRemindersWarningTitle: 'This will AUTOMATICALLY send reminders at the reminder days setting (currently: ' + _settings.ReminderDays + ' days).\nThis only happens when they are visible on your screen.\n\nNOTE: When using this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to all open URs\nafter \'Reminder days\'.',
                     AutoSetNewUrComment: 'Auto set new UR comment',
                     AutoSetNewUrCommentTitle: 'Auto set the UR comment on new URs that do not already have comments',
                     AutoSetReminderUrComment: 'Auto set reminder UR comment',
