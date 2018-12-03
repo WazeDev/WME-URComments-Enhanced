@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.03.02
+// @version     2018.12.03.03
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -102,8 +102,9 @@
             AutoZoomOutAfterComment: localStorage.getItem('ZoomOutAfterComment') ? (localStorage.getItem('ZoomOutAfterComment') === 'yes' ? true : false) : false,
             DisableDoneNextButtons: localStorage.getItem('UrCommentDisableURDoneBtn') ? $.parseJSON(localStorage.getItem('UrCommentDisableURDoneBtn')) : false,
             DoNotShowTagNameOnPill: localStorage.getItem('URCommentsDontShowTaggedText') ? $.parseJSON(localStorage.getItem('URCommentsDontShowTaggedText')) : false,
-            DoubleClickLinkCloseComments: localStorage.getItem('DBLClk7DCAutoSend') ? (localStorage.getItem('DBLClk7DCAutoSend') === 'yes' ? true : false) : false,
-            DoubleClickLinkAllComments: localStorage.getItem('DBLClkAll') ? (localStorage.getItem('DBLClkAll') === 'yes' ? true : false) : false,
+            DoubleClickLinkNiComments: localStorage.getItem('DBLClk7DCAutoSend') ? (localStorage.getItem('DBLClk7DCAutoSend') === 'yes' || localStorage.getItem('DBLClkAll') === 'yes' ? true : false) : false,
+            DoubleClickLinkOpenComments: localStorage.getItem('DBLClkAll') ? (localStorage.getItem('DBLClkAll') === 'yes' ? true : false) : false,
+            DoubleClickLinkSolvedComments: localStorage.getItem('DBLClkAll') ? (localStorage.getItem('DBLClkAll') === 'yes' ? true : false) : false,
             ReplaceTagNameWithEditorName: localStorage.getItem('URCommentsReplaceTagWithEditorName') ? $.parseJSON(localStorage.getItem('URCommentsReplaceTagWithEditorName')) : false,
             UnfollowUrAfterSend: localStorage.getItem('URCommentURUnfollow') ? $.parseJSON(localStorage.getItem('URCommentURUnfollow')) : false,
             HideZoomOutLinks: false,
@@ -268,8 +269,9 @@
             let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
             let commentId = 0
             let blankGroup = 0;
-            let doubleClickLinkCloseComments = _settings.DoubleClickLinkCloseComments;
-            let doubleClickLinkAllComments = _settings.DoubleClickLinkAllComments;
+            let doubleClickLinkNiComments = _settings.DoubleClickLinkNiComments;
+            let doubleClickLinkOpenComments = _settings.DoubleClickLinkOpenComments;
+            let doubleClickLinkSolvedComments = _settings.DoubleClickLinkSolvedComments;
             for (let entryIdx = 0; entryIdx < data.feed.entry.length && !result.error; entryIdx++) {
                 let rObj = {};
                 let cellValue = data.feed.entry[entryIdx].title.$t;
@@ -352,21 +354,21 @@
                             let divDoubleClickStyle = 'display:initial;';
                             if (splitRow.urstatus === 'solved') {
                                 linkClass = 'URCE-solvedLink';
-                                divDoubleClickId = 'URCE-divDoubleClickClose';
-                                if (!doubleClickLinkCloseComments && !doubleClickLinkAllComments) {
+                                divDoubleClickId = 'URCE-divDoubleClickSolved';
+                                if (!doubleClickLinkSolvedComments) {
                                     divDoubleClickStyle = 'display:none;';
                                 }
                             } else if (splitRow.urstatus === 'notidentified') {
                                 linkClass = 'URCE-niLink';
-                                divDoubleClickId = 'URCE-divDoubleClickClose';
-                                if (!doubleClickLinkCloseComments && !doubleClickLinkAllComments) {
+                                divDoubleClickId = 'URCE-divDoubleClickNi';
+                                if (!doubleClickLinkNiComments) {
                                     divDoubleClickStyle = 'display:none;';
                                 }
                             } else {
                                 linkClass = 'URCE-openLink';
-                                divDoubleClickId = splitRow.title != '' ? 'URCE-divDoubleClickAll' : 'URCE-divDoubleClickAll-Hidden';
+                                divDoubleClickId = splitRow.title != '' ? 'URCE-divDoubleClickOpen' : 'URCE-divDoubleClickOpen-Hidden';
                                 divDoubleClickClass = splitRow.title != '' ? 'URCE-divDoubleClick' : 'URCE-divDoubleClick-Hidden';
-                                if (!doubleClickLinkAllComments || splitRow.title == '') {
+                                if (!doubleClickLinkOpenComments) {
                                     divDoubleClickStyle = 'display:none;';
                                 }
                             }
@@ -562,49 +564,38 @@
                     $('<input>', {type:'checkbox', id:'_cbDoNotShowTagNameOnPill'}).change(function() { changeSetting('DoNotShowTagNameOnPill', $(this).is(':checked')); }).prop('checked', _settings.DoNotShowTagNameOnPill),
                     $('<label>', {for:'_cbDoNotShowTagNameOnPill', title:I18n.t('urce.prefs.DoNotShowTagNameOnPillTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoNotShowTagNameOnPill')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkCloseComments'}).change(function() {
-                        _settings.DoubleClickLinkCloseComments = $(this).is(':checked');
-                        if ($(this).is(':checked') && !isChecked('_cbAutoClickOpenSolvedNi')) {
-                            _settings.AutoClickOpenSolvedNi = true;
-                            $('#_cbAutoClickOpenSolvedNi').prop('checked', true);
-                        }
+                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkNiComments'}).change(function() {
+                        _settings.DoubleClickLinkNiComments = $(this).is(':checked');
                         if (!$(this).is(':checked')) {
-                            if(isChecked('_cbDoubleClickLinkAllComments')) {
-                               _settings.DoubleClickLinkAllComments = false;
-                               $('#_cbDoubleClickLinkAllComments').prop('checked', false);
-                               $('div#URCE-divDoubleClickAll').hide();
-                            }
-                            $('div#URCE-divDoubleClickClose').hide();
+                            $('div#URCE-divDoubleClickNi').hide();
                         } else {
-                            $('div#URCE-divDoubleClickClose').show();
+                            $('div#URCE-divDoubleClickNi').show();
                         }
                         saveSettingsToStorage();
-                    }).prop('checked', _settings.DoubleClickLinkCloseComments),
-                    $('<label>', {for:'_cbDoubleClickLinkCloseComments', title:I18n.t('urce.prefs.DoubleClickLinkCloseCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkCloseComments')),
+                    }).prop('checked', _settings.DoubleClickLinkNiComments),
+                    $('<label>', {for:'_cbDoubleClickLinkNiComments', title:I18n.t('urce.prefs.DoubleClickLinkNiCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkNiComments')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkAllComments'}).change(function() {
-                        _settings.DoubleClickLinkAllComments = $(this).is(':checked');
-                        if ($(this).is(':checked') && !isChecked('_cbAutoClickOpenSolvedNi')) {
-                            _settings.AutoClickOpenSolvedNi = true;
-                            $('#_cbAutoClickOpenSolvedNi').prop('checked', true);
-                        }
-                        if ($(this).is(':checked') && !isChecked('_cbDoubleClickLinkCloseComments')) {
-                            _settings.DoubleClickLinkCloseComments = true;
-                            $('#_cbDoubleClickLinkCloseComments').prop('checked', true);
-                        }
+                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkOpenComments'}).change(function() {
+                        _settings.DoubleClickLinkOpenComments = $(this).is(':checked');
                         if (!$(this).is(':checked')) {
-                            $('div#URCE-divDoubleClickAll').hide();
+                            $('div#URCE-divDoubleClickOpen').hide();
                         } else {
-                            $('div#URCE-divDoubleClickAll').show();
-                        }
-                        if (!isChecked('_cbDoubleClickLinkCloseComments')) {
-                            $('div#URCE-divDoubleClickClose').hide();
-                        } else {
-                            $('div#URCE-divDoubleClickClose').show();
+                            $('div#URCE-divDoubleClickOpen').show();
                         }
                         saveSettingsToStorage();
-                    }).prop('checked', _settings.DoubleClickLinkAllComments),
-                    $('<label>', {for:'_cbDoubleClickLinkAllComments', title:I18n.t('urce.prefs.DoubleClickLinkAllCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkAllComments')),
+                    }).prop('checked', _settings.DoubleClickLinkOpenComments),
+                    $('<label>', {for:'_cbDoubleClickLinkOpenComments', title:I18n.t('urce.prefs.DoubleClickLinkOpenCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkOpenComments')),
+                    $('<br>'),
+                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkSolvedComments'}).change(function() {
+                        _settings.DoubleClickLinkSolvedComments = $(this).is(':checked');
+                        if (!$(this).is(':checked')) {
+                            $('div#URCE-divDoubleClickSolved').hide();
+                        } else {
+                            $('div#URCE-divDoubleClickSolved').show();
+                        }
+                        saveSettingsToStorage();
+                    }).prop('checked', _settings.DoubleClickLinkSolvedComments),
+                    $('<label>', {for:'_cbDoubleClickLinkSolvedComments', title:I18n.t('urce.prefs.DoubleClickLinkSolvedCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkSolvedComments')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbHideZoomOutLinks'}).change(function() {
                         changeSetting('HideZoomOutLinks', $(this).is(':checked'));
@@ -787,9 +778,9 @@
                     DisableDoneNextButtonsTitle: 'Disable the done / next buttons at the bottom of the new UR window.',
                     DoNotShowTagNameOnPill: 'Don\'t show tag name on pill',
                     DoNotShowTagNameOnPillTitle: 'Do not show the tag name on the pill where there is a URO tag.',
-                    DoubleClickLinkNiComments: 'Double click link - Not identified comments',
+                    DoubleClickLinkNiComments: 'Double click link - NI comments',
                     DoubleClickLinkNiCommentsTitle: 'Add an extra link to the \'not identified\' comments. When double clicked it will automatically send the comment to the UR window, click send, and then will launch all of the other options that are enabled.',
-                    DoubleCLickLinkOpenComments: 'Double click link - Open comments',
+                    DoubleClickLinkOpenComments: 'Double click link - Open comments',
                     DoubleClickLinkOpenCommentsTitle: 'Add an extra link to the \'open\' comments. When double clicked it will automatically send the comment to the UR window, click send, and then will launch all of the other options that are enabled.',
                     DoubleClickLinkSolvedComments: 'Double click link - Solved comments',
                     DoubleClickLinkSolvedCommentsTitle: 'Add an extra link to the \'solved\' comments. When double clicked it will automatically send the comment to the UR window, click send, and then will launch all of the other options that are enabled.',
