@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.03.03
+// @version     2018.12.03.04
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -53,6 +53,11 @@
                             'sl':null // Speed Limit
                           };
     let _urceInitialized = false;
+    let mapUpdateRequestObserver = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            log(mutation);
+        });
+    });
     const _CommentLists = [{idx:0, name:'CommentTeam', oldVarName: 'CommentTeam', listOwner: 'CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/oz10sdb/public/values?alt=json' },
                            {idx:1, name:'Custom', oldVarName:'Custom', listOwner: 'Custom', gSheetUrl: '' },
                            {idx:2, name:'USA - SCR', oldVarName: 'USA_SouthCentral', listOwner: 'SCR CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/ope05au/public/values?alt=json' },
@@ -84,6 +89,10 @@
         tempDiv.innerText = tempDiv.textContent = text;
         text = tempDiv.innerHTML;
         return text;
+    }
+
+    function getId(node) {
+        return document.getElementById(node);
     }
 
     function loadSettingsFromStorage() {
@@ -368,7 +377,7 @@
                                 linkClass = 'URCE-openLink';
                                 divDoubleClickId = splitRow.title != '' ? 'URCE-divDoubleClickOpen' : 'URCE-divDoubleClickOpen-Hidden';
                                 divDoubleClickClass = splitRow.title != '' ? 'URCE-divDoubleClick' : 'URCE-divDoubleClick-Hidden';
-                                if (!doubleClickLinkOpenComments) {
+                                if (!doubleClickLinkOpenComments || splitRow.urstatus === 'blank line') {
                                     divDoubleClickStyle = 'display:none;';
                                 }
                             }
@@ -723,6 +732,7 @@
         _urceInitialized = true;
         saveSettingsToStorage();
         buildCommentList();
+        mapUpdateRequestObserver.observe(getId('panel-container'), { childList: true, subtree: true });
     }
 
     function bootstrap(tries) {
