@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.03.04
+// @version     2018.12.04.01
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -33,31 +33,37 @@
     const DEBUG = true;
     let _settings = {};
     let _commentList = [];
-    let _defaultComments = {'dr':null, // Default reminder
-                            'dc':null, // Default closed / not identified
-                            'it':null, // Incorrect turn
-                            'ia':null, // Incorrect address
-                            'ir':null, // Incorrect route
-                            'mra':null, // Missing roundabout
-                            'ge':null, // General error
-                            'tna':null, // Turn not allowed
-                            'ij':null, // Incorrect junction
-                            'mbo':null, // Missing bridge overpass
-                            'wdd':null, // Wrong driving direction
-                            'me':null, // Missing exit
-                            'mr':null, // Missing road
-                            'ml':null, // Missing landmark
-                            'br':null, // Blocked road
-                            'msn':null, // Missing street name
-                            'isps':null, // Incorrect street prefix or suffix
-                            'sl':null // Speed Limit
-                          };
+    let _defaultComments = {
+        'dr': { 'commentNum':null, 'urNum':98 }, // Default reminder
+        'dc': { 'commentNum':null, 'urNum':99 }, // Default closed / not identified
+        'it': { 'commentNum':null, 'urNum':6 }, // Incorrect turn
+        'ia': { 'commentNum':null, 'urNum':7 }, // Incorrect address
+        'ir': { 'commentNum':null, 'urNum':8 }, // Incorrect route
+        'mra': { 'commentNum':null, 'urNum':9 }, // Missing roundabout
+        'ge': { 'commentNum':null, 'urNum':10 }, // General error
+        'tna': { 'commentNum':null, 'urNum':11 }, // Turn not allowed
+        'ij': { 'commentNum':null, 'urNum':12 }, // Incorrect junction
+        'mbo': { 'commentNum':null, 'urNum':13 }, // Missing bridge overpass
+        'wdd': { 'commentNum':null, 'urNum':14 }, // Wrong driving direction
+        'me': { 'commentNum':null, 'urNum':15 }, // Missing exit
+        'mr': { 'commentNum':null, 'urNum':16 }, // Missing road
+        'ml': { 'commentNum':null, 'urNum':18 }, // Missing landmark
+        'br': { 'commentNum':null, 'urNum':19 }, // Blocked road
+        'msn': { 'commentNum':null, 'urNum':21 }, // Missing street name
+        'isps': { 'commentNum':null, 'urNum':22 }, // Incorrect street prefix or suffix
+        'sl': { 'commentNum':null, 'urNum':23 } // Speed Limit
+    };
     let _urceInitialized = false;
-    let mapUpdateRequestObserver = new MutationObserver(function(mutations) {
+    let _mapUpdateRequestObserver = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
-            log(mutation);
+            let urId = $(".update-requests .selected").data("id");
+            if ($(mutation.target).is('#panel-container') & mutation.addedNodes.length > 0 && urId > 0) {
+                handleUpdateRequestContainer(urId);
+            }
         });
     });
+    _mapUpdateRequestObserver.isObserving = false;
+
     const _CommentLists = [{idx:0, name:'CommentTeam', oldVarName: 'CommentTeam', listOwner: 'CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/oz10sdb/public/values?alt=json' },
                            {idx:1, name:'Custom', oldVarName:'Custom', listOwner: 'Custom', gSheetUrl: '' },
                            {idx:2, name:'USA - SCR', oldVarName: 'USA_SouthCentral', listOwner: 'SCR CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/ope05au/public/values?alt=json' },
@@ -89,10 +95,6 @@
         tempDiv.innerText = tempDiv.textContent = text;
         text = tempDiv.innerHTML;
         return text;
-    }
-
-    function getId(node) {
-        return document.getElementById(node);
     }
 
     function loadSettingsFromStorage() {
@@ -168,6 +170,27 @@
         }
     }
 
+    function waitOnWazeModel(urId, target) {
+        return new Promise((resolve, reject) => {
+            (function retry(urId, tries, target) {
+                tries = tries || 1;
+                let data;
+                if (target === 'urSessions') {
+                    data = W.model.updateRequestSessions.objects[urId];
+                } else if (target === 'mapUrType') {
+                    data = W.model.mapUpdateRequests.objects[urId].attributes.type;
+                }
+                if (tries > 100) {
+                    reject();
+                } else if (data === undefined) {
+                    setTimeout(retry, 100, urId, ++tries, target);
+                } else {
+                    resolve(data);
+                }
+            })(urId, 1, target);
+        });
+    }
+
     function convertOldVarName(oldVarName) {
         let newIdxNum;
         let filterArr = _CommentLists.filter(obj => obj.oldVarName === oldVarName);
@@ -195,6 +218,168 @@
     function getCommentListInfo(commentListIdx) {
         commentListIdx = parseInt(commentListIdx || _settings.CommentList);
         return _CommentLists.find(cList => { return cList.idx === commentListIdx });
+    }
+
+    async function handleUpdateRequestContainer(urId) {
+        // Expand the comments list automatically
+        if ($('#panel-container .problem-edit .conversation').hasClass('collapsed')) {
+           $('#panel-container .problem-edit .conversation').removeClass('collapsed');
+        }
+        // Get rid of the Done / Next buttons
+        if (_settings.DisableDoneNextButtons) {
+            $('#panel-container .content .navigation').css({'display':'none'});
+        }
+        // Attach to the center on UR button
+        $('#panel-container > div > div > div.top-section > div.header > div.title > div > a.focus').click(function() {
+            let x = (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX === undefined) ? W.model.mapUpdateRequests.objects[urId].attributes.geometry.x : W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX;
+            let y = W.model.mapUpdateRequests.objects[urId].attributes.geometry.y;
+            W.map.setCenter([x,y], 5);
+        });
+        try {
+            var urSessionObj = await waitOnWazeModel(urId, 'urSessions');
+        } catch(err) {
+            logError('Timed out waiting for update request session info to load.');
+            return;
+        }
+        try {
+            var mapUrType = await waitOnWazeModel(urId, 'mapUrType');
+        } catch(err) {
+            logError('Timed out waiting for map update request info to load.');
+            return;
+        }
+        if (urSessionObj.length === 0) {
+            if (_settings.AutoSetNewUrComment) {
+                var commentNum = Object.values(_defaultComments).find(defaultComment => { return defaultComment.urNum === mapUrType }).commentNum;
+                let unSavedDetected = autoZoomIn(commentNum, urId);
+                if (!unSavedDetected) {
+                    postUrComment(_commentList[commentNum].title, _commentList[commentNum].comment, _commentList[commentNum].urcstatus, urId);
+                }
+            }
+        }
+    }
+
+    function autoZoomIn(commentNum, urId) {
+        let title = _commentList[commentNum].title;
+        let comment = _commentList[commentNum].comment;
+        let urStatus = _commentList[commentNum].comment;
+
+        let unSavedDetected = false;
+        let unSavedCount = $('#edit-buttons > div > div.toolbar-button.waze-icon-save > div.counter').html();
+
+        if (unSavedCount > 0 && _settings.AutoSaveAfterSolvedOrNiComment && urStatus.toLowerCase() !== 'open') {
+            unSavedDetected = true;
+            alert(I18n.t('urce.prompts.UnsavedEdits'));
+        }
+
+        if (_settings.AutoZoomInOnNewUr && commentNum !== _defaultComments.dr.commentNum && commentNum !== _defaultComments.dc.commentNum && !unSavedDetected) {
+            let zoom = 4;
+            let currentZoom = getZoomLevel();
+            if (currentZoom < zoom) {
+                let x = (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX === undefined) ? W.model.mapUpdateRequests.objects[urId].attributes.geometry.x : W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX;
+                let y = W.model.mapUpdateRequests.objects[urId].attributes.geometry.y;
+                W.map.setCenter([x,y], 5);
+            }
+            return false;
+        } else if (!unSavedDetected) {
+            return false;
+        } else if (unSavedDetected) {
+            return true;
+        }
+    }
+
+    function getZoomLevel() {
+        return W.map.mapState.mapLocation.zoom;
+    }
+
+    function postUrComment(title, comment, urStatus, urId, tries) {
+        tries = tries || 1;
+        if (tries > 100) {
+            logError('Timed out waiting for the comment text box to become available.');
+            return;
+        } else if (!$('.new-comment-text')[0]) {
+            //showWmeMessage(I18n.t('urce.prompts.NoCommentBox'), 5000);
+            logDebug('Waiting for the comment-box to become available. Retry ' + tries + ' of 100');
+            setTimeout(postUrComment, 100, title, comment, urStatus, urId, ++tries);
+        } else {
+            $('.new-comment-text').val(comment).change();
+            $('.new-comment-text').keyup();
+        }
+    }
+
+    function showWmeMessage(message, delay) {
+        let dateNow = new Date().getTime();
+        let width = message.length * 10;
+        $('#map').append('<div id="urceMessage" style="width:100%; font-size:15px; font-weight:bold; margin-left:auto; position:absolute; top:0px; left:10px; z-index:1000;"></div>');
+        $('#urceMessage').append('<div id="urceMapNote' + dateNow + '" style="width:' + width + 'px; font-size: 15px; font-weight:bold; margin-left:auto; margin-right:auto; background-color:orange;"><center><b>' + message + '</b></center></div>');
+        $('#urceMapNote' + dateNow).show().delay(delay).queue(function() {
+            $('#urceMessage').remove();
+            $(this).remove();
+        });
+    }
+
+    function setupMutationObservers(status) {
+        if (status === 'enable' && !_mapUpdateRequestObserver.isObserving) {
+            logDebug('Enabling MO');
+            _mapUpdateRequestObserver.observe(document.getElementById('panel-container'), { childList: true, attributes: true, characterData: true, subtree: true });
+            _mapUpdateRequestObserver.isObserving = true;
+        } else if (status === 'disable' && _mapUpdateRequestObserver.isObserving) {
+            logDebug('Disabling MO');
+            _mapUpdateRequestObserver.disconnect();
+            _mapUpdateRequestObserver.isObserving = false;
+        }
+    }
+
+    function initBackgroundTasks() {
+        let parentLayerEnabled = $('#layer-switcher-group_issues').is(':checked');
+        let mapIssuesEnabled = $('#layer-switcher-group_map_issues').is(':checked');
+        let openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
+        let closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
+        $('#layer-switcher-group_issues').change(function() {
+            if (!$(this).is(':checked')) {
+                setupMutationObservers('disable');
+            } else {
+                mapIssuesEnabled = $('#layer-switcher-group_map_issues').is(':checked');
+                openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
+                closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
+                if ((mapIssuesEnabled) && (openUrsEnabled || closedUrsEnabled)) {
+                    setupMutationObservers('enable');
+                } else {
+                    setupMutationObservers('disable');
+                }
+            }
+        });
+        $('#layer-switcher-group_map_issues').change(function() {
+            if (!$(this).is(':checked')) {
+                setupMutationObservers('disable');
+            } else {
+                openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
+                closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
+                if (openUrsEnabled || closedUrsEnabled) {
+                    setupMutationObservers('enable');
+                } else {
+                    setupMutationObservers('disable');
+                }
+            }
+        });
+        $('#layer-switcher-item_update_requests').change(function() {
+            closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
+            if (!$(this).is(':checked') && !closedUrsEnabled) {
+                setupMutationObservers('disable');
+            } else {
+                setupMutationObservers('enable');
+            }
+        });
+        $('#layer-switcher-item_closed_update_requests').change(function() {
+            openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
+            if (!$(this).is(':checked') && !openUrsEnabled) {
+                setupMutationObservers('disable');
+            } else {
+                setupMutationObservers('enable');
+            }
+        });
+        if (parentLayerEnabled && mapIssuesEnabled && (openUrsEnabled || closedUrsEnabled)) {
+            setupMutationObservers('enable');
+        }
     }
 
     function injectCss() {
@@ -353,7 +538,7 @@
                                 let splitRowDefaultCommentsBoolean = Object.values(splitRow).slice(drIdx);
                                 for (let boolIdx = 0; boolIdx < splitRowDefaultCommentsBoolean.length; boolIdx++) {
                                     if (splitRowDefaultCommentsBoolean[boolIdx].toLowerCase() === 'default_is_true') {
-                                        _defaultComments[ssFieldNames[(boolIdx+drIdx)].toLowerCase()] = commentId;
+                                        _defaultComments[ssFieldNames[(boolIdx+drIdx)].toLowerCase()].commentNum = commentId;
                                     }
                                 }
                             }
@@ -448,13 +633,15 @@
             _commentList = [];
             // Get it done.
             let result = await commentListAsync(commentListIdx);
+            $('#_selCommentList').prop('disabled', false).val(_settings.CommentList);
+            $('#_selCommentList option[value="loading"]').remove();
+            _urceInitialized = true;
             if (result.error) {
                 // We got an error returned from the promise in the result object. Clear the contents of the _commentList div and load error message.
                 logError(result.error);
+                _urceInitialized = false;
                 //return; // Might as well continue on down and remove the lock on the dropdown and remove the loading selection.
             }
-            $('#_selCommentList').prop('disabled', false).val(_settings.CommentList);
-            $('#_selCommentList option[value="loading"]').remove();
         }
         catch(err) {
             logError(err);
@@ -729,10 +916,19 @@
             saveSettingsToStorage();
         }, false);
         log('Initialized.');
-        _urceInitialized = true;
         saveSettingsToStorage();
         buildCommentList();
-        mapUpdateRequestObserver.observe(getId('panel-container'), { childList: true, subtree: true });
+        (function waitForCommentList(tries) {
+            tries = tries || 1;
+            if (tries > 300) {
+                logError('Timed out waiting on comment list to be built.');
+            } else if (!_urceInitialized) {
+                logDebug('Waiting for comment list to be built. Try ' + tries + ' of 300.');
+                setTimeout(waitForCommentList, 100, ++tries);
+            } else {
+                initBackgroundTasks();
+            }
+        })();
     }
 
     function bootstrap(tries) {
