@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.04.01
+// @version     2018.12.05.01
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -54,6 +54,8 @@
         'sl': { 'commentNum':null, 'urNum':23 } // Speed Limit
     };
     let _urceInitialized = false;
+    let _commentListLoaded = false;
+    let _restoreZoom, _$restoreTab, _restoreTabPosition;
     let _mapUpdateRequestObserver = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
             let urId = $(".update-requests .selected").data("id");
@@ -64,10 +66,10 @@
     });
     _mapUpdateRequestObserver.isObserving = false;
 
-    const _CommentLists = [{idx:0, name:'CommentTeam', oldVarName: 'CommentTeam', listOwner: 'CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/oz10sdb/public/values?alt=json' },
-                           {idx:1, name:'Custom', oldVarName:'Custom', listOwner: 'Custom', gSheetUrl: '' },
-                           {idx:2, name:'USA - SCR', oldVarName: 'USA_SouthCentral', listOwner: 'SCR CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/ope05au/public/values?alt=json' },
-                           {idx:3, name:'USA - SER', oldVarName: 'USA_Southeast', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/o35ezyr/public/values?alt=json' }
+    const _CommentLists = [{idx:0, name:'CommentTeam', status:'enabled', oldVarName: 'CommentTeam', listOwner: 'CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/oz10sdb/public/values?alt=json' },
+                           {idx:1, name:'Custom', status:'disabled', oldVarName:'Custom', listOwner: 'Custom', gSheetUrl: '' },
+                           {idx:2, name:'USA - SCR', status:'enabled', oldVarName: 'USA_SouthCentral', listOwner: 'SCR CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/ope05au/public/values?alt=json' },
+                           {idx:3, name:'USA - SER', status:'enabled', oldVarName: 'USA_Southeast', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/o35ezyr/public/values?alt=json' }
                           ].sort(dynamicSort('name'));
 
     function log(message) { console.log('URC-E:', message); }
@@ -220,7 +222,24 @@
         return _CommentLists.find(cList => { return cList.idx === commentListIdx });
     }
 
+    function handleClickedComment(commentNum) {
+        let title = _commentList[commentNum].title;
+        let comment = _commentList[commentNum].comment;
+        let urstatus = _commentList[commentNum].urstatus;
+        if (!$('.new-comment-text')[0]) {
+            showWmeMessage(I18n.t('urce.prompts.NoCommentBox'), 5000);
+            return;
+        }
+    }
+
+    function scrollToBottom() {
+        $('.top-section').scrollTop($('.top-section')[0].scrollHeight);
+    }
+
     async function handleUpdateRequestContainer(urId) {
+        if (_settings.AutoSwitchToUrCommentsTab) {
+            autoSwitchToUrceTab();
+        }
         // Expand the comments list automatically
         if ($('#panel-container .problem-edit .conversation').hasClass('collapsed')) {
            $('#panel-container .problem-edit .conversation').removeClass('collapsed');
@@ -235,6 +254,8 @@
             let y = W.model.mapUpdateRequests.objects[urId].attributes.geometry.y;
             W.map.setCenter([x,y], 5);
         });
+        // Scroll to the bottom of the comment list
+        setTimeout(scrollToBottom, 250);
         try {
             var urSessionObj = await waitOnWazeModel(urId, 'urSessions');
         } catch(err) {
@@ -247,44 +268,85 @@
             logError('Timed out waiting for map update request info to load.');
             return;
         }
-        if (urSessionObj.length === 0) {
+        var commentNum = Object.values(_defaultComments).find(defaultComment => { return defaultComment.urNum === mapUrType }).commentNum;
+        let unsavedDetected = await checkForUnsavedChanges(commentNum);
+        if (unsavedDetected) {
+            alert(I18n.t('urce.prompts.UnsavedEdits'));
+            return;
+        }
+        if (urSessionObj.comments.length === 0) {
             if (_settings.AutoSetNewUrComment) {
-                var commentNum = Object.values(_defaultComments).find(defaultComment => { return defaultComment.urNum === mapUrType }).commentNum;
-                let unSavedDetected = autoZoomIn(commentNum, urId);
-                if (!unSavedDetected) {
-                    postUrComment(_commentList[commentNum].title, _commentList[commentNum].comment, _commentList[commentNum].urcstatus, urId);
+                autoZoomIn(commentNum, urId);
+                postUrComment(_commentList[commentNum].title, _commentList[commentNum].comment, _commentList[commentNum].urcstatus, urId);
+                if (_settings.AutoClickOpenSolvedNi) {
+                    autoClickOpenSolvedNi(commentNum, urId);
+                }
+                if (_settings.AutoCloseCommentWindow) {
+                    autoCloseUrPanel(commentNum, urId);
+                }
+                if (_settings.AutoZoomOutAfterComment) {
+                    autoZoomOut(commentNum, urId);
                 }
             }
         }
     }
 
+    function autoSwitchToUrceTab() {
+        _$restoreTab = $('#user-tabs > ul > li.active > a');
+        _restoreTabPosition = $('#sidebar').scrollTop();
+        $('a[href="#sidepanel-urc-e"]').trigger('click');
+        $('a[href="#panel-urce-comments"]').trigger('click');
+    }
+
+    function checkForUnsavedChanges(commentNum) {
+        return new Promise((resolve) => {
+            let unsavedCount = $('#edit-buttons > div > div.toolbar-button.waze-icon-save > div.counter').html();
+            if (unsavedCount > 0 && _settings.AutoSaveAfterSolvedOrNiComment && _commentList[commentNum].urstatus !== 'open') {
+                resolve(true);
+            } else {
+                resolve(false);
+            }
+        });
+    }
+
     function autoZoomIn(commentNum, urId) {
-        let title = _commentList[commentNum].title;
-        let comment = _commentList[commentNum].comment;
-        let urStatus = _commentList[commentNum].comment;
-
-        let unSavedDetected = false;
-        let unSavedCount = $('#edit-buttons > div > div.toolbar-button.waze-icon-save > div.counter').html();
-
-        if (unSavedCount > 0 && _settings.AutoSaveAfterSolvedOrNiComment && urStatus.toLowerCase() !== 'open') {
-            unSavedDetected = true;
-            alert(I18n.t('urce.prompts.UnsavedEdits'));
-        }
-
-        if (_settings.AutoZoomInOnNewUr && commentNum !== _defaultComments.dr.commentNum && commentNum !== _defaultComments.dc.commentNum && !unSavedDetected) {
+        if (_settings.AutoZoomInOnNewUr && commentNum !== _defaultComments.dr.commentNum && commentNum !== _defaultComments.dc.commentNum) {
             let zoom = 4;
-            let currentZoom = getZoomLevel();
-            if (currentZoom < zoom) {
+            _restoreZoom = getZoomLevel();
+            if (_restoreZoom < zoom) {
                 let x = (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX === undefined) ? W.model.mapUpdateRequests.objects[urId].attributes.geometry.x : W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX;
                 let y = W.model.mapUpdateRequests.objects[urId].attributes.geometry.y;
                 W.map.setCenter([x,y], 5);
             }
-            return false;
-        } else if (!unSavedDetected) {
-            return false;
-        } else if (unSavedDetected) {
+        }
+    }
+
+    function autoClickOpenSolvedNi(commentNum, urId) {
+        let confirmHold = confirm;
+        confirm = function(msg) {
+            // Dummy confirm to prevent WME from being able to send confirmations during auto clicking
             return true;
         }
+        if ($('input[value="open"]').length > 0) {
+            $('.problem-edit .body').scrollTop($('.problem-edit .body')[0].scrollHeight);
+            if (_commentList[commentNum].urstatus === 'notidentified') {
+                $('input[value="not-identified"]').trigger('click');
+            } else if (_commentList[commentNum].urstatus === 'solved') {
+                $('input[value="solved"]').trigger('click');
+            } else {
+                $('input[value="open"]').trigger('click');
+            }
+        }
+        confirm = confirmHold;
+    }
+
+    function autoZoomOut(commentNum, urId) {
+        _restoreZoom = _restoreZoom || 4;
+        W.map.setCenter(W.map.getCenter(), _restoreZoom);
+    }
+
+    function autoCloseUrPanel(commentNum, urId) {
+            $('#panel-container > div > div > div.top-section > a').trigger('click');
     }
 
     function getZoomLevel() {
@@ -569,7 +631,7 @@
                             $(`#${groupDivId}_body`).append(
                                 $('<div>').append(
                                     $('<a>', {class:'URCE-Comments', id:'urce-cid-'+commentId, title:splitRow.comment, class:linkClass + ' URCE-Comments'}).text(splitRow.title).click(function() {
-                                        // do something
+                                        handleClickedComment(parseInt(this.id.replace(/urce-cid-/, '')));
                                     })
                                 ).append(
                                     $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + '\n' + splitRow.comment}).append(
@@ -577,7 +639,7 @@
                                     )
                                 ).append(
                                     $('<br>')
-                                )
+                                ),
                             )
                             commentId++;
                         }
@@ -623,6 +685,7 @@
 
     async function buildCommentList(commentListIdx) {
         commentListIdx = parseInt(commentListIdx || _settings.CommentList);
+        _commentListLoaded = false;
         try {
             // Clear out the _commentList div so we can rebuild it with the new content
             $('#_commentList').empty();
@@ -635,12 +698,11 @@
             let result = await commentListAsync(commentListIdx);
             $('#_selCommentList').prop('disabled', false).val(_settings.CommentList);
             $('#_selCommentList option[value="loading"]').remove();
-            _urceInitialized = true;
             if (result.error) {
                 // We got an error returned from the promise in the result object. Clear the contents of the _commentList div and load error message.
                 logError(result.error);
-                _urceInitialized = false;
-                //return; // Might as well continue on down and remove the lock on the dropdown and remove the loading selection.
+            } else {
+                _commentListLoaded = true;
             }
         }
         catch(err) {
@@ -677,7 +739,9 @@
                 $('<div>', {class:'controls-container URCE-divCC'}).append(function() {
                     let selList = $('<select>', {id:'_selCommentList'});
                     _CommentLists.forEach(cList => {
-                        if (cList.idx === _settings.CommentList) {
+                        if (cList.status === 'disabled') {
+                            return;
+                        } else if (cList.idx === _settings.CommentList) {
                             selList.append($('<option>', {value:cList.idx, selected:true}).text(cList.name));
                         } else {
                             selList.append($('<option>', {value:cList.idx}).text(cList.name));
@@ -917,12 +981,13 @@
         }, false);
         log('Initialized.');
         saveSettingsToStorage();
+        _urceInitialized = true;
         buildCommentList();
         (function waitForCommentList(tries) {
             tries = tries || 1;
             if (tries > 300) {
                 logError('Timed out waiting on comment list to be built.');
-            } else if (!_urceInitialized) {
+            } else if (!_commentListLoaded) {
                 logDebug('Waiting for comment list to be built. Try ' + tries + ' of 300.');
                 setTimeout(waitForCommentList, 100, ++tries);
             } else {
