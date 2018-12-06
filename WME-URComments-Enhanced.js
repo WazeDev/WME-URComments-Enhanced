@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.06.01
+// @version     2018.12.06.02
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -598,10 +598,16 @@
         let data = { 'feed': {
             'entry': [ ]
         } };
+        let entryIdx;
         logDebug('Converting static comment list to URC-E format for comment list: ' + oldVarName);
         data.feed.entry[0] = { 'title': {'$t':'2018.11.28.01'} };
         data.feed.entry[1] = { 'title': {'$t':'TITLE|COMMENT|URSTATUS|DR|DC|IT|IA|IR|MRA|GE|TNA|IJ|MBO|WDD|ME|MR|ML|BR|MSN|ISPS|SL'} };
-        let entryIdx = '2';
+        if (oldUrcArr[0].search(/<br>/gi) === -1) {
+            data.feed.entry[2] = { 'title': {'$t':'||GROUP TITLE||||||||||||||||||'} };
+            entryIdx = 3;
+        } else {
+            entryIdx = 2;
+        }
         for (let oldUrcArrIdx = 0; oldUrcArrIdx < oldUrcArr.length; oldUrcArrIdx = oldUrcArrIdx + 3) {
             let temp;
             let title = oldUrcArr[oldUrcArrIdx];
