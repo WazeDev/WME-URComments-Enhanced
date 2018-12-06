@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.05.01
+// @version     2018.12.05.02
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -67,7 +67,7 @@
     _mapUpdateRequestObserver.isObserving = false;
 
     const _CommentLists = [{idx:0, name:'CommentTeam', status:'enabled', oldVarName: 'CommentTeam', listOwner: 'CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/oz10sdb/public/values?alt=json' },
-                           {idx:1, name:'Custom', status:'disabled', oldVarName:'Custom', listOwner: 'Custom', gSheetUrl: '' },
+                           {idx:1, name:'Custom', status:'enabled', oldVarName:'Custom', listOwner: 'Custom', gSheetUrl: '', type: 'static' },
                            {idx:2, name:'USA - SCR', status:'enabled', oldVarName: 'USA_SouthCentral', listOwner: 'SCR CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/ope05au/public/values?alt=json' },
                            {idx:3, name:'USA - SER', status:'enabled', oldVarName: 'USA_Southeast', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/o35ezyr/public/values?alt=json' }
                           ].sort(dynamicSort('name'));
@@ -92,11 +92,8 @@
         }
     }
 
-    function encodeHtml(text) {
-        let tempDiv = document.createElement("div");
-        tempDiv.innerText = tempDiv.textContent = text;
-        text = tempDiv.innerHTML;
-        return text;
+    function formatText(text) {
+        return text.replace(/\\[r|n]+/gi, '\n');
     }
 
     function loadSettingsFromStorage() {
@@ -222,18 +219,32 @@
         return _CommentLists.find(cList => { return cList.idx === commentListIdx });
     }
 
+    function scrollToBottom() {
+        $('.top-section').scrollTop($('.top-section')[0].scrollHeight);
+    }
+
     function handleClickedComment(commentNum) {
-        let title = _commentList[commentNum].title;
-        let comment = _commentList[commentNum].comment;
-        let urstatus = _commentList[commentNum].urstatus;
+        let urId = $(".update-requests .selected").data("id");
         if (!$('.new-comment-text')[0]) {
             showWmeMessage(I18n.t('urce.prompts.NoCommentBox'), 5000);
             return;
         }
-    }
-
-    function scrollToBottom() {
-        $('.top-section').scrollTop($('.top-section')[0].scrollHeight);
+        if(!urId) {
+            logError('No urId was found.');
+            return;
+        }
+        postUrComment(_commentList[commentNum].comment);
+        if (_settings.AutoClickOpenSolvedNi) {
+            autoClickOpenSolvedNi(commentNum, urId);
+        }
+        if (_settings.AutoCloseCommentWindow) {
+            $('.new-comment-form .send-button').click(function() {
+                autoCloseUrPanel(urId);
+                if (_settings.AutoZoomOutAfterComment) {
+                    autoZoomOut();
+                }
+            });
+        }
     }
 
     async function handleUpdateRequestContainer(urId) {
@@ -255,7 +266,7 @@
             W.map.setCenter([x,y], 5);
         });
         // Scroll to the bottom of the comment list
-        setTimeout(scrollToBottom, 250);
+        await setTimeout(scrollToBottom, 250);
         try {
             var urSessionObj = await waitOnWazeModel(urId, 'urSessions');
         } catch(err) {
@@ -270,6 +281,7 @@
         }
         var commentNum = Object.values(_defaultComments).find(defaultComment => { return defaultComment.urNum === mapUrType }).commentNum;
         let unsavedDetected = await checkForUnsavedChanges(commentNum);
+        // Need to do more evaluation verification here, don't want to popup the alert if it's not autosave, etc.
         if (unsavedDetected) {
             alert(I18n.t('urce.prompts.UnsavedEdits'));
             return;
@@ -277,15 +289,17 @@
         if (urSessionObj.comments.length === 0) {
             if (_settings.AutoSetNewUrComment) {
                 autoZoomIn(commentNum, urId);
-                postUrComment(_commentList[commentNum].title, _commentList[commentNum].comment, _commentList[commentNum].urcstatus, urId);
+                postUrComment(_commentList[commentNum].comment);
                 if (_settings.AutoClickOpenSolvedNi) {
                     autoClickOpenSolvedNi(commentNum, urId);
                 }
                 if (_settings.AutoCloseCommentWindow) {
-                    autoCloseUrPanel(commentNum, urId);
-                }
-                if (_settings.AutoZoomOutAfterComment) {
-                    autoZoomOut(commentNum, urId);
+                    $('.send-button.waze-btn.waze-btn-blue').on('click', function() {
+                        autoCloseUrPanel(urId);
+                        if (_settings.AutoZoomOutAfterComment) {
+                            autoZoomOut();
+                        }
+                    });
                 }
             }
         }
@@ -310,6 +324,7 @@
     }
 
     function autoZoomIn(commentNum, urId) {
+        log('Zooming');
         if (_settings.AutoZoomInOnNewUr && commentNum !== _defaultComments.dr.commentNum && commentNum !== _defaultComments.dc.commentNum) {
             let zoom = 4;
             _restoreZoom = getZoomLevel();
@@ -322,6 +337,7 @@
     }
 
     function autoClickOpenSolvedNi(commentNum, urId) {
+        log('clicking open, solved, ni');
         let confirmHold = confirm;
         confirm = function(msg) {
             // Dummy confirm to prevent WME from being able to send confirmations during auto clicking
@@ -340,30 +356,45 @@
         confirm = confirmHold;
     }
 
-    function autoZoomOut(commentNum, urId) {
+    function autoZoomOut() {
+        log('zooming out');
         _restoreZoom = _restoreZoom || 4;
         W.map.setCenter(W.map.getCenter(), _restoreZoom);
     }
 
-    function autoCloseUrPanel(commentNum, urId) {
-            $('#panel-container > div > div > div.top-section > a').trigger('click');
+    function autoCloseUrPanel(urId, tries, close) {
+        log('closing ur panel');
+        tries = tries || 1;
+        if (tries > 20) {
+            logError('The comment was not sent within the alotted time, not closing the UR window.');
+        } else if ($(".new-comment-text").val() !== "" && $(".new-comment-text").val() !== undefined) {
+            setTimeout(autoCloseUrPanel, 100, urId, ++tries);;
+        } else if (!close) {
+            if (_settings.UnfollowUrAfterSend) {
+                W.model.updateRequestSessions.objects[urId].isFollowing = false;
+            }
+            setTimeout(autoCloseUrPanel, 100, urId, 1, true)
+        } else {
+            $("#panel-container > div > div > div.top-section > a").trigger('click')
+        }
     }
 
     function getZoomLevel() {
+        log('getting zoom level');
         return W.map.mapState.mapLocation.zoom;
     }
 
-    function postUrComment(title, comment, urStatus, urId, tries) {
+    function postUrComment(comment, tries) {
         tries = tries || 1;
         if (tries > 100) {
             logError('Timed out waiting for the comment text box to become available.');
             return;
         } else if (!$('.new-comment-text')[0]) {
-            //showWmeMessage(I18n.t('urce.prompts.NoCommentBox'), 5000);
             logDebug('Waiting for the comment-box to become available. Retry ' + tries + ' of 100');
-            setTimeout(postUrComment, 100, title, comment, urStatus, urId, ++tries);
+            setTimeout(postUrComment, 100, comment, ++tries);
         } else {
-            $('.new-comment-text').val(comment).change();
+            log('posting ur comment');
+            $('.new-comment-text').val(formatText(comment)).change();
             $('.new-comment-text').keyup();
         }
     }
@@ -482,7 +513,7 @@
         $('<style = type="text/css">' + css + '</style>').appendTo('head');
     }
 
-/*    function convertCommentListStatic(commentListIdx) {
+    function convertCommentListStatic(commentListIdx) {
         commentListIdx = parseInt(commentListIdx || _settings.CommentList);
         let oldVarName = getCommentListInfo(commentListIdx).oldVarName;
         let oldUrcArr = window['Urcomments' + oldVarName + 'Array2'];
@@ -500,8 +531,8 @@
             let comment = oldUrcArr[oldUrcArrIdx+1];
             let urstatus = oldUrcArr[oldUrcArrIdx+2] != '' ? oldUrcArr[oldUrcArrIdx+2].toLowerCase() : '';
             if (title.search(/<br>/gi) > -1) {
-                urstatus = urstatus == '' ? 'open' : 'GROUP TITLE';
-                title = $("<div/>").html(title).text();
+                urstatus = 'GROUP TITLE';
+                title = $("<div>").html(title).text();
             }
             temp = title+'|'+comment+'|'+urstatus;
             temp += (oldUrcArrIdx == defaultReminderIdx) ? '|default_is_true' : '|';
@@ -514,12 +545,11 @@
             entryIdx++;
         }
         return data;
-    } */
+    }
 
     function processCommentListJson(data) {
         let result = {error:null};
-        if (!data) result.error = 'No data passed to the JSON processing function.';
-        else {
+        if (data) {
             const EXPECTED_FIELD_NAMES = ['TITLE','COMMENT','URSTATUS','DR','DC','IT','IA','IR','MRA','GE','TNA','IJ','MBO','WDD','ME','MR','ML','BR','MSN','ISPS','SL'];
             let ssFieldNames, groupDivId;
             let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
@@ -646,6 +676,8 @@
                     }
                 }
             }
+        } else {
+            result.error = 'No data passed to the JSON processing function.';
         }
         return result;
     }
@@ -653,15 +685,17 @@
     function commentListAsync(commentListIdx) {
         commentListIdx = parseInt(commentListIdx || _settings.CommentList);
         return new Promise((resolve, reject) => {
-/*            if (getCommentListInfo(commentListIdx).type === 'static') {
+            let result;
+            if (getCommentListInfo(commentListIdx).type === 'static') {
                 let data = convertCommentListStatic(commentListIdx);
                 let result = processCommentListJson(data);
                 if (!result.error) {
+                    alert(I18n.t('urce.prompts.CustomListUsed'));
                     resolve(result);
                 } else {
                     reject(result);
                 }
-            } else { */
+            } else {
                 $.get({
                     url: getCommentListInfo(commentListIdx).gSheetUrl,
                     success: function(data) {
@@ -678,7 +712,7 @@
                         reject({message: 'An error occurred while loading the selected comment lists definition spreadsheet.'});
                     }
                 });
-//            }
+            }
         });
     }
 
@@ -785,7 +819,7 @@
                     $('<input>', {type:'checkbox', id:'_cbAutoCloseCommentWindow'}).change(function() { changeSetting('AutoCloseCommentWindow', $(this).is(':checked')); }).prop('checked', _settings.AutoCloseCommentWindow),
                     $('<label>', {for:'_cbAutoCloseCommentWindow', title:I18n.t('urce.prefs.AutoCloseCommentWindowTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoCloseCommentWindow')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSaveAfterSolvedOrNiComment'}).change(function() {
+                    $('<input>', {type:'checkbox', id:'_cbAutoSaveAfterSolvedOrNiComment', disabled:'true'}).change(function() {
                         _settings.AutoSaveAfterSolvedOrNiComment = $(this).is(':checked');
                         if ($(this).is(':checked') && !isChecked('_cbAutoClickOpenSolvedNi')) {
                             _settings.AutoClickOpenSolvedNi = true;
@@ -795,7 +829,7 @@
                     }).prop('checked', _settings.AutoSaveAfterSolvedOrNiComment),
                     $('<label>', {for:'_cbAutoSaveAfterSolvedOrNiComment', title:I18n.t('urce.prefs.AutoSaveAfterSolvedOrNiCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSaveAfterSolvedOrNiComment')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSendReminders'}).change(function() { changeSetting('AutoSendReminders', $(this).is(':checked')); }).prop('checked', _settings.AutoSendReminders),
+                    $('<input>', {type:'checkbox', id:'_cbAutoSendReminders', disabled:'true'}).change(function() { changeSetting('AutoSendReminders', $(this).is(':checked')); }).prop('checked', _settings.AutoSendReminders),
                     $('<label>', {for:'_cbAutoSendReminders', title:I18n.t('urce.prefs.AutoSendRemindersTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSendReminders')),
                     $('<div>', {class:'URCE-divWarning URCE-divWarningPre'}).text('(').append(
                         $('<div>', {class:'URCE-divWarning URCE-divWarningTitle', title:I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}).text(I18n.t('urce.prefs.AutoSendRemindersWarning')),
@@ -821,10 +855,10 @@
                     $('<input>', {type:'checkbox', id:'_cbDisableDoneNextButtons'}).change(function() { changeSetting('DisableDoneNextButtons', $(this).is(':checked')); }).prop('checked', _settings.DisableDoneNextButtons),
                     $('<label>', {for:'_cbDisableDoneNextButtons', title:I18n.t('urce.prefs.DisableDoneNextButtonsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DisableDoneNextButtons')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoNotShowTagNameOnPill'}).change(function() { changeSetting('DoNotShowTagNameOnPill', $(this).is(':checked')); }).prop('checked', _settings.DoNotShowTagNameOnPill),
+                    $('<input>', {type:'checkbox', id:'_cbDoNotShowTagNameOnPill', disabled:'true'}).change(function() { changeSetting('DoNotShowTagNameOnPill', $(this).is(':checked')); }).prop('checked', _settings.DoNotShowTagNameOnPill),
                     $('<label>', {for:'_cbDoNotShowTagNameOnPill', title:I18n.t('urce.prefs.DoNotShowTagNameOnPillTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoNotShowTagNameOnPill')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkNiComments'}).change(function() {
+                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkNiComments', disabled:'true'}).change(function() {
                         _settings.DoubleClickLinkNiComments = $(this).is(':checked');
                         if (!$(this).is(':checked')) {
                             $('div#URCE-divDoubleClickNi').hide();
@@ -835,7 +869,7 @@
                     }).prop('checked', _settings.DoubleClickLinkNiComments),
                     $('<label>', {for:'_cbDoubleClickLinkNiComments', title:I18n.t('urce.prefs.DoubleClickLinkNiCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkNiComments')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkOpenComments'}).change(function() {
+                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkOpenComments', disabled:'true'}).change(function() {
                         _settings.DoubleClickLinkOpenComments = $(this).is(':checked');
                         if (!$(this).is(':checked')) {
                             $('div#URCE-divDoubleClickOpen').hide();
@@ -846,7 +880,7 @@
                     }).prop('checked', _settings.DoubleClickLinkOpenComments),
                     $('<label>', {for:'_cbDoubleClickLinkOpenComments', title:I18n.t('urce.prefs.DoubleClickLinkOpenCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkOpenComments')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkSolvedComments'}).change(function() {
+                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkSolvedComments', disabled:'true'}).change(function() {
                         _settings.DoubleClickLinkSolvedComments = $(this).is(':checked');
                         if (!$(this).is(':checked')) {
                             $('div#URCE-divDoubleClickSolved').hide();
@@ -1111,7 +1145,8 @@
                     NoCommentBox: 'URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.',
                     ReminderMessageAuto: 'URC-E: Adding reminder message to UR: ',
                     UnsavedEdits: 'URC-E has detected that you hav unsaved edits!\n\nWith the \'Auto save\' option enabled, you cannot send comments that would require the script to save, if you have previous unsaved edits. Please save your edits and then re-click the comment you wish to send.',
-                    UrFilteringDisabled: 'URC-E\'s UR Filtering has been disabled because URO+\'s UR filters are active.'
+                    UrFilteringDisabled: 'URC-E\'s UR Filtering has been disabled because URO+\'s UR filters are active.',
+                    CustomListUsed: 'URC-E has loaded your "Custom" comment list. However, only the comments themselves have been loaded. The settings text and tooltips were not loaded. Further, this functionality is deprecated and may be discontinued at any time. An alternative solution may or may not be offered at that time.'
                 },
                 commentsTab: {
                     ZoomOutLink1: 'Zoom out 0 & close UR',
@@ -1121,10 +1156,6 @@
                     ZoomOutLink3: 'Zoom out 3 & close UR',
                     ZoomOutLink3Title: 'Zooms out to level 3 and closes the UR dialogue.'
                 }
-            },
-            "es-419": {
-            },
-            fr: {
             }
         });
     }
