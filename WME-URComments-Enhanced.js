@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.06.03
+// @version     2018.12.06.04
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -239,7 +239,7 @@
     }
 
     function showScriptInfoAlert() {
-        if (ALERT_UPDATE) { // && SCRIPT_VERSION !== _settings.lastVersion) {
+        if (ALERT_UPDATE && SCRIPT_VERSION !== _settings.lastVersion) {
             let releaseNotes = '';
             releaseNotes += '<p>' + GM_info.script.name + '<br>v' + SCRIPT_VERSION + '<br><br>What\'s New:</p>';
             if (SCRIPT_VERSION_CHANGES.length > 0) {
