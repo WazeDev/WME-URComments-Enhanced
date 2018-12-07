@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.07.02
+// @version     2018.12.07.03
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -458,7 +458,7 @@
             if (_wmeUserId !== lastCommentBy && urCommentCount > 0 && (commentDaysOld > (_settings.closeDays + _settings.reminderDays - 1)) && lastCommentBy > 1) {
                 urCountBackground = '#FF8B8B';
             }
-            if (!commentDaysOld) commentDaysOld = (urCommentCount === '0') ? '0' : '?';
+            if (commentDaysOld === null || commentDaysOld === '' || commentDaysOld === undefined) commentDaysOld = (urCommentCount === '0') ? '0' : '?';
             let tag;
             if (tagType && _settings.doNotShowTagNameOnPill) {
                 tag = urCommentCount + 'c ' + commentDaysOld + 'd';
@@ -531,6 +531,11 @@
             let y = mUrObj.attributes.geometry.y;
             W.map.setCenter([x,y], 5);
         });
+        logDebug('Setting event hook to refresh map update requesrt marker when sending comment.');
+        $('.new-comment-form .send-button').click(function() {
+            setTimeout(handleUrMapMarker, 500, urId, null);
+        });
+
         logDebug('Waiting 250ms before scrolling to bottom of the conversation list to give it time to load.');
         await setTimeout(scrollToBottom, 250);
         let unsavedDetected = await checkForUnsavedChanges();
@@ -1010,7 +1015,7 @@
                 let data = convertCommentListStatic(commentListIdx);
                 let result = processCommentListJson(data);
                 if (!result.error) {
-                    alert(I18n.t('urce.prompts.CustomListUsed'));
+                    showAlertBox('fa-exclamation-circle', 'URC-E Warning', I18n.t('urce.prompts.UrFilteringDisabled'), false, "OK", "", null, null);
                     resolve(result);
                 } else {
                     reject(result);
