@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.07.01
+// @version     2018.12.07.02
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -86,7 +86,7 @@
 
     function log(message) { console.log('URC-E:', message); }
     function logError(message) { console.error('URC-E:', message); }
-    function logDebug(message) { if (DEBUG) console.debug('URC-E:', message); }
+    function logDebug(message) { if (DEBUG) console.log('URC-E:', message); }
     function logWarning(message) { console.warn('URC-E:', message); }
 
     function dynamicSort(property) {
@@ -333,7 +333,7 @@
 
     async function handleUrMapMarker(urId, $addedNode, tries) {
         tries = tries || 1;
-        if (_settings.enableUrceUrFiltering && $addedNode) {
+/*        if (_settings.enableUrceUrFiltering && $addedNode) {
             if (sessionStorage.UROverview_hasActiveURFilters) {
                 showAlertBox('fa-exclamation-circle', 'URC-E Error', I18n.t('urce.prompts.UrFilteringDisabled'), false, "OK", "", null, null);
                 _settings.enableUrceUrFiltering = false;
@@ -341,7 +341,7 @@
                 saveSettingsToStorage();
                 return;
             }
-        }
+        } */
         if (!$addedNode) $addedNode = $(`[data-id="${urId}"]`);
         try {
             var urSessionObj = await W.model.updateRequestSessions.getAsync([urId]);
@@ -440,6 +440,8 @@
         if (_settings.hideUrsWoComments && urCommentCount === 0) {
             hideUr = true;
         }
+        logDebug('******* enableUrPillCounts: ' + _settings.enableUrPillCounts);
+        logDebug('******* urId: ' + urId);
         if (hideUr) {
             logDebug('Hiding UR marker for UR: ' + urId);
             $($addedNode).hide();
@@ -477,13 +479,14 @@
                     $($addedNode).css({'z-index':'997'});
                 }
                 if (!$($addedNode).hasClass('urceCounts')) {
+                    logDebug('******* HERE ********');
                     $($addedNode).append(
                         $('<div>').css('clear', 'both').css('margin-bottom', '10px').append(
-                            $('<div>').html(tag).css({'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}).addClass(
-                                'urceCounts')
+                            $('<div>').html(tag).css({'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}).addClass('urceCounts')
                         )
                     );
                 } else {
+                    logDebug('******* OR HERE ********');
                     $($addedNode).html(tag).css({'background-color':urCountBackground, 'right':tagOffset});
                 }
             }
@@ -716,7 +719,7 @@
         let mapIssuesEnabled = $('#layer-switcher-group_map_issues').is(':checked');
         let openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
         let closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
-        if (_settings.enableUrceUrFiltering) {
+ /*       if (_settings.enableUrceUrFiltering) {
             if (sessionStorage.UROverview_hasActiveURFilters) {
                 showAlertBox('fa-exclamation-circle', 'URC-E Error', I18n.t('urce.prompts.UrFilteringDisabled'), false, "OK", "", null, null);
                 _settings.enableUrceUrFiltering = false;
@@ -724,7 +727,7 @@
                 saveSettingsToStorage();
                 return;
             }
-        }
+        } */
         logDebug('Setting event hooks on layer toggles.');
         $('#layer-switcher-group_issues').change(function() {
             if (!$(this).is(':checked')) {
@@ -1274,13 +1277,13 @@
                 ),
                 $('<div>', {class:'controls-container URCE-divCC'}).append(
                     $('<input>', {type:'checkbox', id:'_cbEnableUrceUrFiltering'}).change(function() {
-                        if ($(this).is(':checked')) {
+                        /*if ($(this).is(':checked')) {
                             if (sessionStorage.UROverview_hasActiveURFilters) {
                                 showAlertBox('fa-exclamation-circle', 'URC-E Error', I18n.t('urce.prompts.UrFilteringDisabled'), false, "OK", "", null, null);
                                 $(this).prop('checked', false);
                                 return;
                             }
-                        }
+                        } */
                         _settings.enableUrceUrFiltering = $(this).is(':checked');
                         saveSettingsToStorage();
                     }).prop('checked', _settings.enableUrceUrFiltering),
