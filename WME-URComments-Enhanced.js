@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.08.01
+// @version     2018.12.08.02
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -840,245 +840,272 @@
         $('<style = type="text/css">' + css + '</style>').appendTo('head');
     }
 
+    function checkForStaticListArray(oldVarName) {
+        return new Promise((resolve, reject) => {
+            (function checking(oldVarName, tries) {
+                tries = tries || 1;
+                if (tries > 100) {
+                    reject('Timed out waiting for static list variable to be set.');
+                } else if (!window['Urcomments' + oldVarName + 'Array2']) {
+                    setTimeout(checking, 100, oldVarName, ++tries);
+                } else {
+                    resolve();
+                }
+            })(oldVarName, null);
+        });
+    }
+
     function convertCommentListStatic(commentListIdx) {
-        commentListIdx = parseInt(commentListIdx || _settings.commentList);
-        let oldVarName = getCommentListInfo(commentListIdx).oldVarName;
-        let oldUrcArr = window['Urcomments' + oldVarName + 'Array2'];
-        let defaultReminderIdx = window['Urcomments' + oldVarName + 'ReminderPosistion'];
-        let closedNiIdx = window['Urcomments' + oldVarName + 'CloseNotIdentifiedPosistion'];
-        let data = { 'feed': {
-            'entry': [ ]
-        } };
-        let entryIdx;
-        logDebug('Converting static comment list to URC-E format for comment list: ' + oldVarName);
-        data.feed.entry[0] = { 'title': {'$t':'2018.11.28.01'} };
-        data.feed.entry[1] = { 'title': {'$t':'TITLE|COMMENT|URSTATUS|DR|DC|IT|IA|IR|MRA|GE|TNA|IJ|MBO|WDD|ME|MR|ML|BR|MSN|ISPS|SL'} };
-        if (oldUrcArr[0].search(/<br>/gi) === -1) {
-            data.feed.entry[2] = { 'title': {'$t':'||GROUP TITLE||||||||||||||||||'} };
-            entryIdx = 3;
-        } else {
-            entryIdx = 2;
-        }
-        for (let oldUrcArrIdx = 0; oldUrcArrIdx < oldUrcArr.length; oldUrcArrIdx = oldUrcArrIdx + 3) {
-            let temp;
-            let title = oldUrcArr[oldUrcArrIdx];
-            let comment = oldUrcArr[oldUrcArrIdx+1];
-            let urstatus = oldUrcArr[oldUrcArrIdx+2] != '' ? oldUrcArr[oldUrcArrIdx+2].toLowerCase() : '';
-            if (title.search(/<br>/gi) > -1) {
-                urstatus = 'GROUP TITLE';
-                title = $("<div>").html(title).text();
+        return new Promise(async (resolve, reject) => {
+            commentListIdx = parseInt(commentListIdx || _settings.commentList);
+            let oldVarName = getCommentListInfo(commentListIdx).oldVarName;
+            try {
+                await checkForStaticListArray(oldVarName);
+            } catch (error) {
+                reject(error);
+                return;
             }
-            temp = title+'|'+comment+'|'+urstatus;
-            temp += (oldUrcArrIdx == defaultReminderIdx) ? '|default_is_true' : '|';
-            temp += (oldUrcArrIdx == closedNiIdx) ? '|default_is_true' : '|';
-            for (let i=6; i<24; i++) {
-                if (i === 17 || i === 20) continue;
-                temp += (window['Urcomments' + oldVarName + 'def_names'][i] == title) ? '|default_is_true' : '|';
+            let oldUrcArr = window['Urcomments' + oldVarName + 'Array2'];
+            let defaultReminderIdx = window['Urcomments' + oldVarName + 'ReminderPosistion'];
+            let closedNiIdx = window['Urcomments' + oldVarName + 'CloseNotIdentifiedPosistion'];
+            let data = { 'feed': {
+                'entry': [ ]
+            } };
+            let entryIdx;
+            logDebug('Converting static comment list to URC-E format for comment list: ' + oldVarName);
+            data.feed.entry[0] = { 'title': {'$t':'2018.11.28.01'} };
+            data.feed.entry[1] = { 'title': {'$t':'TITLE|COMMENT|URSTATUS|DR|DC|IT|IA|IR|MRA|GE|TNA|IJ|MBO|WDD|ME|MR|ML|BR|MSN|ISPS|SL'} };
+            if (oldUrcArr[0].search(/<br>/gi) === -1) {
+                data.feed.entry[2] = { 'title': {'$t':'||GROUP TITLE||||||||||||||||||'} };
+                entryIdx = 3;
+            } else {
+                entryIdx = 2;
             }
-            data.feed.entry[entryIdx] = { 'title': { '$t':temp} };
-            entryIdx++;
-        }
-        return data;
+            for (let oldUrcArrIdx = 0; oldUrcArrIdx < oldUrcArr.length; oldUrcArrIdx = oldUrcArrIdx + 3) {
+                let temp;
+                let title = oldUrcArr[oldUrcArrIdx];
+                let comment = oldUrcArr[oldUrcArrIdx+1];
+                let urstatus = oldUrcArr[oldUrcArrIdx+2] != '' ? oldUrcArr[oldUrcArrIdx+2].toLowerCase() : '';
+                if (title.search(/<br>/gi) > -1) {
+                    urstatus = 'GROUP TITLE';
+                    title = $("<div>").html(title).text();
+                }
+                temp = title+'|'+comment+'|'+urstatus;
+                temp += (oldUrcArrIdx == defaultReminderIdx) ? '|default_is_true' : '|';
+                temp += (oldUrcArrIdx == closedNiIdx) ? '|default_is_true' : '|';
+                for (let i=6; i<24; i++) {
+                    if (i === 17 || i === 20) continue;
+                    temp += (window['Urcomments' + oldVarName + 'def_names'][i] == title) ? '|default_is_true' : '|';
+                }
+                data.feed.entry[entryIdx] = { 'title': { '$t':temp} };
+                entryIdx++;
+            }
+            resolve(data);
+        });
     }
 
     function processCommentListJson(data) {
-        logDebug('Procesing comment list data.');
-        let result = {error:null};
-        if (data) {
-            const EXPECTED_FIELD_NAMES = ['TITLE','COMMENT','URSTATUS','DR','DC','IT','IA','IR','MRA','GE','TNA','IJ','MBO','WDD','ME','MR','ML','BR','MSN','ISPS','SL'];
-            let ssFieldNames, groupDivId;
-            let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
-            let commentId = 0
-            let blankGroup = 0;
-            let doubleClickLinkNiComments = _settings.doubleClickLinkNiComments;
-            let doubleClickLinkOpenComments = _settings.doubleClickLinkOpenComments;
-            let doubleClickLinkSolvedComments = _settings.doubleClickLinkSolvedComments;
-            for (let entryIdx = 0; entryIdx < data.feed.entry.length && !result.error; entryIdx++) {
-                let cellValue = data.feed.entry[entryIdx].title.$t;
-                if (entryIdx === 0) {
-                    if (SCRIPT_VERSION < cellValue) {
-                        result.error = 'Script must be updated to at least version ' + cellValue + ' before comment definitions can be loaded.';
-                    }
-                } else if(entryIdx === 1) {
-                    ssFieldNames = cellValue.split('|').map(fldName => fldName.trim());
-                    if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length) {
-                        result.error = 'Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment definition data. Spreadsheet returned ' + ssFieldNames.length + '.';
-                    } else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName))) {
-                        result.error = 'Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', ');
-                    }
-                } else {
-                    let splitRow = cellValue.split('|');
-                    let rObj = {};
-                    for (let i=0; i<splitRow.length; i++) {
-                        let rObjKey = ssFieldNames[i].trim().toLowerCase();
-                        rObj[rObjKey] = rObjKey === 'comment' ? splitRow[i] : rObjKey === 'title' ? splitRow[i].trim() : splitRow[i].trim().toLowerCase();
-                    }
-                    splitRow = rObj;
-                    if (splitRow.title === 'URCE_REMOVED_SO_SKIP') {
-                        // Nothing to do here. Move along. This is a comment that has been set to 'REMOVED' in the spreadsheet.
-                        logDebug('SKIPPING a removed comment.');
-                    } else if (splitRow.title === 'URCE_ERROR') {
-                        // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
-                        result.error('There is an unknown error in the spreadsheet output. Please contact the list owner.');
-                    } else if (splitRow.urstatus === 'group title') {
-                        // Group title row. Nothing to set in the arrays, but build html.
-                        groupDivId = 'urceComments-for-';
-                        if (splitRow.title != '') {
-                            groupDivId += splitRow.title.replace(/[^\w]+/gi, '').toLowerCase();
-                            if (splitRow.title === splitRow.title.toUpperCase()) {
-                                if (splitRow.title.length > 25) {
-                                    splitRow.titleMouseOver = splitRow.title;
-                                    splitRow.title = splitRow.title.substring(0, 25) + '...';
-                                }
-                            } else if (splitRow.title.length > 30) {
-                                splitRow.titleMouseOver = splitRow.title;
-                                splitRow.title = splitRow.title.substring(0, 30) + '...';
-                            }
-                        } else {
-                            groupDivId += 'blankGroup' + (++blankGroup);
+        return new Promise((resolve,reject) => {
+            logDebug('Procesing comment list data.');
+            if (data) {
+                const EXPECTED_FIELD_NAMES = ['TITLE','COMMENT','URSTATUS','DR','DC','IT','IA','IR','MRA','GE','TNA','IJ','MBO','WDD','ME','MR','ML','BR','MSN','ISPS','SL'];
+                let ssFieldNames, groupDivId;
+                let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
+                let commentId = 0
+                let blankGroup = 0;
+                let doubleClickLinkNiComments = _settings.doubleClickLinkNiComments;
+                let doubleClickLinkOpenComments = _settings.doubleClickLinkOpenComments;
+                let doubleClickLinkSolvedComments = _settings.doubleClickLinkSolvedComments;
+                for (let entryIdx = 0; entryIdx < data.feed.entry.length; entryIdx++) {
+                    let cellValue = data.feed.entry[entryIdx].title.$t;
+                    if (entryIdx === 0) {
+                        if (SCRIPT_VERSION < cellValue) {
+                            reject('Script must be updated to at least version ' + cellValue + ' before comment definitions can be loaded.');
+                            return;
                         }
-                        $('#_commentList').append(
-                            $('<fieldset>', {id:groupDivId, class:'URCE-field'}).append(
-                                $('<legend>', {class:'URCE-legend'}).append(
-                                    $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
-                                    $('<span>', {class:'URCE-span', title:splitRow.titleMouseOver}).text(splitRow.title)
-                                ).click(function() {
-                                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
-                                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
-                                    $($(this).siblings()[0]).toggleClass('collapse');
-                                })
-                            ).append(
-                                $('<div>', {id:groupDivId+'_body'})
-                            )
-                        )
+                    } else if(entryIdx === 1) {
+                        ssFieldNames = cellValue.split('|').map(fldName => fldName.trim());
+                        if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length) {
+                            reject('Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment definition data. Spreadsheet returned ' + ssFieldNames.length + '.');
+                            return;
+                        } else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName))) {
+                            reject('Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', '));
+                            return;
+                        }
                     } else {
-                        // SHOULD be a normal comments row, push values to arrays and build html.
-                        if (splitRow.urstatus !== 'solved' && splitRow.urstatus !== 'notidentified' && splitRow.urstatus !== 'open' && splitRow.urstatus !== 'blank line') {
-                            result.error = 'Your current selected list does not have a status set for ' + splitRow.title + '. Please contact list owner.';
-                        } else {
-                            _commentList[commentId] = { 'title':splitRow.title, 'comment':splitRow.comment, 'urstatus':splitRow.urstatus };
-                            if (Object.values(splitRow).indexOf('default_is_true') > -1) {
-                                let drIdx = ssFieldNames.indexOf('DR');
-                                let splitRowDefaultCommentsBoolean = Object.values(splitRow).slice(drIdx);
-                                for (let boolIdx = 0; boolIdx < splitRowDefaultCommentsBoolean.length; boolIdx++) {
-                                    if (splitRowDefaultCommentsBoolean[boolIdx].toLowerCase() === 'default_is_true') {
-                                        _defaultComments[ssFieldNames[(boolIdx+drIdx)].toLowerCase()].commentNum = commentId;
+                        let splitRow = cellValue.split('|');
+                        let rObj = {};
+                        for (let i=0; i<splitRow.length; i++) {
+                            let rObjKey = ssFieldNames[i].trim().toLowerCase();
+                            rObj[rObjKey] = rObjKey === 'comment' ? splitRow[i] : rObjKey === 'title' ? splitRow[i].trim() : splitRow[i].trim().toLowerCase();
+                        }
+                        splitRow = rObj;
+                        if (splitRow.title === 'URCE_REMOVED_SO_SKIP') {
+                            // Nothing to do here. Move along. This is a comment that has been set to 'REMOVED' in the spreadsheet.
+                            logDebug('SKIPPING a removed comment.');
+                        } else if (splitRow.title === 'URCE_ERROR') {
+                            // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
+                            reject('There is an unknown error in the spreadsheet output. Please contact the list owner.');
+                            return;
+                        } else if (splitRow.urstatus === 'group title') {
+                            // Group title row. Nothing to set in the arrays, but build html.
+                            groupDivId = 'urceComments-for-';
+                            if (splitRow.title != '') {
+                                groupDivId += splitRow.title.replace(/[^\w]+/gi, '').toLowerCase();
+                                if (splitRow.title === splitRow.title.toUpperCase()) {
+                                    if (splitRow.title.length > 25) {
+                                        splitRow.titleMouseOver = splitRow.title;
+                                        splitRow.title = splitRow.title.substring(0, 25) + '...';
                                     }
-                                }
-                            }
-                            let linkClass;
-                            let divDoubleClickId;
-                            let divDoubleClickClass;
-                            let divDoubleClickStyle = 'display:initial;';
-                            if (splitRow.urstatus === 'solved') {
-                                linkClass = 'URCE-solvedLink';
-                                divDoubleClickId = 'URCE-divDoubleClickSolved';
-                                if (!doubleClickLinkSolvedComments) {
-                                    divDoubleClickStyle = 'display:none;';
-                                }
-                            } else if (splitRow.urstatus === 'notidentified') {
-                                linkClass = 'URCE-niLink';
-                                divDoubleClickId = 'URCE-divDoubleClickNi';
-                                if (!doubleClickLinkNiComments) {
-                                    divDoubleClickStyle = 'display:none;';
+                                } else if (splitRow.title.length > 30) {
+                                    splitRow.titleMouseOver = splitRow.title;
+                                    splitRow.title = splitRow.title.substring(0, 30) + '...';
                                 }
                             } else {
-                                linkClass = 'URCE-openLink';
-                                divDoubleClickId = splitRow.title != '' ? 'URCE-divDoubleClickOpen' : 'URCE-divDoubleClickOpen-Hidden';
-                                divDoubleClickClass = splitRow.title != '' ? 'URCE-divDoubleClick' : 'URCE-divDoubleClick-Hidden';
-                                if (!doubleClickLinkOpenComments || splitRow.urstatus === 'blank line') {
-                                    divDoubleClickStyle = 'display:none;';
-                                }
+                                groupDivId += 'blankGroup' + (++blankGroup);
                             }
-                            $(`#${groupDivId}_body`).append(
-                                $('<div>').append(
-                                    $('<a>', {class:'URCE-Comments', id:'urce-cid-'+commentId, title:splitRow.comment, class:linkClass + ' URCE-Comments'}).text(splitRow.title).click(function() {
-                                        handleClickedComment(parseInt(this.id.replace(/urce-cid-/, '')), false);
+                            $('#_commentList').append(
+                                $('<fieldset>', {id:groupDivId, class:'URCE-field'}).append(
+                                    $('<legend>', {class:'URCE-legend'}).append(
+                                        $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
+                                        $('<span>', {class:'URCE-span', title:splitRow.titleMouseOver}).text(splitRow.title)
+                                    ).click(function() {
+                                        $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
+                                        $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
+                                        $($(this).siblings()[0]).toggleClass('collapse');
                                     })
                                 ).append(
-                                    $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + '\n' + splitRow.comment}).append(
-                                        $('<img>', {src:doublClickIcon, class:'URCE-doubleClickIcon', id:'urce-img-cid-'+commentId}).dblclick(function() {
-                                            handleClickedComment(parseInt(this.id.replace(/urce-img-cid-/, '')), true);
-                                        })
-                                    )
-                                ).append(
-                                    $('<br>')
-                                ),
+                                    $('<div>', {id:groupDivId+'_body'})
+                                )
                             )
-                            commentId++;
+                        } else {
+                            // SHOULD be a normal comments row, push values to arrays and build html.
+                            if (splitRow.urstatus !== 'solved' && splitRow.urstatus !== 'notidentified' && splitRow.urstatus !== 'open' && splitRow.urstatus !== 'blank line') {
+                                return reject('Your current selected list does not have a status set for ' + splitRow.title + '. Please contact list owner.');
+                            } else {
+                                _commentList[commentId] = { 'title':splitRow.title, 'comment':splitRow.comment, 'urstatus':splitRow.urstatus };
+                                if (Object.values(splitRow).indexOf('default_is_true') > -1) {
+                                    let drIdx = ssFieldNames.indexOf('DR');
+                                    let splitRowDefaultCommentsBoolean = Object.values(splitRow).slice(drIdx);
+                                    for (let boolIdx = 0; boolIdx < splitRowDefaultCommentsBoolean.length; boolIdx++) {
+                                        if (splitRowDefaultCommentsBoolean[boolIdx].toLowerCase() === 'default_is_true') {
+                                            _defaultComments[ssFieldNames[(boolIdx+drIdx)].toLowerCase()].commentNum = commentId;
+                                        }
+                                    }
+                                }
+                                let linkClass;
+                                let divDoubleClickId;
+                                let divDoubleClickClass;
+                                let divDoubleClickStyle = 'display:initial;';
+                                if (splitRow.urstatus === 'solved') {
+                                    linkClass = 'URCE-solvedLink';
+                                    divDoubleClickId = 'URCE-divDoubleClickSolved';
+                                    if (!doubleClickLinkSolvedComments) {
+                                        divDoubleClickStyle = 'display:none;';
+                                    }
+                                } else if (splitRow.urstatus === 'notidentified') {
+                                    linkClass = 'URCE-niLink';
+                                    divDoubleClickId = 'URCE-divDoubleClickNi';
+                                    if (!doubleClickLinkNiComments) {
+                                        divDoubleClickStyle = 'display:none;';
+                                    }
+                                } else {
+                                    linkClass = 'URCE-openLink';
+                                    divDoubleClickId = splitRow.title != '' ? 'URCE-divDoubleClickOpen' : 'URCE-divDoubleClickOpen-Hidden';
+                                    divDoubleClickClass = splitRow.title != '' ? 'URCE-divDoubleClick' : 'URCE-divDoubleClick-Hidden';
+                                    if (!doubleClickLinkOpenComments || splitRow.urstatus === 'blank line') {
+                                        divDoubleClickStyle = 'display:none;';
+                                    }
+                                }
+                                $(`#${groupDivId}_body`).append(
+                                    $('<div>').append(
+                                        $('<a>', {class:'URCE-Comments', id:'urce-cid-'+commentId, title:splitRow.comment, class:linkClass + ' URCE-Comments'}).text(splitRow.title).click(function() {
+                                            handleClickedComment(parseInt(this.id.replace(/urce-cid-/, '')), false);
+                                        })
+                                    ).append(
+                                        $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + '\n' + splitRow.comment}).append(
+                                            $('<img>', {src:doublClickIcon, class:'URCE-doubleClickIcon', id:'urce-img-cid-'+commentId}).dblclick(function() {
+                                                handleClickedComment(parseInt(this.id.replace(/urce-img-cid-/, '')), true);
+                                            })
+                                        )
+                                    ).append(
+                                        $('<br>')
+                                    ),
+                                )
+                                commentId++;
+                            }
                         }
                     }
                 }
+            } else {
+                reject('No data passed to the JSON processing function.');
+                return;
             }
-        } else {
-            result.error = 'No data passed to the JSON processing function.';
-        }
-        return result;
+            resolve();
+        });
     }
 
     function commentListAsync(commentListIdx) {
         commentListIdx = parseInt(commentListIdx || _settings.commentList);
         logDebug('Beginning comment list async for comment list: ' + getCommentListInfo(commentListIdx).name);
         return new Promise((resolve, reject) => {
-            let result;
-            if (getCommentListInfo(commentListIdx).type === 'static') {
-                let data = convertCommentListStatic(commentListIdx);
-                let result = processCommentListJson(data);
-                if (!result.error) {
-                    showAlertBox('fa-exclamation-circle', 'URC-E Warning', I18n.t('urce.prompts.UrFilteringDisabled'), false, "OK", "", null, null);
-                    resolve(result);
-                } else {
-                    reject(result);
+            $.get({
+                url: getCommentListInfo(commentListIdx).gSheetUrl,
+                success: function(data) {
+                    resolve(data);
+                },
+                error: function() {
+                    reject('An error occurred while loading the selected comment lists definition spreadsheet.');
                 }
-            } else {
-                $.get({
-                    url: getCommentListInfo(commentListIdx).gSheetUrl,
-                    success: function(data) {
-                        let result = processCommentListJson(data);
-                        if (!result.error) {
-                            resolve(result);
-                        } else {
-                            reject(result);
-                        }
-                    },
-                    error: function() {
-                        reject({message: 'An error occurred while loading the selected comment lists definition spreadsheet.'});
-                    }
-                });
-            }
+            });
         });
     }
-
 
     async function buildCommentList(commentListIdx) {
         commentListIdx = parseInt(commentListIdx || _settings.commentList);
         logDebug('Building comment list for: ' + getCommentListInfo(commentListIdx).name);
         _commentListLoaded = false;
-        try {
-            $('#_commentList').empty();
-            $('#_commentList').append(
-                $('<div>', {class:'URCE-commentListName'}).text(I18n.t('urce.prefs.CommentList') + ': ' + getCommentListInfo(_settings.commentList).name)
-            );
-            _commentList = [];
-            let result = await commentListAsync(commentListIdx);
-            $('#_selCommentList').val(_settings.commentList);
-            if (result.error) {
-                logError(result.error);
-                $('#_commentList').empty();
-                $('#_commentList').append(
-                    $('<div>', {class:'URCE-divLoading'}).text(I18n.t('urce.common.ErrorGeneric'))
-                );
-            } else {
-                _commentListLoaded = true;
+        let data, result;
+        $('#_commentList').empty();
+        $('#_commentList').append(
+            $('<div>', {class:'URCE-commentListName'}).text(I18n.t('urce.prefs.CommentList') + ': ' + getCommentListInfo(_settings.commentList).name)
+        );
+        _commentList = [];
+        if (getCommentListInfo(commentListIdx).type === 'static') {
+            try {
+                data = await convertCommentListStatic(commentListIdx);
+            } catch (error) {
+                return {error:error};
+            }
+            try {
+                await processCommentListJson(data);
+            } catch (error) {
+                return {error:error};
+            }
+        } else {
+            try {
+                data = await commentListAsync(commentListIdx);
+            } catch (error) {
+                return {error:error};
+            }
+            try {
+                await processCommentListJson(data);
+            } catch (error) {
+                return {error:error};
             }
         }
-        catch(err) {
-            logError(err);
-            $('#_commentList').empty();
-            $('#_commentList').append(
-                $('<div>', {class:'URCE-divLoading'}).text(I18n.t('urce.common.ErrorGeneric'))
-            );
-        }
+        $('#_selCommentList').val(_settings.commentList);
+        _commentListLoaded = true;
+        return {error:false};
+    }
+
+    function handleBuildCommentListError(error) {
+        logError(error);
+        _commentListLoaded = false;
+        $('#_commentList').empty();
+        $('#_commentList').append(
+            $('<div>', {class:'URCE-divLoading'}).text(I18n.t('urce.common.ErrorGeneric'))
+        );
     }
 
     function initCommentsTab() {
@@ -1395,7 +1422,7 @@
         showScriptInfoAlert();
     }
 
-    function init() {
+    async function init() {
         log('Initializing.');
         _wmeUserId = W.loginManager.user.id;
         loadSettingsFromStorage();
@@ -1407,19 +1434,23 @@
         log('Initialized.');
         saveSettingsToStorage();
         _urceInitialized = true;
-        buildCommentList();
-        (function waitForCommentList(tries) {
-            tries = tries || 1;
-            if (tries > 300) {
-                logError('Timed out waiting on comment list to be built.');
-            } else if (!_commentListLoaded) {
-                logDebug('Waiting for comment list to be built. Try ' + tries + ' of 300.');
-                setTimeout(waitForCommentList, 100, ++tries);
-            } else {
-                initBackgroundTasks();
-                logDebug('Loaded in ' + Math.round(performance.now() - t0) + ' ms.');
-            }
-        })();
+        let buildCommentListResult = await buildCommentList();
+        if (buildCommentListResult.error) {
+            handleBuildCommentListError(buildCommentListResult.error);
+        } else {
+            (function waitForCommentList(tries) {
+                tries = tries || 1;
+                if (tries > 300) {
+                    handleBuildCommentListError('Timed out waiting on comment list to be built.');
+                } else if (!_commentListLoaded) {
+                    logDebug('Waiting for comment list to be built. Try ' + tries + ' of 300.');
+                    setTimeout(waitForCommentList, 100, ++tries);
+                } else {
+                    initBackgroundTasks();
+                    logDebug('Loaded in ' + Math.round(performance.now() - t0) + ' ms.');
+                }
+            })();
+        }
     }
 
     function bootstrap(tries) {
