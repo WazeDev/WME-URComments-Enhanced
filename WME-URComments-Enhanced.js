@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.07.03
+// @version     2018.12.07.04
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1051,8 +1051,7 @@
             );
             _commentList = [];
             let result = await commentListAsync(commentListIdx);
-            $('#_selCommentList').prop('disabled', false).val(_settings.commentList);
-            $('#_selCommentList option[value="loading"]').remove();
+            $('#_selCommentList').val(_settings.commentList);
             if (result.error) {
                 logError(result.error);
                 $('#_commentList').empty();
@@ -1100,18 +1099,17 @@
                     $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.CommentList'))
                 ),
                 $('<div>', {class:'controls-container URCE-divCC'}).append(function() {
-                    let selList = $('<select>', {id:'_selCommentList'});
+                    let $selList = $('<select>', {id:'_selCommentList'});
                     _commentLists.forEach(cList => {
                         if (cList.status === 'disabled') {
                             return;
                         } else if (cList.idx === _settings.commentList) {
-                            selList.append($('<option>', {value:cList.idx, selected:true}).text(cList.name));
+                            $selList.append($('<option>', {value:cList.idx, selected:true}).text(cList.name));
                         } else {
-                            selList.append($('<option>', {value:cList.idx}).text(cList.name));
+                            $selList.append($('<option>', {value:cList.idx}).text(cList.name));
                         }
                     });
-                    selList.append($('<option>', {value:'loading'}).text('...' + I18n.t('urce.common.Loading') + '...'));
-                    return selList.prop('disabled', true).val('loading').change(function() {
+                    return $selList.val(_settings.commentList).change(function() {
                         changeCommentList($(this).val());
                     });
                 }),
