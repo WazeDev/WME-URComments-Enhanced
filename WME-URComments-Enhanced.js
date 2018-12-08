@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.07.04
+// @version     2018.12.08.01
 // @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -113,6 +113,17 @@
         let convertUrcSettings = false;
         let loadedSettings = $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
         if (loadedSettings && loadedSettings.lastVersion) {
+            if (Object.keys(loadedSettings)[0].substring(0,1) === 'C') {
+                logDebug('Converting settings keys to correct case.');
+                let tempSettings = Object.entries(loadedSettings);
+                let tempSettings2 = {};
+                for (let idx = 0; idx < tempSettings.length; idx++) {
+                    let key = tempSettings[idx][0].substring(0,1).toLowerCase();
+                    key += tempSettings[idx][0].substring(1);
+                    tempSettings2[key] = tempSettings[idx][1];
+                }
+                loadedSettings = tempSettings2;
+            }
             _settings = loadedSettings;
         } else {
             if (localStorage.getItem('URCommentVersion') > '1.8.9') {
@@ -883,7 +894,6 @@
             let doubleClickLinkOpenComments = _settings.doubleClickLinkOpenComments;
             let doubleClickLinkSolvedComments = _settings.doubleClickLinkSolvedComments;
             for (let entryIdx = 0; entryIdx < data.feed.entry.length && !result.error; entryIdx++) {
-                let rObj = {};
                 let cellValue = data.feed.entry[entryIdx].title.$t;
                 if (entryIdx === 0) {
                     if (SCRIPT_VERSION < cellValue) {
