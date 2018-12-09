@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.08.02
-// @description This script is for replying to user requests the goal is to speed up and simplify the process. It is a fork of rickzabel's original script.
+// @version     2018.12.09.01
+// @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
 // @require     https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
@@ -11,6 +11,13 @@
 // @icon        data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC0AAAAwCAYAAACFUvPfAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNS1jMDIxIDc5LjE1NTc3MiwgMjAxNC8wMS8xMy0xOTo0NDowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTQgKFdpbmRvd3MpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjQyQjZDNjdEODYzODExRTRBRDY0Q0I2QjA1MjU4N0EyIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOjQyQjZDNjdFODYzODExRTRBRDY0Q0I2QjA1MjU4N0EyIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6NDJCNkM2N0I4NjM4MTFFNEFENjRDQjZCMDUyNTg3QTIiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6NDJCNkM2N0M4NjM4MTFFNEFENjRDQjZCMDUyNTg3QTIiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz6++Bk8AAANOElEQVR42tRZ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
 // @contributionURL https://github.com/WazeDev/Thank-The-Authors
 // ==/UserScript==
+
+/*
+ * Original concept and code for URComments (URC) was written by rickzabel and licensed under MIT/BSD/X11.
+ * This script is a ground-up rewrite of URC. Special thanks is definitely given to rickzabel for his hard
+ * work and dedication to the original script. You can reach him at rickzabel@gmail.com.
+ *
+ */
 
 /* global GM_info */
 /* global W */
@@ -25,7 +32,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.','Official beta realase 1.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.','Official beta realase 2.' ];
     const doublClickIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     let _settings = {};
@@ -55,28 +62,6 @@
     let _commentListLoaded = false;
     let _alertBoxInUse = false;
     let _restoreZoom, _$restoreTab, _restoreTabPosition, t0, _wmeUserId;
-    let _urLayerObserver = new MutationObserver(function(mutations) {
-        mutations.forEach((mutation) => {
-            if (mutation.type === 'attributes') {
-                if ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList && mutation.target.classList.contains('selected')) {
-                    let urId = mutation.target.getAttribute('data-id');
-                    if (urId > 0) {
-                        handleUpdateRequestContainer(urId);
-                    }
-                }
-            } else if (mutation.type === 'childList') {
-                for (let idx = 0; idx < mutation.addedNodes.length; idx++) {
-                    let addedNode = mutation.addedNodes[idx];
-                    if ($(addedNode).hasClass('map-problem') && $(addedNode).hasClass('user-generated') && $(addedNode).hasClass('map-marker')) {
-                        let urId = addedNode.getAttribute('data-id');
-                        if (urId > 0) {
-                            handleUrMapMarker(urId, $(addedNode));
-                        }
-                    }
-                }
-            }
-        });
-    });
 
     const _commentLists = [{idx:0, name:'CommentTeam', status:'enabled', oldVarName: 'CommentTeam', listOwner: 'CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/oz10sdb/public/values?alt=json' },
                            {idx:1, name:'Custom', status:'enabled', oldVarName:'Custom', listOwner: 'Custom', gSheetUrl: '', type: 'static' },
@@ -282,12 +267,15 @@
         saveSettingsToStorage();
     }
 
-    function changeCommentList(commentListIdx) {
+    async function changeCommentList(commentListIdx) {
         commentListIdx = parseInt(commentListIdx || 0);
         if (commentListIdx != _settings.commentList) {
             logDebug('Switching comment list from ' + _commentLists[_settings.commentList].name + ' to ' + _commentLists[commentListIdx].name + '.');
             _settings.commentList = parseInt(commentListIdx);
-            buildCommentList(commentListIdx);
+            let buildCommentListResult = await buildCommentList(commentListIdx);
+            if (buildCommentListResult.error) {
+                handleBuildCommentListError(buildCommentListResult.error);
+            }
             saveSettingsToStorage();
         }
     }
@@ -342,166 +330,240 @@
         }
     }
 
-    async function handleUrMapMarker(urId, $addedNode, tries) {
-        tries = tries || 1;
-/*        if (_settings.enableUrceUrFiltering && $addedNode) {
-            if (sessionStorage.UROverview_hasActiveURFilters) {
-                showAlertBox('fa-exclamation-circle', 'URC-E Error', I18n.t('urce.prompts.UrFilteringDisabled'), false, "OK", "", null, null);
-                _settings.enableUrceUrFiltering = false;
-                $('#_cbEnableUrceUrFiltering').prop('checked', false);
-                saveSettingsToStorage();
-                return;
-            }
-        } */
-        if (!$addedNode) $addedNode = $(`[data-id="${urId}"]`);
-        try {
-            var urSessionObj = await W.model.updateRequestSessions.getAsync([urId]);
-        } catch(err) {
-            let msg = 'Error retrieving urSessions async for urId ' + urId + ' on try ' + tries + '.';
-            if (tries < 50) msg += ' Retrying.';
-            logDebug(msg);
-        }
-        if (tries > 49) {
-            logDebug('50 tries at getting urSession async have elapsed. Stopping loop.');
-            return;
-        } else if (!urSessionObj) {
-            setTimeout(handleUrMapMarker, 100, urId, $addedNode, ++tries);
-            return;
-        }
-        let urData = urSessionObj[0];
-        let mUrObj = W.model.mapUpdateRequests.getByIds([urId])[0];
-        let urDesc = mUrObj.attributes.description;
-        let urOpen = mUrObj.attributes.open;
-        let urReminderSent = mUrObj.attributes.reminderSent;
-        let urCommentCount = urData.comments.length;
-        let wmeUsername = W.model.loginManager.user.userName;
-        let needsReminder = false;
-        let needsClosed = false;
-        let hideUr = false;
-        let fullText, tagType, commentDaysOld, lastCommentBy;
-        let tagRegex = '/.*\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|DIFFICULT)\].*/gi';
-        if (urCommentCount > 0) {
-            commentDaysOld = uroDateToDays(urData.comments[(urCommentCount-1)].createdOn);
-            lastCommentBy = urData.comments[(urCommentCount-1)].userID;
-            fullText = urDesc ? urDesc + ' ' : '';
-            for (let idx = 0; idx < urCommentCount; idx++) {
-                fullText += urData.comments[idx].text + ' ';
-            }
-            if (_settings.onlyShowMyUrs && _wmeUserId !== lastCommentBy) {
-                hideUr = true;
-            }
-            if (_settings.hideUrsWithUserReplies && lastCommentBy < 1) {
-                hideUr = true;
-            }
-            if (urCommentCount === 1 && commentDaysOld > (_settings.reminderDays-1) && lastCommentBy > 1) {
-                if (_wmeUserId === lastCommentBy && _settings.autoSendReminders && !urReminderSent) {
-                    showWmeMessage(I18n.t('urce.prompts.ReminderMessageAuto') + ' ' + urId, 3000);
-                    W.model.updateRequestSessions.objects[urId].addComment(_defaultComments.dr.commentNum);
-                    W.model.mapUpdateRequests.objects[urId].attributes.reminderSent = 'true';
-                    if (_settings.unfollowUrAfterSend) {
-                        W.model.updateRequestSessions.objects[urId].setFollowing('false');
-                    }
-                    if (_settings.hideWaiting) {
-                        hideUr = true;
+    function updateMarkerCount(urIds) {
+    }
+
+    function getUrSessionsAsync(urIds, tries) {
+        return new Promise((resolve,reject) => {
+            (async function retry(urIds, tries) {
+                tries = tries || 1;
+                let urSessionsObj;
+                try {
+                    urSessionsObj = await W.model.updateRequestSessions.getAsync(urIds);
+                } catch(error) {
+                    let msg = 'Error retreiving urSessions async for urIds: ' + urIds.join(', ') + ' on try ' + tries + '.';
+                    if (tries < 50) msg += ' Retrying.';
+                    logDebug(msg);
+                }
+                if (tries > 49 && !urSessionsObj) {
+                    reject('50 tries at getting urSessions async have elapsed. Stopping loop.');
+                } else if (!urSessionsObj) {
+                    setTimeout(retry, 100, urIds, ++tries);
+                } else {
+                    resolve(urSessionsObj);
+                }
+            })(urIds, null);
+        });
+    }
+
+    function getMapUrsAsync(urIds, tries) {
+        return new Promise((resolve,reject) => {
+            (async function retry(urIds, tries) {
+                tries = tries || 1;
+                let mapUrsObj;
+                try {
+                    mapUrsObj = await W.model.mapUpdateRequests.getByIds(urIds);
+                } catch(error) {
+                    let msg = 'Error retrives mapUpdateRequests async for urIds: ' + urIds.join(', ') + ' on try ' + tries + '.';
+                    if (tries < 50) msg += ' Retrying.';
+                    logDebug(msg);
+                }
+                if (tries > 49 && !mapUrsObj) {
+                    reject('50 tries at getting mapUpdateRequests async have elapsed. Stopping loop.');
+                } else if (!mapUrsObj) {
+                    setTimeout(retry, 100, urIds, ++tries);
+                } else {
+                    resolve(mapUrsObj);
+                }
+            })(urIds, null);
+        });
+    }
+
+    function updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj) {
+        const tagRegex = '/.*\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|DIFFICULT)\].*/gi';
+        for (let idx = 0; idx < urIds.length; idx++) {
+            const urId = urIds[idx];
+            const $node = $(`[data-id="${urId}"]`);
+            if (_settings.enableUrPillCounts) {
+                const urData = urSessionsObj[idx];
+                const mUrObj = mapUrsObj[idx];
+                const urDesc = mUrObj.attributes.description;
+                const urCommentCount = urData.comments.length;
+                const wmeUsername = W.model.loginManager.user.userName;
+                let commentDaysOld, lastCommentBy, fullText, tagType, urCountBackground, tagContent, tagOffset;
+                let commentUserIds = [];
+                if (urCommentCount > 0) {
+                    commentDaysOld = uroDateToDays(urData.comments[(urCommentCount-1)].createdOn);
+                    lastCommentBy = urData.comments[(urCommentCount-1)].userID;
+                    fullText = urDesc ? urDesc + ' ' : '';
+                    for (let idx = 0; idx < urCommentCount; idx++) {
+                        fullText += urData.comments[idx].text + ' ';
+                        commentUserIds.push(urData.comments[idx].userID);
                     }
                 } else {
-                    needsReminder = true;
+                    fullText = urDesc ? urDesc : '';
+                    commentDaysOld = uroDateToDays(mUrObj.attributes.driveDate);
                 }
-            }
-            if (urCommentCount > 1 && commentDaysOld > (_settings.closeDays-1) && lastCommentBy > 1) {
-                if ((commentDaysOld > (_settings.closeDays + _settings.reminderDays)) && _wmeUserId !== lastCommentBy) {
-                    if (_settings.showOthersUrsPastReminderClose) {
-                        hideUr = false;
-                    }
+                tagType = (fullText.search(tagRegex) > -1) ? fullText.replace(tagRegex, '$1') : null;
+                if (!tagType || _settings.replaceTagNameWithEditorName) {
+                    const regex = new RegExp(' ' + wmeUsername + ' ', 'gi');
+                    tagType = fullText.search(regex) > -1 ? wmeUsername : tagType;
                 }
-                needsClosed = true;
-            } else if (urCommentCount > 1 && commentDaysOld < (_settings.closeDays-1) && lastCommentBy > 1) {
-                if (_settings.hideWaiting) {
-                    hideUr = true;
+                urCountBackground = '#FFFF99';
+                const curEditorHasCommented = commentUserIds.indexOf(_wmeUserId) > -1 ? true : false;
+                if (_wmeUserId === lastCommentBy) urCountBackground = '#FFFFFF';
+                if (curEditorHasCommented && lastCommentBy < 1) urCountBackground = '#79B5C7';
+                if (_wmeUserId !== lastCommentBy && lastCommentBy < 1 && commentDaysOld < _settings.closeDays) urCountBackground = '#FFCC99';
+                if (_wmeUserId !== lastCommentBy && lastCommentBy > 1 && commentDaysOld > (_settings.closeDays - 1)) urCountBackground = '#FF8B8B';
+                if (tagType) urCountBackground = '#CCCCCC';
+                if (commentDaysOld === null || commentDaysOld === '' || commentDaysOld === undefined) commentDaysOld = (urCommentCount === '0') ? '0' : '?';
+                if (tagType && _settings.doNotShowTagNameOnPill) {
+                    tagContent = urCommentCount + 'c ' + commentDaysOld + 'd';
+                    tagOffset = Math.round(tagContent.length * 2.28);
+                } else if (tagType) {
+                    tagContent = tagType + ' ' + urCommentCount + 'c';
+                    tagOffset = (tagContent.length < 10) ? Math.round(tagContent.length * 2.86) : Math.round(tagContent.length * 3.33);
+                } else {
+                    tagContent = urCommentCount + 'c ' + commentDaysOld + 'd';
+                    tagOffset = Math.round(tagContent.length * 2.28);
                 }
-            } else if (urCommentCount > 1 && commentDaysOld > (_settings.closeDays-1) && lastCommentBy > 1) {
-                if (_settings.hideUrsCloseNeeded) {
-                    hideUr = true;
-                }
-            }
-        } else {
-            fullText = urDesc ? urDesc : '';
-            tagType = (fullText.search(tagRegex) > -1) ? fullText.replace(tagRegex, '$1') : null;
-            if (!tagType) {
-                let regex = new RegExp(' ' + wmeUsername + ' ', 'gi');
-                tagType = fullText.search(regex) > -1 ? wmeUsername : null;
-            }
-            if (tagType && needsClosed) {
-                needsClosed = false;
-                hideUr = false;
-            }
-        }
-        if (!urOpen && _settings.hideClosedUrs) {
-            hideUr = true;
-        }
-        if (_settings.hideTaggedUrs && tagType) {
-            hideUr = true;
-        }
-        if (_settings.hideUrsWoCommentsWithDescriptions && urDesc && urCommentCount === 0) {
-            hideUr = true;
-        }
-        if (_settings.hideUrsWoCommentsOrDescriptions && !urDesc && urCommentCount === 0) {
-            hideUr = true;
-        }
-        if (_settings.hideUrsWoComments && urCommentCount === 0) {
-            hideUr = true;
-        }
-        logDebug('******* enableUrPillCounts: ' + _settings.enableUrPillCounts);
-        logDebug('******* urId: ' + urId);
-        if (hideUr) {
-            logDebug('Hiding UR marker for UR: ' + urId);
-            $($addedNode).hide();
-        } else if (_settings.enableUrPillCounts) {
-            if (urCommentCount < 1) {
-                commentDaysOld = uroDateToDays(mUrObj.attributes.driveDate);
-            }
-            let urCountBackground = (_wmeUserId === lastCommentBy) ? '#FFFFFF' : '#FFFF99';
-            if (lastCommentBy < 1) {
-                urCountBackground = '#FFCC99';
-            } else if ((commentDaysOld > (_settings.closeDays + _settings.reminderDays)) && _wmeUserId === lastCommentBy) {
-                urCountBackground = '#FF8B8B';
-            }
-            if (_wmeUserId !== lastCommentBy && urCommentCount > 0 && (commentDaysOld > (_settings.closeDays + _settings.reminderDays - 1)) && lastCommentBy > 1) {
-                urCountBackground = '#FF8B8B';
-            }
-            if (commentDaysOld === null || commentDaysOld === '' || commentDaysOld === undefined) commentDaysOld = (urCommentCount === '0') ? '0' : '?';
-            let tag;
-            if (tagType && _settings.doNotShowTagNameOnPill) {
-                tag = urCommentCount + 'c ' + commentDaysOld + 'd';
-                urCountBackground = '#CCCCCC';
-            } else if (tagType) {
-                tag = tagType + ' ' + urCommentCount + 'c';
-            } else {
-                tag = urCommentCount + 'c ' + commentDaysOld + 'd';
-            }
-            if (tagType != '' || urCommentCount > 0) {
-                let tagOffset = (tag.length < 10) ? (tag.length * 1.4) : (tag.length * 2.3);
                 tagOffset = '-' + tagOffset + 'px';
                 if (urCountBackground === '#CCCCCC') {
-                    $($addedNode).css({'z-index':'999'});
+                    $($node).css({'z-index':'999'});
                 } else if (urCountBackground === '#FFFFFF'|| urCountBackground === '#79B5C7') {
-                    $($addedNode).css({'z-index':'998'});
+                    $($node).css({'z-index':'998'});
                 } else if (urCountBackground === '#FF8B8B') {
-                    $($addedNode).css({'z-index':'997'});
+                    $($node).css({'z-index':'997'});
                 }
-                if (!$($addedNode).hasClass('urceCounts')) {
-                    logDebug('******* HERE ********');
-                    $($addedNode).append(
-                        $('<div>').css('clear', 'both').css('margin-bottom', '10px').append(
-                            $('<div>').html(tag).css({'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}).addClass('urceCounts')
+                if (!$($node).hasClass('urceCounts')) {
+                    logDebug('Adding marker counters on UR marker for UR: ' + urId);
+                    $($node).append(
+                        $('<div>', {id:`urceCounters-${urId}`}).css('clear', 'both').css('margin-bottom', '10px').append(
+                            $('<div>').html(tagContent).css({'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}).addClass('urceCounts')
                         )
                     );
                 } else {
-                    logDebug('******* OR HERE ********');
-                    $($addedNode).html(tag).css({'background-color':urCountBackground, 'right':tagOffset});
+                    logDebug('Updating marker counters on UR marker for UR: ' + urId);
+                    $($node).html(tagContent).css({'background-color':urCountBackground, 'right':tagOffset});
                 }
+            } else {
+                logDebug('Removing marker counters on UR marker for UR: ' + urId);
+                $(`#urceCounters-${urId}`).remove();
             }
         }
+    }
+
+    function filterUrMapMarkers(urIds, urSessionsObj, mapUrsObj) {
+        const tagRegex = '/.*\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|DIFFICULT)\].*/gi';
+        for (let idx = 0; idx < urIds.length; idx++) {
+            const urId = urIds[idx];
+            const $node = $(`[data-id="${urId}"]`);
+            if (_settings.enableUrceUrFiltering || _settings.autoSendReminders) {
+                const urData = urSessionsObj[idx];
+                const mUrObj = mapUrsObj[idx];
+                const urDesc = mUrObj.attributes.description;
+                const urOpen = mUrObj.attributes.open;
+                const urReminderSent = mUrObj.attributes.reminderSent;
+                const urCommentCount = urData.comments.length;
+                const wmeUsername = W.model.loginManager.user.userName;
+                let commentDaysOld, lastCommentBy, fullText, tagType;
+                let commentUserIds = [];
+                let hideUr = false;
+                let needsReminder = false;
+                let needsClosed = false;
+                let urWaiting = false;
+                if (!urOpen) {
+                    if (_settings.hideClosedUrs) hideUr = true;
+                } else {
+                    if (urCommentCount > 0) {
+                        commentDaysOld = uroDateToDays(urData.comments[(urCommentCount-1)].createdOn);
+                        lastCommentBy = urData.comments[(urCommentCount-1)].userID;
+                        fullText = urDesc ? urDesc + ' ' : '';
+                        for (let idx = 0; idx < urCommentCount; idx++) {
+                            fullText += urData.comments[idx].text + ' ';
+                            commentUserIds.push(urData.comments[idx].userID);
+                        }
+                        if (urCommentCount === 1) {
+                            if (lastCommentBy > 1) {
+                                if (commentDaysOld > (_settings.reminderDays - 1)) {
+                                    if (_wmeUserId === lastCommentBy && !urReminderSent && _settings.autoSendReminders) {
+                                        showWmeMessage(I18n.t('urce.prompts.ReminderMessageAuto') + ' ' + urId, 3000);
+                                        W.model.updateRequestSessions.objects[urId].addComment(_defaultComments.dr.commentNum);
+                                        W.model.mapUpdateRequests.objects[urId].attributes.reminderSent = 'true';
+                                        if (_settings.unfollowUrAfterSend) W.model.updateRequestSessions.objects[urId].setFollowing('false');
+                                        urWaiting = true;
+                                    } else {
+                                        needsReminder = true;
+                                    }
+                                } else {
+                                    urWaiting = true;
+                                }
+                            }
+                        }
+                        if (urCommentCount > 1) {
+                            if (lastCommentBy > 1) {
+                                if (commentDaysOld > (_settings.closeDays - 1)) {
+                                    if (_wmeUserId === lastCommentBy) {
+                                        needsClosed = true;
+                                    } else {
+                                        if (commentDaysOld < (_settings.reminderDays + _settings.closeDays)) urWaiting = true;
+                                    }
+                                } else {
+                                    urWaiting = true;
+                                }
+                            }
+                        }
+                    } else {
+                        fullText = urDesc ? urDesc : '';
+                        commentDaysOld = uroDateToDays(mUrObj.attributes.driveDate);
+                    }
+                    tagType = (fullText.search(tagRegex) > -1) ? fullText.replace(tagRegex, '$1') : null;
+                    if (!tagType) {
+                        const regex = new RegExp(' ' + wmeUsername + ' ', 'gi');
+                        tagType = fullText.search(regex) > -1 ? wmeUsername : null;
+                    }
+                    if ((_settings.hideTaggedUrs && tagType) ||
+                        (_settings.hideWaiting && urWaiting) ||
+                        (_settings.needsClosed && needsClosed) ||
+                        (_settings.hideUrsReminderNeeded && needsReminder) ||
+                        (_settings.hideUrsWithUserReplies && lastCommentBy < 1) ||
+                        (_settings.hideUrsWoComments && urCommentCount === 0) ||
+                        (_settings.hideUrsWoCommentsOrDescriptions && !urDesc && urCommentCount === 0) ||
+                        (_settings.hideUrsWoCommentsWithDescriptions && urDesc && urCommentCount === 0) ||
+                        (_settings.onlyShowMyUrs && commentUserIds.indexOf(_wmeUserId) === -1)) hideUr = true;
+                    // Put this here so it can be toggled separately from onlyShowMy and it overrides other hiding.
+                    if (_settings.showOthersUrsPastReminderClose && commentUserIds.indexOf(_wmeUserId) === -1 && commentDaysOld > (_settings.reminderDays + _settings.CloseDays)) hideUr = false;
+                }
+                if (hideUr && _settings.enableUrceUrFiltering) {
+                    logDebug('Hiding UR marker for UR: ' + urId);
+                    $($node).hide();
+                } else {
+                    logDebug('Unhiding UR marker for UR: ' + urId);
+                    $($node).show();
+                }
+            } else {
+                logDebug('Unhiding UR marker for UR: ' + urId);
+                $($node).show();
+            }
+        }
+    }
+
+    async function handleUrMapMarkers(urIds) {
+        let urSessionsObj, mapUrsObj;
+        try {
+            urSessionsObj = await getUrSessionsAsync(urIds);
+        } catch(error) {
+            logDebug(error);
+            return;
+        }
+        try {
+            mapUrsObj = await getMapUrsAsync(urIds);
+        } catch(error) {
+            logDebug(error);
+            return;
+        }
+        filterUrMapMarkers(urIds, urSessionsObj, mapUrsObj);
+        updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj);
     }
 
     async function handleUpdateRequestContainer(urId, tries) {
@@ -544,7 +606,7 @@
         });
         logDebug('Setting event hook to refresh map update requesrt marker when sending comment.');
         $('.new-comment-form .send-button').click(function() {
-            setTimeout(handleUrMapMarker, 500, urId, null);
+            setTimeout(handleUrMapMarkers, 500, [urId], null);
         });
 
         logDebug('Waiting 250ms before scrolling to bottom of the conversation list to give it time to load.');
@@ -706,26 +768,81 @@
         });
     }
 
+    async function refreshUrLayerMarkers() {
+        logDebug('Refreshing UR marker counters and visibility.');
+        let urList = [];
+        let urMapMarkerIds = [];
+        for (let urId in W.map.updateRequestLayer.markers) {
+            if (urMapMarkerIds.indexOf(urId) === -1) {
+                urMapMarkerIds.push(urId);
+            }
+        }
+        if (urMapMarkerIds.length > 0) {
+            try {
+                await handleUrMapMarkers(urMapMarkerIds);
+            } catch(error) {
+                logError(error);
+            }
+        }
+    }
+
     function handleInitialUrLayer() {
-        return new Promise((resolve) => {
+        return new Promise(async (resolve,reject) => {
             logDebug('Checking for UR markers already present before URC-E completed initialization.');
             let urList = [];
+            let urMapMarkerIds = [];
             for (let urId in W.map.updateRequestLayer.markers) {
-                handleUrMapMarker(urId, null)
+                if (urMapMarkerIds.indexOf(urId) === -1) {
+                    urMapMarkerIds.push(urId);
+                }
+            }
+            if (urMapMarkerIds.length > 0) {
+                try {
+                    await handleUrMapMarkers(urMapMarkerIds);
+                } catch(error) {
+                    reject(error);
+                    return;
+                }
             }
             resolve();
         });
     }
 
     function setupMutationObservers(status) {
-        if (status === 'enable' && !_urLayerObserver.isObserving) {
+        let urLayerObserver = new MutationObserver(async function(mutations) {
+            let urMapMarkerIds = [];
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes') {
+                    if ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList && mutation.target.classList.contains('selected')) {
+                        let urId = mutation.target.getAttribute('data-id');
+                        if (urId > 0) {
+                            handleUpdateRequestContainer(urId);
+                        }
+                    }
+                } else if (mutation.type === 'childList') {
+                    for (let idx = 0; idx < mutation.addedNodes.length; idx++) {
+                        let addedNode = mutation.addedNodes[idx];
+                        if ($(addedNode).hasClass('map-problem') && $(addedNode).hasClass('user-generated') && $(addedNode).hasClass('map-marker')) {
+                            let urId = addedNode.getAttribute('data-id');
+                            if (urId > 0 && urMapMarkerIds.indexOf(urId) === -1) {
+                                urMapMarkerIds.push(urId);
+                            }
+                        }
+                    }
+                }
+            });
+            if (urMapMarkerIds.length > 0) {
+                handleUrMapMarkers(urMapMarkerIds);
+            }
+        });
+        if (status === 'enable' && !urLayerObserver.isObserving) {
             logDebug('Enabling MOs.');
-            _urLayerObserver.observe(W.map.updateRequestLayer.div, { childList: true, attributes: true, characterData: true, subtree: true });
-            _urLayerObserver.isObserving = true;
-        } else if (status === 'disable' && _urLayerObserver.isObserving) {
+            urLayerObserver.observe(W.map.updateRequestLayer.div, { childList: true, attributes: true, characterData: true, subtree: true });
+            urLayerObserver.isObserving = true;
+        } else if (status === 'disable' && urLayerObserver.isObserving) {
             logDebug('Disabling MOs.');
-            _urLayerObserver.disconnect();
-            _urLayerObserver.isObserving = false;
+            urLayerObserver.disconnect();
+            urLayerObserver.isObserving = false;
         }
     }
 
@@ -789,7 +906,12 @@
             }
         });
         if (parentLayerEnabled && mapIssuesEnabled && (openUrsEnabled || closedUrsEnabled)) {
-            await handleInitialUrLayer();
+            try {
+                await handleInitialUrLayer();
+            } catch(error) {
+                logError(error);
+                // Don't need to return here, go ahead and setup the MOs.
+            }
             setupMutationObservers('enable')
         }
     }
@@ -1136,7 +1258,7 @@
                     $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.CommentList'))
                 ),
                 $('<div>', {class:'controls-container URCE-divCC'}).append(function() {
-                    let $selList = $('<select>', {id:'_selCommentList'});
+                    let $selList = $('<select>', {id:'_selCommentList', urceprefs:'commentList'});
                     _commentLists.forEach(cList => {
                         if (cList.status === 'disabled') {
                             return;
@@ -1157,10 +1279,10 @@
                     $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.UrcePrefs'))
                 ),
                 $('<div>', {class:'controls-container URCE-divCC'}).append(
-                    $('<input>', {type:'checkbox', id:'_cbAutoCenterOnUr'}).change(function() { changeSetting('autoCenterOnUr', $(this).is(':checked')); }).prop('checked', _settings.autoCenterOnUr),
+                    $('<input>', {type:'checkbox', id:'_cbAutoCenterOnUr', urceprefs:'urce'}).change(function() { changeSetting('autoCenterOnUr', $(this).is(':checked')); }).prop('checked', _settings.autoCenterOnUr),
                     $('<label>', {for:'_cbAutoCenterOnUr', title:I18n.t('urce.prefs.AutoCenterOnUrTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoCenterOnUr')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoClickOpenSolvedNi'}).change(function() {
+                    $('<input>', {type:'checkbox', id:'_cbAutoClickOpenSolvedNi', urceprefs:'urce'}).change(function() {
                         _settings.autoClickOpenSolvedNi = $(this).is(':checked');
                         if (!$(this).is(':checked')) {
                             if (isChecked('_cbAutoSaveAfterSolvedOrNiComment')) {
@@ -1184,10 +1306,10 @@
                     }).prop('checked', _settings.autoClickOpenSolvedNi),
                     $('<label>', {for:'_cbAutoClickOpenSolvedNi', title:I18n.t('urce.prefs.AutoClickOpenSolvedNiTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoClickOpenSolvedNi')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoCloseCommentWindow'}).change(function() { changeSetting('autoCloseCommentWindow', $(this).is(':checked')); }).prop('checked', _settings.autoCloseCommentWindow),
+                    $('<input>', {type:'checkbox', id:'_cbAutoCloseCommentWindow', urceprefs:'urce'}).change(function() { changeSetting('autoCloseCommentWindow', $(this).is(':checked')); }).prop('checked', _settings.autoCloseCommentWindow),
                     $('<label>', {for:'_cbAutoCloseCommentWindow', title:I18n.t('urce.prefs.AutoCloseCommentWindowTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoCloseCommentWindow')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSaveAfterSolvedOrNiComment'}).change(function() {
+                    $('<input>', {type:'checkbox', id:'_cbAutoSaveAfterSolvedOrNiComment', urceprefs:'urce'}).change(function() {
                         _settings.autoSaveAfterSolvedOrNiComment = $(this).is(':checked');
                         if ($(this).is(':checked') && !isChecked('_cbAutoClickOpenSolvedNi')) {
                             _settings.autoClickOpenSolvedNi = true;
@@ -1197,7 +1319,7 @@
                     }).prop('checked', _settings.autoSaveAfterSolvedOrNiComment),
                     $('<label>', {for:'_cbAutoSaveAfterSolvedOrNiComment', title:I18n.t('urce.prefs.AutoSaveAfterSolvedOrNiCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSaveAfterSolvedOrNiComment')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSendReminders'}).change(function() { changeSetting('autoSendReminders', $(this).is(':checked')); }).prop('checked', _settings.autoSendReminders),
+                    $('<input>', {type:'checkbox', id:'_cbAutoSendReminders', urceprefs:'urce'}).change(function() { changeSetting('autoSendReminders', $(this).is(':checked')); }).prop('checked', _settings.autoSendReminders),
                     $('<label>', {for:'_cbAutoSendReminders', title:I18n.t('urce.prefs.AutoSendRemindersTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSendReminders')),
                     $('<div>', {class:'URCE-divWarning URCE-divWarningPre'}).text('(').append(
                         $('<div>', {class:'URCE-divWarning URCE-divWarningTitle', title:I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}).text(I18n.t('urce.prefs.AutoSendRemindersWarning')),
@@ -1205,28 +1327,25 @@
                         $('<div>', {class:'URCE-divWarning'}).text(')')
                     ),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSetNewUrComment'}).change(function() { changeSetting('autoSetNewUrComment', $(this).is(':checked')); }).prop('checked', _settings.autoSetNewUrComment),
+                    $('<input>', {type:'checkbox', id:'_cbAutoSetNewUrComment', urceprefs:'urce'}).change(function() { changeSetting('autoSetNewUrComment', $(this).is(':checked')); }).prop('checked', _settings.autoSetNewUrComment),
                     $('<label>', {for:'_cbAutoSetNewUrComment', title:I18n.t('urce.prefs.AutoSetNewUrCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSetNewUrComment')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSetReminderUrComment'}).change(function() { changeSetting('autoSetReminderUrComment', $(this).is(':checked')); }).prop('checked', _settings.autoSetReminderUrComment),
+                    $('<input>', {type:'checkbox', id:'_cbAutoSetReminderUrComment', urceprefs:'urce'}).change(function() { changeSetting('autoSetReminderUrComment', $(this).is(':checked')); }).prop('checked', _settings.autoSetReminderUrComment),
                     $('<label>', {for:'_cbAutoSetReminderUrComment', title:I18n.t('urce.prefs.AutoSetReminderUrCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSetReminderUrComment')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSwitchToUrCommentsTab'}).change(function() { changeSetting('autoSwitchToUrCommentsTab', $(this).is(':checked')); }).prop('checked', _settings.autoSwitchToUrCommentsTab),
+                    $('<input>', {type:'checkbox', id:'_cbAutoSwitchToUrCommentsTab', urceprefs:'urce'}).change(function() { changeSetting('autoSwitchToUrCommentsTab', $(this).is(':checked')); }).prop('checked', _settings.autoSwitchToUrCommentsTab),
                     $('<label>', {for:'_cbAutoSwitchToUrCommentsTab', title:I18n.t('urce.prefs.AutoSwitchToUrCommentsTabTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSwitchToUrCommentsTab')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoZoomInOnNewUr'}).change(function() { changeSetting('autoZoomInOnNewUr', $(this).is(':checked')); }).prop('checked', _settings.autoZoomInOnNewUr),
+                    $('<input>', {type:'checkbox', id:'_cbAutoZoomInOnNewUr', urceprefs:'urce'}).change(function() { changeSetting('autoZoomInOnNewUr', $(this).is(':checked')); }).prop('checked', _settings.autoZoomInOnNewUr),
                     $('<label>', {for:'_cbAutoZoomInOnNewUr', title:I18n.t('urce.prefs.AutoZoomInOnNewUrTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoZoomInOnNewUr')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoZoomOutAfterComment'}).change(function() { changeSetting('autoZoomOutAfterComment', $(this).is(':checked')); }).prop('checked', _settings.autoZoomOutAfterComment),
+                    $('<input>', {type:'checkbox', id:'_cbAutoZoomOutAfterComment', urceprefs:'urce'}).change(function() { changeSetting('autoZoomOutAfterComment', $(this).is(':checked')); }).prop('checked', _settings.autoZoomOutAfterComment),
                     $('<label>', {for:'_cbAutoZoomOutAfterComment', title:I18n.t('urce.prefs.AutoZoomOutAfterCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoZoomOutAfterComment')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDisableDoneNextButtons'}).change(function() { changeSetting('disableDoneNextButtons', $(this).is(':checked')); }).prop('checked', _settings.disableDoneNextButtons),
+                    $('<input>', {type:'checkbox', id:'_cbDisableDoneNextButtons', urceprefs:'urce'}).change(function() { changeSetting('disableDoneNextButtons', $(this).is(':checked')); }).prop('checked', _settings.disableDoneNextButtons),
                     $('<label>', {for:'_cbDisableDoneNextButtons', title:I18n.t('urce.prefs.DisableDoneNextButtonsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DisableDoneNextButtons')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoNotShowTagNameOnPill'}).change(function() { changeSetting('doNotShowTagNameOnPill', $(this).is(':checked')); }).prop('checked', _settings.doNotShowTagNameOnPill),
-                    $('<label>', {for:'_cbDoNotShowTagNameOnPill', title:I18n.t('urce.prefs.DoNotShowTagNameOnPillTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoNotShowTagNameOnPill')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkNiComments'}).change(function() {
+                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkNiComments', urceprefs:'urce'}).change(function() {
                         _settings.doubleClickLinkNiComments = $(this).is(':checked');
                         if (!$(this).is(':checked')) {
                             $('div#URCE-divDoubleClickNi').hide();
@@ -1241,7 +1360,7 @@
                     }).prop('checked', _settings.doubleClickLinkNiComments),
                     $('<label>', {for:'_cbDoubleClickLinkNiComments', title:I18n.t('urce.prefs.DoubleClickLinkNiCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkNiComments')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkOpenComments'}).change(function() {
+                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkOpenComments', urceprefs:'urce'}).change(function() {
                         _settings.doubleClickLinkOpenComments = $(this).is(':checked');
                         if (!$(this).is(':checked')) {
                             $('div#URCE-divDoubleClickOpen').hide();
@@ -1256,7 +1375,7 @@
                     }).prop('checked', _settings.doubleClickLinkOpenComments),
                     $('<label>', {for:'_cbDoubleClickLinkOpenComments', title:I18n.t('urce.prefs.DoubleClickLinkOpenCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkOpenComments')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkSolvedComments'}).change(function() {
+                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkSolvedComments', urceprefs:'urce'}).change(function() {
                         _settings.doubleClickLinkSolvedComments = $(this).is(':checked');
                         if (!$(this).is(':checked')) {
                             $('div#URCE-divDoubleClickSolved').hide();
@@ -1271,7 +1390,7 @@
                     }).prop('checked', _settings.doubleClickLinkSolvedComments),
                     $('<label>', {for:'_cbDoubleClickLinkSolvedComments', title:I18n.t('urce.prefs.DoubleClickLinkSolvedCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkSolvedComments')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideZoomOutLinks'}).change(function() {
+                    $('<input>', {type:'checkbox', id:'_cbHideZoomOutLinks', urceprefs:'urce'}).change(function() {
                         changeSetting('hideZoomOutLinks', $(this).is(':checked'));
                         if ($(this).is(':checked')) {
                             $('div#_divZoomOutLinks').hide();
@@ -1281,33 +1400,38 @@
                     }).prop('checked', _settings.hideZoomOutLinks),
                     $('<label>', {for:'_cbHideZoomOutLinks', title:I18n.t('urce.prefs.HideZoomOutLinksTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideZoomOutLinks')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbUnfollowUrAfterSend'}).change(function() { changeSetting('unfollowUrAfterSend', $(this).is(':checked')); }).prop('checked', _settings.unfollowUrAfterSend),
-                    $('<label>', {for:'_cbUnfollowUrAfterSend', title:I18n.t('urce.prefs.UnfollowUrAfterSendTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.UnfollowUrAfterSend')),
+                    $('<input>', {type:'checkbox', id:'_cbUnfollowUrAfterSend', urceprefs:'urce'}).change(function() { changeSetting('unfollowUrAfterSend', $(this).is(':checked')); }).prop('checked', _settings.unfollowUrAfterSend),
+                    $('<label>', {for:'_cbUnfollowUrAfterSend', title:I18n.t('urce.prefs.UnfollowUrAfterSendTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.UnfollowUrAfterSend'))
+                )
+            ),
+            // UR Marker Preferences
+            $('<fieldset>', {class:'URCE-field'}).append(
+                $('<legend>', {class:'URCE-legend'}).append(
+                    $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.UrMarkerPrefs'))
+                ),
+                $('<div>', {class:'controls-container URCE-divCC'}).append(
+                    $('<input>', {type:'checkbox', id:'_cbEnableUrPillCounts', urceprefs:'markerMaster'}).change(function() {
+                        changeSetting('enableUrPillCounts', $(this).is(':checked'));
+                        if (!$(this).is(':checked')) {
+                            $('[urceprefs=marker]').prop('disabled', true);
+                        } else {
+                            $('[urceprefs=marker]').prop('disabled', false);
+                        }
+                        refreshUrLayerMarkers();
+                    }).prop('checked', _settings.enableUrPillCounts),
+                    $('<label>', {for:'_cbEnableUrPillCounts', title:I18n.t('urce.prefs.EnableUrPillCountsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrPillCounts')),
                     $('<br>'),
-                    $('<div>', {class:'URCE-divDaysInput'}).append(
-                        $('<div>', {title:I18n.t('urce.prefs.ReminderDaysTitle'), class:'URCE-label'}).append(I18n.t('urce.prefs.ReminderDays') + ': ').append(
-                            $('<input>', {type:'number', id:'_numReminderDays', class:'URCE-daysInput', min:'1', max:'14', step:'1', value:_settings.reminderDays, title:I18n.t('urce.prefs.ReminderDaysTitle')}).on('change', function() {
-                                let numReminderDays = Math.abs(parseInt(this.value, 10) || 1);
-                                if (numReminderDays >= _settings.closeDays) {
-                                    numReminderDays = (_settings.closeDays - 1) < 1 ? 1 : (_settings.closeDays - 1);
-                                }
-                                numReminderDays = Math.min(13,Math.max(1,parseInt(numReminderDays)));
-                                changeSetting('reminderDays', numReminderDays);
-                                this.value = numReminderDays;
-                            })
-                        ),
-                        $('<div>', {title:I18n.t('urce.prefs.CloseDaysTitle'), class:'URCE-label'}).append(I18n.t('urce.prefs.CloseDays') + ': ').append(
-                            $('<input>', {type:'number', id:'_numCloseDays', class:'URCE-daysInput', min:'1', max:'14', step:'1', value:_settings.closeDays, title:I18n.t('urce.prefs.CloseDaysTitle')}).on('change', function() {
-                                let numCloseDays = Math.abs(parseInt(this.value, 10) || 1);
-                                if (numCloseDays <= _settings.reminderDays) {
-                                    numCloseDays = (_settings.reminderDays + 1) > 14 ? 14 : (_settings.reminderDays + 1);
-                                }
-                                numCloseDays = Math.min(14,Math.max(2,parseInt(numCloseDays)));
-                                changeSetting('closeDays', numCloseDays);
-                                this.value = numCloseDays;
-                            })
-                        )
-                    )
+                    $('<input>', {type:'checkbox', id:'_cbDoNotShowTagNameOnPill', urceprefs:'marker'}).change(function() {
+                        changeSetting('doNotShowTagNameOnPill', $(this).is(':checked'));
+                        refreshUrLayerMarkers();
+                    }).prop('checked', _settings.doNotShowTagNameOnPill),
+                    $('<label>', {for:'_cbDoNotShowTagNameOnPill', title:I18n.t('urce.prefs.DoNotShowTagNameOnPillTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoNotShowTagNameOnPill')),
+                    $('<br>'),
+                    $('<input>', {type:'checkbox', id:'_cbReplaceTagNameWithEditorName', urceprefs:'marker'}).change(function() {
+                        changeSetting('replaceTagNameWithEditorName', $(this).is(':checked'));
+                        refreshUrLayerMarkers();
+                    }).prop('checked', _settings.replaceTagNameWithEditorName),
+                    $('<label>', {for:'_cbReplaceTagNameWithEditorName', title:I18n.t('urce.prefs.ReplaceTagNameWithEditorNameTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.ReplaceTagNameWithEditorName'))
                 )
             ),
             // UR Filtering Preferences
@@ -1316,7 +1440,7 @@
                     $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.UrFilteringPrefs'))
                 ),
                 $('<div>', {class:'controls-container URCE-divCC'}).append(
-                    $('<input>', {type:'checkbox', id:'_cbEnableUrceUrFiltering'}).change(function() {
+                    $('<input>', {type:'checkbox', id:'_cbEnableUrceUrFiltering', urceprefs:'filteringMaster'}).change(function() {
                         /*if ($(this).is(':checked')) {
                             if (sessionStorage.UROverview_hasActiveURFilters) {
                                 showAlertBox('fa-exclamation-circle', 'URC-E Error', I18n.t('urce.prompts.UrFilteringDisabled'), false, "OK", "", null, null);
@@ -1325,50 +1449,132 @@
                             }
                         } */
                         _settings.enableUrceUrFiltering = $(this).is(':checked');
+                        if (!$(this).is(':checked')) {
+                            $('[urceprefs=filtering]').prop('disabled', true);
+                        } else {
+                            $('[urceprefs=filtering]').prop('disabled', false);
+                        }
                         saveSettingsToStorage();
+                        refreshUrLayerMarkers();
                     }).prop('checked', _settings.enableUrceUrFiltering),
                     $('<label>', {for:'_cbEnableUrceUrFiltering', title:I18n.t('urce.prefs.EnableUrceUrFilteringTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrceUrFiltering')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbEnableUrPillCounts'}).change(function() { changeSetting('enableUrPillCounts', $(this).is(':checked')); }).prop('checked', _settings.enableUrPillCounts),
-                    $('<label>', {for:'_cbEnableUrPillCounts', title:I18n.t('urce.prefs.EnableUrPillCountsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrPillCounts')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbOnlyShowMyUrs'}).change(function() { changeSetting('onlyShowMyUrs', $(this).is(':checked')); }).prop('checked', _settings.onlyShowMyUrs),
+                    $('<input>', {type:'checkbox', id:'_cbOnlyShowMyUrs', urceprefs:'filtering'}).change(function() {
+                        changeSetting('onlyShowMyUrs', $(this).is(':checked'));
+                        refreshUrLayerMarkers();
+                    }).prop('checked', _settings.onlyShowMyUrs),
                     $('<label>', {for:'_cbOnlyShowMyUrs', title:I18n.t('urce.prefs.OnlyShowMyUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.OnlyShowMyUrs')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbShowOthersUrsPastReminderClose'}).change(function() { changeSetting('showOthersUrsPastReminderClose', $(this).is(':checked')); }).prop('checked', _settings.showOthersUrsPastReminderClose),
+                    $('<input>', {type:'checkbox', id:'_cbShowOthersUrsPastReminderClose', urceprefs:'filtering'}).change(function() {
+                        changeSetting('showOthersUrsPastReminderClose', $(this).is(':checked'));
+                        refreshUrLayerMarkers();
+                    }).prop('checked', _settings.showOthersUrsPastReminderClose),
                     $('<label>', {for:'_cbShowOthersUrsPastReminderClose', title:I18n.t('urce.prefs.ShowOthersUrsPastReminderCloseTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.ShowOthersUrsPastReminderClose')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideClosedUrs'}).change(function() { changeSetting('hideClosedUrs', $(this).is(':checked')); }).prop('checked', _settings.hideClosedUrs),
+                    $('<input>', {type:'checkbox', id:'_cbHideClosedUrs', urceprefs:'filtering'}).change(function() {
+                        changeSetting('hideClosedUrs', $(this).is(':checked'));
+                        refreshUrLayerMarkers();
+                    }).prop('checked', _settings.hideClosedUrs),
                     $('<label>', {for:'_cbHideClosedUrs', title:I18n.t('urce.prefs.HideClosedUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideClosedUrs')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideTaggedUrs'}).change(function() { changeSetting('hideTaggedUrs', $(this).is(':checked')); }).prop('checked', _settings.hideTaggedUrs),
+                    $('<input>', {type:'checkbox', id:'_cbHideTaggedUrs', urceprefs:'filtering'}).change(function() {
+                        changeSetting('hideTaggedUrs', $(this).is(':checked'));
+                        refreshUrLayerMarkers();
+                    }).prop('checked', _settings.hideTaggedUrs),
                     $('<label>', {for:'_cbHideTaggedUrs', title:I18n.t('urce.prefs.HideTaggedUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideTaggedUrs')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideWaiting'}).change(function() { changeSetting('hideWaiting', $(this).is(':checked')); }).prop('checked', _settings.hideWaiting),
+                    $('<input>', {type:'checkbox', id:'_cbHideWaiting', urceprefs:'filtering'}).change(function() {
+                        changeSetting('hideWaiting', $(this).is(':checked'));
+                        refreshUrLayerMarkers();
+                    }).prop('checked', _settings.hideWaiting),
                     $('<label>', {for:'_cbHideWaiting', title:I18n.t('urce.prefs.HideWaitingTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideWaiting')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsCloseNeeded'}).change(function() { changeSetting('hideUrsCloseNeeded', $(this).is(':checked')); }).prop('checked', _settings.hideUrsCloseNeeded),
+                    $('<input>', {type:'checkbox', id:'_cbHideUrsCloseNeeded', urceprefs:'filtering'}).change(function() {
+                        changeSetting('hideUrsCloseNeeded', $(this).is(':checked'));
+                        refreshUrLayerMarkers();
+                    }).prop('checked', _settings.hideUrsCloseNeeded),
                     $('<label>', {for:'_cbHideUrsCloseNeeded', title:I18n.t('urce.prefs.HideUrsCloseNeededTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsCloseNeeded')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsReminderNeeded'}).change(function() { changeSetting('hideUrsReminderNeeded', $(this).is(':checked')); }).prop('checked', _settings.hideUrsReminderNeeded),
+                    $('<input>', {type:'checkbox', id:'_cbHideUrsReminderNeeded', urceprefs:'filtering'}).change(function() {
+                        changeSetting('hideUrsReminderNeeded', $(this).is(':checked'));
+                        refreshUrLayerMarkers();
+                    }).prop('checked', _settings.hideUrsReminderNeeded),
                     $('<label>', {for:'_cbHideUrsReminderNeeded', title:I18n.t('urce.prefs.HideUrsReminderNeededTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsReminderNeeded')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsWithUserReplies'}).change(function() { changeSetting('hideUrsWithUserReplies', $(this).is(':checked')); }).prop('checked', _settings.hideUrsWithUserReplies),
+                    $('<input>', {type:'checkbox', id:'_cbHideUrsWithUserReplies', urceprefs:'filtering'}).change(function() {
+                        changeSetting('hideUrsWithUserReplies', $(this).is(':checked'));
+                        refreshUrLayerMarkers();
+                    }).prop('checked', _settings.hideUrsWithUserReplies),
                     $('<label>', {for:'_cbHideUrsWithUserReplies', title:I18n.t('urce.prefs.HideUrsWithUserRepliesTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWithUserReplies')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoComments'}).change(function() { changeSetting('hideUrsWoComments', $(this).is(':checked')); }).prop('checked', _settings.hideUrsWoComments),
+                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoComments', urceprefs:'filtering'}).change(function() {
+                        changeSetting('hideUrsWoComments', $(this).is(':checked'));
+                        refreshUrLayerMarkers();
+                    }).prop('checked', _settings.hideUrsWoComments),
                     $('<label>', {for:'_cbHideUrsWoComments', title:I18n.t('urce.prefs.HideUrsWoCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoComments')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsOrDescriptions'}).change(function() { changeSetting('hideUrsWoCommentsOrDescriptions', $(this).is(':checked')); }).prop('checked', _settings.hideUrsWoCommentsOrDescriptions),
+                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsOrDescriptions', urceprefs:'filtering'}).change(function() {
+                        changeSetting('hideUrsWoCommentsOrDescriptions', $(this).is(':checked'));
+                        refreshUrLayerMarkers();
+                    }).prop('checked', _settings.hideUrsWoCommentsOrDescriptions),
                     $('<label>', {for:'_cbHideUrsWoCommentsOrDescriptions', title:I18n.t('urce.prefs.HideUrsWoCommentsOrDescriptionsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoCommentsOrDescriptions')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsWithDescriptions'}).change(function() { changeSetting('hideUrsWoCommentsWithDescriptions', $(this).is(':checked')); }).prop('checked', _settings.hideUrsWoCommentsWithDescriptions),
-                    $('<label>', {for:'_cbHideUrsWoCommentsWithDescriptions', title:I18n.t('urce.prefs.HideUrsWoCommentsWithDescriptionsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoCommentsWithDescriptions')),
-                    $('<input>', {type:'checkbox', id:'_cbReplaceTagNameWithEditorName'}).change(function() { changeSetting('replaceTagNameWithEditorName', $(this).is(':checked')); }).prop('checked', _settings.replaceTagNameWithEditorName),
-                    $('<label>', {for:'_cbReplaceTagNameWithEditorName', title:I18n.t('urce.prefs.ReplaceTagNameWithEditorNameTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.ReplaceTagNameWithEditorName'))
+                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsWithDescriptions', urceprefs:'filtering'}).change(function() {
+                        changeSetting('hideUrsWoCommentsWithDescriptions', $(this).is(':checked'));
+                        refreshUrLayerMarkers();
+                    }).prop('checked', _settings.hideUrsWoCommentsWithDescriptions),
+                    $('<label>', {for:'_cbHideUrsWoCommentsWithDescriptions', title:I18n.t('urce.prefs.HideUrsWoCommentsWithDescriptionsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoCommentsWithDescriptions'))
+                )
+            ),
+            // Common Preferences
+            $('<fieldset>', {class:'URCE-field'}).append(
+                $('<legend>', {class:'URCE-legend'}).append(
+                    $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.CommonPrefs'))
+                ),
+                $('<div>', {class:'controls-container URCE-divCC'}).append(
+                    $('<div>', {class:'URCE-divDaysInput'}).append(
+                        $('<div>', {title:I18n.t('urce.prefs.ReminderDaysTitle'), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.ReminderDays') + ': ').append(
+                            $('<input>', {type:'number', id:'_numReminderDays', class:'URCE-daysInput', urceprefs:'common', min:'1', max:'14', step:'1', value:_settings.reminderDays, title:I18n.t('urce.prefs.ReminderDaysTitle')}).on('change', function() {
+                                let numReminderDays = Math.abs(parseInt(this.value, 10) || 1);
+                                if (numReminderDays >= _settings.closeDays) {
+                                    numReminderDays = (_settings.closeDays - 1) < 1 ? 1 : (_settings.closeDays - 1);
+                                }
+                                numReminderDays = Math.min(13,Math.max(1,parseInt(numReminderDays)));
+                                if (numReminderDays !== this.value) {
+                                    changeSetting('reminderDays', numReminderDays);
+                                    this.value = numReminderDays;
+                                    refreshUrLayerMarkers();
+                                }
+                            })
+                        ),
+                        $('<div>', {title:I18n.t('urce.prefs.CloseDaysTitle'), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.CloseDays') + ': ').append(
+                            $('<input>', {type:'number', id:'_numCloseDays', class:'URCE-daysInput', urceprefs:'common', min:'1', max:'14', step:'1', value:_settings.closeDays, title:I18n.t('urce.prefs.CloseDaysTitle')}).on('change', function() {
+                                let numCloseDays = Math.abs(parseInt(this.value, 10) || 1);
+                                if (numCloseDays <= _settings.reminderDays) {
+                                    numCloseDays = (_settings.reminderDays + 1) > 14 ? 14 : (_settings.reminderDays + 1);
+                                }
+                                numCloseDays = Math.min(14,Math.max(2,parseInt(numCloseDays)));
+                                if (numCloseDays !== this.value) {
+                                    changeSetting('closeDays', numCloseDays);
+                                    this.value = numCloseDays;
+                                    refreshUrLayerMarkers();
+                                }
+                            })
+                        )
+                    )
                 )
             )
-        )
+        );
+        if (!isChecked('_cbEnableUrPillCounts')) {
+            $('[urceprefs=marker]').prop('disabled', true);
+        } else {
+            $('[urceprefs=marker]').prop('disabled', false);
+        }
+        if (!isChecked('_cbEnableUrceUrFiltering')) {
+            $('[urceprefs=filtering]').prop('disabled', true);
+        } else {
+            $('[urceprefs=filtering]').prop('disabled', false);
+        }
     }
 
     function initTab() {
@@ -1438,19 +1644,9 @@
         if (buildCommentListResult.error) {
             handleBuildCommentListError(buildCommentListResult.error);
         } else {
-            (function waitForCommentList(tries) {
-                tries = tries || 1;
-                if (tries > 300) {
-                    handleBuildCommentListError('Timed out waiting on comment list to be built.');
-                } else if (!_commentListLoaded) {
-                    logDebug('Waiting for comment list to be built. Try ' + tries + ' of 300.');
-                    setTimeout(waitForCommentList, 100, ++tries);
-                } else {
-                    initBackgroundTasks();
-                    logDebug('Loaded in ' + Math.round(performance.now() - t0) + ' ms.');
-                }
-            })();
+            initBackgroundTasks();
         }
+        logDebug('Loaded in ' + Math.round(performance.now() - t0) + ' ms.');
     }
 
     function bootstrap(tries) {
@@ -1506,8 +1702,6 @@
                     AutoZoomOutAfterCommentTitle: 'After clicking on a UR comment in the list and then clicking send on the UR, the map zoom will be set back to your previous zoom.',
                     DisableDoneNextButtons: 'Disable done / next buttons',
                     DisableDoneNextButtonsTitle: 'Disable the done / next buttons at the bottom of the new UR window.',
-                    DoNotShowTagNameOnPill: 'Don\'t show tag name on pill',
-                    DoNotShowTagNameOnPillTitle: 'Do not show the tag name on the pill where there is a URO tag.',
                     DoubleClickLinkNiComments: 'Double click link - NI comments',
                     DoubleClickLinkNiCommentsTitle: 'Add an extra link to the \'not identified\' comments. When double clicked it will automatically send the comment to the UR window, click send, and then will launch all of the other options that are enabled.',
                     DoubleClickLinkOpenComments: 'Double click link - Open comments',
@@ -1518,16 +1712,24 @@
                     HideZoomOutLinksTitle: 'Hide the zoom out links on the comments tab.',
                     UnfollowUrAfterSend: 'Unfollow UR after send',
                     UnfollowUrAfterSendTitle: 'Unfollow the UR after sending a comment.',
+                    // Common Preferences
+                    CommonPrefs: 'Common Preferences',
                     ReminderDays: 'Reminder days',
-                    ReminderDaysTitle: 'Number of days to (automatically) set reminder comment. Must be between 1 and 13 and less than \'Close days\'.',
+                    ReminderDaysTitle: 'Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment. Must be between 1 and 13 and less than \'Close days\'.',
                     CloseDays: 'Close days',
-                    CloseDaysTitle: 'Number of days to (automatically) close URs. Must be between 2 and 14 and greater than \'Reminder days\'.',
+                    CloseDaysTitle: 'Number of days to use when calculating UR filtering. Must be between 2 and 14 and greater than \'Reminder days\'.',
+                    // UR Marker Preferences
+                    UrMarkerPrefs: 'UR Marker Preferences',
+                    EnableUrPillCounts: 'Enable UR pill counts',
+                    EnableUrPillCountsTitle: 'Enable or disable the pill with UR counts.',
+                    DoNotShowTagNameOnPill: 'Don\'t show tag name on pill',
+                    DoNotShowTagNameOnPillTitle: 'Do not show the tag name on the pill where there is a URO tag.',
+                    ReplaceTagNameWithEditorName: 'Replace tag name with editor name',
+                    ReplaceTagNameWithEditorNameTitle: 'When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds when commenting), replace the tag type with the editors name.',
                     // UR Filtering Preferences
                     UrFilteringPrefs: 'UR Filtering Preferences',
                     EnableUrceUrFiltering: 'Enable URC-E UR filtering',
                     EnableUrceUrFilteringTitle: 'Enable or disable URComments-Enhanced built-in UR filtering.',
-                    EnableUrPillCounts: 'Enable UR pill counts',
-                    EnableUrPillCountsTitle: 'Enable or disable the pill with UR counts.',
                     HideClosedUrs: 'Hide closed URs',
                     HideClosedUrsTitle: 'Hide closed URs.',
                     HideTaggedUrs: 'Hide tagged URs',
@@ -1549,9 +1751,7 @@
                     OnlyShowMyUrs: 'Only show my URs',
                     OnlyShowMyUrsTitle: 'Hide URs where you have no comments.',
                     ShowOthersUrsPastReminderClose: 'Show others URs past remind+close',
-                    ShowOthersUrsPastReminderCloseTitle: 'Show URs that others commented on that have gone past the reminder and close day settings added together.',
-                    ReplaceTagNameWithEditorName: 'Replace tag name with editor name',
-                    ReplaceTagNameWithEditorNameTitle: 'When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds when commenting), replace the tag type with the editors name.'
+                    ShowOthersUrsPastReminderCloseTitle: 'Show URs that others commented on that have gone past the reminder and close day settings added together.'
                 },
                 tabs: {
                     Comments: 'Comments',
