@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.09.01
+// @version     2018.12.11.01
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -35,6 +35,8 @@
     const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.','Official beta realase 2.' ];
     const doublClickIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
+    const _loadBeginTime = performance.now();
+    let _selUr = {};
     let _settings = {};
     let _commentList = [];
     let _alertBoxArray = [];
@@ -61,7 +63,7 @@
     let _urceInitialized = false;
     let _commentListLoaded = false;
     let _alertBoxInUse = false;
-    let _restoreZoom, _$restoreTab, _restoreTabPosition, t0, _wmeUserId;
+    let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId;
 
     const _commentLists = [{idx:0, name:'CommentTeam', status:'enabled', oldVarName: 'CommentTeam', listOwner: 'CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/oz10sdb/public/values?alt=json' },
                            {idx:1, name:'Custom', status:'enabled', oldVarName:'Custom', listOwner: 'Custom', gSheetUrl: '', type: 'static' },
@@ -76,7 +78,7 @@
 
     function dynamicSort(property) {
         let sortOrder = 1;
-        if(property[0] === "-") {
+        if (property[0] === "-") {
             sortOrder = -1;
             property = property.substr(1);
         }
@@ -89,10 +91,6 @@
         }
     }
 
-    function formatText(text) {
-        return text.replace(/\\[r|n]+/gi, '\n');
-    }
-
     function loadSettingsFromStorage() {
         logDebug('Loading settings from storage.');
         let convertUrcSettings = false;
@@ -100,7 +98,7 @@
         if (loadedSettings && loadedSettings.lastVersion) {
             if (Object.keys(loadedSettings)[0].substring(0,1) === 'C') {
                 logDebug('Converting settings keys to correct case.');
-                let tempSettings = Object.entries(loadedSettings);
+                const tempSettings = Object.entries(loadedSettings);
                 let tempSettings2 = {};
                 for (let idx = 0; idx < tempSettings.length; idx++) {
                     let key = tempSettings[idx][0].substring(0,1).toLowerCase();
@@ -166,7 +164,7 @@
     }
 
     function saveSettingsToStorage() {
-        if(localStorage) {
+        if (localStorage) {
             _settings.lastVersion = SCRIPT_VERSION;
             localStorage.setItem(SETTINGS_STORE_NAME, JSON.stringify(_settings));
             logDebug('Settings saved.');
@@ -181,9 +179,7 @@
         $('#urceAlertBox').css('visibility', 'hidden');
         $('#urceAlertCrossBtn').css('visibility', 'hidden');
         _alertBoxInUse = false;
-        if (_alertBoxArray.length > 0) {
-            buildAlertBoxFromArray();
-        }
+        if (_alertBoxArray.length > 0) buildAlertBoxFromArray();
     }
 
     function buildAlertBoxFromArray() {
@@ -197,28 +193,22 @@
         );
         $('#urceAlertBoxContent').html(_alertBoxArray[0].content);
         $('#urceAlertTickBtnCaption').text(_alertBoxArray[0].tickText);
-        if (typeof _alertBoxArray[0].tickAction === 'function') {
-            alertBoxTickAction = _alertBoxArray[0].tickAction;
-        }
+        if (typeof _alertBoxArray[0].tickAction === 'function') alertBoxTickAction = _alertBoxArray[0].tickAction;
         if (_alertBoxArray[0].hasCross) {
             $('#urceAlertCrossBtnCaption').text(_alertBoxArray[0].crossText);
             $('#urceAlertCrossBtn').css('visibility', 'visible');
-            if(typeof _alertBoxArray[0].crossAction === "function") {
-                alertBoxCrossAction = _alertBoxArray[0].crossAction;
-            }
+            if(typeof _alertBoxArray[0].crossAction === "function") alertBoxCrossAction = _alertBoxArray[0].crossAction;
         } else {
             $('#urceAlertCrossBtn').css('visibility', 'hidden');
         }
-        $('#urceAlertTickBtn').click(function() {
-            if (alertBoxTickAction !== null) {
-                alertBoxTickAction();
-            }
+        $('#urceAlertTickBtn').off('click');
+        $('#urceAlertTickBtn').on('click', function() {
+            if (alertBoxTickAction !== null) alertBoxTickAction();
             closeAlertBox();
         });
-        $('#urceAlertCrossBtn').click(function() {
-            if (alertBoxCrossAction !== null) {
-                alertBoxCrossAction();
-            }
+        $('#urceAlertCrossBtn').off('click');
+        $('#urceAlertCrossBtn').on('click', function() {
+            if (alertBoxCrossAction !== null) alertBoxCrossAction();
             closeAlertBox();
         });
         $('#urceAlertBox').css('visibility', 'visible');
@@ -227,9 +217,7 @@
 
     function showAlertBox(headerIcon, title, content, hasCross, tickText, crossText, tickAction, crossAction) {
         _alertBoxArray.push( { headerIcon: headerIcon, title: title, content: content, hasCross: hasCross, tickText: tickText, crossText: crossText, tickAction: tickAction, crossAction: crossAction });
-        if (!_alertBoxInUse) {
-            buildAlertBoxFromArray();
-        }
+        if (!_alertBoxInUse) buildAlertBoxFromArray();
     }
 
     function showScriptInfoAlert() {
@@ -245,16 +233,13 @@
             } else {
                 releaseNotes += '<ul><li>Nothing major.</ul>';
             }
-            if (!_settings.lastVersion) {
-                releaseNotes += '<p>This is the first time you have loaded URComments-Enhanced. If you have previously used URC, your URC settings have been copied into URC-E.</p>';
-            }
+            if (!_settings.lastVersion) releaseNotes += '<p>This is the first time you have loaded URComments-Enhanced. If you have previously used URC, your URC settings have been copied into URC-E.</p>';
             showAlertBox('fa-info-circle', 'URC-E Release Notes', releaseNotes, false, "OK", "", null, null);
         }
     }
 
     function convertOldVarName(oldVarName) {
-        let newIdxNum;
-        let filterArr = _commentLists.filter(obj => obj.oldVarName === oldVarName);
+        const filterArr = _commentLists.filter(obj => obj.oldVarName === oldVarName);
         return filterArr.length > 0 ? filterArr[0].idx : 0;
     }
 
@@ -265,72 +250,6 @@
     function changeSetting(settingId, settingVal) {
         _settings[settingId] = settingVal;
         saveSettingsToStorage();
-    }
-
-    async function changeCommentList(commentListIdx) {
-        commentListIdx = parseInt(commentListIdx || 0);
-        if (commentListIdx != _settings.commentList) {
-            logDebug('Switching comment list from ' + _commentLists[_settings.commentList].name + ' to ' + _commentLists[commentListIdx].name + '.');
-            _settings.commentList = parseInt(commentListIdx);
-            let buildCommentListResult = await buildCommentList(commentListIdx);
-            if (buildCommentListResult.error) {
-                handleBuildCommentListError(buildCommentListResult.error);
-            }
-            saveSettingsToStorage();
-        }
-    }
-
-    function getCommentListInfo(commentListIdx) {
-        commentListIdx = parseInt(commentListIdx || _settings.commentList);
-        return _commentLists.find(cList => { return cList.idx === commentListIdx });
-    }
-
-    function scrollToBottom() {
-        $('.top-section').scrollTop($('.top-section')[0].scrollHeight);
-    }
-
-    async function handleClickedComment(commentNum, doubleClick) {
-        let urId = $(".update-requests .selected").data("id");
-        logDebug('Handling clicked comment. commentNum: ' + commentNum + ' | doubleClick: ' + doubleClick);
-        if (!$('.new-comment-text')[0]) {
-            showWmeMessage(I18n.t('urce.prompts.NoCommentBox'), 5000);
-            return;
-        }
-        if(!urId) {
-            logError('No urId was found.');
-            return;
-        }
-        let unsavedDetected = await checkForUnsavedChanges();
-        if (unsavedDetected && _settings.autoSaveAfterSolvedOrNiComment && _commentList[commentNum].urstatus !== 'open') {
-            alert(I18n.t('urce.prompts.UnsavedEdits'));
-            return;
-        }
-        postUrComment(_commentList[commentNum].comment);
-        if (_settings.autoClickOpenSolvedNi) {
-            autoClickOpenSolvedNi(commentNum, urId);
-        }
-        if (_settings.autoCloseCommentWindow) {
-            logDebug('Setting event hook on comment send button.');
-            $('.new-comment-form .send-button').click(function() {
-                autoCloseUrPanel(urId);
-                if (_settings.autoZoomOutAfterComment) {
-                    autoZoomOut();
-                }
-                if (_settings.autoSaveAfterSolvedOrNiComment && _settings.autoClickOpenSolvedNi) {
-                    if (_commentList[commentNum].urstatus === 'solved' || _commentList[commentNum].urstatus === 'notidentified') {
-                        logDebug('Clicking save.');
-                        $('.toolbar-button.waze-icon-save').trigger('click');
-                    }
-                }
-            });
-        }
-        if (doubleClick) {
-            logDebug('doubleClick is true. Clicking save.');
-            $('.new-comment-form .send-button').trigger('click');
-        }
-    }
-
-    function updateMarkerCount(urIds) {
     }
 
     function getUrSessionsAsync(urIds, tries) {
@@ -376,6 +295,308 @@
                     resolve(mapUrsObj);
                 }
             })(urIds, null);
+        });
+    }
+
+    function handleAfterCommentMutation(urId) {
+        logDebug('Handling new comment mutation for urId: ' + urId);
+        let unsavedDetected = _selUr.unsavedDetected;
+        let newStatus = _selUr.newStatus;
+        let doubleClick = _selUr.doubleClick;
+        if (_settings.unfollowUrAfterSend) unfollowUrAfterSend(urId);
+        if ((_settings.autoCloseCommentWindow && !newStatus) || doubleClick) {
+            autoCloseUrPanel();
+        } else {
+            if (unsavedDetected && _settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) {
+                logWarning('Unsaved changes detected and comment will require a save.');
+                showAlertBox('fa-exclamation-circle', I18n.t('urce.prompts.UnsavedEditsHeader'), I18n.t('urce.prompts.UnsavedEdits'), true, I18n.t('urce.common.Yes'), I18n.t('urce.common.No'), clickSaveButton, null);
+            } else if (!unsavedDetected && _settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) {
+                clickSaveButton();
+            } else {
+                try {
+                    handleUrLayer('sendComment')
+                } catch(error) {
+                    logWarning(error);
+                }
+            }
+        }
+    }
+
+    function handleAfterCloseUpdateContainer(urId) {
+        let unsavedDetected = _selUr.unsavedDetected;
+        let newStatus = _selUr.newStatus;
+        if (unsavedDetected && _settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) {
+            logWarning('Unsaved changes detected and comment will require a save.');
+            showAlertBox('fa-exclamation-circle', I18n.t('urce.prompts.UnsavedEditsHeader'), I18n.t('urce.prompts.UnsavedEdits'), true, I18n.t('urce.common.Yes'), I18n.t('urce.common.No'), clickSaveButton, null);
+        } else if (!unsavedDetected && _settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) {
+            clickSaveButton();
+        } else {
+            if (_settings.autoZoomOutAfterComemnt) autoZoomOut();
+            if (_settings.autoSwitchToUrCommentsTab) autoSwitchToPrevTab();
+            try {
+                handleUrLayer('sendComment')
+            } catch(error) {
+                logWarning(error);
+            }
+        }
+        _selUr = {};
+    }
+
+    function handleAfterSave() {
+        if (_settings.autoZoomOutAfterComemnt) autoZoomOut();
+        if (_settings.autoSwitchToUrCommentsTab) autoSwitchToPrevTab();
+        try {
+            handleUrLayer('save');
+        } catch(error) {
+            logWarning(error);
+        }
+    }
+
+    async function handleUpdateRequestContainer(urId) {
+        let commentNum, urSessionObj, mapUrsObj;
+        logDebug('Handling update request container mutation. urId: ' + urId);
+        try {
+            urSessionObj = await getUrSessionsAsync([urId]);
+        } catch(error) {
+            logError(error);
+            return;
+        }
+        try {
+            mapUrsObj = await getMapUrsAsync([urId]);
+        } catch(error) {
+            logDebug(error);
+            return;
+        }
+        const urData = urSessionObj[0];
+        const mUrObj = mapUrsObj[0];
+        const urOpen = mUrObj.attributes.open;
+        _selUr.unsavedDetected = await checkForUnsavedChanges();
+        if (_settings.autoSwitchToUrCommentsTab) autoSwitchToUrceTab();
+        if ($('#panel-container .problem-edit .conversation').hasClass('collapsed')) {
+            logDebug('Expanding conversation list.');
+           $('#panel-container .problem-edit .conversation').removeClass('collapsed');
+        }
+        if (_settings.disableDoneNextButtons) {
+            logDebug('Removing the done / next buttons.');
+            $('#panel-container .content .navigation').css({'display':'none'});
+        }
+        logDebug('Setting event hook for center on UR crosshairs in UR panel title bar.');
+        $('#panel-container > div > div > div.top-section > div.header > div.title > div > a.focus').off('click', handleUrPanelCrosshairsClick);
+        $('#panel-container > div > div > div.top-section > div.header > div.title > div > a.focus').on('click', {mUrObj:mUrObj}, handleUrPanelCrosshairsClick);
+        logDebug('Waiting 250ms before scrolling to bottom of the conversation list to give it time to load.');
+        await setTimeout(scrollToBottom, 250);
+        if (urData.comments.length === 0) {
+            commentNum = Object.values(_defaultComments).find(defaultComment => { return defaultComment.urNum === mUrObj.attributes.type }).commentNum;
+            if (_settings.autoSetNewUrComment) {
+                if (_settings.autoZoomInOnNewUr) autoZoomIn(urId);
+                if (urOpen) {
+                    if (_settings.autoClickOpenSolvedNi) autoClickOpenSolvedNi(commentNum);
+                    try {
+                        await postUrComment(_commentList[commentNum].comment);
+                    } catch(error) {
+                        logError(error);
+                        showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
+                    }
+                }
+            }
+        } else if (urData.comments.length === 1) {
+            commentNum = _defaultComments.dr.commentNum;
+            if (_settings.autoCenterOnUr) autoCenterOnUr(urId);
+            const lastCommentBy = urData.comments[(urData.comments.length - 1)].userID;
+            const commentDaysOld = urData.comments[(urData.comments.length - 1)].createdOn === null ? -1 : uroDateToDays(urData.comments[(urData.comments.length - 1)].createdOn);
+            if (_settings.autoSetReminderUrComment && urData.comments.length > 0 && commentDaysOld > (_settings.reminderDays - 1) && lastCommentBy > 1) {
+                if (urOpen) {
+                    if (_settings.autoZoomInOnNewUr) autoZoomIn(urId);
+                    if (_settings.autoClickOpenSolvedNi) autoClickOpenSolvedNi(commentNum);
+                    try {
+                        await postUrComment(_commentList[commentNum].comment);
+                    } catch(error) {
+                        logError(error);
+                        showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
+                    }
+                }
+            }
+        } else {
+            if (_settings.autoCenterOnUr) autoCenterOnUr(urId);
+        }
+    }
+
+    async function handleClickedComment(commentNum, doubleClick) {
+        const urId = _selUr.urId;
+        logDebug('Handling clicked comment. commentNum: ' + commentNum + ' | doubleClick: ' + doubleClick);
+        _selUr.doubleClick = doubleClick;
+        if (!$('.new-comment-text')[0]) {
+            logWarning('No comment box found after clicking a comment from the list.');
+            showAlertBanner(I18n.t('urce.prompts.NoCommentBox'), 5000);
+            return;
+        }
+        if (!urId) {
+            logError('No urId was found.');
+            return;
+        }
+        if (doubleClick) {
+            $('.new-comment-text').off('blur', autoClickSendButton);
+            $('.new-comment-text').on('blur', autoClickSendButton);
+        }
+        if (_settings.autoClickOpenSolvedNi) autoClickOpenSolvedNi(commentNum);
+        try {
+            await postUrComment(_commentList[commentNum].comment);
+        } catch(error) {
+            logError(error);
+            showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
+            return;
+        }
+    }
+
+    function autoSwitchToUrceTab() {
+        logDebug('Switching to URC-E > Comments tab.');
+        _$restoreTab = $('#user-tabs > ul > li.active > a');
+        _restoreTabPosition = $('#sidebar').scrollTop();
+        $('a[href="#sidepanel-urc-e"]').trigger('click');
+        $('a[href="#panel-urce-comments"]').trigger('click');
+    }
+
+    function autoSwitchToPrevTab() {
+        if ($(_$restoreTab)) {
+            logDebug('Switching to previous tab.');
+            $(_$restoreTab).click();
+            $('#sidebar').scrollTop(_restoreTabPosition);
+            _$restoreTab = null;
+            _restoreTabPosition = null;
+        }
+    }
+
+    function scrollToBottom() {
+        logDebug('Scrolling to the bottom of comment list.');
+        $('.top-section').scrollTop($('.top-section')[0].scrollHeight);
+    }
+
+    function handleUrPanelCrosshairsClick(event) {
+        logDebug('Handling UR Panel crosshairs click event.');
+        const mUrObj = event.data.mUrObj;
+        const x = (mUrObj.attributes.geometry.realX === undefined) ? mUrObj.attributes.geometry.x : mUrObj.attributes.geometry.realX;
+        const y = mUrObj.attributes.geometry.y;
+        W.map.setCenter([x,y], 5);
+    }
+
+    function unfollowUrAfterSend(urId) {
+        logDebug('Unfollowing UR: ' + urId);
+        W.model.updateRequestSessions.objects[urId].setFollowing('false');
+    }
+
+    function autoCloseUrPanel() {
+        logDebug('Clicking close on UR panel.');
+        $("#panel-container > div > div > div.top-section > a").trigger('click')
+    }
+
+    function checkForUnsavedChanges() {
+        logDebug('Checking for unsaved changes.');
+        return new Promise((resolve) => {
+            let result = ($('#edit-buttons > div > div.toolbar-button.waze-icon-save').hasClass('ItemDisabled') !== true) ? true : false;
+            resolve(result);
+        });
+    }
+
+    function clickSaveButton() {
+        logDebug('Clicking the save button.');
+        $('.toolbar-button.waze-icon-save').trigger('click');
+    }
+
+    function autoClickSendButton() {
+        logDebug('doubleClick is true. Clicking send.');
+        $('.new-comment-form .send-button').trigger('click');
+        $('.new-comment-text').off('blur', autoClickSendButton);
+    }
+
+    function autoClickOpenSolvedNi(commentNum) {
+        logDebug('Auto clicking open, solved or not identified.');
+        logDebug('Masking confirm function.');
+        let confirmHold = window.confirm;
+        window.confirm = function(msg) {
+            // Dummy confirm to prevent WME from being able to send confirmations during auto clicking
+            return true;
+        }
+        if ($('input[value="open"]').length > 0) {
+            $('.problem-edit .body').scrollTop($('.problem-edit .body')[0].scrollHeight);
+            if (_commentList[commentNum].urstatus === 'notidentified' && _selUr.newStatus !== 'notidentified') {
+                logDebug('Clicking Not Identified');
+                $('input[value="not-identified"]').trigger('click');
+            } else if (_commentList[commentNum].urstatus === 'solved' && _selUr.newStatusn !== 'solved') {
+                logDebug('Clicking Solved.');
+                $('input[value="solved"]').trigger('click');
+            } else if (_commentList[commentNum].urstatus === 'open' && (_selUr.newStatus === 'solved' || _selUr.newStatus === 'notidentified')) {
+                logDebug('Clicking Open.');
+                $('input[value="open"]').trigger('click');
+            }
+        }
+        logDebug('Unmasking confirm function.');
+        window.confirm = confirmHold;
+    }
+
+    function autoZoomIn(urId) {
+        logDebug('Checking zoom level and zooming in on UR if zoom level is less than 4.');
+        const zoom = 4;
+        _restoreZoom = getZoomLevel();
+        if (_restoreZoom < zoom) {
+            logDebug('Zooming to 4 from ' + _restoreZoom + '.');
+            let x = (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX === undefined) ? W.model.mapUpdateRequests.objects[urId].attributes.geometry.x : W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX;
+            let y = W.model.mapUpdateRequests.objects[urId].attributes.geometry.y;
+            W.map.setCenter([x,y], 5);
+        }
+    }
+
+    function autoCenterOnUr(urId) {
+        logDebug('Checking zoom level and centering on UR if zoom level is less than 3.');
+        let _restoreZoom = getZoomLevel();
+        if (_restoreZoom < 3) {
+            logDebug('Centering on UR because zoom level is ' + _restoreZoom + '.');
+            let x = (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX === undefined) ? W.model.mapUpdateRequests.objects[urId].attributes.geometry.x : W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX;
+            let y = W.model.mapUpdateRequests.objects[urId].attributes.geometry.y;
+            W.map.setCenter([x,y], _restoreZoom);
+        }
+    }
+
+    function autoZoomOut() {
+        _restoreZoom = _restoreZoom || 4;
+        logDebug('Zooming out to ' + _restoreZoom + '.');
+        W.map.setCenter(W.map.getCenter(), _restoreZoom);
+        _restoreZoom = null;
+    }
+
+    function getZoomLevel() {
+        logDebug('Getting zoom level: ' + W.map.mapState.mapLocation.zoom);
+        return W.map.mapState.mapLocation.zoom;
+    }
+
+    function formatText(text) {
+        return text.replace(/\\[r|n]+/gi, '\n');
+    }
+
+    function postUrComment(comment) {
+        return new Promise((resolve, reject) => {
+            (function retry(comment, tries) {
+                logDebug('Attemping to insert comment into comment box. Tries: ' + tries);
+                if (tries > 100) {
+                    reject('Timed out waiting for the comment text box to become available.');
+                } else if (!$('.new-comment-text')[0]) {
+                    setTimeout(retry, 100, comment, ++tries);
+                } else {
+                    $('.new-comment-text').val(formatText(comment)).change().keyup();
+                    $('.new-comment-text').blur();
+                    resolve();
+                }
+            })(comment, 1);
+        });
+    }
+
+    function showAlertBanner(message, delay) {
+        let dateNow = new Date().getTime();
+        let width = message.length * 10;
+        $('#map').append('<div id="urceMessage" style="width:100%; font-size:15px; font-weight:bold; margin-left:auto; position:absolute; top:0px; left:10px; z-index:1000;"></div>');
+        $('#urceMessage').append('<div id="urceMapNote' + dateNow + '" style="width:' + width + 'px; font-size: 15px; font-weight:bold; margin-left:auto; margin-right:auto; background-color:orange;"><center><b>' + message + '</b></center></div>');
+        $('#urceMapNote' + dateNow).show().delay(delay).queue(function() {
+            $('#urceMessage').remove();
+            $(this).remove();
         });
     }
 
@@ -435,20 +656,22 @@
                 } else if (urCountBackground === '#FF8B8B') {
                     $($node).css({'z-index':'997'});
                 }
-                if (!$($node).hasClass('urceCounts')) {
-                    logDebug('Adding marker counters on UR marker for UR: ' + urId);
-                    $($node).append(
-                        $('<div>', {id:`urceCounters-${urId}`}).css('clear', 'both').css('margin-bottom', '10px').append(
-                            $('<div>').html(tagContent).css({'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}).addClass('urceCounts')
-                        )
-                    );
-                } else {
+                if ($(`#urceCounters-${urId}`).length > 0) {
                     logDebug('Updating marker counters on UR marker for UR: ' + urId);
-                    $($node).html(tagContent).css({'background-color':urCountBackground, 'right':tagOffset});
+                    $(`#urceCounters-${urId}`).remove();
+                } else {
+                    logDebug('Adding marker counters on UR marker for UR: ' + urId);
                 }
+                $($node).append(
+                    $('<div>', {id:`urceCounters-${urId}`}).css('clear', 'both').css('margin-bottom', '10px').append(
+                        $('<div>').html(tagContent).css({'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}).addClass('urceCounts')
+                    )
+                );
             } else {
-                logDebug('Removing marker counters on UR marker for UR: ' + urId);
-                $(`#urceCounters-${urId}`).remove();
+                if ($(`#urceCounters-${urId}`).length > 0) {
+                    logDebug('Removing marker counters on UR marker for UR: ' + urId);
+                    $(`#urceCounters-${urId}`).remove();
+                }
             }
         }
     }
@@ -472,68 +695,65 @@
                 let needsReminder = false;
                 let needsClosed = false;
                 let urWaiting = false;
-                if (!urOpen) {
-                    if (_settings.hideClosedUrs) hideUr = true;
+                if (urCommentCount > 0) {
+                    commentDaysOld = uroDateToDays(urData.comments[(urCommentCount-1)].createdOn);
+                    lastCommentBy = urData.comments[(urCommentCount-1)].userID;
+                    fullText = urDesc ? urDesc + ' ' : '';
+                    for (let idx = 0; idx < urCommentCount; idx++) {
+                        fullText += urData.comments[idx].text + ' ';
+                        commentUserIds.push(urData.comments[idx].userID);
+                    }
+                    if (urCommentCount === 1) {
+                        if (lastCommentBy > 1) {
+                            if (commentDaysOld > (_settings.reminderDays - 1)) {
+                                if (_wmeUserId === lastCommentBy && !urReminderSent && _settings.autoSendReminders) {
+                                    showAlertBanner(I18n.t('urce.prompts.ReminderMessageAuto') + ' ' + urId, 3000);
+                                    W.model.updateRequestSessions.objects[urId].addComment(_defaultComments.dr.commentNum);
+                                    W.model.mapUpdateRequests.objects[urId].attributes.reminderSent = 'true';
+                                    if (_settings.unfollowUrAfterSend) unfollowUrAfterSend(urId);
+                                    urWaiting = true;
+                                } else {
+                                    needsReminder = true;
+                                }
+                            } else {
+                                urWaiting = true;
+                            }
+                        }
+                    }
+                    if (urCommentCount > 1) {
+                        if (lastCommentBy > 1) {
+                            if (commentDaysOld > (_settings.closeDays - 1)) {
+                                if (_wmeUserId === lastCommentBy) {
+                                    needsClosed = true;
+                                } else {
+                                    if (commentDaysOld < (_settings.reminderDays + _settings.closeDays)) urWaiting = true;
+                                }
+                            } else {
+                                urWaiting = true;
+                            }
+                        }
+                    }
                 } else {
-                    if (urCommentCount > 0) {
-                        commentDaysOld = uroDateToDays(urData.comments[(urCommentCount-1)].createdOn);
-                        lastCommentBy = urData.comments[(urCommentCount-1)].userID;
-                        fullText = urDesc ? urDesc + ' ' : '';
-                        for (let idx = 0; idx < urCommentCount; idx++) {
-                            fullText += urData.comments[idx].text + ' ';
-                            commentUserIds.push(urData.comments[idx].userID);
-                        }
-                        if (urCommentCount === 1) {
-                            if (lastCommentBy > 1) {
-                                if (commentDaysOld > (_settings.reminderDays - 1)) {
-                                    if (_wmeUserId === lastCommentBy && !urReminderSent && _settings.autoSendReminders) {
-                                        showWmeMessage(I18n.t('urce.prompts.ReminderMessageAuto') + ' ' + urId, 3000);
-                                        W.model.updateRequestSessions.objects[urId].addComment(_defaultComments.dr.commentNum);
-                                        W.model.mapUpdateRequests.objects[urId].attributes.reminderSent = 'true';
-                                        if (_settings.unfollowUrAfterSend) W.model.updateRequestSessions.objects[urId].setFollowing('false');
-                                        urWaiting = true;
-                                    } else {
-                                        needsReminder = true;
-                                    }
-                                } else {
-                                    urWaiting = true;
-                                }
-                            }
-                        }
-                        if (urCommentCount > 1) {
-                            if (lastCommentBy > 1) {
-                                if (commentDaysOld > (_settings.closeDays - 1)) {
-                                    if (_wmeUserId === lastCommentBy) {
-                                        needsClosed = true;
-                                    } else {
-                                        if (commentDaysOld < (_settings.reminderDays + _settings.closeDays)) urWaiting = true;
-                                    }
-                                } else {
-                                    urWaiting = true;
-                                }
-                            }
-                        }
-                    } else {
-                        fullText = urDesc ? urDesc : '';
-                        commentDaysOld = uroDateToDays(mUrObj.attributes.driveDate);
-                    }
-                    tagType = (fullText.search(tagRegex) > -1) ? fullText.replace(tagRegex, '$1') : null;
-                    if (!tagType) {
-                        const regex = new RegExp(' ' + wmeUsername + ' ', 'gi');
-                        tagType = fullText.search(regex) > -1 ? wmeUsername : null;
-                    }
-                    if ((_settings.hideTaggedUrs && tagType) ||
-                        (_settings.hideWaiting && urWaiting) ||
-                        (_settings.needsClosed && needsClosed) ||
-                        (_settings.hideUrsReminderNeeded && needsReminder) ||
-                        (_settings.hideUrsWithUserReplies && lastCommentBy < 1) ||
-                        (_settings.hideUrsWoComments && urCommentCount === 0) ||
-                        (_settings.hideUrsWoCommentsOrDescriptions && !urDesc && urCommentCount === 0) ||
-                        (_settings.hideUrsWoCommentsWithDescriptions && urDesc && urCommentCount === 0) ||
-                        (_settings.onlyShowMyUrs && commentUserIds.indexOf(_wmeUserId) === -1)) hideUr = true;
-                    // Put this here so it can be toggled separately from onlyShowMy and it overrides other hiding.
-                    if (_settings.showOthersUrsPastReminderClose && commentUserIds.indexOf(_wmeUserId) === -1 && commentDaysOld > (_settings.reminderDays + _settings.CloseDays)) hideUr = false;
+                    fullText = urDesc ? urDesc : '';
+                    commentDaysOld = uroDateToDays(mUrObj.attributes.driveDate);
                 }
+                tagType = (fullText.search(tagRegex) > -1) ? fullText.replace(tagRegex, '$1') : null;
+                if (!tagType) {
+                    const regex = new RegExp(' ' + wmeUsername + ' ', 'gi');
+                    tagType = fullText.search(regex) > -1 ? wmeUsername : null;
+                }
+                if ((_settings.hideClosedUrs && !urOpen) ||
+                    (_settings.hideTaggedUrs && tagType) ||
+                    (_settings.hideWaiting && urWaiting) ||
+                    (_settings.needsClosed && needsClosed) ||
+                    (_settings.hideUrsReminderNeeded && needsReminder) ||
+                    (_settings.hideUrsWithUserReplies && lastCommentBy < 1) ||
+                    (_settings.hideUrsWoComments && urCommentCount === 0) ||
+                    (_settings.hideUrsWoCommentsOrDescriptions && !urDesc && urCommentCount === 0) ||
+                    (_settings.hideUrsWoCommentsWithDescriptions && urDesc && urCommentCount === 0) ||
+                    (_settings.onlyShowMyUrs && commentUserIds.indexOf(_wmeUserId) === -1)) hideUr = true;
+                // Put this here so it can be toggled separately from onlyShowMy and it overrides other hiding.
+                if (_settings.showOthersUrsPastReminderClose && commentUserIds.indexOf(_wmeUserId) === -1 && commentDaysOld > (_settings.reminderDays + _settings.CloseDays)) hideUr = false;
                 if (hideUr && _settings.enableUrceUrFiltering) {
                     logDebug('Hiding UR marker for UR: ' + urId);
                     $($node).hide();
@@ -545,13 +765,20 @@
                 logDebug('Unhiding UR marker for UR: ' + urId);
                 $($node).show();
             }
+            logDebug('Setting event listener on ' + urId);
+            $($node).off('click', handleUrMarkerClick);
+            $($node).on('click', handleUrMarkerClick);
         }
     }
 
     async function handleUrMapMarkers(urIds) {
         let urSessionsObj, mapUrsObj;
+        urIds = urIds.sort();
         try {
             urSessionsObj = await getUrSessionsAsync(urIds);
+            urSessionsObj.sort(function (a, b) {
+                return a.id - b.id;
+            });
         } catch(error) {
             logDebug(error);
             return;
@@ -566,235 +793,32 @@
         updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj);
     }
 
-    async function handleUpdateRequestContainer(urId, tries) {
-        tries = tries || 1;
-        let commentNum;
-        logDebug('Handling update request container mutation. urId: ' + urId);
-        try {
-            var urSessionObj = await W.model.updateRequestSessions.getAsync([urId]);
-        } catch(err) {
-            let msg = 'Error retrieving urSessions async for urId ' + urId + ' on try ' + tries + '.';
-            if (tries < 50) msg += ' Retrying.';
-            logDebug(msg);
-        }
-        if (tries > 49) {
-            logDebug('50 tries at getting urSession async have elapsed. Stopping loop.');
-            return;
-        } else if (!urSessionObj) {
-            setTimeout(handleUpdateRequestContainer, 100, urId, ++tries);
-            return;
-        }
-        let urData = urSessionObj[0];
-        let mUrObj = W.model.mapUpdateRequests.getByIds([urId])[0];
-        let urOpen = mUrObj.attributes.open;
-        if (_settings.autoSwitchToUrCommentsTab) {
-            autoSwitchToUrceTab();
-        }
-        if ($('#panel-container .problem-edit .conversation').hasClass('collapsed')) {
-            logDebug('Expanding conversation list.');
-           $('#panel-container .problem-edit .conversation').removeClass('collapsed');
-        }
-        if (_settings.disableDoneNextButtons) {
-            logDebug('Removing the done / next buttons.');
-            $('#panel-container .content .navigation').css({'display':'none'});
-        }
-        logDebug('Setting event hook for center on UR crosshairs in UR panel title bar.');
-        $('#panel-container > div > div > div.top-section > div.header > div.title > div > a.focus').click(function() {
-            let x = (mUrObj.attributes.geometry.realX === undefined) ? mUrObj.attributes.geometry.x : mUrObj.attributes.geometry.realX;
-            let y = mUrObj.attributes.geometry.y;
-            W.map.setCenter([x,y], 5);
-        });
-        logDebug('Setting event hook to refresh map update requesrt marker when sending comment.');
-        $('.new-comment-form .send-button').click(function() {
-            setTimeout(handleUrMapMarkers, 500, [urId], null);
-        });
-
-        logDebug('Waiting 250ms before scrolling to bottom of the conversation list to give it time to load.');
-        await setTimeout(scrollToBottom, 250);
-        let unsavedDetected = await checkForUnsavedChanges();
-        if (urData.comments.length === 0) {
-            commentNum = Object.values(_defaultComments).find(defaultComment => { return defaultComment.urNum === mUrObj.attributes.type }).commentNum;
-            if (_settings.autoSetNewUrComment) {
-                autoZoomIn(commentNum, urId);
-                if (urOpen) postUrComment(_commentList[commentNum].comment);
-            }
-        } else if(urData.comments.length > 0) {
-            commentNum = _defaultComments.dr.commentNum;
-            if (unsavedDetected && _settings.autoSaveAfterSolvedOrNiComment && _commentList[commentNum].urstatus !== 'open') {
-                alert(I18n.t('urce.prompts.UnsavedEdits'));
-                return;
-            }
-            if (_settings.autoCenterOnUr) {
-                autoCenterOnUr(urId);
-            }
-            let lastCommentBy = urData.comments[(urData.comments.length - 1)].userID;
-            let commentDaysOld = urData.comments[(urData.comments.length - 1)].createdOn === null ? -1 : uroDateToDays(urData.comments[(urData.comments.length - 1)].createdOn);
-            if (_settings.autoSetReminderUrComment && urData.comments.length !== 1 && _settings.reminderDays > 0 && commentDaysOld >= _settings.reminderDays && lastCommentBy > 1) {
-                if (urOpen) postUrComment(_commentList[commentNum].comment);
-            }
-        }
-        if (_settings.autoClickOpenSolvedNi) {
-            if (urOpen) autoClickOpenSolvedNi(commentNum, urId);
-        }
-        if (_settings.autoCloseCommentWindow) {
-            logDebug('Setting event hook on comment send button.');
-            $('.send-button.waze-btn.waze-btn-blue').on('click', function() {
-                autoCloseUrPanel(urId);
-                if (_settings.autoZoomOutAfterComment) {
-                    autoZoomOut();
-                }
-            });
-        }
-    }
-
-    function autoSwitchToUrceTab() {
-        logDebug('Switching to URC-E > Comments tab.');
-        _$restoreTab = $('#user-tabs > ul > li.active > a');
-        _restoreTabPosition = $('#sidebar').scrollTop();
-        $('a[href="#sidepanel-urc-e"]').trigger('click');
-        $('a[href="#panel-urce-comments"]').trigger('click');
-    }
-
-    function checkForUnsavedChanges(commentNum) {
-        logDebug('Checking for unsaved changes.');
-        return new Promise((resolve) => {
-            let unsavedCount = $('#edit-buttons > div > div.toolbar-button.waze-icon-save > div.counter').html();
-            if (unsavedCount > 0) {
-                resolve(true);
-            } else {
-                resolve(false);
-            }
-        });
-    }
-
-    function autoZoomIn(commentNum, urId) {
-        if (_settings.autoZoomInOnNewUr && commentNum !== _defaultComments.dr.commentNum && commentNum !== _defaultComments.dc.commentNum) {
-            let zoom = 4;
-            _restoreZoom = getZoomLevel();
-            if (_restoreZoom < zoom) {
-                logDebug('Zooming to 4 from ' + _restoreZoom + '.');
-                let x = (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX === undefined) ? W.model.mapUpdateRequests.objects[urId].attributes.geometry.x : W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX;
-                let y = W.model.mapUpdateRequests.objects[urId].attributes.geometry.y;
-                W.map.setCenter([x,y], 5);
-            }
-        }
-    }
-
-    function autoCenterOnUr(urId) {
-        let _restoreZoom = getZoomLevel();
-        if (_restoreZoom < 3) {
-            logDebug('Centering on UR because zoom level is ' + _restoreZoom + '.');
-            let x = (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX === undefined) ? W.model.mapUpdateRequests.objects[urId].attributes.geometry.x : W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX;
-            let y = W.model.mapUpdateRequests.objects[urId].attributes.geometry.y;
-            W.map.setCenter([x,y], _restoreZoom);
-        }
-    }
-
-    function autoClickOpenSolvedNi(commentNum, urId) {
-        logDebug('Masking confirm function.');
-        let confirmHold = window.confirm;
-        window.confirm = function(msg) {
-            // Dummy confirm to prevent WME from being able to send confirmations during auto clicking
-            return true;
-        }
-        if ($('input[value="open"]').length > 0) {
-            $('.problem-edit .body').scrollTop($('.problem-edit .body')[0].scrollHeight);
-            if (_commentList[commentNum].urstatus === 'notidentified') {
-                logDebug('Clicking Not Identified');
-                $('input[value="not-identified"]').trigger('click');
-            } else if (_commentList[commentNum].urstatus === 'solved') {
-                logDebug('Clicking Solved.');
-                $('input[value="solved"]').trigger('click');
-            } else {
-                logDebug('Clicking Open');
-                $('input[value="open"]').trigger('click');
-            }
-        }
-        logDebug('Unmasking confirm function.');
-        window.confirm = confirmHold;
-    }
-
-    function autoZoomOut() {
-        _restoreZoom = _restoreZoom || 4;
-        logDebug('Zooming out to ' + _restoreZoom + '.');
-        W.map.setCenter(W.map.getCenter(), _restoreZoom);
-    }
-
-    function autoCloseUrPanel(urId, tries, close) {
-        tries = tries || 1;
-        logDebug('Waiting for the comment to send before closing window. Tries: ' + tries);
-        if (tries > 20) {
-            logError('The comment was not sent within the alotted time, not closing the UR window.');
-        } else if ($(".new-comment-text").val() !== "" && $(".new-comment-text").val() !== undefined) {
-            setTimeout(autoCloseUrPanel, 100, urId, ++tries);;
-        } else if (!close) {
-            if (_settings.unfollowUrAfterSend) {
-                W.model.updateRequestSessions.objects[urId].isFollowing = false;
-            }
-            logDebug('Waiting 100ms to actually close the UR panel to prevent URO+ from freaking out with the pill count.');
-            setTimeout(autoCloseUrPanel, 100, urId, 1, true)
-        } else {
-            logDebug('Clicking close on UR panel.');
-            $("#panel-container > div > div > div.top-section > a").trigger('click')
-        }
-    }
-
-    function getZoomLevel() {
-        return W.map.mapState.mapLocation.zoom;
-    }
-
-    function postUrComment(comment, tries) {
-        tries = tries || 1;
-        logDebug('Attemping to insert comment into comment box. Tries: ' + tries);
-        if (tries > 100) {
-            logError('Timed out waiting for the comment text box to become available.');
-            return;
-        } else if (!$('.new-comment-text')[0]) {
-            setTimeout(postUrComment, 100, comment, ++tries);
-        } else {
-            $('.new-comment-text').val(formatText(comment)).change();
-            $('.new-comment-text').keyup();
-        }
-    }
-
-    function showWmeMessage(message, delay) {
-        let dateNow = new Date().getTime();
-        let width = message.length * 10;
-        $('#map').append('<div id="urceMessage" style="width:100%; font-size:15px; font-weight:bold; margin-left:auto; position:absolute; top:0px; left:10px; z-index:1000;"></div>');
-        $('#urceMessage').append('<div id="urceMapNote' + dateNow + '" style="width:' + width + 'px; font-size: 15px; font-weight:bold; margin-left:auto; margin-right:auto; background-color:orange;"><center><b>' + message + '</b></center></div>');
-        $('#urceMapNote' + dateNow).show().delay(delay).queue(function() {
-            $('#urceMessage').remove();
-            $(this).remove();
-        });
-    }
-
-    async function refreshUrLayerMarkers() {
-        logDebug('Refreshing UR marker counters and visibility.');
-        let urList = [];
-        let urMapMarkerIds = [];
-        for (let urId in W.map.updateRequestLayer.markers) {
-            if (urMapMarkerIds.indexOf(urId) === -1) {
-                urMapMarkerIds.push(urId);
-            }
-        }
-        if (urMapMarkerIds.length > 0) {
-            try {
-                await handleUrMapMarkers(urMapMarkerIds);
-            } catch(error) {
-                logError(error);
-            }
-        }
-    }
-
-    function handleInitialUrLayer() {
+    function handleUrLayer(phase) {
         return new Promise(async (resolve,reject) => {
-            logDebug('Checking for UR markers already present before URC-E completed initialization.');
+            switch(phase) {
+                case 'init':
+                    logDebug('Checking for UR markers already present before URC-E completed initialization.');
+                    break;
+                case 'save':
+                    logDebug('Updating UR markers after save.');
+                    break;
+                case 'close':
+                    logDebug('Updating UR markers after closing UR panel.');
+                    break;
+                case 'settingsToggle':
+                    logDebug('Updating UR markers after a setting toggle.');
+                    break;
+                case 'sendComment':
+                    logDebug('Updating UR markers after sending a comment.');
+                    break;
+                default:
+                    reject('No phase available in request.');
+                    return;
+            }
             let urList = [];
             let urMapMarkerIds = [];
             for (let urId in W.map.updateRequestLayer.markers) {
-                if (urMapMarkerIds.indexOf(urId) === -1) {
-                    urMapMarkerIds.push(urId);
-                }
+                if (urMapMarkerIds.indexOf(urId) === -1) urMapMarkerIds.push(urId);
             }
             if (urMapMarkerIds.length > 0) {
                 try {
@@ -808,158 +832,29 @@
         });
     }
 
-    function setupMutationObservers(status) {
-        let urLayerObserver = new MutationObserver(async function(mutations) {
-            let urMapMarkerIds = [];
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'attributes') {
-                    if ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList && mutation.target.classList.contains('selected')) {
-                        let urId = mutation.target.getAttribute('data-id');
-                        if (urId > 0) {
-                            handleUpdateRequestContainer(urId);
-                        }
-                    }
-                } else if (mutation.type === 'childList') {
-                    for (let idx = 0; idx < mutation.addedNodes.length; idx++) {
-                        let addedNode = mutation.addedNodes[idx];
-                        if ($(addedNode).hasClass('map-problem') && $(addedNode).hasClass('user-generated') && $(addedNode).hasClass('map-marker')) {
-                            let urId = addedNode.getAttribute('data-id');
-                            if (urId > 0 && urMapMarkerIds.indexOf(urId) === -1) {
-                                urMapMarkerIds.push(urId);
-                            }
-                        }
-                    }
-                }
-            });
-            if (urMapMarkerIds.length > 0) {
-                handleUrMapMarkers(urMapMarkerIds);
-            }
-        });
-        if (status === 'enable' && !urLayerObserver.isObserving) {
-            logDebug('Enabling MOs.');
-            urLayerObserver.observe(W.map.updateRequestLayer.div, { childList: true, attributes: true, characterData: true, subtree: true });
-            urLayerObserver.isObserving = true;
-        } else if (status === 'disable' && urLayerObserver.isObserving) {
-            logDebug('Disabling MOs.');
-            urLayerObserver.disconnect();
-            urLayerObserver.isObserving = false;
+    function handleUrMarkerClick() {
+        if ($(this).hasClass('user-generated') || $(this).hasClass('has-comments')) {
+            _selUr.urId = $(this).attr('data-id');
+            logDebug('Clicked UR: ' + _selUr.urId);
         }
     }
 
-    async function initBackgroundTasks() {
-        logDebug('Initializing background tasks.');
-        let parentLayerEnabled = $('#layer-switcher-group_issues').is(':checked');
-        let mapIssuesEnabled = $('#layer-switcher-group_map_issues').is(':checked');
-        let openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
-        let closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
- /*       if (_settings.enableUrceUrFiltering) {
-            if (sessionStorage.UROverview_hasActiveURFilters) {
-                showAlertBox('fa-exclamation-circle', 'URC-E Error', I18n.t('urce.prompts.UrFilteringDisabled'), false, "OK", "", null, null);
-                _settings.enableUrceUrFiltering = false;
-                $('#_cbEnableUrceUrFiltering').prop('checked', false);
-                saveSettingsToStorage();
-                return;
+    async function changeCommentList(commentListIdx) {
+        commentListIdx = parseInt(commentListIdx || 0);
+        if (commentListIdx != _settings.commentList) {
+            logDebug('Switching comment list from ' + _commentLists[_settings.commentList].name + ' to ' + _commentLists[commentListIdx].name + '.');
+            _settings.commentList = parseInt(commentListIdx);
+            const buildCommentListResult = await buildCommentList(commentListIdx);
+            if (buildCommentListResult.error) {
+                handleBuildCommentListError(buildCommentListResult.error);
             }
-        } */
-        logDebug('Setting event hooks on layer toggles.');
-        $('#layer-switcher-group_issues').change(function() {
-            if (!$(this).is(':checked')) {
-                setupMutationObservers('disable');
-            } else {
-                mapIssuesEnabled = $('#layer-switcher-group_map_issues').is(':checked');
-                openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
-                closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
-                if ((mapIssuesEnabled) && (openUrsEnabled || closedUrsEnabled)) {
-                    setupMutationObservers('enable');
-                } else {
-                    setupMutationObservers('disable');
-                }
-            }
-        });
-        $('#layer-switcher-group_map_issues').change(function() {
-            if (!$(this).is(':checked')) {
-                setupMutationObservers('disable');
-            } else {
-                openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
-                closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
-                if (openUrsEnabled || closedUrsEnabled) {
-                    setupMutationObservers('enable');
-                } else {
-                    setupMutationObservers('disable');
-                }
-            }
-        });
-        $('#layer-switcher-item_update_requests').change(function() {
-            closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
-            if (!$(this).is(':checked') && !closedUrsEnabled) {
-                setupMutationObservers('disable');
-            } else {
-                setupMutationObservers('enable');
-            }
-        });
-        $('#layer-switcher-item_closed_update_requests').change(function() {
-            openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
-            if (!$(this).is(':checked') && !openUrsEnabled) {
-                setupMutationObservers('disable');
-            } else {
-                setupMutationObservers('enable');
-            }
-        });
-        if (parentLayerEnabled && mapIssuesEnabled && (openUrsEnabled || closedUrsEnabled)) {
-            try {
-                await handleInitialUrLayer();
-            } catch(error) {
-                logError(error);
-                // Don't need to return here, go ahead and setup the MOs.
-            }
-            setupMutationObservers('enable')
+            saveSettingsToStorage();
         }
     }
 
-    function injectCss() {
-        logDebug('Injecting CSS.');
-        let css = [
-            // Comments tab
-            '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:12px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-commentListName { padding-left:12px; font-size:12px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:11px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-icon { cursor:default; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-chevron { cursor:pointer; font-size:12px; margin-right: 4px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-solvedLink { color:#008F00; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-niLink { color:#E68A00; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-openLink { color:#000000; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-bottom:4px; height:16px; float:right; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }',
-            // Settings tab
-            '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-divDaysInput { padding-left:25px !important; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-daysInput { width:38px; height:20px; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-span { text-transform:uppercase; }',
-            // Common
-            '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:8px; border-radius:4px; -webkit-padding-before:0; }',
-            '#sidepanel-urc-e .URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }',
-            '#sidepanel-urc-e .URCE-divCC { padding-top:2px !important; }',
-            '#sidepanel-urc-e .URCE-label { white-space:pre-line; }',
-            '#sidepanel-urc-e .URCE-span { font-size:14px; font-weight:600; }',
-            '#sidepanel-urc-e .URCE-spanTitle { font-size:14px; font-weight:600; }',
-            '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:10px; color:#aaa; }',
-            '#sidepanel-urc-e .URCE-divTabs { padding:8px; padding-top:2px; }',
-            // Main Tabs
-            '.URCE-tabIcon { padding-bottom:6px; width:18px; }',
-            // Alert Box
-            '#urceAlertBox { position:fixed; visibility:hidden; top:50%; left:50%; z-index:10000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px; box-shadow:5px 5px 10px silver; padding:4px; -webkit-transform:translate(-50%, -50%); transform:translate(-50%, -50%); }',
-            '.URCE-alertBox-header { padding:4px; background-color:LightBlue; font-weight:bold; font-size:14px; }',
-            '.URCE-alertBox-content { padding:4px; background-color:White; overflow:auto; max-height:500px; }',
-            '.URCE-alertBox-controls { text-align:center; padding:4px; }',
-            '.URCE-alertBox-controls-span-urceAlertTickBtn, .URCE-alertBox-controls-span-urceAlertCrossBtn { cursor:pointer; font-size:14px; border:thin outset black; padding:2px 10px 2px 10px; }',
-            '.URCE-alertBox-controls-span-urceAlertTickBtnCaption, .URCE-alertBox-controls-span-urceAlertCrossBtnCaption { font-weight:bold; }'
-        ].join(' ');
-        $('<style = type="text/css">' + css + '</style>').appendTo('head');
+    function getCommentListInfo(commentListIdx) {
+        commentListIdx = parseInt(commentListIdx || _settings.commentList);
+        return _commentLists.find(cList => { return cList.idx === commentListIdx });
     }
 
     function checkForStaticListArray(oldVarName) {
@@ -1230,6 +1125,194 @@
         );
     }
 
+    function initMutationObservers(status) {
+        let saveButtonObserver = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if ($(mutation.target).hasClass('waze-icon-save') && mutation.type === 'attributes' && mutation.attributeName === 'class' && $(mutation.target).hasClass('ItemDisabled')) {
+                    if (mutation.oldValue.toString().indexOf('ItemDisabled') === -1) {
+                        handleAfterSave();
+                    }
+                }
+            });
+        });
+        let urPanelContainerObserver = new MutationObserver(function(mutations) {
+            let urId = _selUr.urId;
+            mutations.forEach(function(mutation) {
+                if ($(mutation.target).is('#panel-container') && mutation.type === 'childList' && mutation.addedNodes.length > 0 && urId > 0) {
+                    handleUpdateRequestContainer(urId);
+                } else if ($(mutation.target).is('#panel-container') && mutation.type === 'childList' && mutation.removedNodes.length > 0 && urId > 0) {
+                    handleAfterCloseUpdateContainer(urId);
+                } else if ($(mutation.target).hasClass('comment-list') && mutation.type === 'childList' && mutation.addedNodes.length > 0 && urId > 0) {
+                    handleAfterCommentMutation(urId);
+                } else if (mutation.type === 'attributes' && mutation.attributeName === 'data-state') {// && mutation.oldValue) {
+                    logDebug('Handling UR status change mutation.');
+                    if (mutation.target.attributes['data-state'].nodeValue === 'open') {
+                        _selUr.newStatus = 'open';
+                    } else if (mutation.target.attributes['data-state'].nodeValue === 'solved') {
+                        _selUr.newStatus = 'solved';
+                    } else if (mutation.target.attributes['data-state'].nodeValue === 'not-identified') {
+                        _selUr.newStatus = 'notidentified';
+                    } else {
+                        logDebug(mutation.target.attributes['data-state'].nodeValue);
+                    }
+                }
+            });
+        });
+        let urMarkerObserver = new MutationObserver(function(mutations) {
+            let urMapMarkerIds = [];
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    for (let idx = 0; idx < mutation.addedNodes.length; idx++) {
+                        const addedNode = mutation.addedNodes[idx];
+                        if ($(addedNode).hasClass('map-problem') && $(addedNode).hasClass('user-generated') && $(addedNode).hasClass('map-marker')) {
+                            const urId = addedNode.getAttribute('data-id');
+                            if (urId > 0 && urMapMarkerIds.indexOf(urId) === -1) urMapMarkerIds.push(urId);
+                        }
+                    }
+                }
+            });
+            if (urMapMarkerIds.length > 0) {
+                handleUrMapMarkers(urMapMarkerIds);
+            }
+        });
+        if (status === 'enable' && (!saveButtonObserver.isObserving || !urPanelContainerObserver.isObserving || !urMarkerObserver.isObserving)) {
+            logDebug('Enabling MOs.');
+            if (!saveButtonObserver.isObserving) {
+                saveButtonObserver.observe(document.getElementById('toolbar'), { childList: true, attributes: true, attributeOldValue: true, characterData: true, characterOldData: true, subtree: true });
+                saveButtonObserver.isObserving = true;
+            }
+            if (!urPanelContainerObserver.isObserving) {
+                urPanelContainerObserver.observe(document.getElementById('panel-container'), { childList: true, attributes: true, attributeOldValue: true, characterData: true, subtree: true });
+                urPanelContainerObserver.isObserving = true;
+            }
+            if (!urMarkerObserver.isObserving) {
+                urMarkerObserver.observe(W.map.updateRequestLayer.div, { childList: true, attributes: true, characterData: true, subtree: true });
+                urMarkerObserver.isObserving = true;
+            }
+        } else if (status === 'disable' && (saveButtonObserver.isObserving || urPanelContainerObserver.isObserving || urMarkerObserver.isObserving)) {
+            logDebug('Disabling MOs.');
+            if (saveButtonObserver.isObserving) {
+                saveButtonObserver.disconnect();
+                saveButtonObserver.isObserving = false;
+            }
+            if (urPanelContainerObserver.isObserving) {
+                urPanelContainerObserver.disconnect();
+                urPanelContainerObserver.isObserving = false;
+            }
+            if (urMarkerObserver.isObserving) {
+                urMarkerObserver.disconnect();
+                urMarkerObserver.isObserving = false;
+            }
+        }
+    }
+
+    async function initBackgroundTasks() {
+        logDebug('Initializing background tasks.');
+        let parentLayerEnabled = $('#layer-switcher-group_issues').is(':checked');
+        let mapIssuesEnabled = $('#layer-switcher-group_map_issues').is(':checked');
+        let openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
+        let closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
+        logDebug('Setting event hooks on layer toggles.');
+        $('#layer-switcher-group_issues').change(function() {
+            if (!$(this).is(':checked')) {
+                initMutationObservers('disable');
+            } else {
+                mapIssuesEnabled = $('#layer-switcher-group_map_issues').is(':checked');
+                openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
+                closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
+                if ((mapIssuesEnabled) && (openUrsEnabled || closedUrsEnabled)) {
+                    initMutationObservers('enable');
+                } else {
+                    initMutationObservers('disable');
+                }
+            }
+        });
+        $('#layer-switcher-group_map_issues').change(function() {
+            if (!$(this).is(':checked')) {
+                initMutationObservers('disable');
+            } else {
+                openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
+                closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
+                if (openUrsEnabled || closedUrsEnabled) {
+                    initMutationObservers('enable');
+                } else {
+                    initMutationObservers('disable');
+                }
+            }
+        });
+        $('#layer-switcher-item_update_requests').change(function() {
+            closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
+            if (!$(this).is(':checked') && !closedUrsEnabled) {
+                initMutationObservers('disable');
+            } else {
+                initMutationObservers('enable');
+            }
+        });
+        $('#layer-switcher-item_closed_update_requests').change(function() {
+            openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
+            if (!$(this).is(':checked') && !openUrsEnabled) {
+                initMutationObservers('disable');
+            } else {
+                initMutationObservers('enable');
+            }
+        });
+        if (parentLayerEnabled && mapIssuesEnabled && (openUrsEnabled || closedUrsEnabled)) {
+            try {
+                await handleUrLayer('init');
+            } catch(error) {
+                logWarning(error);
+                // Don't need to return here, go ahead and setup the MOs.
+            }
+            initMutationObservers('enable');
+        }
+    }
+
+    function injectCss() {
+        logDebug('Injecting CSS.');
+        let css = [
+            // Comments tab
+            '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:12px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-commentListName { padding-left:12px; font-size:12px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:11px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-icon { cursor:default; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-chevron { cursor:pointer; font-size:12px; margin-right: 4px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-solvedLink { color:#008F00; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-niLink { color:#E68A00; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-openLink { color:#000000; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-bottom:4px; height:16px; float:right; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }',
+            // Settings tab
+            '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }',
+            '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }',
+            '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }',
+            '#sidepanel-urc-e #panel-urce-settings .URCE-divDaysInput { padding-left:25px !important; }',
+            '#sidepanel-urc-e #panel-urce-settings .URCE-daysInput { width:38px; height:20px; }',
+            '#sidepanel-urc-e #panel-urce-settings .URCE-span { text-transform:uppercase; }',
+            // Common
+            '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:8px; border-radius:4px; -webkit-padding-before:0; }',
+            '#sidepanel-urc-e .URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }',
+            '#sidepanel-urc-e .URCE-divCC { padding-top:2px !important; }',
+            '#sidepanel-urc-e .URCE-label { white-space:pre-line; }',
+            '#sidepanel-urc-e .URCE-span { font-size:14px; font-weight:600; }',
+            '#sidepanel-urc-e .URCE-spanTitle { font-size:14px; font-weight:600; }',
+            '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:10px; color:#aaa; }',
+            '#sidepanel-urc-e .URCE-divTabs { padding:8px; padding-top:2px; }',
+            // Main Tabs
+            '.URCE-tabIcon { padding-bottom:6px; width:18px; }',
+            // Alert Box
+            '#urceAlertBox { position:fixed; visibility:hidden; top:50%; left:50%; z-index:10000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px; box-shadow:5px 5px 10px silver; padding:4px; -webkit-transform:translate(-50%, -50%); transform:translate(-50%, -50%); }',
+            '.URCE-alertBox-header { padding:4px; background-color:LightBlue; font-weight:bold; font-size:14px; }',
+            '.URCE-alertBox-content { padding:4px; background-color:White; overflow:auto; max-height:500px; }',
+            '.URCE-alertBox-controls { text-align:center; padding:4px; }',
+            '.URCE-alertBox-controls-span-urceAlertTickBtn, .URCE-alertBox-controls-span-urceAlertCrossBtn { cursor:pointer; font-size:14px; border:thin outset black; padding:2px 10px 2px 10px; }',
+            '.URCE-alertBox-controls-span-urceAlertTickBtnCaption, .URCE-alertBox-controls-span-urceAlertCrossBtnCaption { font-weight:bold; }'
+        ].join(' ');
+        $('<style = type="text/css">' + css + '</style>').appendTo('head');
+    }
+
     function initCommentsTab() {
         logDebug('Initializing Comments tab.');
         $('#panel-urce-comments').append(
@@ -1342,7 +1425,14 @@
                     $('<input>', {type:'checkbox', id:'_cbAutoZoomOutAfterComment', urceprefs:'urce'}).change(function() { changeSetting('autoZoomOutAfterComment', $(this).is(':checked')); }).prop('checked', _settings.autoZoomOutAfterComment),
                     $('<label>', {for:'_cbAutoZoomOutAfterComment', title:I18n.t('urce.prefs.AutoZoomOutAfterCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoZoomOutAfterComment')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDisableDoneNextButtons', urceprefs:'urce'}).change(function() { changeSetting('disableDoneNextButtons', $(this).is(':checked')); }).prop('checked', _settings.disableDoneNextButtons),
+                    $('<input>', {type:'checkbox', id:'_cbDisableDoneNextButtons', urceprefs:'urce'}).change(function() {
+                        changeSetting('disableDoneNextButtons', $(this).is(':checked'));
+                        if ($(this).is(':checked')) {
+                            $('#panel-container .content .navigation').css({'display':'none'});
+                        } else {
+                            $('#panel-container .content .navigation').css({'display':'block'});
+                        }
+                    }).prop('checked', _settings.disableDoneNextButtons),
                     $('<label>', {for:'_cbDisableDoneNextButtons', title:I18n.t('urce.prefs.DisableDoneNextButtonsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DisableDoneNextButtons')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkNiComments', urceprefs:'urce'}).change(function() {
@@ -1417,19 +1507,37 @@
                         } else {
                             $('[urceprefs=marker]').prop('disabled', false);
                         }
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.enableUrPillCounts),
                     $('<label>', {for:'_cbEnableUrPillCounts', title:I18n.t('urce.prefs.EnableUrPillCountsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrPillCounts')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbDoNotShowTagNameOnPill', urceprefs:'marker'}).change(function() {
                         changeSetting('doNotShowTagNameOnPill', $(this).is(':checked'));
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.doNotShowTagNameOnPill),
                     $('<label>', {for:'_cbDoNotShowTagNameOnPill', title:I18n.t('urce.prefs.DoNotShowTagNameOnPillTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoNotShowTagNameOnPill')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbReplaceTagNameWithEditorName', urceprefs:'marker'}).change(function() {
                         changeSetting('replaceTagNameWithEditorName', $(this).is(':checked'));
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.replaceTagNameWithEditorName),
                     $('<label>', {for:'_cbReplaceTagNameWithEditorName', title:I18n.t('urce.prefs.ReplaceTagNameWithEditorNameTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.ReplaceTagNameWithEditorName'))
                 )
@@ -1441,13 +1549,6 @@
                 ),
                 $('<div>', {class:'controls-container URCE-divCC'}).append(
                     $('<input>', {type:'checkbox', id:'_cbEnableUrceUrFiltering', urceprefs:'filteringMaster'}).change(function() {
-                        /*if ($(this).is(':checked')) {
-                            if (sessionStorage.UROverview_hasActiveURFilters) {
-                                showAlertBox('fa-exclamation-circle', 'URC-E Error', I18n.t('urce.prompts.UrFilteringDisabled'), false, "OK", "", null, null);
-                                $(this).prop('checked', false);
-                                return;
-                            }
-                        } */
                         _settings.enableUrceUrFiltering = $(this).is(':checked');
                         if (!$(this).is(':checked')) {
                             $('[urceprefs=filtering]').prop('disabled', true);
@@ -1455,73 +1556,145 @@
                             $('[urceprefs=filtering]').prop('disabled', false);
                         }
                         saveSettingsToStorage();
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.enableUrceUrFiltering),
                     $('<label>', {for:'_cbEnableUrceUrFiltering', title:I18n.t('urce.prefs.EnableUrceUrFilteringTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrceUrFiltering')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbOnlyShowMyUrs', urceprefs:'filtering'}).change(function() {
                         changeSetting('onlyShowMyUrs', $(this).is(':checked'));
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.onlyShowMyUrs),
                     $('<label>', {for:'_cbOnlyShowMyUrs', title:I18n.t('urce.prefs.OnlyShowMyUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.OnlyShowMyUrs')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbShowOthersUrsPastReminderClose', urceprefs:'filtering'}).change(function() {
                         changeSetting('showOthersUrsPastReminderClose', $(this).is(':checked'));
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.showOthersUrsPastReminderClose),
                     $('<label>', {for:'_cbShowOthersUrsPastReminderClose', title:I18n.t('urce.prefs.ShowOthersUrsPastReminderCloseTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.ShowOthersUrsPastReminderClose')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbHideClosedUrs', urceprefs:'filtering'}).change(function() {
                         changeSetting('hideClosedUrs', $(this).is(':checked'));
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.hideClosedUrs),
                     $('<label>', {for:'_cbHideClosedUrs', title:I18n.t('urce.prefs.HideClosedUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideClosedUrs')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbHideTaggedUrs', urceprefs:'filtering'}).change(function() {
                         changeSetting('hideTaggedUrs', $(this).is(':checked'));
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.hideTaggedUrs),
                     $('<label>', {for:'_cbHideTaggedUrs', title:I18n.t('urce.prefs.HideTaggedUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideTaggedUrs')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbHideWaiting', urceprefs:'filtering'}).change(function() {
                         changeSetting('hideWaiting', $(this).is(':checked'));
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.hideWaiting),
                     $('<label>', {for:'_cbHideWaiting', title:I18n.t('urce.prefs.HideWaitingTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideWaiting')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbHideUrsCloseNeeded', urceprefs:'filtering'}).change(function() {
                         changeSetting('hideUrsCloseNeeded', $(this).is(':checked'));
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.hideUrsCloseNeeded),
                     $('<label>', {for:'_cbHideUrsCloseNeeded', title:I18n.t('urce.prefs.HideUrsCloseNeededTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsCloseNeeded')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbHideUrsReminderNeeded', urceprefs:'filtering'}).change(function() {
                         changeSetting('hideUrsReminderNeeded', $(this).is(':checked'));
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.hideUrsReminderNeeded),
                     $('<label>', {for:'_cbHideUrsReminderNeeded', title:I18n.t('urce.prefs.HideUrsReminderNeededTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsReminderNeeded')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbHideUrsWithUserReplies', urceprefs:'filtering'}).change(function() {
                         changeSetting('hideUrsWithUserReplies', $(this).is(':checked'));
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.hideUrsWithUserReplies),
                     $('<label>', {for:'_cbHideUrsWithUserReplies', title:I18n.t('urce.prefs.HideUrsWithUserRepliesTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWithUserReplies')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbHideUrsWoComments', urceprefs:'filtering'}).change(function() {
                         changeSetting('hideUrsWoComments', $(this).is(':checked'));
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.hideUrsWoComments),
                     $('<label>', {for:'_cbHideUrsWoComments', title:I18n.t('urce.prefs.HideUrsWoCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoComments')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsOrDescriptions', urceprefs:'filtering'}).change(function() {
                         changeSetting('hideUrsWoCommentsOrDescriptions', $(this).is(':checked'));
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.hideUrsWoCommentsOrDescriptions),
                     $('<label>', {for:'_cbHideUrsWoCommentsOrDescriptions', title:I18n.t('urce.prefs.HideUrsWoCommentsOrDescriptionsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoCommentsOrDescriptions')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsWithDescriptions', urceprefs:'filtering'}).change(function() {
                         changeSetting('hideUrsWoCommentsWithDescriptions', $(this).is(':checked'));
-                        refreshUrLayerMarkers();
+                        (async () => {
+                            try {
+                                await handleUrLayer('settingsToggle');
+                            } catch(error) {
+                                logWarning(error);
+                            }
+                        })();
                     }).prop('checked', _settings.hideUrsWoCommentsWithDescriptions),
                     $('<label>', {for:'_cbHideUrsWoCommentsWithDescriptions', title:I18n.t('urce.prefs.HideUrsWoCommentsWithDescriptionsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoCommentsWithDescriptions'))
                 )
@@ -1543,7 +1716,13 @@
                                 if (numReminderDays !== this.value) {
                                     changeSetting('reminderDays', numReminderDays);
                                     this.value = numReminderDays;
-                                    refreshUrLayerMarkers();
+                                    (async () => {
+                                        try {
+                                            await handleUrLayer('settingsToggle');
+                                        } catch(error) {
+                                            logWarning(error);
+                                        }
+                                    })();
                                 }
                             })
                         ),
@@ -1557,7 +1736,13 @@
                                 if (numCloseDays !== this.value) {
                                     changeSetting('closeDays', numCloseDays);
                                     this.value = numCloseDays;
-                                    refreshUrLayerMarkers();
+                                    (async () => {
+                                        try {
+                                            await handleUrLayer('settingsToggle');
+                                        } catch(error) {
+                                            logWarning(error);
+                                        }
+                                    })();
                                 }
                             })
                         )
@@ -1646,7 +1831,7 @@
         } else {
             initBackgroundTasks();
         }
-        logDebug('Loaded in ' + Math.round(performance.now() - t0) + ' ms.');
+        logDebug('Loaded in ' + Math.round(performance.now() - _loadBeginTime) + ' ms.');
     }
 
     function bootstrap(tries) {
@@ -1655,7 +1840,6 @@
             W.map &&
             W.model &&
             $ && WazeWrap.Ready) {
-            t0 = performance.now();
             log('Bootstrapping.');
             init();
         } else if (tries < 1000) {
@@ -1762,14 +1946,19 @@
                     DoubleClickTitle: 'Double click here to send this comment:',
                     Loading: 'Loading',
                     PleaseWait: 'Please wait',
-                    ErrorGeneric: 'An error has occurred within URC-E. Please contact dBsooner via Discord or PM.'
+                    ErrorGeneric: 'An error has occurred within URC-E. Please contact dBsooner via Discord or PM.',
+                    Yes: 'Yes',
+                    No: 'No',
+                    ErrorHeader: 'URC-E Error'
                 },
                 prompts: {
                     FilterUrs2Abort: 'URC-E - Aborting FilterURs2 because filtering, counts and auto reminders are disabled.',
                     LoadingUrDataTimeout: 'URC-E: Loading UR data has timed out, retrying.',
                     NoCommentBox: 'URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.',
+                    CommentInsertTimedOut: 'URCE-E timed out waiting for the comment text box to become available.',
                     ReminderMessageAuto: 'URC-E: Automatically sending reminder message to UR:',
-                    UnsavedEdits: 'URC-E has detected that you hav unsaved edits!\n\nWith the \'Auto save\' option enabled, you cannot send comments that would require the script to save, if you have previous unsaved edits. Please save your edits and then re-click the comment you wish to send.',
+                    UnsavedEdits: 'URC-E has detected you had unsaved edits before working this UR. As a precaution, URC-E\'s \'Auto save\' option gives you this warning before saving if there were unsaved edits before opening the UR. Would you like to go ahead and automatically process the unsaved edits as well as this UR?',
+                    UnsavedEditsHeader: 'Unsaved Edits Detected',
                     UrFilteringDisabled: 'URC-E\'s UR Filterin cannot be enabled because URO+\'s UR filters are active. To use URC-E\'s filtering, please disable URO+\'s UR filters.',
                     CustomListUsed: 'URC-E has loaded your "Custom" comment list. However, only the comments themselves have been loaded. The settings text and tooltips were not loaded. Further, this functionality is deprecated and may be discontinued at any time. An alternative solution may or may not be offered at that time.'
                 },
