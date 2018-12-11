@@ -1,1 +1,1 @@
-# WME-URComments-Enhanced (beta)
+# WME-URComments-Enhanced
