@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.12.01
+// @version     2018.12.12.02
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -370,7 +370,7 @@
         }
         const urData = urSessionObj[0];
         const mUrObj = mapUrsObj[0];
-        const urOpen = mUrObj.attributes.open;
+        _selUr.urOpen = mUrObj.attributes.open;
         _selUr.unsavedDetected = await checkForUnsavedChanges();
         if (_settings.autoSwitchToUrCommentsTab) autoSwitchToUrceTab();
         if ($('#panel-container .problem-edit .conversation').hasClass('collapsed')) {
@@ -390,7 +390,7 @@
             commentNum = Object.values(_defaultComments).find(defaultComment => { return defaultComment.urNum === mUrObj.attributes.type }).commentNum;
             if (_settings.autoSetNewUrComment) {
                 if (_settings.autoZoomInOnNewUr) autoZoomIn(urId);
-                if (urOpen) {
+                if (_selUr.urOpen) {
                     if (_settings.autoClickOpenSolvedNi) autoClickOpenSolvedNi(commentNum);
                     try {
                         await postUrComment(_commentList[commentNum].comment);
@@ -406,7 +406,7 @@
             const lastCommentBy = urData.comments[(urData.comments.length - 1)].userID;
             const commentDaysOld = urData.comments[(urData.comments.length - 1)].createdOn === null ? -1 : uroDateToDays(urData.comments[(urData.comments.length - 1)].createdOn);
             if (_settings.autoSetReminderUrComment && urData.comments.length > 0 && commentDaysOld > (_settings.reminderDays - 1) && lastCommentBy > 1) {
-                if (urOpen) {
+                if (_selUr.urOpen) {
                     if (_settings.autoZoomInOnNewUr) autoZoomIn(urId);
                     if (_settings.autoClickOpenSolvedNi) autoClickOpenSolvedNi(commentNum);
                     try {
@@ -423,7 +423,7 @@
     }
 
     async function handleClickedComment(commentNum, doubleClick) {
-        const urId = _selUr.urId;
+        const urId = _selUr.urId || getUrId();
         logDebug('Handling clicked comment. commentNum: ' + commentNum + ' | doubleClick: ' + doubleClick);
         _selUr.doubleClick = doubleClick;
         if (!$('.new-comment-text')[0]) {
@@ -439,7 +439,7 @@
             $('.new-comment-text').off('blur', autoClickSendButton);
             $('.new-comment-text').on('blur', autoClickSendButton);
         }
-        if (_settings.autoClickOpenSolvedNi) autoClickOpenSolvedNi(commentNum);
+        if (_settings.autoClickOpenSolvedNi && _selUr.urOpen) autoClickOpenSolvedNi(commentNum);
         try {
             await postUrComment(_commentList[commentNum].comment);
         } catch(error) {
@@ -452,16 +452,17 @@
     function autoSwitchToUrceTab() {
         logDebug('Switching to URC-E > Comments tab.');
         _$restoreTab = $('#user-tabs > ul > li.active > a');
-        _restoreTabPosition = $('#sidebar').scrollTop();
+        _restoreTabPosition = $($('#user-info .tab-content')[0]).scrollTop();
         $('a[href="#sidepanel-urc-e"]').trigger('click');
         $('a[href="#panel-urce-comments"]').trigger('click');
+        $($('#user-info .tab-content')[0]).scrollTop(0);
     }
 
     function autoSwitchToPrevTab() {
         if ($(_$restoreTab)) {
             logDebug('Switching to previous tab.');
             $(_$restoreTab).click();
-            $('#sidebar').scrollTop(_restoreTabPosition);
+            $($('#user-info .tab-content')[0]).scrollTop(_restoreTabPosition);
             _$restoreTab = null;
             _restoreTabPosition = null;
         }
@@ -510,25 +511,23 @@
     }
 
     function autoClickOpenSolvedNi(commentNum) {
-        logDebug('Auto clicking open, solved or not identified.');
+        logDebug('Running auto click open, solved or not identified routine.');
         logDebug('Masking confirm function.');
         let confirmHold = window.confirm;
         window.confirm = function(msg) {
             // Dummy confirm to prevent WME from being able to send confirmations during auto clicking
             return true;
         }
-        if ($('input[value="open"]').length > 0) {
-            $('.problem-edit .body').scrollTop($('.problem-edit .body')[0].scrollHeight);
-            if (_commentList[commentNum].urstatus === 'notidentified' && _selUr.newStatus !== 'notidentified') {
-                logDebug('Clicking Not Identified');
-                $('input[value="not-identified"]').trigger('click');
-            } else if (_commentList[commentNum].urstatus === 'solved' && _selUr.newStatusn !== 'solved') {
-                logDebug('Clicking Solved.');
-                $('input[value="solved"]').trigger('click');
-            } else if (_commentList[commentNum].urstatus === 'open' && (_selUr.newStatus === 'solved' || _selUr.newStatus === 'notidentified')) {
-                logDebug('Clicking Open.');
-                $('input[value="open"]').trigger('click');
-            }
+        $('.problem-edit .body').scrollTop($('.problem-edit .body')[0].scrollHeight);
+        if (_commentList[commentNum].urstatus === 'notidentified' && _selUr.newStatus !== 'notidentified') {
+            logDebug('Clicking Not Identified');
+            $('input[value="not-identified"]').trigger('click');
+        } else if (_commentList[commentNum].urstatus === 'solved' && _selUr.newStatusn !== 'solved') {
+            logDebug('Clicking Solved.');
+            $('input[value="solved"]').trigger('click');
+        } else if (_commentList[commentNum].urstatus === 'open' && (_selUr.newStatus === 'solved' || _selUr.newStatus === 'notidentified')) {
+            logDebug('Clicking Open.');
+            $('input[value="open"]').trigger('click');
         }
         logDebug('Unmasking confirm function.');
         window.confirm = confirmHold;
@@ -541,7 +540,7 @@
         if (_restoreZoom < zoom) {
             logDebug('Zooming to 4 from ' + _restoreZoom + '.');
             let x = (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX === undefined) ? W.model.mapUpdateRequests.objects[urId].attributes.geometry.x : W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX;
-            let y = W.model.mapUpdateRequests.objects[urId].attributes.geometry.y;
+            let y = (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realY === undefined) ? W.model.mapUpdateRequests.objects[urId].attributes.geometry.y : W.model.mapUpdateRequests.objects[urId].attributes.geometry.realY;
             W.map.setCenter([x,y], 5);
         }
     }
@@ -552,7 +551,7 @@
         if (_restoreZoom < 3) {
             logDebug('Centering on UR because zoom level is ' + _restoreZoom + '.');
             let x = (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX === undefined) ? W.model.mapUpdateRequests.objects[urId].attributes.geometry.x : W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX;
-            let y = W.model.mapUpdateRequests.objects[urId].attributes.geometry.y;
+            let y = (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realY === undefined) ? W.model.mapUpdateRequests.objects[urId].attributes.geometry.y : W.model.mapUpdateRequests.objects[urId].attributes.geometry.realY;
             W.map.setCenter([x,y], _restoreZoom);
         }
     }
@@ -570,7 +569,40 @@
     }
 
     function formatText(text) {
-        return text.replace(/\\[r|n]+/gi, '\n');
+        if (text.indexOf('$URD') > 0) {
+            if ($('#update-request-panel .solution p').length > 0) {
+                text = text.replace('$URD', $('#update-request.panel .solution p').text()).replace(/\n+/gmi, '');
+            } else if ($('.description .content').length > 0) {
+                text = text.replace('$URD', $('.description .content').text()).replace(/\n+/gmi, '').replace('$USERNAME', W.model.loginManager.user.userName);
+            } else {
+                text = text.replace(' "$URD"', '');
+            }
+        }
+        if (text.indexOf('$SELSEGS') > 0) {
+            let selFeatures = W.selectionManager.getSelectedFeatures();
+            let streetName;
+            if (selFeatures.length > 0 && selFeatures.length < 3) {
+                for (let idx = 0; idx < selFeatures.length; idx++) {
+                    if (selFeatures[idx].model.CLASS_NAME === 'W.Feature.Vector.Segment') {
+                        if (selFeatures.length === 1) {
+                            streetName = W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
+                        } else {
+                            if (idx === 0) {
+                                streetName = 'the intersection of ' + W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name + ' and ';
+                            } else {
+                                streetName += W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
+                            }
+                        }
+                    }
+                }
+                if (streetName && streetName.length > 0) {
+                    text = text.replace('$SELSEGS', streetName);
+                } else {
+                    text = text.replace('$SELSEGS', '');
+                }
+            }
+        }
+        return text.replace(/\\[r|n]+/gmi, '\n');
     }
 
     function postUrComment(comment) {
@@ -835,8 +867,17 @@
 
     function handleUrMarkerClick() {
         if ($(this).hasClass('user-generated') || $(this).hasClass('has-comments')) {
-            _selUr.urId = $(this).attr('data-id');
-            logDebug('Clicked UR: ' + _selUr.urId);
+            if (!(_selUr.urId > 0)) {
+                _selUr.urId = $(this).attr('data-id');
+                logDebug('Clicked UR: ' + _selUr.urId);
+            }
+        }
+    }
+
+    function getUrId() {
+        if (!(_selUr.urId > 0)) {
+            logWarning('Had to get the urId from the back yard. Please let dBsooner know.');
+            _selUr.urId = $(".update-requests .selected").data("id")
         }
     }
 
@@ -1129,7 +1170,7 @@
     function initMutationObservers(status) {
         let saveButtonObserver = new MutationObserver(function(mutations) {
             mutations.forEach(function(mutation) {
-                if ($(mutation.target).hasClass('waze-icon-save') && mutation.type === 'attributes' && mutation.attributeName === 'class' && $(mutation.target).hasClass('ItemDisabled')) {
+                if ($(mutation.target).hasClass('waze-icon-save') && mutation.type === 'attributes' && mutation.attributeName === 'class' && mutation.target.classList.contains('ItemDisabled')) {
                     if (mutation.oldValue.toString().indexOf('ItemDisabled') === -1) {
                         handleAfterSave();
                     }
@@ -1137,7 +1178,7 @@
             });
         });
         let urPanelContainerObserver = new MutationObserver(function(mutations) {
-            let urId = _selUr.urId;
+            let urId = _selUr.urId || getUrId();
             mutations.forEach(function(mutation) {
                 if ($(mutation.target).is('#panel-container') && mutation.type === 'childList' && mutation.addedNodes.length > 0 && urId > 0) {
                     handleUpdateRequestContainer(urId);
@@ -1154,24 +1195,25 @@
                     } else if (mutation.target.attributes['data-state'].nodeValue === 'not-identified') {
                         _selUr.newStatus = 'notidentified';
                     } else {
-                        logDebug(mutation.target.attributes['data-state'].nodeValue);
+                        logWarning(mutation.target.attributes['data-state'].nodeValue);
                     }
                 }
             });
         });
         let urMarkerObserver = new MutationObserver(function(mutations) {
             let urMapMarkerIds = [];
+            let i = 0;
             mutations.forEach((mutation) => {
                 if (mutation.type === 'childList') {
                     for (let idx = 0; idx < mutation.addedNodes.length; idx++) {
                         const addedNode = mutation.addedNodes[idx];
-                        if ($(addedNode).hasClass('map-problem') && $(addedNode).hasClass('user-generated') && $(addedNode).hasClass('map-marker')) {
+                        if (addedNode.classList && addedNode.classList.contains('map-marker') && (addedNode.classList.contains('user-generated') || addedNode.classList.contains('map-marker'))) {
                             const urId = addedNode.getAttribute('data-id');
                             if (urId > 0 && urMapMarkerIds.indexOf(urId) === -1) urMapMarkerIds.push(urId);
                         }
                     }
-                } else if (mutation.type === 'attributes' && $(mutation.target).hasClass('map-problem') && $(mutation.target).hasClass('user-generated')) {
-                    if ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList && mutation.target.classList.contains('selected')) {
+                } else if (mutation.type === 'attributes' && mutation.target.classList && (mutation.target.classList.contains('user-generated') || mutation.target.classList.contains('has-comments'))) {
+                    if ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList.contains('selected')) {
                         if (mutation.target.attributes['data-id'].nodeValue > 0) {
                             if (!_selUr.handling) {
                                 _selUr.urId = mutation.target.attributes['data-id'].nodeValue;
