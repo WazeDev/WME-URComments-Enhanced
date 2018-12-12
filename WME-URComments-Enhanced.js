@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.12.02
+// @version     2018.12.12.03
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -149,22 +149,25 @@
                 hideUrsWoCommentsOrDescriptions: convertUrcSettings ? (localStorage.getItem('URCommentsHideWithoutDescript') === 'true') : false,
                 hideUrsWoCommentsWithDescriptions: convertUrcSettings ? ( localStorage.getItem('URCommentsHideWithDescript') === 'true') : false,
                 wmeUserId: null,
+                commentListCollapses: {},
                 lastVersion: null
             };
             if (_settings.reminderDays >= _settings.closeDays) {
-                _settings.reminderDays = (_settings.closeDays - 1) < 1 ? 1 : (_settings.closeDays - 1);
+                _settings.reminderDays = (_settings.closeDays - 1) < 0 ? 0 : (_settings.closeDays - 1);
             }
-            _settings.reminderDays = Math.min(13,Math.max(1,parseInt(_settings.reminderDays)));
+            _settings.reminderDays = Math.min(13,Math.max(0,parseInt(_settings.reminderDays)));
             if (_settings.closeDays <= _settings.reminderDays) {
                 _settings.closeDays = (_settings.reminderDays + 1) > 14 ? 14 : (_settings.reminderDays + 1);
             }
-            _settings.closeDays = Math.min(14,Math.max(2,parseInt(_settings.closeDays)));
+            _settings.closeDays = Math.min(14,Math.max(1,parseInt(_settings.closeDays)));
         }
         if (_settings.wmeUserId !== _wmeUserId) _settings.wmeUserId = _wmeUserId;
     }
 
-    function saveSettingsToStorage() {
+    async function saveSettingsToStorage() {
         if (localStorage) {
+            if (_settings.commentListCollapses === undefined) _settings.commentListCollapses = {};
+            _settings.commentListCollapses[_settings.commentList] = await getCollapsedGroups();
             _settings.lastVersion = SCRIPT_VERSION;
             localStorage.setItem(SETTINGS_STORE_NAME, JSON.stringify(_settings));
             logDebug('Settings saved.');
@@ -250,6 +253,20 @@
     function changeSetting(settingId, settingVal) {
         _settings[settingId] = settingVal;
         saveSettingsToStorage();
+    }
+
+    function getCollapsedGroups() {
+        return new Promise((resolve) => {
+            let $getDivs = $('div[id$="_body"]');
+            let rObj = {};
+            for (let idx = 0; idx < $getDivs.length; idx++) {
+                let div = $getDivs[idx];
+                if (div.id.indexOf('urceComments-for-') > -1) {
+                    rObj[div.id] = $(div).hasClass('collapse');
+                }
+            }
+            resolve(rObj);
+        });
     }
 
     function getUrSessionsAsync(urIds, tries) {
@@ -405,7 +422,7 @@
             if (_settings.autoCenterOnUr) autoCenterOnUr(urId);
             const lastCommentBy = urData.comments[(urData.comments.length - 1)].userID;
             const commentDaysOld = urData.comments[(urData.comments.length - 1)].createdOn === null ? -1 : uroDateToDays(urData.comments[(urData.comments.length - 1)].createdOn);
-            if (_settings.autoSetReminderUrComment && urData.comments.length > 0 && commentDaysOld > (_settings.reminderDays - 1) && lastCommentBy > 1) {
+            if (_settings.autoSetReminderUrComment && urData.comments.length > 0 && _settings.reminderDays !== 0 &&commentDaysOld > (_settings.reminderDays - 1) && lastCommentBy > 1) {
                 if (_selUr.urOpen) {
                     if (_settings.autoZoomInOnNewUr) autoZoomIn(urId);
                     if (_settings.autoClickOpenSolvedNi) autoClickOpenSolvedNi(commentNum);
@@ -738,7 +755,7 @@
                     }
                     if (urCommentCount === 1) {
                         if (lastCommentBy > 1) {
-                            if (commentDaysOld > (_settings.reminderDays - 1)) {
+                            if (_settings.reminderDays !== 0 && commentDaysOld > (_settings.reminderDays - 1)) {
                                 if (_wmeUserId === lastCommentBy && !urReminderSent && _settings.autoSendReminders) {
                                     showAlertBanner(I18n.t('urce.prompts.ReminderMessageAuto') + ' ' + urId, 3000);
                                     W.model.updateRequestSessions.objects[urId].addComment(_defaultComments.dr.commentNum);
@@ -1032,6 +1049,7 @@
                                         $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
                                         $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
                                         $($(this).siblings()[0]).toggleClass('collapse');
+                                        saveSettingsToStorage();
                                     })
                                 ).append(
                                     $('<div>', {id:groupDivId+'_body'})
@@ -1760,12 +1778,12 @@
                 $('<div>', {class:'controls-container URCE-divCC'}).append(
                     $('<div>', {class:'URCE-divDaysInput'}).append(
                         $('<div>', {title:I18n.t('urce.prefs.ReminderDaysTitle'), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.ReminderDays') + ': ').append(
-                            $('<input>', {type:'number', id:'_numReminderDays', class:'URCE-daysInput', urceprefs:'common', min:'1', max:'14', step:'1', value:_settings.reminderDays, title:I18n.t('urce.prefs.ReminderDaysTitle')}).on('change', function() {
-                                let numReminderDays = Math.abs(parseInt(this.value, 10) || 1);
+                            $('<input>', {type:'number', id:'_numReminderDays', class:'URCE-daysInput', urceprefs:'common', min:'0', max:'13', step:'1', value:_settings.reminderDays, title:I18n.t('urce.prefs.ReminderDaysTitle')}).on('change', function() {
+                                let numReminderDays = Math.abs(parseInt(this.value, 10) || 0);
                                 if (numReminderDays >= _settings.closeDays) {
-                                    numReminderDays = (_settings.closeDays - 1) < 1 ? 1 : (_settings.closeDays - 1);
+                                    numReminderDays = (_settings.closeDays - 1) < 0 ? 0 : (_settings.closeDays - 1);
                                 }
-                                numReminderDays = Math.min(13,Math.max(1,parseInt(numReminderDays)));
+                                numReminderDays = Math.min(13,Math.max(0,parseInt(numReminderDays)));
                                 if (numReminderDays !== this.value) {
                                     changeSetting('reminderDays', numReminderDays);
                                     this.value = numReminderDays;
@@ -1785,7 +1803,7 @@
                                 if (numCloseDays <= _settings.reminderDays) {
                                     numCloseDays = (_settings.reminderDays + 1) > 14 ? 14 : (_settings.reminderDays + 1);
                                 }
-                                numCloseDays = Math.min(14,Math.max(2,parseInt(numCloseDays)));
+                                numCloseDays = Math.min(14,Math.max(1,parseInt(numCloseDays)));
                                 if (numCloseDays !== this.value) {
                                     changeSetting('closeDays', numCloseDays);
                                     this.value = numCloseDays;
@@ -1876,7 +1894,7 @@
             saveSettingsToStorage();
         }, false);
         log('Initialized.');
-        saveSettingsToStorage();
+        setTimeout(saveSettingsToStorage, 5000);
         _urceInitialized = true;
         let buildCommentListResult = await buildCommentList();
         if (buildCommentListResult.error) {
@@ -1952,7 +1970,7 @@
                     // Common Preferences
                     CommonPrefs: 'Common Preferences',
                     ReminderDays: 'Reminder days',
-                    ReminderDaysTitle: 'Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment. Must be between 1 and 13 and less than \'Close days\'.',
+                    ReminderDaysTitle: 'Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment. Must be between 0 and 13 and less than \'Close days\'. 0 is off (no reminder used).',
                     CloseDays: 'Close days',
                     CloseDaysTitle: 'Number of days to use when calculating UR filtering. Must be between 2 and 14 and greater than \'Reminder days\'.',
                     // UR Marker Preferences
