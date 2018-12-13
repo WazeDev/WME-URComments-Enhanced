@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.12.05
+// @version     2018.12.13.01
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -95,7 +95,6 @@
         logDebug('Loading settings from storage.');
         let convertUrcSettings = false;
         let loadedSettings = $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
-        let defaultSettings;
         if (loadedSettings && loadedSettings.lastVersion && Object.keys(loadedSettings)[0].substring(0,1) === 'C') {
             logDebug('Converting settings keys to correct case.');
             const tempSettings = Object.entries(loadedSettings);
@@ -106,12 +105,13 @@
                 tempSettings2[key] = tempSettings[idx][1];
             }
             loadedSettings = tempSettings2;
+        } else if (!loadedSettings.lastVersion) {
+            if (localStorage.getItem('URCommentVersion') > '1.8.9') {
+                convertUrcSettings = true;
+                logDebug('Referencing settings from URC ' + localStorage.getItem('URCommentVersion') + ' for some default settings.');
+            }
         }
-        if (localStorage.getItem('URCommentVersion') > '1.8.9') {
-            convertUrcSettings = true;
-            logDebug('Referencing settings from URC ' + localStorage.getItem('URCommentVersion') + ' for some default settings.');
-        }
-        defaultSettings = {
+        let defaultSettings = {
             commentList: convertUrcSettings ? convertOldVarName(localStorage.getItem('BoilerPlateCreators')) : '0',
             autoCenterOnUr: convertUrcSettings ? (localStorage.getItem('WithCommentRecenter') === 'yes' ? true : false) : false,
             autoClickOpenSolvedNi: convertUrcSettings ? (localStorage.getItem('AutoClickURStatus') === 'yes' ? true : false) : false,
@@ -158,6 +158,7 @@
             defaultSettings.closeDays = (defaultSettings.reminderDays + 1) > 14 ? 14 : (defaultSettings.reminderDays + 1);
         }
         defaultSettings.closeDays = Math.min(14,Math.max(1,parseInt(defaultSettings.closeDays)));
+         _settings = loadedSettings ? loadedSettings : defaultSettings;
         for (let prop in defaultSettings) {
             if (!_settings.hasOwnProperty(prop)) {
                 _settings[prop] = defaultSettings[prop];
