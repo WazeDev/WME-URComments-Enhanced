@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.12.04
+// @version     2018.12.12.05
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -95,71 +95,73 @@
         logDebug('Loading settings from storage.');
         let convertUrcSettings = false;
         let loadedSettings = $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
-        if (loadedSettings && loadedSettings.lastVersion) {
-            if (Object.keys(loadedSettings)[0].substring(0,1) === 'C') {
-                logDebug('Converting settings keys to correct case.');
-                const tempSettings = Object.entries(loadedSettings);
-                let tempSettings2 = {};
-                for (let idx = 0; idx < tempSettings.length; idx++) {
-                    let key = tempSettings[idx][0].substring(0,1).toLowerCase();
-                    key += tempSettings[idx][0].substring(1);
-                    tempSettings2[key] = tempSettings[idx][1];
-                }
-                loadedSettings = tempSettings2;
+        let defaultSettings;
+        if (loadedSettings && loadedSettings.lastVersion && Object.keys(loadedSettings)[0].substring(0,1) === 'C') {
+            logDebug('Converting settings keys to correct case.');
+            const tempSettings = Object.entries(loadedSettings);
+            let tempSettings2 = {};
+            for (let idx = 0; idx < tempSettings.length; idx++) {
+                let key = tempSettings[idx][0].substring(0,1).toLowerCase();
+                key += tempSettings[idx][0].substring(1);
+                tempSettings2[key] = tempSettings[idx][1];
             }
-            _settings = loadedSettings;
-        } else {
-            if (localStorage.getItem('URCommentVersion') > '1.8.9') {
-                convertUrcSettings = true;
-                logDebug('Converting settings from URC ' + localStorage.getItem('URCommentVersion'));
+            loadedSettings = tempSettings2;
+        }
+        if (localStorage.getItem('URCommentVersion') > '1.8.9') {
+            convertUrcSettings = true;
+            logDebug('Referencing settings from URC ' + localStorage.getItem('URCommentVersion') + ' for some default settings.');
+        }
+        defaultSettings = {
+            commentList: convertUrcSettings ? convertOldVarName(localStorage.getItem('BoilerPlateCreators')) : '0',
+            autoCenterOnUr: convertUrcSettings ? (localStorage.getItem('WithCommentRecenter') === 'yes' ? true : false) : false,
+            autoClickOpenSolvedNi: convertUrcSettings ? (localStorage.getItem('AutoClickURStatus') === 'yes' ? true : false) : false,
+            autoCloseCommentWindow: convertUrcSettings ? (localStorage.getItem('UrCommentAutoCloseComment') === 'yes' ? true : false) : false,
+            autoSaveAfterSolvedOrNiComment: convertUrcSettings ? (localStorage.getItem('SaveAfterComment') === 'yes' ? true : false) : false,
+            autoSendReminders: convertUrcSettings ? (localStorage.getItem('URCommentsAutoSendMyReminders') === 'true') : false,
+            autoSetNewUrComment: convertUrcSettings ? (localStorage.getItem('AutoSetNewComment') === 'yes' ? true : false) : false,
+            autoSetReminderUrComment: convertUrcSettings ? (localStorage.getItem('UrCommentAutoSet4dayComment') === 'yes' ? true : false) : false,
+            autoSwitchToUrCommentsTab: convertUrcSettings ? (localStorage.getItem('AutoSwitchToURCommentsTab') === 'yes' ? true : false) : false,
+            autoZoomInOnNewUr: convertUrcSettings ? (localStorage.getItem('NewZoomIn') === 'yes' ? true : false) : false,
+            autoZoomOutAfterComment: convertUrcSettings ? (localStorage.getItem('ZoomOutAfterComment') === 'yes' ? true : false) : false,
+            disableDoneNextButtons: convertUrcSettings ? (localStorage.getItem('UrCommentDisableURDoneBtn') === 'true') : false,
+            doNotShowTagNameOnPill: convertUrcSettings ? (localStorage.getItem('URCommentsDontShowTaggedText') === 'true') : false,
+            doubleClickLinkNiComments: convertUrcSettings? (localStorage.getItem('DBLClk7DCAutoSend') === 'yes' || localStorage.getItem('DBLClkAll') === 'yes' ? true : false) : false,
+            doubleClickLinkOpenComments: convertUrcSettings ? (localStorage.getItem('DBLClkAll') === 'yes' ? true : false) : false,
+            doubleClickLinkSolvedComments: convertUrcSettings ? (localStorage.getItem('DBLClkAll') === 'yes' ? true : false) : false,
+            replaceTagNameWithEditorName: convertUrcSettings ? (localStorage.getItem('URCommentsReplaceTagWithEditorName') === 'true') : false,
+            unfollowUrAfterSend: convertUrcSettings ? (localStorage.getItem('URCommentURUnfollow') === 'true') : false,
+            hideZoomOutLinks: false,
+            reminderDays: convertUrcSettings? Math.min(13,Math.max(1,parseInt(localStorage.getItem('ReminderDays')))) : 3,
+            closeDays: convertUrcSettings ? Math.min(14,Math.max(2,parseInt(localStorage.getItem('CloseDays')))) : 7,
+            enableUrceUrFiltering: convertUrcSettings ? (localStorage.getItem('URCommentsFilterEnabled') === 'true') : false,
+            enableUrPillCounts: convertUrcSettings ? (localStorage.getItem('URCommentsPillEnabled') === 'true') : false,
+            onlyShowMyUrs: convertUrcSettings ? (localStorage.getItem('URCommentsHideNotMyUR') === 'true') : false,
+            showOthersUrsPastReminderClose: convertUrcSettings ? (localStorage.getItem('URCommentsShowPastClose') === 'true') : false,
+            hideClosedUrs: convertUrcSettings ? (localStorage.getItem('URCommentsHideClosed') === 'true') : false,
+            hideTaggedUrs: convertUrcSettings ? (localStorage.getItem('URCommentsHideNotes') === 'true') : false,
+            hideWaiting: convertUrcSettings ? (localStorage.getItem('URCommentsHideInbetween') === 'true') : false,
+            hideUrsCloseNeeded: convertUrcSettings ? (localStorage.getItem('URCommentsHideCloseNeeded') === 'true') : false,
+            hideUrsReminderNeeded: convertUrcSettings ? (localStorage.getItem('URCommentsHideReminderNeeded') === 'true') : false,
+            hideUrsWithUserReplies: convertUrcSettings ? (localStorage.getItem('URCommentsHideReplies') === 'true') : false,
+            hideUrsWoComments: convertUrcSettings ? (localStorage.getItem('URCommentsHideInital') === 'true') : false,
+            hideUrsWoCommentsOrDescriptions: convertUrcSettings ? (localStorage.getItem('URCommentsHideWithoutDescript') === 'true') : false,
+            hideUrsWoCommentsWithDescriptions: convertUrcSettings ? ( localStorage.getItem('URCommentsHideWithDescript') === 'true') : false,
+            wmeUserId: null,
+            commentListCollapses: {},
+            lastVersion: null
+        };
+        if (defaultSettings.reminderDays > (defaultSettings.closeDays - 1)) {
+            defaultSettings.reminderDays = (defaultSettings.closeDays - 1) < 0 ? 0 : (defaultSettings.closeDays - 1);
+        }
+        defaultSettings.reminderDays = Math.min(13,Math.max(0,parseInt(defaultSettings.reminderDays)));
+        if (defaultSettings.closeDays < (defaultSettings.reminderDays + 1)) {
+            defaultSettings.closeDays = (defaultSettings.reminderDays + 1) > 14 ? 14 : (defaultSettings.reminderDays + 1);
+        }
+        defaultSettings.closeDays = Math.min(14,Math.max(1,parseInt(defaultSettings.closeDays)));
+        for (let prop in defaultSettings) {
+            if (!_settings.hasOwnProperty(prop)) {
+                _settings[prop] = defaultSettings[prop];
             }
-            _settings = {
-                commentList: convertUrcSettings ? convertOldVarName(localStorage.getItem('BoilerPlateCreators')) : '0',
-                autoCenterOnUr: convertUrcSettings ? (localStorage.getItem('WithCommentRecenter') === 'yes' ? true : false) : false,
-                autoClickOpenSolvedNi: convertUrcSettings ? (localStorage.getItem('AutoClickURStatus') === 'yes' ? true : false) : false,
-                autoCloseCommentWindow: convertUrcSettings ? (localStorage.getItem('UrCommentAutoCloseComment') === 'yes' ? true : false) : false,
-                autoSaveAfterSolvedOrNiComment: convertUrcSettings ? (localStorage.getItem('SaveAfterComment') === 'yes' ? true : false) : false,
-                autoSendReminders: convertUrcSettings ? (localStorage.getItem('URCommentsAutoSendMyReminders') === 'true') : false,
-                autoSetNewUrComment: convertUrcSettings ? (localStorage.getItem('AutoSetNewComment') === 'yes' ? true : false) : false,
-                autoSetReminderUrComment: convertUrcSettings ? (localStorage.getItem('UrCommentAutoSet4dayComment') === 'yes' ? true : false) : false,
-                autoSwitchToUrCommentsTab: convertUrcSettings ? (localStorage.getItem('AutoSwitchToURCommentsTab') === 'yes' ? true : false) : false,
-                autoZoomInOnNewUr: convertUrcSettings ? (localStorage.getItem('NewZoomIn') === 'yes' ? true : false) : false,
-                autoZoomOutAfterComment: convertUrcSettings ? (localStorage.getItem('ZoomOutAfterComment') === 'yes' ? true : false) : false,
-                disableDoneNextButtons: convertUrcSettings ? (localStorage.getItem('UrCommentDisableURDoneBtn') === 'true') : false,
-                doNotShowTagNameOnPill: convertUrcSettings ? (localStorage.getItem('URCommentsDontShowTaggedText') === 'true') : false,
-                doubleClickLinkNiComments: convertUrcSettings? (localStorage.getItem('DBLClk7DCAutoSend') === 'yes' || localStorage.getItem('DBLClkAll') === 'yes' ? true : false) : false,
-                doubleClickLinkOpenComments: convertUrcSettings ? (localStorage.getItem('DBLClkAll') === 'yes' ? true : false) : false,
-                doubleClickLinkSolvedComments: convertUrcSettings ? (localStorage.getItem('DBLClkAll') === 'yes' ? true : false) : false,
-                replaceTagNameWithEditorName: convertUrcSettings ? (localStorage.getItem('URCommentsReplaceTagWithEditorName') === 'true') : false,
-                unfollowUrAfterSend: convertUrcSettings ? (localStorage.getItem('URCommentURUnfollow') === 'true') : false,
-                hideZoomOutLinks: false,
-                reminderDays: convertUrcSettings? Math.min(13,Math.max(1,parseInt(localStorage.getItem('ReminderDays')))) : 3,
-                closeDays: convertUrcSettings ? Math.min(14,Math.max(2,parseInt(localStorage.getItem('CloseDays')))) : 7,
-                enableUrceUrFiltering: convertUrcSettings ? (localStorage.getItem('URCommentsFilterEnabled') === 'true') : false,
-                enableUrPillCounts: convertUrcSettings ? (localStorage.getItem('URCommentsPillEnabled') === 'true') : false,
-                onlyShowMyUrs: convertUrcSettings ? (localStorage.getItem('URCommentsHideNotMyUR') === 'true') : false,
-                showOthersUrsPastReminderClose: convertUrcSettings ? (localStorage.getItem('URCommentsShowPastClose') === 'true') : false,
-                hideClosedUrs: convertUrcSettings ? (localStorage.getItem('URCommentsHideClosed') === 'true') : false,
-                hideTaggedUrs: convertUrcSettings ? (localStorage.getItem('URCommentsHideNotes') === 'true') : false,
-                hideWaiting: convertUrcSettings ? (localStorage.getItem('URCommentsHideInbetween') === 'true') : false,
-                hideUrsCloseNeeded: convertUrcSettings ? (localStorage.getItem('URCommentsHideCloseNeeded') === 'true') : false,
-                hideUrsReminderNeeded: convertUrcSettings ? (localStorage.getItem('URCommentsHideReminderNeeded') === 'true') : false,
-                hideUrsWithUserReplies: convertUrcSettings ? (localStorage.getItem('URCommentsHideReplies') === 'true') : false,
-                hideUrsWoComments: convertUrcSettings ? (localStorage.getItem('URCommentsHideInital') === 'true') : false,
-                hideUrsWoCommentsOrDescriptions: convertUrcSettings ? (localStorage.getItem('URCommentsHideWithoutDescript') === 'true') : false,
-                hideUrsWoCommentsWithDescriptions: convertUrcSettings ? ( localStorage.getItem('URCommentsHideWithDescript') === 'true') : false,
-                wmeUserId: null,
-                commentListCollapses: {},
-                lastVersion: null
-            };
-            if (_settings.reminderDays >= _settings.closeDays) {
-                _settings.reminderDays = (_settings.closeDays - 1) < 0 ? 0 : (_settings.closeDays - 1);
-            }
-            _settings.reminderDays = Math.min(13,Math.max(0,parseInt(_settings.reminderDays)));
-            if (_settings.closeDays <= _settings.reminderDays) {
-                _settings.closeDays = (_settings.reminderDays + 1) > 14 ? 14 : (_settings.reminderDays + 1);
-            }
-            _settings.closeDays = Math.min(14,Math.max(1,parseInt(_settings.closeDays)));
         }
         if (_settings.wmeUserId !== _wmeUserId) _settings.wmeUserId = _wmeUserId;
     }
@@ -505,7 +507,7 @@
 
     function autoCloseUrPanel() {
         logDebug('Clicking close on UR panel.');
-        $("#panel-container > div > div > div.top-section > a").trigger('click')
+        $("#panel-container > div > div > div.top-section > a").trigger('click');
     }
 
     function checkForUnsavedChanges() {
@@ -1399,9 +1401,21 @@
                 $('<div>', {id:'urceIcon', class:'URCE-divIcon'}).append(
                     $('<img>', {src:GM_info.script.icon, class:'URCE-icon'})
                 ),
-                $('<a>', {id:'zoomOutLink1', class:'URCE-Comments', title:I18n.t('urce.commentsTab.ZoomOutLink1Title')}).text(I18n.t('urce.commentsTab.ZoomOutLink1')).append('<br>'),
-                $('<a>', {id:'zoomOutlink2', class:'URCE-Comments', title:I18n.t('urce.commentsTab.ZoomOutLink2Title')}).text(I18n.t('urce.commentsTab.ZoomOutLink2')).append('<br>'),
-                $('<a>', {id:'zoomOutlink3', class:'URCE-Comments', title:I18n.t('urce.commentsTab.ZoomOutLink3Title')}).text(I18n.t('urce.commentsTab.ZoomOutLink3')).append('<br>')
+                $('<a>', {id:'zoomOutLink1', class:'URCE-Comments', title:I18n.t('urce.commentsTab.ZoomOutLink1Title')}).text(I18n.t('urce.commentsTab.ZoomOutLink1')).on('click', function() {
+                    if ($(".problem-edit .header .close-panel").length !== 0) $("#panel-container > div > div > div.top-section > a").trigger('click');
+                    W.map.setCenter(W.map.getCenter(), 0);
+
+                }).append('<br>'),
+                $('<a>', {id:'zoomOutlink2', class:'URCE-Comments', title:I18n.t('urce.commentsTab.ZoomOutLink2Title')}).text(I18n.t('urce.commentsTab.ZoomOutLink2')).on('click', function() {
+                    if ($(".problem-edit .header .close-panel").length !== 0) $("#panel-container > div > div > div.top-section > a").trigger('click');
+                    W.map.setCenter(W.map.getCenter(), 2);
+
+                }).append('<br>'),
+                $('<a>', {id:'zoomOutlink3', class:'URCE-Comments', title:I18n.t('urce.commentsTab.ZoomOutLink3Title')}).text(I18n.t('urce.commentsTab.ZoomOutLink3')).on('click', function() {
+                    if ($(".problem-edit .header .close-panel").length !== 0) $("#panel-container > div > div > div.top-section > a").trigger('click');
+                    W.map.setCenter(W.map.getCenter(), 3);
+
+                }).append('<br>')
             ).append(function() {
                 if (_settings.hideZoomOutLinks) $(this).hide();
             }),
