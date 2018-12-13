@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.12.03
+// @version     2018.12.12.04
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1040,10 +1040,18 @@
                             } else {
                                 groupDivId += 'blankGroup' + (++blankGroup);
                             }
+                            let collapsed;
+                            if (_settings.commentListCollapses.hasOwnProperty(_settings.commentList)) {
+                                let cListCollapses = _settings.commentListCollapses[_settings.commentList];
+                                collapsed = (cListCollapses.hasOwnProperty(groupDivId+'_body')) ? (cListCollapses[groupDivId+'_body'] === true) ? 'collapse' : '' : '';
+                            } else {
+                                collapsed = '';
+                            }
+                            let chevron = (collapsed === 'collapse') ? 'fa-chevron-right' : 'fa-chevron-down';
                             $('#_commentList').append(
                                 $('<fieldset>', {id:groupDivId, class:'URCE-field'}).append(
                                     $('<legend>', {class:'URCE-legend'}).append(
-                                        $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
+                                        $('<i>', {class:`fa fa-fw ${chevron} URCE-chevron`}),
                                         $('<span>', {class:'URCE-span', title:splitRow.titleMouseOver}).text(splitRow.title)
                                     ).click(function() {
                                         $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
@@ -1052,7 +1060,7 @@
                                         saveSettingsToStorage();
                                     })
                                 ).append(
-                                    $('<div>', {id:groupDivId+'_body'})
+                                    $('<div>', {id:groupDivId+'_body', class:collapsed})
                                 )
                             )
                         } else {
