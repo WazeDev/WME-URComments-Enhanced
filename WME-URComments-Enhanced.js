@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.13.01
+// @version     2018.12.14.01
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -148,6 +148,7 @@
             hideUrsWoCommentsWithDescriptions: convertUrcSettings ? ( localStorage.getItem('URCommentsHideWithDescript') === 'true') : false,
             wmeUserId: null,
             commentListCollapses: {},
+            commentListStyle: 'default',
             lastVersion: null
         };
         if (defaultSettings.reminderDays > (defaultSettings.closeDays - 1)) {
@@ -255,6 +256,20 @@
 
     function changeSetting(settingId, settingVal) {
         _settings[settingId] = settingVal;
+        saveSettingsToStorage();
+    }
+
+    function changeCommentListStyle(settingVal) {
+        if (_settings.commentListStyle !== settingVal) {
+            if (settingVal === 'default') {
+                $('fieldset[id^="urceComments-for-"], legend[id^="urceComments-for-"], div[id^="urceComments-for-"]').removeClass('urStyle');
+                $('fieldset[id^="urce-prefs-fieldset"], legend[id^="urce-prefs-legend"]').removeClass('urStyle');
+            } else if (settingVal == 'urStyle') {
+                $('fieldset[id^="urceComments-for-"], legend[id^="urceComments-for-"], div[id^="urceComments-for-"]').addClass('urStyle');
+                $('fieldset[id^="urce-prefs-fieldset"], legend[id^="urce-prefs-legend"]').addClass('urStyle');
+            }
+            _settings.commentListStyle = settingVal;
+        }
         saveSettingsToStorage();
     }
 
@@ -1051,9 +1066,10 @@
                                 collapsed = '';
                             }
                             let chevron = (collapsed === 'collapse') ? 'fa-chevron-right' : 'fa-chevron-down';
+                            let urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '';
                             $('#_commentList').append(
-                                $('<fieldset>', {id:groupDivId, class:'URCE-field'}).append(
-                                    $('<legend>', {class:'URCE-legend'}).append(
+                                $('<fieldset>', {id:groupDivId, class:`URCE-field ${urStyle}`}).append(
+                                    $('<legend>', {id:groupDivId+'_legend', class:`URCE-legend ${urStyle}`}).append(
                                         $('<i>', {class:`fa fa-fw ${chevron} URCE-chevron`}),
                                         $('<span>', {class:'URCE-span', title:splitRow.titleMouseOver}).text(splitRow.title)
                                     ).click(function() {
@@ -1063,7 +1079,7 @@
                                         saveSettingsToStorage();
                                     })
                                 ).append(
-                                    $('<div>', {id:groupDivId+'_body', class:collapsed})
+                                    $('<div>', {id:groupDivId+'_body', class:`${collapsed} URCE-group_body ${urStyle}`})
                                 )
                             )
                         } else {
@@ -1359,23 +1375,26 @@
             '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-icon { cursor:default; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-chevron { cursor:pointer; font-size:12px; margin-right: 4px; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-solvedLink { color:#008F00; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-niLink { color:#E68A00; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-openLink { color:#000000; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-bottom:4px; height:16px; float:right; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-group_body.urStyle { padding-left:23px !important; }',
             // Settings tab
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-divDaysInput { padding-left:25px !important; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-daysInput { width:38px; height:20px; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-span { text-transform:uppercase; }',
+            '#sidepanel-urc-e #panel-urce-settings .URCE-span { text-transform:uppercase; cursor:pointer; }',
             // Common
-            '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:8px; border-radius:4px; -webkit-padding-before:0; }',
+            '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:12px; margin-right: 4px; }',
+            '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; }',
+            '#sidepanel-urc-e .URCE-field.urStyle { border:unset !important; padding:unset !important; border-radius:unset !important; }',
             '#sidepanel-urc-e .URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }',
+            '#sidepanel-urc-e .URCE-legend.urStyle { border-bottom-style:unset !important; margin-bottom:2px !important; width:100% !important; background-color:#F6F7F7 !important; line-height:20px !important; padding:0 2px 0 2px !important; border-top:1px solid #C0C0C0 !important; border-bottom:1px solid #C0C0C0 !important; }',
             '#sidepanel-urc-e .URCE-divCC { padding-top:2px !important; }',
             '#sidepanel-urc-e .URCE-label { white-space:pre-line; }',
             '#sidepanel-urc-e .URCE-span { font-size:14px; font-weight:600; }',
@@ -1428,417 +1447,478 @@
 
     function initSettingsTab() {
         logDebug('Initializing Settings tab.');
+        let urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '';
         $('#panel-urce-settings').append(
             // Comment List
-            $('<fieldset>', {class:'URCE-field'}).append(
-                $('<legend>', {class:'URCE-legend'}).append(
+            $('<fieldset>', {id:'urce-prefs-fieldset-commentList', class:`URCE-field${urStyle}`}).append(
+                $('<legend>', {id:'urce-prefs-legend-commentList', class:`URCE-legend${urStyle}`}).append(
+                    $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
                     $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.CommentList'))
-                ),
-                $('<div>', {class:'controls-container URCE-divCC'}).append(function() {
-                    let $selList = $('<select>', {id:'_selCommentList', urceprefs:'commentList'});
-                    _commentLists.forEach(cList => {
-                        if (cList.status === 'disabled') {
-                            return;
-                        } else if (cList.idx === _settings.commentList) {
-                            $selList.append($('<option>', {value:cList.idx, selected:true}).text(cList.name));
-                        } else {
-                            $selList.append($('<option>', {value:cList.idx}).text(cList.name));
-                        }
-                    });
-                    return $selList.val(_settings.commentList).change(function() {
-                        changeCommentList($(this).val());
-                    });
+                ).click(function() {
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
+                    $($(this).siblings()[0]).toggleClass('collapse');
                 }),
+                $('<div>', {class:'controls-container URCE-divCC'}).append(
+                    $('<div>', {class:'controls-container URCE-divCC'}).text(I18n.t('urce.prefs.List') + ': ').append(function() {
+                        let $selList = $('<select>', {id:'_selCommentList', urceprefs:'commentList'});
+                        _commentLists.forEach(cList => {
+                            if (cList.status === 'disabled') {
+                                return;
+                            } else if (cList.idx === _settings.commentList) {
+                                $selList.append($('<option>', {value:cList.idx, selected:true}).text(cList.name));
+                            } else {
+                                $selList.append($('<option>', {value:cList.idx}).text(cList.name));
+                            }
+                        });
+                        return $selList.val(_settings.commentList).change(function() {
+                            changeCommentList($(this).val());
+                        });
+                    }),
+                    $('<div>', {class:'URCE-commentListStyle'}).text(I18n.t('urce.prefs.Style') + ': ').append(function() {
+                        let $selList = $('<select>', {id:'_selCommentListStyle', urceprefs:'commentList'});
+                        if (_settings.commentListStyle === 'default') {
+                            $selList.append(
+                                $('<option>', {value:'default', selected:true}).text(I18n.t('urce.prefs.StyleDefault'))
+                            )
+                        } else {
+                            $selList.append(
+                                $('<option>', {value:'default'}).text('Default')
+                            )
+                        }
+                        if (_settings.commentListStyle === 'urStyle') {
+                            $selList.append(
+                                $('<option>', {value:'urStyle', selected:true}).text(I18n.t('urce.prefs.StyleUrStyle'))
+                            )
+                        } else {
+                            $selList.append(
+                                $('<option>', {value:'urStyle'}).text('UR Style')
+                            )
+                        }
+                        $selList.change(function() {
+                            changeCommentListStyle($(this).val());
+                        })
+                        return $selList;
+                    })
+                )
             ),
             // URC-E Preferences
-            $('<fieldset>', {class:'URCE-field'}).append(
-                $('<legend>', {class:'URCE-legend'}).append(
+            $('<fieldset>', {id:'urce-prefs-fieldset-urc-e-prefs', class:`URCE-field${urStyle}`}).append(
+                $('<legend>', {id:'urce-prefs-legend-urc-e-prefs', class:`URCE-legend${urStyle}`}).append(
+                    $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
                     $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.UrcePrefs'))
-                ),
+                ).click(function() {
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
+                    $($(this).siblings()[0]).toggleClass('collapse');
+                }),
                 $('<div>', {class:'controls-container URCE-divCC'}).append(
-                    $('<input>', {type:'checkbox', id:'_cbAutoCenterOnUr', urceprefs:'urce'}).change(function() { changeSetting('autoCenterOnUr', $(this).is(':checked')); }).prop('checked', _settings.autoCenterOnUr),
-                    $('<label>', {for:'_cbAutoCenterOnUr', title:I18n.t('urce.prefs.AutoCenterOnUrTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoCenterOnUr')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoClickOpenSolvedNi', urceprefs:'urce'}).change(function() {
-                        _settings.autoClickOpenSolvedNi = $(this).is(':checked');
-                        if (!$(this).is(':checked')) {
-                            if (isChecked('_cbAutoSaveAfterSolvedOrNiComment')) {
-                                _settings.autoSaveAfterSolvedOrNiComment = false;
-                                $('#_cbAutoSaveAfterSolvedOrNiComment').prop('checked', false);
+                    $('<div>', {class:'controls-container URCE-divCC'}).append(
+                        $('<input>', {type:'checkbox', id:'_cbAutoCenterOnUr', urceprefs:'urce'}).change(function() { changeSetting('autoCenterOnUr', $(this).is(':checked')); }).prop('checked', _settings.autoCenterOnUr),
+                        $('<label>', {for:'_cbAutoCenterOnUr', title:I18n.t('urce.prefs.AutoCenterOnUrTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoCenterOnUr')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbAutoClickOpenSolvedNi', urceprefs:'urce'}).change(function() {
+                            _settings.autoClickOpenSolvedNi = $(this).is(':checked');
+                            if (!$(this).is(':checked')) {
+                                if (isChecked('_cbAutoSaveAfterSolvedOrNiComment')) {
+                                    _settings.autoSaveAfterSolvedOrNiComment = false;
+                                    $('#_cbAutoSaveAfterSolvedOrNiComment').prop('checked', false);
+                                }
+                                if (isChecked('_cbDoubleClickLinkNiComments')) {
+                                    _settings.doubleClickLinkNiComments = false;
+                                    $('#_cbDoubleClickLinkNiComments').prop('checked', false);
+                                }
+                                if (isChecked('_cbDoubleClickLinkOpenComments')) {
+                                    _settings.doubleClickLinkOpenComments = false;
+                                    $('#_cbDoubleClickLinkOpenComments').prop('checked', false);
+                                }
+                                if (isChecked('_cbDoubleClickLinkSolvedComments')) {
+                                    _settings.doubleClickLinkSolvedComments = false;
+                                    $('#_cbDoubleClickLinkSolvedComments').prop('checked', false);
+                                }
                             }
-                            if (isChecked('_cbDoubleClickLinkNiComments')) {
-                                _settings.doubleClickLinkNiComments = false;
-                                $('#_cbDoubleClickLinkNiComments').prop('checked', false);
-                            }
-                            if (isChecked('_cbDoubleClickLinkOpenComments')) {
-                                _settings.doubleClickLinkOpenComments = false;
-                                $('#_cbDoubleClickLinkOpenComments').prop('checked', false);
-                            }
-                            if (isChecked('_cbDoubleClickLinkSolvedComments')) {
-                                _settings.doubleClickLinkSolvedComments = false;
-                                $('#_cbDoubleClickLinkSolvedComments').prop('checked', false);
-                            }
-                        }
-                        saveSettingsToStorage();
-                    }).prop('checked', _settings.autoClickOpenSolvedNi),
-                    $('<label>', {for:'_cbAutoClickOpenSolvedNi', title:I18n.t('urce.prefs.AutoClickOpenSolvedNiTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoClickOpenSolvedNi')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoCloseCommentWindow', urceprefs:'urce'}).change(function() { changeSetting('autoCloseCommentWindow', $(this).is(':checked')); }).prop('checked', _settings.autoCloseCommentWindow),
-                    $('<label>', {for:'_cbAutoCloseCommentWindow', title:I18n.t('urce.prefs.AutoCloseCommentWindowTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoCloseCommentWindow')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSaveAfterSolvedOrNiComment', urceprefs:'urce'}).change(function() {
-                        _settings.autoSaveAfterSolvedOrNiComment = $(this).is(':checked');
-                        if ($(this).is(':checked') && !isChecked('_cbAutoClickOpenSolvedNi')) {
-                            _settings.autoClickOpenSolvedNi = true;
-                            $('#_cbAutoClickOpenSolvedNi').prop('checked', true);
-                        }
-                        saveSettingsToStorage();
-                    }).prop('checked', _settings.autoSaveAfterSolvedOrNiComment),
-                    $('<label>', {for:'_cbAutoSaveAfterSolvedOrNiComment', title:I18n.t('urce.prefs.AutoSaveAfterSolvedOrNiCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSaveAfterSolvedOrNiComment')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSendReminders', urceprefs:'urce'}).change(function() { changeSetting('autoSendReminders', $(this).is(':checked')); }).prop('checked', _settings.autoSendReminders),
-                    $('<label>', {for:'_cbAutoSendReminders', title:I18n.t('urce.prefs.AutoSendRemindersTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSendReminders')),
-                    $('<div>', {class:'URCE-divWarning URCE-divWarningPre'}).text('(').append(
-                        $('<div>', {class:'URCE-divWarning URCE-divWarningTitle', title:I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}).text(I18n.t('urce.prefs.AutoSendRemindersWarning')),
-                    ).append(
-                        $('<div>', {class:'URCE-divWarning'}).text(')')
-                    ),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSetNewUrComment', urceprefs:'urce'}).change(function() { changeSetting('autoSetNewUrComment', $(this).is(':checked')); }).prop('checked', _settings.autoSetNewUrComment),
-                    $('<label>', {for:'_cbAutoSetNewUrComment', title:I18n.t('urce.prefs.AutoSetNewUrCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSetNewUrComment')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSetReminderUrComment', urceprefs:'urce'}).change(function() { changeSetting('autoSetReminderUrComment', $(this).is(':checked')); }).prop('checked', _settings.autoSetReminderUrComment),
-                    $('<label>', {for:'_cbAutoSetReminderUrComment', title:I18n.t('urce.prefs.AutoSetReminderUrCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSetReminderUrComment')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoSwitchToUrCommentsTab', urceprefs:'urce'}).change(function() { changeSetting('autoSwitchToUrCommentsTab', $(this).is(':checked')); }).prop('checked', _settings.autoSwitchToUrCommentsTab),
-                    $('<label>', {for:'_cbAutoSwitchToUrCommentsTab', title:I18n.t('urce.prefs.AutoSwitchToUrCommentsTabTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSwitchToUrCommentsTab')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoZoomInOnNewUr', urceprefs:'urce'}).change(function() { changeSetting('autoZoomInOnNewUr', $(this).is(':checked')); }).prop('checked', _settings.autoZoomInOnNewUr),
-                    $('<label>', {for:'_cbAutoZoomInOnNewUr', title:I18n.t('urce.prefs.AutoZoomInOnNewUrTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoZoomInOnNewUr')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoZoomOutAfterComment', urceprefs:'urce'}).change(function() { changeSetting('autoZoomOutAfterComment', $(this).is(':checked')); }).prop('checked', _settings.autoZoomOutAfterComment),
-                    $('<label>', {for:'_cbAutoZoomOutAfterComment', title:I18n.t('urce.prefs.AutoZoomOutAfterCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoZoomOutAfterComment')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDisableDoneNextButtons', urceprefs:'urce'}).change(function() {
-                        changeSetting('disableDoneNextButtons', $(this).is(':checked'));
-                        if ($(this).is(':checked')) {
-                            $('#panel-container .content .navigation').css({'display':'none'});
-                        } else {
-                            $('#panel-container .content .navigation').css({'display':'block'});
-                        }
-                    }).prop('checked', _settings.disableDoneNextButtons),
-                    $('<label>', {for:'_cbDisableDoneNextButtons', title:I18n.t('urce.prefs.DisableDoneNextButtonsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DisableDoneNextButtons')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkNiComments', urceprefs:'urce'}).change(function() {
-                        _settings.doubleClickLinkNiComments = $(this).is(':checked');
-                        if (!$(this).is(':checked')) {
-                            $('div#URCE-divDoubleClickNi').hide();
-                        } else {
-                            if (!isChecked('_cbAutoClickOpenSolvedNi')) {
+                            saveSettingsToStorage();
+                        }).prop('checked', _settings.autoClickOpenSolvedNi),
+                        $('<label>', {for:'_cbAutoClickOpenSolvedNi', title:I18n.t('urce.prefs.AutoClickOpenSolvedNiTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoClickOpenSolvedNi')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbAutoCloseCommentWindow', urceprefs:'urce'}).change(function() { changeSetting('autoCloseCommentWindow', $(this).is(':checked')); }).prop('checked', _settings.autoCloseCommentWindow),
+                        $('<label>', {for:'_cbAutoCloseCommentWindow', title:I18n.t('urce.prefs.AutoCloseCommentWindowTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoCloseCommentWindow')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbAutoSaveAfterSolvedOrNiComment', urceprefs:'urce'}).change(function() {
+                            _settings.autoSaveAfterSolvedOrNiComment = $(this).is(':checked');
+                            if ($(this).is(':checked') && !isChecked('_cbAutoClickOpenSolvedNi')) {
                                 _settings.autoClickOpenSolvedNi = true;
                                 $('#_cbAutoClickOpenSolvedNi').prop('checked', true);
                             }
-                            $('div#URCE-divDoubleClickNi').show();
-                        }
-                        saveSettingsToStorage();
-                    }).prop('checked', _settings.doubleClickLinkNiComments),
-                    $('<label>', {for:'_cbDoubleClickLinkNiComments', title:I18n.t('urce.prefs.DoubleClickLinkNiCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkNiComments')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkOpenComments', urceprefs:'urce'}).change(function() {
-                        _settings.doubleClickLinkOpenComments = $(this).is(':checked');
-                        if (!$(this).is(':checked')) {
-                            $('div#URCE-divDoubleClickOpen').hide();
-                        } else {
-                            if (!isChecked('_cbAutoClickOpenSolvedNi')) {
-                                _settings.autoClickOpenSolvedNi = true;
-                                $('#_cbAutoClickOpenSolvedNi').prop('checked', true);
+                            saveSettingsToStorage();
+                        }).prop('checked', _settings.autoSaveAfterSolvedOrNiComment),
+                        $('<label>', {for:'_cbAutoSaveAfterSolvedOrNiComment', title:I18n.t('urce.prefs.AutoSaveAfterSolvedOrNiCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSaveAfterSolvedOrNiComment')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbAutoSendReminders', urceprefs:'urce'}).change(function() { changeSetting('autoSendReminders', $(this).is(':checked')); }).prop('checked', _settings.autoSendReminders),
+                        $('<label>', {for:'_cbAutoSendReminders', title:I18n.t('urce.prefs.AutoSendRemindersTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSendReminders')),
+                        $('<div>', {class:'URCE-divWarning URCE-divWarningPre'}).text('(').append(
+                            $('<div>', {class:'URCE-divWarning URCE-divWarningTitle', title:I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}).text(I18n.t('urce.prefs.AutoSendRemindersWarning')),
+                        ).append(
+                            $('<div>', {class:'URCE-divWarning'}).text(')')
+                        ),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbAutoSetNewUrComment', urceprefs:'urce'}).change(function() { changeSetting('autoSetNewUrComment', $(this).is(':checked')); }).prop('checked', _settings.autoSetNewUrComment),
+                        $('<label>', {for:'_cbAutoSetNewUrComment', title:I18n.t('urce.prefs.AutoSetNewUrCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSetNewUrComment')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbAutoSetReminderUrComment', urceprefs:'urce'}).change(function() { changeSetting('autoSetReminderUrComment', $(this).is(':checked')); }).prop('checked', _settings.autoSetReminderUrComment),
+                        $('<label>', {for:'_cbAutoSetReminderUrComment', title:I18n.t('urce.prefs.AutoSetReminderUrCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSetReminderUrComment')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbAutoSwitchToUrCommentsTab', urceprefs:'urce'}).change(function() { changeSetting('autoSwitchToUrCommentsTab', $(this).is(':checked')); }).prop('checked', _settings.autoSwitchToUrCommentsTab),
+                        $('<label>', {for:'_cbAutoSwitchToUrCommentsTab', title:I18n.t('urce.prefs.AutoSwitchToUrCommentsTabTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSwitchToUrCommentsTab')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbAutoZoomInOnNewUr', urceprefs:'urce'}).change(function() { changeSetting('autoZoomInOnNewUr', $(this).is(':checked')); }).prop('checked', _settings.autoZoomInOnNewUr),
+                        $('<label>', {for:'_cbAutoZoomInOnNewUr', title:I18n.t('urce.prefs.AutoZoomInOnNewUrTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoZoomInOnNewUr')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbAutoZoomOutAfterComment', urceprefs:'urce'}).change(function() { changeSetting('autoZoomOutAfterComment', $(this).is(':checked')); }).prop('checked', _settings.autoZoomOutAfterComment),
+                        $('<label>', {for:'_cbAutoZoomOutAfterComment', title:I18n.t('urce.prefs.AutoZoomOutAfterCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoZoomOutAfterComment')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbDisableDoneNextButtons', urceprefs:'urce'}).change(function() {
+                            changeSetting('disableDoneNextButtons', $(this).is(':checked'));
+                            if ($(this).is(':checked')) {
+                                $('#panel-container .content .navigation').css({'display':'none'});
+                            } else {
+                                $('#panel-container .content .navigation').css({'display':'block'});
                             }
-                            $('div#URCE-divDoubleClickOpen').show();
-                        }
-                        saveSettingsToStorage();
-                    }).prop('checked', _settings.doubleClickLinkOpenComments),
-                    $('<label>', {for:'_cbDoubleClickLinkOpenComments', title:I18n.t('urce.prefs.DoubleClickLinkOpenCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkOpenComments')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkSolvedComments', urceprefs:'urce'}).change(function() {
-                        _settings.doubleClickLinkSolvedComments = $(this).is(':checked');
-                        if (!$(this).is(':checked')) {
-                            $('div#URCE-divDoubleClickSolved').hide();
-                        } else {
-                            if (!isChecked('_cbAutoClickOpenSolvedNi')) {
-                                _settings.autoClickOpenSolvedNi = true;
-                                $('#_cbAutoClickOpenSolvedNi').prop('checked', true);
+                        }).prop('checked', _settings.disableDoneNextButtons),
+                        $('<label>', {for:'_cbDisableDoneNextButtons', title:I18n.t('urce.prefs.DisableDoneNextButtonsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DisableDoneNextButtons')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkNiComments', urceprefs:'urce'}).change(function() {
+                            _settings.doubleClickLinkNiComments = $(this).is(':checked');
+                            if (!$(this).is(':checked')) {
+                                $('div#URCE-divDoubleClickNi').hide();
+                            } else {
+                                if (!isChecked('_cbAutoClickOpenSolvedNi')) {
+                                    _settings.autoClickOpenSolvedNi = true;
+                                    $('#_cbAutoClickOpenSolvedNi').prop('checked', true);
+                                }
+                                $('div#URCE-divDoubleClickNi').show();
                             }
-                            $('div#URCE-divDoubleClickSolved').show();
-                        }
-                        saveSettingsToStorage();
-                    }).prop('checked', _settings.doubleClickLinkSolvedComments),
-                    $('<label>', {for:'_cbDoubleClickLinkSolvedComments', title:I18n.t('urce.prefs.DoubleClickLinkSolvedCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkSolvedComments')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideZoomOutLinks', urceprefs:'urce'}).change(function() {
-                        changeSetting('hideZoomOutLinks', $(this).is(':checked'));
-                        if ($(this).is(':checked')) {
-                            $('div#_divZoomOutLinks').hide();
-                        } else {
-                            $('div#_divZoomOutLinks').show();
-                        }
-                    }).prop('checked', _settings.hideZoomOutLinks),
-                    $('<label>', {for:'_cbHideZoomOutLinks', title:I18n.t('urce.prefs.HideZoomOutLinksTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideZoomOutLinks')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbUnfollowUrAfterSend', urceprefs:'urce'}).change(function() { changeSetting('unfollowUrAfterSend', $(this).is(':checked')); }).prop('checked', _settings.unfollowUrAfterSend),
-                    $('<label>', {for:'_cbUnfollowUrAfterSend', title:I18n.t('urce.prefs.UnfollowUrAfterSendTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.UnfollowUrAfterSend'))
+                            saveSettingsToStorage();
+                        }).prop('checked', _settings.doubleClickLinkNiComments),
+                        $('<label>', {for:'_cbDoubleClickLinkNiComments', title:I18n.t('urce.prefs.DoubleClickLinkNiCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkNiComments')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkOpenComments', urceprefs:'urce'}).change(function() {
+                            _settings.doubleClickLinkOpenComments = $(this).is(':checked');
+                            if (!$(this).is(':checked')) {
+                                $('div#URCE-divDoubleClickOpen').hide();
+                            } else {
+                                if (!isChecked('_cbAutoClickOpenSolvedNi')) {
+                                    _settings.autoClickOpenSolvedNi = true;
+                                    $('#_cbAutoClickOpenSolvedNi').prop('checked', true);
+                                }
+                                $('div#URCE-divDoubleClickOpen').show();
+                            }
+                            saveSettingsToStorage();
+                        }).prop('checked', _settings.doubleClickLinkOpenComments),
+                        $('<label>', {for:'_cbDoubleClickLinkOpenComments', title:I18n.t('urce.prefs.DoubleClickLinkOpenCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkOpenComments')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbDoubleClickLinkSolvedComments', urceprefs:'urce'}).change(function() {
+                            _settings.doubleClickLinkSolvedComments = $(this).is(':checked');
+                            if (!$(this).is(':checked')) {
+                                $('div#URCE-divDoubleClickSolved').hide();
+                            } else {
+                                if (!isChecked('_cbAutoClickOpenSolvedNi')) {
+                                    _settings.autoClickOpenSolvedNi = true;
+                                    $('#_cbAutoClickOpenSolvedNi').prop('checked', true);
+                                }
+                                $('div#URCE-divDoubleClickSolved').show();
+                            }
+                            saveSettingsToStorage();
+                        }).prop('checked', _settings.doubleClickLinkSolvedComments),
+                        $('<label>', {for:'_cbDoubleClickLinkSolvedComments', title:I18n.t('urce.prefs.DoubleClickLinkSolvedCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkSolvedComments')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideZoomOutLinks', urceprefs:'urce'}).change(function() {
+                            changeSetting('hideZoomOutLinks', $(this).is(':checked'));
+                            if ($(this).is(':checked')) {
+                                $('div#_divZoomOutLinks').hide();
+                            } else {
+                                $('div#_divZoomOutLinks').show();
+                            }
+                        }).prop('checked', _settings.hideZoomOutLinks),
+                        $('<label>', {for:'_cbHideZoomOutLinks', title:I18n.t('urce.prefs.HideZoomOutLinksTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideZoomOutLinks')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbUnfollowUrAfterSend', urceprefs:'urce'}).change(function() { changeSetting('unfollowUrAfterSend', $(this).is(':checked')); }).prop('checked', _settings.unfollowUrAfterSend),
+                        $('<label>', {for:'_cbUnfollowUrAfterSend', title:I18n.t('urce.prefs.UnfollowUrAfterSendTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.UnfollowUrAfterSend'))
+                    )
                 )
             ),
             // UR Marker Preferences
-            $('<fieldset>', {class:'URCE-field'}).append(
-                $('<legend>', {class:'URCE-legend'}).append(
+            $('<fieldset>', {id:'urce-prefs-fieldset-ur-marker-prefs', class:`URCE-field${urStyle}`}).append(
+                $('<legend>', {id:'urce-prefs-legend-ur-marker-prefs', class:`URCE-legend${urStyle}`}).append(
+                    $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
                     $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.UrMarkerPrefs'))
-                ),
+                ).click(function() {
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
+                    $($(this).siblings()[0]).toggleClass('collapse');
+                }),
                 $('<div>', {class:'controls-container URCE-divCC'}).append(
-                    $('<input>', {type:'checkbox', id:'_cbEnableUrPillCounts', urceprefs:'markerMaster'}).change(function() {
-                        changeSetting('enableUrPillCounts', $(this).is(':checked'));
-                        if (!$(this).is(':checked')) {
-                            $('[urceprefs=marker]').prop('disabled', true);
-                        } else {
-                            $('[urceprefs=marker]').prop('disabled', false);
-                        }
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
+                    $('<div>', {class:'controls-container URCE-divCC'}).append(
+                        $('<input>', {type:'checkbox', id:'_cbEnableUrPillCounts', urceprefs:'markerMaster'}).change(function() {
+                            changeSetting('enableUrPillCounts', $(this).is(':checked'));
+                            if (!$(this).is(':checked')) {
+                                $('[urceprefs=marker]').prop('disabled', true);
+                            } else {
+                                $('[urceprefs=marker]').prop('disabled', false);
                             }
-                        })();
-                    }).prop('checked', _settings.enableUrPillCounts),
-                    $('<label>', {for:'_cbEnableUrPillCounts', title:I18n.t('urce.prefs.EnableUrPillCountsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrPillCounts')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbDoNotShowTagNameOnPill', urceprefs:'marker'}).change(function() {
-                        changeSetting('doNotShowTagNameOnPill', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
-                    }).prop('checked', _settings.doNotShowTagNameOnPill),
-                    $('<label>', {for:'_cbDoNotShowTagNameOnPill', title:I18n.t('urce.prefs.DoNotShowTagNameOnPillTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoNotShowTagNameOnPill')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbReplaceTagNameWithEditorName', urceprefs:'marker'}).change(function() {
-                        changeSetting('replaceTagNameWithEditorName', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
-                    }).prop('checked', _settings.replaceTagNameWithEditorName),
-                    $('<label>', {for:'_cbReplaceTagNameWithEditorName', title:I18n.t('urce.prefs.ReplaceTagNameWithEditorNameTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.ReplaceTagNameWithEditorName'))
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.enableUrPillCounts),
+                        $('<label>', {for:'_cbEnableUrPillCounts', title:I18n.t('urce.prefs.EnableUrPillCountsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrPillCounts')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbDoNotShowTagNameOnPill', urceprefs:'marker'}).change(function() {
+                            changeSetting('doNotShowTagNameOnPill', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.doNotShowTagNameOnPill),
+                        $('<label>', {for:'_cbDoNotShowTagNameOnPill', title:I18n.t('urce.prefs.DoNotShowTagNameOnPillTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoNotShowTagNameOnPill')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbReplaceTagNameWithEditorName', urceprefs:'marker'}).change(function() {
+                            changeSetting('replaceTagNameWithEditorName', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.replaceTagNameWithEditorName),
+                        $('<label>', {for:'_cbReplaceTagNameWithEditorName', title:I18n.t('urce.prefs.ReplaceTagNameWithEditorNameTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.ReplaceTagNameWithEditorName'))
+                    )
                 )
             ),
             // UR Filtering Preferences
-            $('<fieldset>', {class:'URCE-field'}).append(
-                $('<legend>', {class:'URCE-legend'}).append(
+            $('<fieldset>', {id:'urce-prefs-fieldset-ur-filtering-prefs', class:`URCE-field${urStyle}`}).append(
+                $('<legend>', {id:'urce-prefs-legend-ur-filtering-prefs', class:`URCE-legend${urStyle}`}).append(
+                    $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
                     $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.UrFilteringPrefs'))
-                ),
+                ).click(function() {
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
+                    $($(this).siblings()[0]).toggleClass('collapse');
+                }),
                 $('<div>', {class:'controls-container URCE-divCC'}).append(
-                    $('<input>', {type:'checkbox', id:'_cbEnableUrceUrFiltering', urceprefs:'filteringMaster'}).change(function() {
-                        _settings.enableUrceUrFiltering = $(this).is(':checked');
-                        if (!$(this).is(':checked')) {
-                            $('[urceprefs=filtering]').prop('disabled', true);
-                        } else {
-                            $('[urceprefs=filtering]').prop('disabled', false);
-                        }
-                        saveSettingsToStorage();
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
+                    $('<div>', {class:'controls-container URCE-divCC'}).append(
+                        $('<input>', {type:'checkbox', id:'_cbEnableUrceUrFiltering', urceprefs:'filteringMaster'}).change(function() {
+                            _settings.enableUrceUrFiltering = $(this).is(':checked');
+                            if (!$(this).is(':checked')) {
+                                $('[urceprefs=filtering]').prop('disabled', true);
+                            } else {
+                                $('[urceprefs=filtering]').prop('disabled', false);
                             }
-                        })();
-                    }).prop('checked', _settings.enableUrceUrFiltering),
-                    $('<label>', {for:'_cbEnableUrceUrFiltering', title:I18n.t('urce.prefs.EnableUrceUrFilteringTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrceUrFiltering')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbOnlyShowMyUrs', urceprefs:'filtering'}).change(function() {
-                        changeSetting('onlyShowMyUrs', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
-                    }).prop('checked', _settings.onlyShowMyUrs),
-                    $('<label>', {for:'_cbOnlyShowMyUrs', title:I18n.t('urce.prefs.OnlyShowMyUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.OnlyShowMyUrs')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbShowOthersUrsPastReminderClose', urceprefs:'filtering'}).change(function() {
-                        changeSetting('showOthersUrsPastReminderClose', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
-                    }).prop('checked', _settings.showOthersUrsPastReminderClose),
-                    $('<label>', {for:'_cbShowOthersUrsPastReminderClose', title:I18n.t('urce.prefs.ShowOthersUrsPastReminderCloseTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.ShowOthersUrsPastReminderClose')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideClosedUrs', urceprefs:'filtering'}).change(function() {
-                        changeSetting('hideClosedUrs', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
-                    }).prop('checked', _settings.hideClosedUrs),
-                    $('<label>', {for:'_cbHideClosedUrs', title:I18n.t('urce.prefs.HideClosedUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideClosedUrs')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideTaggedUrs', urceprefs:'filtering'}).change(function() {
-                        changeSetting('hideTaggedUrs', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
-                    }).prop('checked', _settings.hideTaggedUrs),
-                    $('<label>', {for:'_cbHideTaggedUrs', title:I18n.t('urce.prefs.HideTaggedUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideTaggedUrs')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideWaiting', urceprefs:'filtering'}).change(function() {
-                        changeSetting('hideWaiting', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
-                    }).prop('checked', _settings.hideWaiting),
-                    $('<label>', {for:'_cbHideWaiting', title:I18n.t('urce.prefs.HideWaitingTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideWaiting')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsCloseNeeded', urceprefs:'filtering'}).change(function() {
-                        changeSetting('hideUrsCloseNeeded', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
-                    }).prop('checked', _settings.hideUrsCloseNeeded),
-                    $('<label>', {for:'_cbHideUrsCloseNeeded', title:I18n.t('urce.prefs.HideUrsCloseNeededTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsCloseNeeded')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsReminderNeeded', urceprefs:'filtering'}).change(function() {
-                        changeSetting('hideUrsReminderNeeded', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
-                    }).prop('checked', _settings.hideUrsReminderNeeded),
-                    $('<label>', {for:'_cbHideUrsReminderNeeded', title:I18n.t('urce.prefs.HideUrsReminderNeededTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsReminderNeeded')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsWithUserReplies', urceprefs:'filtering'}).change(function() {
-                        changeSetting('hideUrsWithUserReplies', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
-                    }).prop('checked', _settings.hideUrsWithUserReplies),
-                    $('<label>', {for:'_cbHideUrsWithUserReplies', title:I18n.t('urce.prefs.HideUrsWithUserRepliesTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWithUserReplies')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoComments', urceprefs:'filtering'}).change(function() {
-                        changeSetting('hideUrsWoComments', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
-                    }).prop('checked', _settings.hideUrsWoComments),
-                    $('<label>', {for:'_cbHideUrsWoComments', title:I18n.t('urce.prefs.HideUrsWoCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoComments')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsOrDescriptions', urceprefs:'filtering'}).change(function() {
-                        changeSetting('hideUrsWoCommentsOrDescriptions', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
-                    }).prop('checked', _settings.hideUrsWoCommentsOrDescriptions),
-                    $('<label>', {for:'_cbHideUrsWoCommentsOrDescriptions', title:I18n.t('urce.prefs.HideUrsWoCommentsOrDescriptionsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoCommentsOrDescriptions')),
-                    $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsWithDescriptions', urceprefs:'filtering'}).change(function() {
-                        changeSetting('hideUrsWoCommentsWithDescriptions', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
-                    }).prop('checked', _settings.hideUrsWoCommentsWithDescriptions),
-                    $('<label>', {for:'_cbHideUrsWoCommentsWithDescriptions', title:I18n.t('urce.prefs.HideUrsWoCommentsWithDescriptionsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoCommentsWithDescriptions'))
+                            saveSettingsToStorage();
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.enableUrceUrFiltering),
+                        $('<label>', {for:'_cbEnableUrceUrFiltering', title:I18n.t('urce.prefs.EnableUrceUrFilteringTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrceUrFiltering')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbOnlyShowMyUrs', urceprefs:'filtering'}).change(function() {
+                            changeSetting('onlyShowMyUrs', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.onlyShowMyUrs),
+                        $('<label>', {for:'_cbOnlyShowMyUrs', title:I18n.t('urce.prefs.OnlyShowMyUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.OnlyShowMyUrs')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbShowOthersUrsPastReminderClose', urceprefs:'filtering'}).change(function() {
+                            changeSetting('showOthersUrsPastReminderClose', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.showOthersUrsPastReminderClose),
+                        $('<label>', {for:'_cbShowOthersUrsPastReminderClose', title:I18n.t('urce.prefs.ShowOthersUrsPastReminderCloseTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.ShowOthersUrsPastReminderClose')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideClosedUrs', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideClosedUrs', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideClosedUrs),
+                        $('<label>', {for:'_cbHideClosedUrs', title:I18n.t('urce.prefs.HideClosedUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideClosedUrs')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideTaggedUrs', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideTaggedUrs', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideTaggedUrs),
+                        $('<label>', {for:'_cbHideTaggedUrs', title:I18n.t('urce.prefs.HideTaggedUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideTaggedUrs')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideWaiting', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideWaiting', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideWaiting),
+                        $('<label>', {for:'_cbHideWaiting', title:I18n.t('urce.prefs.HideWaitingTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideWaiting')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideUrsCloseNeeded', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideUrsCloseNeeded', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideUrsCloseNeeded),
+                        $('<label>', {for:'_cbHideUrsCloseNeeded', title:I18n.t('urce.prefs.HideUrsCloseNeededTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsCloseNeeded')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideUrsReminderNeeded', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideUrsReminderNeeded', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideUrsReminderNeeded),
+                        $('<label>', {for:'_cbHideUrsReminderNeeded', title:I18n.t('urce.prefs.HideUrsReminderNeededTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsReminderNeeded')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideUrsWithUserReplies', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideUrsWithUserReplies', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideUrsWithUserReplies),
+                        $('<label>', {for:'_cbHideUrsWithUserReplies', title:I18n.t('urce.prefs.HideUrsWithUserRepliesTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWithUserReplies')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideUrsWoComments', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideUrsWoComments', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideUrsWoComments),
+                        $('<label>', {for:'_cbHideUrsWoComments', title:I18n.t('urce.prefs.HideUrsWoCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoComments')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsOrDescriptions', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideUrsWoCommentsOrDescriptions', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideUrsWoCommentsOrDescriptions),
+                        $('<label>', {for:'_cbHideUrsWoCommentsOrDescriptions', title:I18n.t('urce.prefs.HideUrsWoCommentsOrDescriptionsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoCommentsOrDescriptions')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsWithDescriptions', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideUrsWoCommentsWithDescriptions', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideUrsWoCommentsWithDescriptions),
+                        $('<label>', {for:'_cbHideUrsWoCommentsWithDescriptions', title:I18n.t('urce.prefs.HideUrsWoCommentsWithDescriptionsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoCommentsWithDescriptions'))
+                    )
                 )
             ),
             // Common Preferences
-            $('<fieldset>', {class:'URCE-field'}).append(
-                $('<legend>', {class:'URCE-legend'}).append(
+            $('<fieldset>', {id:'urce-prefs-fieldset-common-prefs', class:`URCE-field${urStyle}`}).append(
+                $('<legend>', {id:'urce-prefs-legend-common-prefs', class:`URCE-legend${urStyle}`}).append(
+                    $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
                     $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.CommonPrefs'))
-                ),
+                ).click(function() {
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
+                    $($(this).siblings()[0]).toggleClass('collapse');
+                }),
                 $('<div>', {class:'controls-container URCE-divCC'}).append(
-                    $('<div>', {class:'URCE-divDaysInput'}).append(
-                        $('<div>', {title:I18n.t('urce.prefs.ReminderDaysTitle'), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.ReminderDays') + ': ').append(
-                            $('<input>', {type:'number', id:'_numReminderDays', class:'URCE-daysInput', urceprefs:'common', min:'0', max:'13', step:'1', value:_settings.reminderDays, title:I18n.t('urce.prefs.ReminderDaysTitle')}).on('change', function() {
-                                let numReminderDays = Math.abs(parseInt(this.value, 10) || 0);
-                                if (numReminderDays >= _settings.closeDays) {
-                                    numReminderDays = (_settings.closeDays - 1) < 0 ? 0 : (_settings.closeDays - 1);
-                                }
-                                numReminderDays = Math.min(13,Math.max(0,parseInt(numReminderDays)));
-                                if (numReminderDays !== this.value) {
-                                    changeSetting('reminderDays', numReminderDays);
-                                    this.value = numReminderDays;
-                                    (async () => {
-                                        try {
-                                            await handleUrLayer('settingsToggle');
-                                        } catch(error) {
-                                            logWarning(error);
-                                        }
-                                    })();
-                                }
-                            })
-                        ),
-                        $('<div>', {title:I18n.t('urce.prefs.CloseDaysTitle'), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.CloseDays') + ': ').append(
-                            $('<input>', {type:'number', id:'_numCloseDays', class:'URCE-daysInput', urceprefs:'common', min:'1', max:'14', step:'1', value:_settings.closeDays, title:I18n.t('urce.prefs.CloseDaysTitle')}).on('change', function() {
-                                let numCloseDays = Math.abs(parseInt(this.value, 10) || 1);
-                                if (numCloseDays <= _settings.reminderDays) {
-                                    numCloseDays = (_settings.reminderDays + 1) > 14 ? 14 : (_settings.reminderDays + 1);
-                                }
-                                numCloseDays = Math.min(14,Math.max(1,parseInt(numCloseDays)));
-                                if (numCloseDays !== this.value) {
-                                    changeSetting('closeDays', numCloseDays);
-                                    this.value = numCloseDays;
-                                    (async () => {
-                                        try {
-                                            await handleUrLayer('settingsToggle');
-                                        } catch(error) {
-                                            logWarning(error);
-                                        }
-                                    })();
-                                }
-                            })
+                    $('<div>', {class:'controls-container URCE-divCC'}).append(
+                        $('<div>', {class:'URCE-divDaysInput'}).append(
+                            $('<div>', {title:I18n.t('urce.prefs.ReminderDaysTitle'), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.ReminderDays') + ': ').append(
+                                $('<input>', {type:'number', id:'_numReminderDays', class:'URCE-daysInput', urceprefs:'common', min:'0', max:'13', step:'1', value:_settings.reminderDays, title:I18n.t('urce.prefs.ReminderDaysTitle')}).on('change', function() {
+                                    let numReminderDays = Math.abs(parseInt(this.value, 10) || 0);
+                                    if (numReminderDays >= _settings.closeDays) {
+                                        numReminderDays = (_settings.closeDays - 1) < 0 ? 0 : (_settings.closeDays - 1);
+                                    }
+                                    numReminderDays = Math.min(13,Math.max(0,parseInt(numReminderDays)));
+                                    if (numReminderDays !== this.value) {
+                                        changeSetting('reminderDays', numReminderDays);
+                                        this.value = numReminderDays;
+                                        (async () => {
+                                            try {
+                                                await handleUrLayer('settingsToggle');
+                                            } catch(error) {
+                                                logWarning(error);
+                                            }
+                                        })();
+                                    }
+                                })
+                            ),
+                            $('<div>', {title:I18n.t('urce.prefs.CloseDaysTitle'), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.CloseDays') + ': ').append(
+                                $('<input>', {type:'number', id:'_numCloseDays', class:'URCE-daysInput', urceprefs:'common', min:'1', max:'14', step:'1', value:_settings.closeDays, title:I18n.t('urce.prefs.CloseDaysTitle')}).on('change', function() {
+                                    let numCloseDays = Math.abs(parseInt(this.value, 10) || 1);
+                                    if (numCloseDays <= _settings.reminderDays) {
+                                        numCloseDays = (_settings.reminderDays + 1) > 14 ? 14 : (_settings.reminderDays + 1);
+                                    }
+                                    numCloseDays = Math.min(14,Math.max(1,parseInt(numCloseDays)));
+                                    if (numCloseDays !== this.value) {
+                                        changeSetting('closeDays', numCloseDays);
+                                        this.value = numCloseDays;
+                                        (async () => {
+                                            try {
+                                                await handleUrLayer('settingsToggle');
+                                            } catch(error) {
+                                                logWarning(error);
+                                            }
+                                        })();
+                                    }
+                                })
+                            )
                         )
                     )
                 )
@@ -1954,6 +2034,10 @@
                     // Comment List
                     CommentList: 'Comment List',
                     CommentListTitle: 'Select the custom list you would like to use. CommentTeam is the default. If you would like your comment list built into this script or have suggestions on the CommentTeam list, please contact dBsooner on Discord or via PM.',
+                    List: 'List',
+                    Style: 'Style',
+                    StyleDefault: 'Default',
+                    StyleUrStyle: 'UR Style',
                     // URC-E Preferences
                     UrcePrefs: 'URC-E Preferences',
                     AutoCenterOnUr: 'Auto center on UR',
