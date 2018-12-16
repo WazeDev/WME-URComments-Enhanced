@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.15.01
+// @version     2018.12.15.02
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -110,7 +110,7 @@
                 tempSettings2[key] = tempSettings[idx][1];
             }
             loadedSettings = tempSettings2;
-        } else if (!loadedSettings.lastVersion) {
+        } else if (!loadedSettings || !loadedSettings.lastVersion) {
             if (localStorage.getItem('URCommentVersion') > '1.8.9') {
                 convertUrcSettings = true;
                 logDebug('Referencing settings from URC ' + localStorage.getItem('URCommentVersion') + ' for some default settings.');
@@ -703,7 +703,6 @@
         return {x:x,y:y};
     }
 
-
     function parsePxString(pxString) {
         return parseInt(pxString.split('px')[0]);
     }
@@ -771,10 +770,10 @@
                     let includeInStack = (testMarkerObj.icon.imageDiv.style.visibility != 'hidden');
                     let suppressClosed = (testMarkerObj.icon.imageDiv.classList.contains('recently-closed') && (W.map.updateRequestLayer.showHidden === false));
                     if (testMarkerObj.model.attributes.geometry.urceRealX === undefined) {
-                        testMarkerObj.model.attributes.geometry.urceRealX = testMarkerObj.model.attributes.geometry.x;
-                        testMarkerObj.model.attributes.geometry.x += offset;
-                        testMarkerObj.model.attributes.geometry.urceRealY = testMarkerObj.model.attributes.geometry.y;
-                        testMarkerObj.model.attributes.geometry.y += offset;
+                        testMarkerObj.model.attributes.geometry.urceRealX = (testMarkerObj.model.attributes.geometry.realX) ? testMarkerObj.model.attributes.geometry.realX : testMarkerObj.model.attributes.geometry.x;
+                        testMarkerObj.model.attributes.geometry.x = (testMarkerObj.model.attributes.geometry.realX) ? (testMarkerObj.model.attributes.geometry.realX + offset) : (testMarkerObj.model.attributes.geometry.x + offset);
+                        testMarkerObj.model.attributes.geometry.urceRealY = (testMarkerObj.model.attributes.geometry.realY) ? testMarkerObj.model.attributes.geometry.realY : testMarkerObj.model.attributes.geometry.y;
+                        testMarkerObj.model.attributes.geometry.y = (testMarkerObj.model.attributes.geometry.realY) ? (testMarkerObj.model.attributes.geometry.realY + offset) : (testMarkerObj.model.attributes.geometry.y + offset);
                         offset += 1000;
                     }
                     if (includeInStack && !suppressClosed) {
@@ -855,7 +854,7 @@
         else return null;
     }
 
-    function addCustomMarker(urId, customType) {
+    function addCustomMarker(urId, urOpen, customType, $node) {
         let useCustomMarker = false;
         if (customType === 0) useCustomMarker = _settings.customMarkersRoadworks;
         else if (customType === 1) useCustomMarker = _settings.customMarkersConstruction;
@@ -866,45 +865,38 @@
         else if (customType === 6) useCustomMarker = _settings.customMarkersBog;
         else if (customType === 7) useCustomMarker = _settings.customMarkersDifficult;
         else if (customType === 98) useCustomMarker = _settings.customMarkersNativeSl;
-        if (useCustomMarker) _customMarkerArray.push({urId:urId, customType:customType});
+        if (useCustomMarker) renderCustomMarker(urId, urOpen, customType, $node);
+        else removeCustomMarker(urId);
     }
 
-    function renderCustomMarkers() {
-        let urId, mUrObj;
-        let node = document.getElementById(W.map.updateRequestLayer.id);
-        if (node.childNodes.length > 0) {
-            for (let idx = 0; idx < _customMarkerArray.length; idx++) {
-                let obj = _customMarkerArray[idx];
-                let customType = obj.customType;
-                if (customType < 100) {
-                    urId = obj.urId;
-                    mUrObj = W.map.updateRequestLayer.markers[urId];
-                    if (mUrObj === undefined) {
-                        //logWarning('Could not retrieve map update request layer marker info for urId: ' + urId);
-                        continue;
-                    }
-                    let iconObj = mUrObj.icon;
-                    let classList = iconObj.imageDiv.classList;
-                    let newSpan = '';
-                    let touchedByURCE = mUrObj.touchedByURCE;
-                    let markerNode = 'urceCustomMarker_' + urId;
-                    let customMarker = '';
-                    if (customType != -1) {
-                        if ($(markerNode).length === 0) {
-                            newSpan += '<span id="'+markerNode+'" style="position:absolute;pointer-events:none;top:-3px;left:-2px;"></span>';
-                        }
-                        customType = getCustomMarkerIdx(customType);
-                        mUrObj.urceCustomType = customType;
-                        let customVariant = (W.model.mapUpdateRequests.objects[urId] !== undefined && W.model.mapUpdateRequests.objects[urId].attributes.open === false) ? 2 : 0;
-                        customMarker = '<img src="'+uroAltMarkers[customType][customVariant]+'">';
-                    } else {
-                        if (document.getElementById(markerNode) !== null) document.getElementById(markerNode).remove();
-                    }
-                    if (newSpan !== '') iconObj.$div.prepend(newSpan);
-                    if (customMarker !== '' && document.getElementById(markerNode) !== null) document.getElementById(markerNode).innerHTML = customMarker;
-                }
-            }
+    function removeCustomMarker(urId) {
+        if ($(`#urceCustomMarker_${urId}`).length > 0) {
+            logDebug('Removing custom marker for UR: ' + urId);
+            $(`#urceCustomMarker_${urId}`).remove();
         }
+    }
+
+    function customMarkersEnabledCheck() {
+        if (_settings.customMarkersRoadworks || _settings.customMarkersConstruction || _settings.customMarkersClosures || _settings.customMarkersEvents ||
+            _settings.customMarkersNotes || _settings.customMarkersWslm || _settings.customMarkersBog || _settings.customMarkersDifficult || _settings.customMarkersNativeSl)
+            return true;
+        else return false;
+    }
+
+    function renderCustomMarker(urId, urOpen, customType, $node) {
+        if ($(`#urceCustomMarker_${urId}`).length === 0) {
+            logDebug('Adding custom marker for UR: ' + urId);
+            $($node).append(
+                $('<span>', {id:`urceCustomMarker_${urId}`, style:'position:absolute;pointer-events:none;top:-3px;left:-2px;'})
+            );
+        } else {
+            logDebug('Updating custom marker for UR: ' + urId);
+        }
+        let customMarker = getCustomMarkerIdx(customType);
+        let customVariant = (!urOpen) ? 2 : 0;
+        $(`#urceCustomMarker_${urId}`).empty().append(
+            $('<img>', {src:uroAltMarkers[customMarker][customVariant]})
+        );
     }
 
     function getCustomMarkerIdx(customType) {
@@ -925,13 +917,15 @@
 
     function updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj) {
         let tagRegex = /.*\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|DIFFICULT)\].*/gi;
+        const customMarkersEnabled = customMarkersEnabledCheck();
         for (let idx = 0; idx < urIds.length; idx++) {
             let urId = urIds[idx];
             let $node = $(`[data-id="${urId}"]`);
-            if (_settings.enableUrPillCounts) {
+            if (_settings.enableUrPillCounts || customMarkersEnabled) {
                 let urData = urSessionsObj[idx];
                 let mUrObj = mapUrsObj[idx];
                 let urDesc = mUrObj.attributes.description;
+                let urOpen = mUrObj.attributes.open;
                 let urCommentCount = urData.comments.length;
                 let wmeUsername = W.model.loginManager.user.userName;
                 let commentDaysOld, lastCommentBy, fullText, tagType, urCountBackground, tagContent, tagOffset, customType;
@@ -986,55 +980,58 @@
                     let regex = new RegExp(' ' + wmeUsername + ' ', 'gi');
                     tagType = fullText.search(regex) > -1 ? wmeUsername : tagType;
                 }
-                urCountBackground = '#FFFF99';
                 let curEditorHasCommented = commentUserIds.indexOf(_wmeUserId) > -1 ? true : false;
-                if (_wmeUserId === lastCommentBy) urCountBackground = '#FFFFFF';
-                if (curEditorHasCommented && lastCommentBy < 1) urCountBackground = '#79B5C7';
-                if (_wmeUserId !== lastCommentBy && lastCommentBy < 1 && commentDaysOld < _settings.closeDays) urCountBackground = '#FFCC99';
-                if (_wmeUserId !== lastCommentBy && lastCommentBy > 1 && commentDaysOld > (_settings.closeDays - 1)) urCountBackground = '#FF8B8B';
-                if (tagType) urCountBackground = '#CCCCCC';
-                if (commentDaysOld === null || commentDaysOld === '' || commentDaysOld === undefined) commentDaysOld = (urCommentCount === '0') ? '0' : '?';
-                if (tagType && _settings.doNotShowTagNameOnPill) {
-                    tagContent = urCommentCount + 'c ' + commentDaysOld + 'd';
-                    tagOffset = Math.round(tagContent.length * 2.28);
-                } else if (tagType) {
-                    tagContent = tagType + ' ' + urCommentCount + 'c';
-                    tagOffset = (tagContent.length < 10) ? Math.round(tagContent.length * 2.86) : Math.round(tagContent.length * 3.33);
+                if (_settings.enableUrPillCounts) {
+                    urCountBackground = '#FFFF99';
+                    if (_wmeUserId === lastCommentBy) urCountBackground = '#FFFFFF';
+                    if (curEditorHasCommented && lastCommentBy < 1) urCountBackground = '#79B5C7';
+                    if (_wmeUserId !== lastCommentBy && lastCommentBy < 1 && commentDaysOld < _settings.closeDays) urCountBackground = '#FFCC99';
+                    if (_wmeUserId !== lastCommentBy && lastCommentBy > 1 && commentDaysOld > (_settings.closeDays - 1)) urCountBackground = '#FF8B8B';
+                    if (tagType) urCountBackground = '#CCCCCC';
+                    if (commentDaysOld === null || commentDaysOld === '' || commentDaysOld === undefined) commentDaysOld = (urCommentCount === '0') ? '0' : '?';
+                    if (tagType && _settings.doNotShowTagNameOnPill) {
+                        tagContent = urCommentCount + 'c ' + commentDaysOld + 'd';
+                        tagOffset = Math.round(tagContent.length * 2.28);
+                    } else if (tagType) {
+                        tagContent = tagType + ' ' + urCommentCount + 'c';
+                        tagOffset = (tagContent.length < 10) ? Math.round(tagContent.length * 2.86) : Math.round(tagContent.length * 3.33);
+                    } else {
+                        tagContent = urCommentCount + 'c ' + commentDaysOld + 'd';
+                        tagOffset = Math.round(tagContent.length * 2.28);
+                    }
+                    tagOffset = '-' + tagOffset + 'px';
+                    if (urCountBackground === '#CCCCCC') {
+                        $($node).css({'z-index':'999'});
+                    } else if (urCountBackground === '#FFFFFF'|| urCountBackground === '#79B5C7') {
+                        $($node).css({'z-index':'998'});
+                    } else if (urCountBackground === '#FF8B8B') {
+                        $($node).css({'z-index':'997'});
+                    }
+                    if ($(`#urceCounters-${urId}`).length > 0) {
+                        logDebug('Updating marker counters on UR marker for UR: ' + urId);
+                        $(`#urceCounters-${urId}`).remove();
+                    } else {
+                        logDebug('Adding marker counters on UR marker for UR: ' + urId);
+                    }
+                    $($node).append(
+                        $('<div>', {id:`urceCounters-${urId}`}).css('clear', 'both').css('margin-bottom', '10px').append(
+                            $('<div>').html(tagContent).css({'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}).addClass('urceCounts')
+                        )
+                    );
+                }
+                if (customMarkersEnabled) {
+                    if (customType > -1) addCustomMarker(urId, urOpen, customType, $node);
+                    else removeCustomMarker(urId);
                 } else {
-                    tagContent = urCommentCount + 'c ' + commentDaysOld + 'd';
-                    tagOffset = Math.round(tagContent.length * 2.28);
+                    removeCustomMarker(urId);
                 }
-                tagOffset = '-' + tagOffset + 'px';
-                if (urCountBackground === '#CCCCCC') {
-                    $($node).css({'z-index':'999'});
-                } else if (urCountBackground === '#FFFFFF'|| urCountBackground === '#79B5C7') {
-                    $($node).css({'z-index':'998'});
-                } else if (urCountBackground === '#FF8B8B') {
-                    $($node).css({'z-index':'997'});
-                }
-                if ($(`#urceCounters-${urId}`).length > 0) {
-                    logDebug('Updating marker counters on UR marker for UR: ' + urId);
-                    $(`#urceCounters-${urId}`).remove();
-                } else {
-                    logDebug('Adding marker counters on UR marker for UR: ' + urId);
-                }
-                $($node).append(
-                    $('<div>', {id:`urceCounters-${urId}`}).css('clear', 'both').css('margin-bottom', '10px').append(
-                        $('<div>').html(tagContent).css({'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}).addClass('urceCounts')
-                    )
-                );
-                if (customType > -1) addCustomMarker(urId, customType);
             } else {
                 if ($(`#urceCounters-${urId}`).length > 0) {
                     logDebug('Removing marker counters on UR marker for UR: ' + urId);
                     $(`#urceCounters-${urId}`).remove();
                 }
+                removeCustomMarker(urId);
             }
-        }
-        try {
-            renderCustomMarkers();
-        } catch(error) {
-            logWarning(error);
         }
     }
 
