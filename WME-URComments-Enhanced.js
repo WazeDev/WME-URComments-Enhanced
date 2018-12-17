@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.15.02
+// @version     2018.12.16.01
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -19,6 +19,14 @@
  *
  */
 
+/*
+ * Portions of this script were inspired by URO+ written by Twister-UK. Credit is given to him and his team
+ * for development of that script. Where code was directly copied, function name or variable name was retained
+ * and a comment was placed before the code. The code that was inspired by was a complete rewrite using URO+
+ * as a reference for the logic. URO+ is located at: https://greasyfork.org/en/scripts/1952-uroverview-plus-uro
+ *
+ */
+
 /* global GM_info */
 /* global W */
 /* global I18n */
@@ -33,7 +41,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.','Official RC 2.','Unstack markers','URO+ Style markers' ];
+    const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.','Official RC 3.','MORE FILTERS!' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -117,7 +125,11 @@
             }
         }
         let defaultSettings = {
+            //Comment List
             commentList: convertUrcSettings ? convertOldVarName(localStorage.getItem('BoilerPlateCreators')) : '0',
+            commentListStyle: 'default',
+            commentListCollapses: {},
+            // URC-E Preferences
             autoCenterOnUr: convertUrcSettings ? (localStorage.getItem('WithCommentRecenter') === 'yes' ? true : false) : false,
             autoClickOpenSolvedNi: convertUrcSettings ? (localStorage.getItem('AutoClickURStatus') === 'yes' ? true : false) : false,
             autoCloseCommentWindow: convertUrcSettings ? (localStorage.getItem('UrCommentAutoCloseComment') === 'yes' ? true : false) : false,
@@ -129,31 +141,15 @@
             autoZoomInOnNewUr: convertUrcSettings ? (localStorage.getItem('NewZoomIn') === 'yes' ? true : false) : false,
             autoZoomOutAfterComment: convertUrcSettings ? (localStorage.getItem('ZoomOutAfterComment') === 'yes' ? true : false) : false,
             disableDoneNextButtons: convertUrcSettings ? (localStorage.getItem('UrCommentDisableURDoneBtn') === 'true') : false,
-            doNotShowTagNameOnPill: convertUrcSettings ? (localStorage.getItem('URCommentsDontShowTaggedText') === 'true') : false,
             doubleClickLinkNiComments: convertUrcSettings? (localStorage.getItem('DBLClk7DCAutoSend') === 'yes' || localStorage.getItem('DBLClkAll') === 'yes' ? true : false) : false,
             doubleClickLinkOpenComments: convertUrcSettings ? (localStorage.getItem('DBLClkAll') === 'yes' ? true : false) : false,
             doubleClickLinkSolvedComments: convertUrcSettings ? (localStorage.getItem('DBLClkAll') === 'yes' ? true : false) : false,
-            replaceTagNameWithEditorName: convertUrcSettings ? (localStorage.getItem('URCommentsReplaceTagWithEditorName') === 'true') : false,
-            unfollowUrAfterSend: convertUrcSettings ? (localStorage.getItem('URCommentURUnfollow') === 'true') : false,
             hideZoomOutLinks: false,
-            reminderDays: convertUrcSettings? Math.min(13,Math.max(1,parseInt(localStorage.getItem('ReminderDays')))) : 3,
-            closeDays: convertUrcSettings ? Math.min(14,Math.max(2,parseInt(localStorage.getItem('CloseDays')))) : 7,
-            enableUrceUrFiltering: convertUrcSettings ? (localStorage.getItem('URCommentsFilterEnabled') === 'true') : false,
+            unfollowUrAfterSend: convertUrcSettings ? (localStorage.getItem('URCommentURUnfollow') === 'true') : false,
+            // UR Marker Prefs
             enableUrPillCounts: convertUrcSettings ? (localStorage.getItem('URCommentsPillEnabled') === 'true') : false,
-            onlyShowMyUrs: convertUrcSettings ? (localStorage.getItem('URCommentsHideNotMyUR') === 'true') : false,
-            showOthersUrsPastReminderClose: convertUrcSettings ? (localStorage.getItem('URCommentsShowPastClose') === 'true') : false,
-            hideClosedUrs: convertUrcSettings ? (localStorage.getItem('URCommentsHideClosed') === 'true') : false,
-            hideTaggedUrs: convertUrcSettings ? (localStorage.getItem('URCommentsHideNotes') === 'true') : false,
-            hideWaiting: convertUrcSettings ? (localStorage.getItem('URCommentsHideInbetween') === 'true') : false,
-            hideUrsCloseNeeded: convertUrcSettings ? (localStorage.getItem('URCommentsHideCloseNeeded') === 'true') : false,
-            hideUrsReminderNeeded: convertUrcSettings ? (localStorage.getItem('URCommentsHideReminderNeeded') === 'true') : false,
-            hideUrsWithUserReplies: convertUrcSettings ? (localStorage.getItem('URCommentsHideReplies') === 'true') : false,
-            hideUrsWoComments: convertUrcSettings ? (localStorage.getItem('URCommentsHideInital') === 'true') : false,
-            hideUrsWoCommentsOrDescriptions: convertUrcSettings ? (localStorage.getItem('URCommentsHideWithoutDescript') === 'true') : false,
-            hideUrsWoCommentsWithDescriptions: convertUrcSettings ? ( localStorage.getItem('URCommentsHideWithDescript') === 'true') : false,
-            wmeUserId: null,
-            commentListCollapses: {},
-            commentListStyle: 'default',
+            doNotShowTagNameOnPill: convertUrcSettings ? (localStorage.getItem('URCommentsDontShowTaggedText') === 'true') : false,
+            replaceTagNameWithEditorName: convertUrcSettings ? (localStorage.getItem('URCommentsReplaceTagWithEditorName') === 'true') : false,
             unstackMarkers: false,
             customMarkersRoadworks: false,
             customMarkersConstruction: false,
@@ -164,6 +160,73 @@
             customMarkersBog: false,
             customMarkersDifficult: false,
             customMarkersNativeSl: false,
+            // UR Filtering Prefs
+            enableUrceUrFiltering: convertUrcSettings ? (localStorage.getItem('URCommentsFilterEnabled') === 'true') : false,
+            hideOutsideEditableArea: false,
+            doNotHideSelectedUr: false,
+            // -- Lifecycle
+            hideWaiting: convertUrcSettings ? (localStorage.getItem('URCommentsHideInbetween') === 'true') : false,
+            hideUrsCloseNeeded: convertUrcSettings ? (localStorage.getItem('URCommentsHideCloseNeeded') === 'true') : false,
+            hideUrsReminderNeeded: convertUrcSettings ? (localStorage.getItem('URCommentsHideReminderNeeded') === 'true') : false,
+            // -- Hide by status
+            hideByStatusOpen: false,
+            hideByStatusClosed: convertUrcSettings ? (localStorage.getItem('URCommentsHideClosed') === 'true') : (loadedSettings.hideClosedUrs) ? true : false,
+            hideByStatusNotIdentified: false,
+            hideByStatusSolved: false,
+            // -- Hide by type
+            hideByTypeBlockedRoad: false,
+            hideByTypeGeneralError: false,
+            hideByTypeIncorrectAddress: false,
+            hideByTypeIncorrectJunction: false,
+            hideByTypeIncorrectRoute: false,
+            hideByTypeIncorrectTurn: false,
+            hideByTypeMissingBridgeOverpass: false,
+            hideByTypeMissingExit: false,
+            hideByTypeMissingLandmark: false,
+            hideByTypeMissingOrInvalidSpeedLimit: false,
+            hideByTypeMissingRoad: false,
+            hideByTypeMissingRoundabout: false,
+            hideByTypeTurnNotAllowed: false,
+            hideByTypeUndefined: false,
+            hideByTypeWazeAutomatic: false,
+            hideByTypeWrongDrivingDirection: false,
+            // -- Hide by tag
+            hideByTaggedBog: false,
+            hideByTaggedClosure: false,
+            hideByTaggedConstruction: false,
+            hideByTaggedDifficult: false,
+            hideByTaggedEvent: false,
+            hideByTaggedNote: false,
+            hideByTaggedRoadworks: false,
+            hideByTaggedWslm: false,
+            // -- Hide by age of submission
+            hideByAgeOfSubmissionLessThan: false,
+            hideByAgeOfSubmissionLessThanDaysOld: null,
+            hideByAgeOfSubmissionMoreThan: false,
+            hideByAgeOfSubmissionMoreThanDaysOld: null,
+            // -- Hide by Descriptions / Comments / Following
+            hideFollowing: false,
+            hideNotFollowing: false,
+            hideWithDescription: false,
+            hideWithoutDeescription: false,
+            hideWithCommentsFromMe: false,
+            hideWithoutCommentsFromMe: false,
+            hideLastCommentByMe: false,
+            hideLastCommentNotByMe: false,
+            hideLastCommentByReporter: false,
+            hideLastCommentNotByReporter: false,
+            hideByCommentCountLessThan: false,
+            hideByCommentCountLessThanNumber: null,
+            hideByCommentCountMoreThan: false,
+            hideByCommentCountMoreThanNumber: null,
+            hideByAgeOfLastCommentLessThan: false,
+            hideByAgeOfLastCommentLessThanDaysOld: null,
+            hideByAgeOfLastCommentMoreThan: false,
+            hideByAgeOfLastCommentMoreThanDaysOld: null,
+            // Common Prefs
+            reminderDays: convertUrcSettings? Math.min(13,Math.max(1,parseInt(localStorage.getItem('ReminderDays')))) : 3,
+            closeDays: convertUrcSettings ? Math.min(14,Math.max(2,parseInt(localStorage.getItem('CloseDays')))) : 7,
+            wmeUserId: null,
             lastVersion: null
         };
         if (defaultSettings.reminderDays > (defaultSettings.closeDays - 1)) {
@@ -181,6 +244,10 @@
             }
         }
         if (_settings.wmeUserId !== _wmeUserId) _settings.wmeUserId = _wmeUserId;
+        let deleteOldSettings = ['showOthersUrsPastReminderClose', 'onlyShowMyUrs', 'hideTaggedUrs', 'hideUrsWoComments', 'hideUrsWoCommentsOrDescriptions', 'hideUrsWoCommentsWithDescriptions', 'hideUrsWithUserReplies' ];
+        deleteOldSettings.forEach(oldSetting => {
+            if (_settings.hasOwnProperty(oldSetting)) delete(_settings[oldSetting]);
+        });
     }
 
     async function saveSettingsToStorage() {
@@ -915,6 +982,29 @@
         return -1;
     }
 
+    function converTagToCustomType(tag) {
+        switch(tag) {
+            case 'ROADWORKS':
+                return 0;
+            case 'CONSTRUCTION':
+                return 1;
+            case 'CLOSURE':
+                return 2;
+            case 'EVENT':
+                return 3;
+            case 'NOTE':
+                return 4;
+            case 'WSLM':
+                return 5;
+            case 'BOG':
+                return 6;
+            case 'DIFFICULT':
+                return 7;
+            default:
+                return -1;
+        }
+    }
+
     function updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj) {
         let tagRegex = /.*\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|DIFFICULT)\].*/gi;
         const customMarkersEnabled = customMarkersEnabledCheck();
@@ -944,34 +1034,7 @@
                 }
                 tagType = (fullText.search(tagRegex) > -1) ? fullText.replace(tagRegex, '$1') : null;
                 if (tagType) {
-                    switch(tagType) {
-                        case 'ROADWORKS':
-                            customType = 0;
-                            break;
-                        case 'CONSTRUCTION':
-                            customType = 1;
-                            break;
-                        case 'CLOSURE':
-                            customType = 2;
-                            break;
-                        case 'EVENT':
-                            customType = 3;
-                            break;
-                        case 'NOTE':
-                            customType = 4;
-                            break;
-                        case 'WSLM':
-                            customType = 5;
-                            break;
-                        case 'BOG':
-                            customType = 6;
-                            break;
-                        case 'DIFFICULT':
-                            customType = 7;
-                            break;
-                        default:
-                            customType = -1;
-                    }
+                    customType = converTagToCustomType(tagType);
                 } else {
                     if (mUrObj.attributes.type === 23) customType = 98;
                     else customType = -1;
@@ -1018,6 +1081,11 @@
                             $('<div>').html(tagContent).css({'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}).addClass('urceCounts')
                         )
                     );
+                } else {
+                    if ($(`#urceCounters-${urId}`).length > 0) {
+                        logDebug('Removing marker counters on UR marker for UR: ' + urId);
+                        $(`#urceCounters-${urId}`).remove();
+                    }
                 }
                 if (customMarkersEnabled) {
                     if (customType > -1) addCustomMarker(urId, urOpen, customType, $node);
@@ -1037,18 +1105,23 @@
 
     function filterUrMapMarkers(urIds, urSessionsObj, mapUrsObj) {
         let tagRegex = /.*\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|DIFFICULT)\].*/gi;
+        let doNotHideSelectedUr = _settings.doNotHideSelectedUr;
         for (let idx = 0; idx < urIds.length; idx++) {
             let urId = urIds[idx];
             let $node = $(`[data-id="${urId}"]`);
             if (_settings.enableUrceUrFiltering || _settings.autoSendReminders) {
+                let preventHiding = ((urId === _selUr.urId) && doNotHideSelectedUr);
                 let urData = urSessionsObj[idx];
                 let mUrObj = mapUrsObj[idx];
                 let urDesc = mUrObj.attributes.description;
                 let urOpen = mUrObj.attributes.open;
+                let urType = mUrObj.attributes.type;
+                let urDriveDate = (mUrObj.attributes.driveDate) ? mUrObj.attributes.driveDate : -1;
+                let urResolvedOn = (mUrObj.attributes.resolvedOn) ? mUrObj.attributes.resolvedOn : -1;
                 let urReminderSent = mUrObj.attributes.reminderSent;
                 let urCommentCount = urData.comments.length;
                 let wmeUsername = W.model.loginManager.user.userName;
-                let commentDaysOld, lastCommentBy, fullText, tagType;
+                let commentDaysOld, lastCommentBy, fullText, tagType, customType;
                 let commentUserIds = [];
                 let hideUr = false;
                 let needsReminder = false;
@@ -1094,25 +1167,74 @@
                     }
                 } else {
                     fullText = urDesc ? urDesc : '';
-                    commentDaysOld = uroDateToDays(mUrObj.attributes.driveDate);
+                    commentDaysOld = uroDateToDays(urDriveDate);
                 }
                 tagType = (fullText.search(tagRegex) > -1) ? fullText.replace(tagRegex, '$1') : null;
+                if (tagType) {
+                    customType = converTagToCustomType(tagType);
+                } else {
+                    if (urType === 23) customType = 98;
+                    else customType = -1;
+                }
                 if (!tagType) {
                     let regex = new RegExp(' ' + wmeUsername + ' ', 'gi');
                     tagType = fullText.search(regex) > -1 ? wmeUsername : null;
                 }
-                if ((_settings.hideClosedUrs && !urOpen) ||
-                    (_settings.hideTaggedUrs && tagType) ||
-                    (_settings.hideWaiting && urWaiting) ||
-                    (_settings.needsClosed && needsClosed) ||
-                    (_settings.hideUrsReminderNeeded && needsReminder) ||
-                    (_settings.hideUrsWithUserReplies && lastCommentBy < 1) ||
-                    (_settings.hideUrsWoComments && urCommentCount === 0) ||
-                    (_settings.hideUrsWoCommentsOrDescriptions && !urDesc && urCommentCount === 0) ||
-                    (_settings.hideUrsWoCommentsWithDescriptions && urDesc && urCommentCount === 0) ||
-                    (_settings.onlyShowMyUrs && commentUserIds.indexOf(_wmeUserId) === -1)) hideUr = true;
-                // Put this here so it can be toggled separately from onlyShowMy and it overrides other hiding.
-                if (_settings.showOthersUrsPastReminderClose && commentUserIds.indexOf(_wmeUserId) === -1 && commentDaysOld > (_settings.reminderDays + _settings.CloseDays)) hideUr = false;
+                if ((!preventHiding && _settings.enableUrceUrFiltering) &&
+                    ((_settings.hideOutsideEditableArea && !mUrObj.canEdit()) ||
+                     (_settings.hideWaiting && urWaiting) ||
+                     (_settings.needsClosed && needsClosed) ||
+                     (_settings.hideUrsReminderNeeded && needsReminder) ||
+                     (_settings.hideByStatusOpen && urOpen) ||
+                     (_settings.hideByStatusClosed && !urOpen) ||
+                     (_settings.hideByStatusNotIdentified && mUrObj.attributes.resolution === 1) ||
+                     (_settings.hideByStatusSolved && mUrObj.attributes.resolution === 0) ||
+                     // Types
+                     (_settings.hideByTypeBlockedRoad && urType === 19) ||
+                     (_settings.hideByTypeGeneralError && urType === 10) ||
+                     (_settings.hideByTypeIncorrectAddress && urType === 7) ||
+                     (_settings.hideByTypeIncorrectJunction && urType === 12) ||
+                     (_settings.hideByTypeIncorrectRoute && urType === 8) ||
+                     (_settings.hideByTypeIncorrectTurn && urType === 6) ||
+                     (_settings.hideByTypeMissingBridgeOverpass && urType === 13) ||
+                     (_settings.hideByTypeMissingExit && urType === 15) ||
+                     (_settings.hideByTypeMissingLandmark && urType === 18) ||
+                     (_settings.hideByTypeMissingOrInvalidSpeedLimit && urType === 23) ||
+                     (_settings.hideByTypeMissingRoad && urType === 16) ||
+                     (_settings.hideByTypeMissingRoundabout && urType === 9) ||
+                     (_settings.hideByTypeTurnNotAllowed && urType === 11) ||
+                     (_settings.hideByTypeUndefined && (!urType || (urType > 19 && urType !== 23) || urType < 6 || urType === 17)) ||
+                     (_settings.hideByTypeWazeAutomatic && urDesc.indexOf('Waze Automatic:') > -1) ||
+                     (_settings.hideByTypeWrongDrivingDirection && urType === 14) ||
+                     //Tags
+                     (_settings.hideByTaggedBog && customType === 6) ||
+                     (_settings.hideByTaggedClosure && customType === 2) ||
+                     (_settings.hideByTaggedConstruction && customType === 1) ||
+                     (_settings.hideByTaggedDifficult && customType === 7) ||
+                     (_settings.hideByTaggedEvent && customType === 3) ||
+                     (_settings.hideByTaggedNote && customType === 4) ||
+                     (_settings.hideByTaggedRoadworks && customType === 0) ||
+                     (_settings.hideByTaggedWslm && customType === 5) ||
+                     // Age of submission
+                     (_settings.hideByAgeOfSubmissionLessThan && uroDateToDays(urDriveDate) < _settings.hideByAgeOfSubmissionLessThanDaysOld) ||
+                     (_settings.hideByAgeOfSubmissionMoreThan && uroDateToDays(urDriveDate) > _settings.hideByAgeOfSubmissionMoreThanDaysOld) ||
+                     // Following, description, comments
+                     (_settings.hideFollowing && urData.isFollowing) ||
+                     (_settings.hideNotFollowing && !urData.isFollowing) ||
+                     (_settings.hideDescription && urDesc && urDesc.length > 0 && urDesc !== '') ||
+                     (_settings.hideWithoutDescription && (!urDesc || urDesc.length === 0 || urDesc === '')) ||
+                     (_settings.hideWithCommentsFromMe && commentUserIds.indexOf(_wmeUserId) > -1) ||
+                     (_settings.hideWithoutCommentsFromMe && commentUserIds.indexOf(_wmeUserId) === -1) ||
+                     (_settings.hideLastCommentByMe && lastCommentBy === _wmeUserId) ||
+                     (_settings.hideLastCommentNotByMe && lastCommentBy !== _wmeUserId) ||
+                     (_settings.hideLastCommentByReporter && lastCommentBy === -1) ||
+                     (_settings.hideLastCommentNotByReporter && lastCommentBy > 0) ||
+                     (_settings.hideByCommentCountLessThan && urCommentCount < _settings.hideByCommentCountLessThanNumber) ||
+                     (_settings.hideByCommentCountMoreThan && urCommentCount > _settings.hideByCommentCountMoreThanNumber) ||
+                     (_settings.hideByAgeOfLastCommentLessThan && commentDaysOld < _settings.hideByAgeOfLastCommentLessThanDaysOld) ||
+                     (_settings.hideByAgeOfLastCommentMoreThan && commentDaysOld > _settings.hideByAgeOfLastCommentMoreThanDaysOld)
+                    )
+                   ) hideUr = true;
                 if (hideUr && _settings.enableUrceUrFiltering) {
                     logDebug('Hiding UR marker for UR: ' + urId);
                     $($node).hide();
@@ -1685,7 +1807,7 @@
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-divDaysInput { padding-left:25px !important; }',
+            '#sidepanel-urc-e #panel-urce-settings .URCE-divDaysInput { padding-left:18px !important; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-daysInput { width:38px; height:20px; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-span { text-transform:uppercase; cursor:pointer; }',
             // Common
@@ -1759,8 +1881,9 @@
                     $($(this).siblings()[0]).toggleClass('collapse');
                 }),
                 $('<div>', {class:'controls-container URCE-divCC'}).append(
-                    $('<div>', {class:'controls-container URCE-divCC'}).text(I18n.t('urce.prefs.List') + ': ').append(function() {
-                        let $selList = $('<select>', {id:'_selCommentList', urceprefs:'commentList'});
+                    // Comment list
+                    $('<div>', {class:'controls-container URCE-divCC'}).text(I18n.t('urce.common.List') + ': ').append(function() {
+                        let $selList = $('<select>', {id:'_selCommentList', title:I18n.t('urce.prefs.CommentListTitle'), urceprefs:'commentList'});
                         _commentLists.forEach(cList => {
                             if (cList.status === 'disabled') {
                                 return;
@@ -1774,8 +1897,9 @@
                             changeCommentList($(this).val());
                         });
                     }),
-                    $('<div>', {class:'URCE-commentListStyle'}).text(I18n.t('urce.prefs.Style') + ': ').append(function() {
-                        let $selList = $('<select>', {id:'_selCommentListStyle', urceprefs:'commentList'});
+                    // Comment list style
+                    $('<div>', {class:'URCE-commentListStyle'}).text(I18n.t('urce.common.Style') + ': ').append(function() {
+                        let $selList = $('<select>', {id:'_selCommentListStyle', title:I18n.t('urce.prefs.CommentListStyleTitle'), urceprefs:'commentList'});
                         if (_settings.commentListStyle === 'default') {
                             $selList.append(
                                 $('<option>', {value:'default', selected:true}).text(I18n.t('urce.prefs.StyleDefault'))
@@ -2011,9 +2135,10 @@
                         }).prop('checked', _settings.unstackMarkers),
                         $('<label>', {for:'_cbUnstackMarkers', title:I18n.t('urce.prefs.UnstackMarkersTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.UnstackMarkers')),
                         $('<br>'),
+                        // -- Custom markers
                         $('<div>').text('Use Custom Markers for:').css({fontWeight:'600'}).append('<br>').append(
-                            $('<input>', {type:'checkbox', id:'_cbCustomMarkersRoadworks', urceprefs:'marker-nodisable'}).change(function() {
-                                changeSetting('customMarkersRoadworks', $(this).is(':checked'));
+                            $('<input>', {type:'checkbox', id:'_cbCustomMarkersBog', urceprefs:'marker-nodisable'}).change(function() {
+                                changeSetting('customMarkersBog', $(this).is(':checked'));
                                 (async () => {
                                     try {
                                         await handleUrLayer('settingsToggle');
@@ -2021,20 +2146,8 @@
                                         logWarning(error);
                                     }
                                 })();
-                            }).prop('checked', _settings.customMarkersRoadworks),
-                            $('<label>', {for:'_cbCustomMarkersRoadworks', title:'[ROADWORKS]', class:'URCE-label'}).text('[ROADWORKS]'),
-                            $('<br>'),
-                            $('<input>', {type:'checkbox', id:'_cbCustomMarkersConstruction', urceprefs:'marker-nodisable'}).change(function() {
-                                changeSetting('customMarkersConstruction', $(this).is(':checked'));
-                                (async () => {
-                                    try {
-                                        await handleUrLayer('settingsToggle');
-                                    } catch(error) {
-                                        logWarning(error);
-                                    }
-                                })();
-                            }).prop('checked', _settings.customMarkersConstruction),
-                            $('<label>', {for:'_cbCustomMarkersConstruction', title:'[CONSTRUCTION]', class:'URCE-label'}).text('[CONSTRUCTION]'),
+                            }).prop('checked', _settings.customMarkersBog),
+                            $('<label>', {for:'_cbCustomMarkersBog', title:I18n.t('urce.tags.BogTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Bog')),
                             $('<br>'),
                             $('<input>', {type:'checkbox', id:'_cbCustomMarkersClosures', urceprefs:'marker-nodisable'}).change(function() {
                                 changeSetting('customMarkersClosures', $(this).is(':checked'));
@@ -2046,10 +2159,10 @@
                                     }
                                 })();
                             }).prop('checked', _settings.customMarkersClosures),
-                            $('<label>', {for:'_cbCustomMarkersClosures', title:'[CLOSURES]', class:'URCE-label'}).text('[CLOSURES]'),
+                            $('<label>', {for:'_cbCustomMarkersClosures', title:I18n.t('urce.tags.ClosureTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Closure')),
                             $('<br>'),
-                            $('<input>', {type:'checkbox', id:'_cbCustomMarkersEvents', urceprefs:'marker-nodisable'}).change(function() {
-                                changeSetting('customMarkersEvents', $(this).is(':checked'));
+                            $('<input>', {type:'checkbox', id:'_cbCustomMarkersConstruction', urceprefs:'marker-nodisable'}).change(function() {
+                                changeSetting('customMarkersConstruction', $(this).is(':checked'));
                                 (async () => {
                                     try {
                                         await handleUrLayer('settingsToggle');
@@ -2057,44 +2170,8 @@
                                         logWarning(error);
                                     }
                                 })();
-                            }).prop('checked', _settings.customMarkersEvents),
-                            $('<label>', {for:'_cbCustomMarkersEvents', title:'[EVENTS]', class:'URCE-label'}).text('[EVENTS]'),
-                            $('<br>'),
-                            $('<input>', {type:'checkbox', id:'_cbCustomMarkersNotes', urceprefs:'marker-nodisable'}).change(function() {
-                                changeSetting('customMarkersNotes', $(this).is(':checked'));
-                                (async () => {
-                                    try {
-                                        await handleUrLayer('settingsToggle');
-                                    } catch(error) {
-                                        logWarning(error);
-                                    }
-                                })();
-                            }).prop('checked', _settings.customMarkersNotes),
-                            $('<label>', {for:'_cbCustomMarkersNotes', title:'[NOTES]', class:'URCE-label'}).text('[NOTES]'),
-                            $('<br>'),
-                            $('<input>', {type:'checkbox', id:'_cbCustomMarkersWslm', urceprefs:'marker-nodisable'}).change(function() {
-                                changeSetting('customMarkersWslm', $(this).is(':checked'));
-                                (async () => {
-                                    try {
-                                        await handleUrLayer('settingsToggle');
-                                    } catch(error) {
-                                        logWarning(error);
-                                    }
-                                })();
-                            }).prop('checked', _settings.customMarkersWslm),
-                            $('<label>', {for:'_cbCustomMarkersWslm', title:'[WSLM]', class:'URCE-label'}).text('[WSLM]'),
-                            $('<br>'),
-                            $('<input>', {type:'checkbox', id:'_cbCustomMarkersBog', urceprefs:'marker-nodisable'}).change(function() {
-                                changeSetting('customMarkersBog', $(this).is(':checked'));
-                                (async () => {
-                                    try {
-                                        await handleUrLayer('settingsToggle');
-                                    } catch(error) {
-                                        logWarning(error);
-                                    }
-                                })();
-                            }).prop('checked', _settings.customMarkersBog),
-                            $('<label>', {for:'_cbCustomMarkersBog', title:'[BOG]', class:'URCE-label'}).text('[BOG]'),
+                            }).prop('checked', _settings.customMarkersConstruction),
+                            $('<label>', {for:'_cbCustomMarkersConstruction', title:I18n.t('urce.tags.ConstructionTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Construction')),
                             $('<br>'),
                             $('<input>', {type:'checkbox', id:'_cbCustomMarkersDifficult', urceprefs:'marker-nodisable'}).change(function() {
                                 changeSetting('customMarkersDifficult', $(this).is(':checked'));
@@ -2106,7 +2183,55 @@
                                     }
                                 })();
                             }).prop('checked', _settings.customMarkersDifficult),
-                            $('<label>', {for:'_cbCustomMarkersDifficult', title:'[DIFFICULT]', class:'URCE-label'}).text('[DIFFICULT]'),
+                            $('<label>', {for:'_cbCustomMarkersDifficult', title:I18n.t('urce.tags.DifficultTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Difficult')),
+                            $('<br>'),
+                            $('<input>', {type:'checkbox', id:'_cbCustomMarkersEvents', urceprefs:'marker-nodisable'}).change(function() {
+                                changeSetting('customMarkersEvents', $(this).is(':checked'));
+                                (async () => {
+                                    try {
+                                        await handleUrLayer('settingsToggle');
+                                    } catch(error) {
+                                        logWarning(error);
+                                    }
+                                })();
+                            }).prop('checked', _settings.customMarkersEvents),
+                            $('<label>', {for:'_cbCustomMarkersEvents', title:I18n.t('urce.tags.EventTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Event')),
+                            $('<br>'),
+                            $('<input>', {type:'checkbox', id:'_cbCustomMarkersNotes', urceprefs:'marker-nodisable'}).change(function() {
+                                changeSetting('customMarkersNotes', $(this).is(':checked'));
+                                (async () => {
+                                    try {
+                                        await handleUrLayer('settingsToggle');
+                                    } catch(error) {
+                                        logWarning(error);
+                                    }
+                                })();
+                            }).prop('checked', _settings.customMarkersNotes),
+                            $('<label>', {for:'_cbCustomMarkersNotes', title:I18n.t('urce.tags.NoteTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Note')),
+                            $('<br>'),
+                            $('<input>', {type:'checkbox', id:'_cbCustomMarkersRoadworks', urceprefs:'marker-nodisable'}).change(function() {
+                                changeSetting('customMarkersRoadworks', $(this).is(':checked'));
+                                (async () => {
+                                    try {
+                                        await handleUrLayer('settingsToggle');
+                                    } catch(error) {
+                                        logWarning(error);
+                                    }
+                                })();
+                            }).prop('checked', _settings.customMarkersRoadworks),
+                            $('<label>', {for:'_cbCustomMarkersRoadworks', title:I18n.t('urce.tags.RoadworksTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Roadworks')),
+                            $('<br>'),
+                            $('<input>', {type:'checkbox', id:'_cbCustomMarkersWslm', urceprefs:'marker-nodisable'}).change(function() {
+                                changeSetting('customMarkersWslm', $(this).is(':checked'));
+                                (async () => {
+                                    try {
+                                        await handleUrLayer('settingsToggle');
+                                    } catch(error) {
+                                        logWarning(error);
+                                    }
+                                })();
+                            }).prop('checked', _settings.customMarkersWslm),
+                            $('<label>', {for:'_cbCustomMarkersWslm', title:I18n.t('urce.tags.WslmTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Wslm')),
                             $('<br>'),
                             $('<input>', {type:'checkbox', id:'_cbCustomMarkersNativeSl', urceprefs:'marker-nodisable'}).change(function() {
                                 changeSetting('customMarkersNativeSl', $(this).is(':checked'));
@@ -2118,7 +2243,7 @@
                                     }
                                 })();
                             }).prop('checked', _settings.customMarkersNativeSl),
-                            $('<label>', {for:'_cbCustomMarkersNativeSl', title:'Native speed limits', class:'URCE-label'}).text('Native speed limits')
+                            $('<label>', {for:'_cbCustomMarkersNativeSl', title:I18n.t('urce.prefs.NativeSpeedLimitsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.NativeSpeedLimits'))
                         )
                     )
                 )
@@ -2153,8 +2278,8 @@
                         }).prop('checked', _settings.enableUrceUrFiltering),
                         $('<label>', {for:'_cbEnableUrceUrFiltering', title:I18n.t('urce.prefs.EnableUrceUrFilteringTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrceUrFiltering')),
                         $('<br>'),
-                        $('<input>', {type:'checkbox', id:'_cbOnlyShowMyUrs', urceprefs:'filtering'}).change(function() {
-                            changeSetting('onlyShowMyUrs', $(this).is(':checked'));
+                        $('<input>', {type:'checkbox', id:'_cbHideOutsideEditableArea', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideOutsideEditableArea', $(this).is(':checked'));
                             (async () => {
                                 try {
                                     await handleUrLayer('settingsToggle');
@@ -2162,11 +2287,11 @@
                                     logWarning(error);
                                 }
                             })();
-                        }).prop('checked', _settings.onlyShowMyUrs),
-                        $('<label>', {for:'_cbOnlyShowMyUrs', title:I18n.t('urce.prefs.OnlyShowMyUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.OnlyShowMyUrs')),
+                        }).prop('checked', _settings.hideOutsideEditableArea),
+                        $('<label>', {for:'_cbHideOutsideEditableArea', title:I18n.t('urce.prefs.HideOutsideEditableAreaTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideOutsideEditableArea')),
                         $('<br>'),
-                        $('<input>', {type:'checkbox', id:'_cbShowOthersUrsPastReminderClose', urceprefs:'filtering'}).change(function() {
-                            changeSetting('showOthersUrsPastReminderClose', $(this).is(':checked'));
+                        $('<input>', {type:'checkbox', id:'_cbDoNotHideSelectedUr', urceprefs:'filtering'}).change(function() {
+                            changeSetting('doNotHideSelectedUr', $(this).is(':checked'));
                             (async () => {
                                 try {
                                     await handleUrLayer('settingsToggle');
@@ -2174,33 +2299,11 @@
                                     logWarning(error);
                                 }
                             })();
-                        }).prop('checked', _settings.showOthersUrsPastReminderClose),
-                        $('<label>', {for:'_cbShowOthersUrsPastReminderClose', title:I18n.t('urce.prefs.ShowOthersUrsPastReminderCloseTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.ShowOthersUrsPastReminderClose')),
+                        }).prop('checked', _settings.doNotHideSelectedUr),
+                        $('<label>', {for:'_cbDoNotHideSelectedUr', title:I18n.t('urce.prefs.DoNotHideSelectedUrTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoNotHideSelectedUr')),
                         $('<br>'),
-                        $('<input>', {type:'checkbox', id:'_cbHideClosedUrs', urceprefs:'filtering'}).change(function() {
-                            changeSetting('hideClosedUrs', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
-                        }).prop('checked', _settings.hideClosedUrs),
-                        $('<label>', {for:'_cbHideClosedUrs', title:I18n.t('urce.prefs.HideClosedUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideClosedUrs')),
-                        $('<br>'),
-                        $('<input>', {type:'checkbox', id:'_cbHideTaggedUrs', urceprefs:'filtering'}).change(function() {
-                            changeSetting('hideTaggedUrs', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
-                        }).prop('checked', _settings.hideTaggedUrs),
-                        $('<label>', {for:'_cbHideTaggedUrs', title:I18n.t('urce.prefs.HideTaggedUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideTaggedUrs')),
-                        $('<br>'),
+                        // -- Lifecycle
+                        $('<div>', {style:'font-weight:600;'}).text(I18n.t('urce.prefs.LifeCycleStatus') + ':'),
                         $('<input>', {type:'checkbox', id:'_cbHideWaiting', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideWaiting', $(this).is(':checked'));
                             (async () => {
@@ -2237,8 +2340,10 @@
                         }).prop('checked', _settings.hideUrsReminderNeeded),
                         $('<label>', {for:'_cbHideUrsReminderNeeded', title:I18n.t('urce.prefs.HideUrsReminderNeededTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsReminderNeeded')),
                         $('<br>'),
-                        $('<input>', {type:'checkbox', id:'_cbHideUrsWithUserReplies', urceprefs:'filtering'}).change(function() {
-                            changeSetting('hideUrsWithUserReplies', $(this).is(':checked'));
+                        // -- Hide by status
+                        $('<div>', {style:'font-weight:600;'}).text(I18n.t('urce.prefs.HideByStatus') + ':'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByStatusOpen', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByStatusOpen', $(this).is(':checked'));
                             (async () => {
                                 try {
                                     await handleUrLayer('settingsToggle');
@@ -2246,11 +2351,11 @@
                                     logWarning(error);
                                 }
                             })();
-                        }).prop('checked', _settings.hideUrsWithUserReplies),
-                        $('<label>', {for:'_cbHideUrsWithUserReplies', title:I18n.t('urce.prefs.HideUrsWithUserRepliesTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWithUserReplies')),
+                        }).prop('checked', _settings.hideByStatusOpen),
+                        $('<label>', {for:'_cbHideByStatusOpen', title:I18n.t('urce.prefs.HideByStatusOpenTitle'), class:'URCE-label'}).text(I18n.t('urce.urStatus.Open')),
                         $('<br>'),
-                        $('<input>', {type:'checkbox', id:'_cbHideUrsWoComments', urceprefs:'filtering'}).change(function() {
-                            changeSetting('hideUrsWoComments', $(this).is(':checked'));
+                        $('<input>', {type:'checkbox', id:'_cbHideByStatusClosed', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByStatusClosed', $(this).is(':checked'));
                             (async () => {
                                 try {
                                     await handleUrLayer('settingsToggle');
@@ -2258,11 +2363,11 @@
                                     logWarning(error);
                                 }
                             })();
-                        }).prop('checked', _settings.hideUrsWoComments),
-                        $('<label>', {for:'_cbHideUrsWoComments', title:I18n.t('urce.prefs.HideUrsWoCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoComments')),
+                        }).prop('checked', _settings.hideByStatusClosed),
+                        $('<label>', {for:'_cbHideByStatusClosed', title:I18n.t('urce.prefs.HideByStatusClosedTitle'), class:'URCE-label'}).text(I18n.t('urce.urStatus.Closed')),
                         $('<br>'),
-                        $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsOrDescriptions', urceprefs:'filtering'}).change(function() {
-                            changeSetting('hideUrsWoCommentsOrDescriptions', $(this).is(':checked'));
+                        $('<input>', {type:'checkbox', id:'_cbHideByStatusNotIdentified', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByStatusNotIdentified', $(this).is(':checked'));
                             (async () => {
                                 try {
                                     await handleUrLayer('settingsToggle');
@@ -2270,11 +2375,11 @@
                                     logWarning(error);
                                 }
                             })();
-                        }).prop('checked', _settings.hideUrsWoCommentsOrDescriptions),
-                        $('<label>', {for:'_cbHideUrsWoCommentsOrDescriptions', title:I18n.t('urce.prefs.HideUrsWoCommentsOrDescriptionsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoCommentsOrDescriptions')),
+                        }).prop('checked', _settings.hideByStatusNotIdentified),
+                        $('<label>', {for:'_cbHideByStatusNotIdentified', title:I18n.t('urce.prefs.HideByStatusNotIdentifiedTitle'), class:'URCE-label'}).text(I18n.t('urce.urStatus.NotIdentified')),
                         $('<br>'),
-                        $('<input>', {type:'checkbox', id:'_cbHideUrsWoCommentsWithDescriptions', urceprefs:'filtering'}).change(function() {
-                            changeSetting('hideUrsWoCommentsWithDescriptions', $(this).is(':checked'));
+                        $('<input>', {type:'checkbox', id:'_cbHideByStatusSolved', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByStatusSolved', $(this).is(':checked'));
                             (async () => {
                                 try {
                                     await handleUrLayer('settingsToggle');
@@ -2282,8 +2387,698 @@
                                     logWarning(error);
                                 }
                             })();
-                        }).prop('checked', _settings.hideUrsWoCommentsWithDescriptions),
-                        $('<label>', {for:'_cbHideUrsWoCommentsWithDescriptions', title:I18n.t('urce.prefs.HideUrsWoCommentsWithDescriptionsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsWoCommentsWithDescriptions'))
+                        }).prop('checked', _settings.hideByStatusSolved),
+                        $('<label>', {for:'_cbHideByStatusSolved', title:I18n.t('urce.prefs.HideByStatusSolvedTitle'), class:'URCE-label'}).text(I18n.t('urce.urStatus.Solved')),
+                        $('<br>'),
+                        // -- Hide by type
+                        $('<div>', {style:'font-weight:600;'}).text(I18n.t('urce.prefs.HideByType') + ':'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeBlockedRoad', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeBlockedRoad', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeBlockedRoad),
+                        $('<label>', {for:'_cbHideByTypeBlockedRoad', title:I18n.t('urce.prefs.HideByTypeBlockedRoadTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.BlockedRoad')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeGeneralError', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeGeneralError', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeGeneralError),
+                        $('<label>', {for:'_cbHideByTypeGeneralError', title:I18n.t('urce.prefs.HideByTypeGeneralErrorTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.GeneralError')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeIncorrectAddress', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeIncorrectAddress', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeIncorrectAddress),
+                        $('<label>', {for:'_cbHideByTypeIncorrectAddress', title:I18n.t('urce.prefs.HideByTypeIncorrectAddressTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.IncorrectAddress')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeIncorrectJunction', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeIncorrectJunction', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeIncorrectJunction),
+                        $('<label>', {for:'_cbHideByTypeIncorrectJunction', title:I18n.t('urce.prefs.HideByTypeIncorrectJunctionTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.IncorrectJunction')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeIncorrectRoute', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeIncorrectRoute', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeIncorrectRoute),
+                        $('<label>', {for:'_cbHideByTypeIncorrectRoute', title:I18n.t('urce.prefs.HideByTypeIncorrectRouteTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.IncorrectRoute')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeIncorrectTurn', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeIncorrectTurn', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeIncorrectTurn),
+                        $('<label>', {for:'_cbHideByTypeIncorrectTurn', title:I18n.t('urce.prefs.HideByTypeIncorrectTurnTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.IncorrectTurn')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingBridgeOverpass', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeMissingBridgeOverpass', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeMissingBridgeOverpass),
+                        $('<label>', {for:'_cbHideByTypeMissingBridgeOverpass', title:I18n.t('urce.prefs.HideByTypeMissingBridgeOverpassTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingBridgeOverpass')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingExit', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeMissingExit', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeMissingExit),
+                        $('<label>', {for:'_cbHideByTypeMissingExit', title:I18n.t('urce.prefs.HideByTypeMissingExitTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingExit')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingLandmark', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeMissingLandmark', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeMissingLandmark),
+                        $('<label>', {for:'_cbHideByTypeMissingLandmark', title:I18n.t('urce.prefs.HideByTypeMissingLandmarkTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingLandmark')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingOrInvalidSpeedLimit', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeMissingOrInvalidSpeedLimit', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeMissingOrInvalidSpeedLimit),
+                        $('<label>', {for:'_cbHideByTypeMissingOrInvalidSpeedLimit', title:I18n.t('urce.prefs.HideByTypeMissingOrInvalidSpeedLimitTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingOrInvalidSpeedLimit')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingRoad', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeMissingRoad', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeMissingRoad),
+                        $('<label>', {for:'_cbHideByTypeMissingRoad', title:I18n.t('urce.prefs.HideByTypeMissingRoadTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingRoad')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingRoundabout', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeMissingRoundabout', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeMissingRoundabout),
+                        $('<label>', {for:'_cbHideByTypeMissingRoundabout', title:I18n.t('urce.prefs.HideByTypeMissingRoundaboutTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingRoundabout')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeTurnNotAllowed', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeTurnNotAllowed', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeTurnNotAllowed),
+                        $('<label>', {for:'_cbHideByTypeTurnNotAllowed', title:I18n.t('urce.prefs.HideByTypeTurnNotAllowedTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.TurnNotAllowed')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeUndefined', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeUndefined', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeUndefined),
+                        $('<label>', {for:'_cbHideByTypeUndefined', title:I18n.t('urce.prefs.HideByTypeUndefinedTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.Undefined')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeWazeAutomatic', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeWazeAutomatic', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeWazeAutomatic),
+                        $('<label>', {for:'_cbHideByTypeWazeAutomatic', title:I18n.t('urce.prefs.HideByTypeWazeAutomaticTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.WazeAutomatic')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeWrongDrivingDirection', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeWrongDrivingDirection', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTypeWrongDrivingDirection),
+                        $('<label>', {for:'_cbHideByTypeWrongDrivingDirection', title:I18n.t('urce.prefs.HideByTypeWrongDrivingDirectionTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.WrongDrivingDirection')),
+                        $('<br>'),
+                        // -- Hide by tagged
+                        $('<div>', {style:'font-weight:600;'}).text(I18n.t('urce.prefs.HideByTagged') + ':'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTaggedBog', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTaggedBog', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTaggedBog),
+                        $('<label>', {for:'_cbHideByTaggedBog', title:I18n.t('urce.prefs.HideByTaggedBogTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Bog')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTaggedClosure', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTaggedClosure', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTaggedClosure),
+                        $('<label>', {for:'_cbHideByTaggedClosure', title:I18n.t('urce.prefs.HideByTaggedClosureTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Closure')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTaggedConstruction', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTaggedConstruction', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTaggedConstruction),
+                        $('<label>', {for:'_cbHideByTaggedConstruction', title:I18n.t('urce.prefs.HideByTaggedConstructionTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Construction')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTaggedDifficult', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTaggedDifficult', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTaggedDifficult),
+                        $('<label>', {for:'_cbHideByTaggedDifficult', title:I18n.t('urce.prefs.HideByTaggedDifficultTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Difficult')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTaggedEvent', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTaggedEvent', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTaggedEvent),
+                        $('<label>', {for:'_cbHideByTaggedEvent', title:I18n.t('urce.prefs.HideByTaggedEventTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Event')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTaggedNote', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTaggedNote', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTaggedNote),
+                        $('<label>', {for:'_cbHideByTaggedNote', title:I18n.t('urce.prefs.HideByTaggedNoteTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Note')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTaggedRoadworks', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTaggedRoadworks', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTaggedRoadworks),
+                        $('<label>', {for:'_cbHideByTaggedRoadworks', title:I18n.t('urce.prefs.HideByTaggedRoadworksTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Roadworks')),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTaggedWslm', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTaggedWslm', $(this).is(':checked'));
+                            (async () => {
+                                try {
+                                    await handleUrLayer('settingsToggle');
+                                } catch(error) {
+                                    logWarning(error);
+                                }
+                            })();
+                        }).prop('checked', _settings.hideByTaggedWslm),
+                        $('<label>', {for:'_cbHideByTaggedWslm', title:I18n.t('urce.prefs.HideByTaggedWslmTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Wslm')),
+                        $('<br>'),
+                        // -- Hide by age of submission
+                        $('<div>', {style:'font-weight:600;'}).text(I18n.t('urce.prefs.HideByAgeOfSubmission') + ':'),
+                        $('<div>').append(
+                            $('<input>', {type:'checkbox', id:'_cbHideByAgeOfSubmissionLessThan', urceprefs:'filtering'}).change(function() {
+                                changeSetting('hideByAgeOfSubmissionLessThan', $(this).is(':checked'));
+                                (async () => {
+                                    try {
+                                        await handleUrLayer('settingsToggle');
+                                    } catch(error) {
+                                        logWarning(error);
+                                    }
+                                })();
+                            }).prop('checked', _settings.hideByAgeOfSubmissionLessThan),
+                            $('<label>', {for:'_cbHideByAgeOfSubmissionLessThan', class:'URCE-label'}).text(I18n.t('urce.common.LessThan')),
+                            $('<div>', {style:'display:inline; padding-left:4px;'}).append(
+                                $('<input>', {type:'number', id:'_numHideByAgeOfSubmissionLessThanDaysOld', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByAgeOfSubmissionLessThanDaysOld}).on('change', function() {
+                                    let val = Math.abs(parseInt(this.value, 10) || 0);
+                                    val = Math.min(9999,Math.max(0,parseInt(val)));
+                                    if (val !== this.value) {
+                                        changeSetting('hideByAgeOfSubmissionLessThanDaysOld', val);
+                                        this.value = val;
+                                        (async () => {
+                                            try {
+                                                await handleUrLayer('settingsToggle');
+                                            } catch(error) {
+                                                logWarning(error);
+                                            }
+                                        })();
+                                    }
+                                }),
+                                $('<div>', {style:'display:inline; padding-left:4px;'}).append(I18n.t('urce.common.DaysOld'))
+                            ),
+                        ),
+                        $('<div>').append(
+                            $('<input>', {type:'checkbox', id:'_cbHideByAgeOfSubmissionMoreThan', urceprefs:'filtering'}).change(function() {
+                                changeSetting('hideByAgeOfSubmissionMoreThan', $(this).is(':checked'));
+                                (async () => {
+                                    try {
+                                        await handleUrLayer('settingsToggle');
+                                    } catch(error) {
+                                        logWarning(error);
+                                    }
+                                })();
+                            }).prop('checked', _settings.hideByAgeOfSubmissionMoreThan),
+                            $('<label>', {for:'_cbHideByAgeOfSubmissionMoreThan', class:'URCE-label'}).text(I18n.t('urce.common.MoreThan')),
+                            $('<div>', {style:'display:inline; padding-left:4px;'}).append(
+                                $('<input>', {type:'number', id:'_numHideByAgeOfSubmissionMoreThanDaysOld', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByAgeOfSubmissionMoreThanDaysOld}).on('change', function() {
+                                    let val = Math.abs(parseInt(this.value, 10) || 0);
+                                    val = Math.min(9999,Math.max(0,parseInt(val)));
+                                    if (val !== this.value) {
+                                        changeSetting('hideByAgeOfSubmissionMoreThanDaysOld', val);
+                                        this.value = val;
+                                        (async () => {
+                                            try {
+                                                await handleUrLayer('settingsToggle');
+                                            } catch(error) {
+                                                logWarning(error);
+                                            }
+                                        })();
+                                    }
+                                }),
+                                $('<div>', {style:'display:inline; padding-left:4px;'}).append(I18n.t('urce.common.DaysOld'))
+                            ),
+                        ),
+                        // -- Hide by description, comments, following
+                        $('<div>', {style:'font-weight:600;'}).text(I18n.t('urce.prefs.DescriptionCommentsFollowing') + ':'),
+                        // -- -- Following / not following
+                        $('<div>').text(I18n.t('urce.common.Following') + ': ').append(
+                            $('<div>', {style:'display:inline;'}).append(
+                                $('<input>', {type:'checkbox', id:'_cbHideFollowing', urceprefs:'filtering'}).change(function() {
+                                    _settings.hideFollowing = $(this).is(':checked');
+                                    if ($(this).is(':checked')) {
+                                        if (isChecked('_cbHideNotFollowing')) {
+                                            _settings.hideNotFollowing = false;
+                                            $('#_cbHideNotFollowing').prop('checked', false);
+                                        }
+                                    }
+                                    saveSettingsToStorage();
+                                    (async () => {
+                                        try {
+                                            await handleUrLayer('settingsToggle');
+                                        } catch(error) {
+                                            logWarning(error);
+                                        }
+                                    })();
+                                }).prop('checked', _settings.hideFollowing),
+                                $('<label>', {for:'_cbHideFollowing', style:'padding-left:15px; padding-right:5px;', title:I18n.t('urce.prefs.HideFollowingTitle')}).text(I18n.t('urce.common.Following')),
+                                $('<input>', {type:'checkbox', id:'_cbHideNotFollowing', urceprefs:'filtering'}).change(function() {
+                                    _settings.hideNotFollowing = $(this).is(':checked');
+                                    if ($(this).is(':checked')) {
+                                        if (isChecked('_cbHideFollowing')) {
+                                            _settings.hideFollowing = false;
+                                            $('#_cbHideFollowing').prop('checked', false);
+                                        }
+                                    }
+                                    saveSettingsToStorage();
+                                    (async () => {
+                                        try {
+                                            await handleUrLayer('settingsToggle');
+                                        } catch(error) {
+                                            logWarning(error);
+                                        }
+                                    })();
+                                }).prop('checked', _settings.hideNotFollowing),
+                                $('<label>', {for:'_cbHideNotFollowing', style:'padding-left:15px;', title:I18n.t('urce.prefs.HideNotFollowingTitle')}).text(I18n.t('urce.common.NotFollowing')),
+                            )
+                        ),
+                        // -- -- With / without description
+                        $('<div>').text(I18n.t('urce.common.Description') + ': ').append(
+                            $('<div>', {style:'display:inline;'}).append(
+                                $('<input>', {type:'checkbox', id:'_cbHideWithDescription', urceprefs:'filtering'}).change(function() {
+                                    _settings.hideWithDescription = $(this).is(':checked');
+                                    if ($(this).is(':checked')) {
+                                        if (isChecked('_cbHideWithoutDescription')) {
+                                            _settings.hideWithoutDescription = false;
+                                            $('#_cbHideWithoutDescription').prop('checked', false);
+                                        }
+                                    }
+                                    saveSettingsToStorage();
+                                    (async () => {
+                                        try {
+                                            await handleUrLayer('settingsToggle');
+                                        } catch(error) {
+                                            logWarning(error);
+                                        }
+                                    })();
+                                }).prop('checked', _settings.hideWithDescription),
+                                $('<label>', {for:'_cbHideWithDescription', style:'padding-left:15px; padding-right:5px;', title:I18n.t('urce.prefs.HideWithDescriptionTitle')}).text(I18n.t('urce.common.With')),
+                                $('<input>', {type:'checkbox', id:'_cbHideWithoutDescription', urceprefs:'filtering'}).change(function() {
+                                    _settings.hideWithoutDescription = $(this).is(':checked');
+                                    if ($(this).is(':checked')) {
+                                        if (isChecked('_cbHideWithDescription')) {
+                                            _settings.hideWithDescription = false;
+                                            $('#_cbHideWithDescription').prop('checked', false);
+                                        }
+                                    }
+                                    saveSettingsToStorage();
+                                    (async () => {
+                                        try {
+                                            await handleUrLayer('settingsToggle');
+                                        } catch(error) {
+                                            logWarning(error);
+                                        }
+                                    })();
+                                }).prop('checked', _settings.hideWithoutDescription),
+                                $('<label>', {for:'_cbHideWithoutDescription', style:'padding-left:15px;', title:I18n.t('urce.prefs.HideWithoutDescriptionTitle')}).text(I18n.t('urce.common.Without')),
+                            )
+                        ),
+                        // -- -- With / without comments from me
+                        $('<div>').text(I18n.t('urce.prefs.HideCommentsFromMe') + ': ').append(
+                            $('<div>', {style:'display:inline;'}).append(
+                                $('<input>', {type:'checkbox', id:'_cbHideWithCommentsFromMe', urceprefs:'filtering'}).change(function() {
+                                    _settings.hideWithCommentsFromMe = $(this).is(':checked');
+                                    if ($(this).is(':checked')) {
+                                        if (isChecked('_cbHideWithoutCommentsFromMe')) {
+                                            _settings.hideWithoutCommentsFromMe = false;
+                                            $('#_cbHideWithoutCommentsFromMe').prop('checked', false);
+                                        }
+                                    }
+                                    saveSettingsToStorage();
+                                    (async () => {
+                                        try {
+                                            await handleUrLayer('settingsToggle');
+                                        } catch(error) {
+                                            logWarning(error);
+                                        }
+                                    })();
+                                }).prop('checked', _settings.hideWithCommentsFromMe),
+                                $('<label>', {for:'_cbHideWithCommentsFromMe', style:'padding-left:15px; padding-right:5px;', title:I18n.t('urce.prefs.HideWithCommentsFromMeTitle')}).text(I18n.t('urce.common.With')),
+                                $('<input>', {type:'checkbox', id:'_cbHideWithoutCommentsFromMe', urceprefs:'filtering'}).change(function() {
+                                    _settings.hideWithoutCommentsFromMe = $(this).is(':checked');
+                                    if ($(this).is(':checked')) {
+                                        if (isChecked('_cbHideWithCommentsFromMe')) {
+                                            _settings.hideWithCommentsFromMe = false;
+                                            $('#_cbHideWithCommentsFromMe').prop('checked', false);
+                                        }
+                                    }
+                                    saveSettingsToStorage();
+                                    (async () => {
+                                        try {
+                                            await handleUrLayer('settingsToggle');
+                                        } catch(error) {
+                                            logWarning(error);
+                                        }
+                                    })();
+                                }).prop('checked', _settings.hideWithoutCommentsFromMe),
+                                $('<label>', {for:'_cbHideWithoutCommentsFromMe', style:'padding-left:15px;', title:I18n.t('urce.prefs.HideWithoutCommentsFromMeTitle')}).text(I18n.t('urce.common.Without')),
+                            )
+                        ),
+                        // -- -- Last comment by me yes / no
+                        $('<div>').text(I18n.t('urce.prefs.HideLastCommentByMe') + ': ').append(
+                            $('<div>', {style:'display:inline;'}).append(
+                                $('<input>', {type:'checkbox', id:'_cbHideLastCommentByMe', urceprefs:'filtering'}).change(function() {
+                                    _settings.hideLastCommentByMe = $(this).is(':checked');
+                                    if ($(this).is(':checked')) {
+                                        if (isChecked('_cbHideLastCommentNotByMe')) {
+                                            _settings.hideLastCommentNotByMe = false;
+                                            $('#_cbHideLastCommentNotByMe').prop('checked', false);
+                                        }
+                                    }
+                                    saveSettingsToStorage();
+                                    (async () => {
+                                        try {
+                                            await handleUrLayer('settingsToggle');
+                                        } catch(error) {
+                                            logWarning(error);
+                                        }
+                                    })();
+                                }).prop('checked', _settings.hideLastCommentByMe),
+                                $('<label>', {for:'_cbHideLastCommentByMe', style:'padding-left:15px; padding-right:5px;', title:I18n.t('urce.prefs.HideLastCommentByMeTitle')}).text(I18n.t('urce.common.Yes')),
+                                $('<input>', {type:'checkbox', id:'_cbHideLastCommentNotByMe', urceprefs:'filtering'}).change(function() {
+                                    _settings.hideLastCommentNotByMe = $(this).is(':checked');
+                                    if ($(this).is(':checked')) {
+                                        if (isChecked('_cbHideLastCommentByMe')) {
+                                            _settings.hideLastCommentByMe = false;
+                                            $('#_cbHideLastCommentByMe').prop('checked', false);
+                                        }
+                                    }
+                                    saveSettingsToStorage();
+                                    (async () => {
+                                        try {
+                                            await handleUrLayer('settingsToggle');
+                                        } catch(error) {
+                                            logWarning(error);
+                                        }
+                                    })();
+                                }).prop('checked', _settings.hideLastCommentNotByMe),
+                                $('<label>', {for:'_cbHideLastCommentNotByMe', style:'padding-left:15px;', title:I18n.t('urce.prefs.HideLastCommentNotByMeTitle')}).text(I18n.t('urce.common.No')),
+                            )
+                        ),
+                        // -- -- Last comment by reporter yes / no
+                        $('<div>').text(I18n.t('urce.prefs.HideLastCommentByReporter') + ': ').append(
+                            $('<div>', {style:'display:inline;'}).append(
+                                $('<input>', {type:'checkbox', id:'_cbHideLastCommentByReporter', urceprefs:'filtering'}).change(function() {
+                                    _settings.hideLastCommentByReporter = $(this).is(':checked');
+                                    if ($(this).is(':checked')) {
+                                        if (isChecked('_cbHideLastCommentNotByReporter')) {
+                                            _settings.hideLastCommentNotByReporter = false;
+                                            $('#_cbHideLastCommentNotByReporter').prop('checked', false);
+                                        }
+                                    }
+                                    saveSettingsToStorage();
+                                    (async () => {
+                                        try {
+                                            await handleUrLayer('settingsToggle');
+                                        } catch(error) {
+                                            logWarning(error);
+                                        }
+                                    })();
+                                }).prop('checked', _settings.hideLastCommentByReporter),
+                                $('<label>', {for:'_cbHideLastCommentByReporter', style:'padding-left:15px; padding-right:5px;', title:I18n.t('urce.prefs.HideLastCommentByReporterTitle')}).text(I18n.t('urce.common.Yes')),
+                                $('<input>', {type:'checkbox', id:'_cbHideLastCommentNotByReporter', urceprefs:'filtering'}).change(function() {
+                                    _settings.hideLastCommentNotByReporter = $(this).is(':checked');
+                                    if ($(this).is(':checked')) {
+                                        if (isChecked('_cbHideLastCommentByReporter')) {
+                                            _settings.hideLastCommentByReporter = false;
+                                            $('#_cbHideLastCommentByReporter').prop('checked', false);
+                                        }
+                                    }
+                                    saveSettingsToStorage();
+                                    (async () => {
+                                        try {
+                                            await handleUrLayer('settingsToggle');
+                                        } catch(error) {
+                                            logWarning(error);
+                                        }
+                                    })();
+                                }).prop('checked', _settings.hideLastCommentNotByReporter),
+                                $('<label>', {for:'_cbHideLastCommentNotByReporter', style:'padding-left:15px;', title:I18n.t('urce.prefs.HideLastCommentNotByReporterTitle')}).text(I18n.t('urce.common.No')),
+                            )
+                        ),
+                        // -- -- Less than / more than XX comments
+                        $('<div>').append(
+                            $('<input>', {type:'checkbox', id:'_cbHideByCommentCountLessThan', urceprefs:'filtering'}).change(function() {
+                                changeSetting('hideByCommentCountLessThan', $(this).is(':checked'));
+                                (async () => {
+                                    try {
+                                        await handleUrLayer('settingsToggle');
+                                    } catch(error) {
+                                        logWarning(error);
+                                    }
+                                })();
+                            }).prop('checked', _settings.hideByCommentCountLessThan),
+                            $('<label>', {for:'_cbHideByCommentCountLessThan', class:'URCE-label'}).text(I18n.t('urce.common.LessThan')),
+                            $('<div>', {style:'display:inline; padding-left:4px;'}).append(
+                                $('<input>', {type:'number', id:'_numHideByCommentCountLessThanNumber', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByCommentCountLessThanNumber}).on('change', function() {
+                                    let val = Math.abs(parseInt(this.value, 10) || 0);
+                                    val = Math.min(9999,Math.max(0,parseInt(val)));
+                                    if (val !== this.value) {
+                                        changeSetting('hideByCommentCountLessThanNumber', val);
+                                        this.value = val;
+                                        (async () => {
+                                            try {
+                                                await handleUrLayer('settingsToggle');
+                                            } catch(error) {
+                                                logWarning(error);
+                                            }
+                                        })();
+                                    }
+                                }),
+                                $('<div>', {style:'display:inline; padding-left:4px;'}).append(I18n.t('urce.tabs.Comments').toLowerCase())
+                            ),
+                        ),
+                        $('<div>').append(
+                            $('<input>', {type:'checkbox', id:'_cbHideByCommentCountMoreThan', urceprefs:'filtering'}).change(function() {
+                                changeSetting('hideByCommentCountMoreThan', $(this).is(':checked'));
+                                (async () => {
+                                    try {
+                                        await handleUrLayer('settingsToggle');
+                                    } catch(error) {
+                                        logWarning(error);
+                                    }
+                                })();
+                            }).prop('checked', _settings.hideByCommentCountMoreThan),
+                            $('<label>', {for:'_cbHideByCommentCountMoreThan', class:'URCE-label'}).text(I18n.t('urce.common.MoreThan')),
+                            $('<div>', {style:'display:inline; padding-left:4px;'}).append(
+                                $('<input>', {type:'number', id:'_numHideByCommentCountMoreThanNumber', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByCommentCountMoreThanNumber}).on('change', function() {
+                                    let val = Math.abs(parseInt(this.value, 10) || 0);
+                                    val = Math.min(9999,Math.max(0,parseInt(val)));
+                                    if (val !== this.value) {
+                                        changeSetting('hideByCommentCountMoreThanNumber', val);
+                                        this.value = val;
+                                        (async () => {
+                                            try {
+                                                await handleUrLayer('settingsToggle');
+                                            } catch(error) {
+                                                logWarning(error);
+                                            }
+                                        })();
+                                    }
+                                }),
+                                $('<div>', {style:'display:inline; padding-left:4px;'}).append(I18n.t('urce.tabs.Comments').toLowerCase())
+                            ),
+                        ),
+                        // -- -- Age of last comment less than / more than XX days old
+                        $('<div>').append(
+                            $('<input>', {type:'checkbox', id:'_cbHideByAgeOfLastCommentLessThan', urceprefs:'filtering'}).change(function() {
+                                changeSetting('hideByAgeOfLastCommentLessThan', $(this).is(':checked'));
+                                (async () => {
+                                    try {
+                                        await handleUrLayer('settingsToggle');
+                                    } catch(error) {
+                                        logWarning(error);
+                                    }
+                                })();
+                            }).prop('checked', _settings.hideByAgeOfLastCommentLessThan),
+                            $('<label>', {for:'_cbHideByAgeOfLastCommentLessThan', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByAgeOfLastCommentLessThan')),
+                            $('<div>', {style:'display:inline; padding-left:4px;'}).append(
+                                $('<input>', {type:'number', id:'_numHideByAgeOFLastCommentLessThanDaysOld', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByAgeOfLastCommentLessThanDaysOld}).on('change', function() {
+                                    let val = Math.abs(parseInt(this.value, 10) || 0);
+                                    val = Math.min(9999,Math.max(0,parseInt(val)));
+                                    if (val !== this.value) {
+                                        changeSetting('hideByAgeOfLastCommentLessThanDaysOld', val);
+                                        this.value = val;
+                                        (async () => {
+                                            try {
+                                                await handleUrLayer('settingsToggle');
+                                            } catch(error) {
+                                                logWarning(error);
+                                            }
+                                        })();
+                                    }
+                                }),
+                                $('<div>', {style:'display:inline; padding-left:4px;'}).append(I18n.t('urce.common.DaysOld'))
+                            ),
+                        ),
+                        $('<div>').append(
+                            $('<input>', {type:'checkbox', id:'_cbHideByAgeOfLastCommentMoreThan', urceprefs:'filtering'}).change(function() {
+                                changeSetting('hideByAgeOfLastCommentMoreThan', $(this).is(':checked'));
+                                (async () => {
+                                    try {
+                                        await handleUrLayer('settingsToggle');
+                                    } catch(error) {
+                                        logWarning(error);
+                                    }
+                                })();
+                            }).prop('checked', _settings.hideByAgeOfLastCommentMoreThan),
+                            $('<label>', {for:'_cbHideByAgeOfLastCommentMoreThan', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByAgeOfLastCommentMoreThan')),
+                            $('<div>', {style:'display:inline; padding-left:4px;'}).append(
+                                $('<input>', {type:'number', id:'_numHideByAgeofLastCommentMoreThanDaysAgo', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByAgeOfLastCommentMoreThanDaysAgo}).on('change', function() {
+                                    let val = Math.abs(parseInt(this.value, 10) || 0);
+                                    val = Math.min(9999,Math.max(0,parseInt(val)));
+                                    if (val !== this.value) {
+                                        changeSetting('hideByAgeOfLastCommentMoreThanDaysAgo', val);
+                                        this.value = val;
+                                        (async () => {
+                                            try {
+                                                await handleUrLayer('settingsToggle');
+                                            } catch(error) {
+                                                logWarning(error);
+                                            }
+                                        })();
+                                    }
+                                }),
+                                $('<div>', {style:'display:inline; padding-left:4px;'}).append(I18n.t('urce.common.DaysOld'))
+                            ),
+                        ),
                     )
                 )
             ),
@@ -2451,12 +3246,40 @@
         logDebug('Loading translations.');
         setTranslations({
             en: {
+                commentsTab: {
+                    ZoomOutLink1: 'Zoom out 0 & close UR',
+                    ZoomOutLink1Title: 'Zooms all the way out and closes the UR dialogue.',
+                    ZoomOutLink2: 'Zoom out 2 & close UR',
+                    ZoomOutLink2Title: 'Zooms out to level 2 and closes the UR dialogue.',
+                    ZoomOutLink3: 'Zoom out 3 & close UR',
+                    ZoomOutLink3Title: 'Zooms out to level 3 and closes the UR dialogue.'
+                },
+                common: {
+                    Title: 'URComments-Enhanced',
+                    DoubleClickTitle: 'Double click here to send this comment:',
+                    Loading: 'Loading',
+                    PleaseWait: 'Please wait',
+                    ErrorHeader: 'URC-E Error',
+                    ErrorGeneric: 'An error has occurred within URC-E. Please contact dBsooner via Discord or PM.',
+                    Yes: 'Yes',
+                    No: 'No',
+                    All: 'All',
+                    With: 'With',
+                    Without: 'Without',
+                    Following: 'Following',
+                    NotFollowing: 'Not following',
+                    LessThan: 'Less than',
+                    MoreThan: 'More than',
+                    DaysOld: 'days old',
+                    List: 'List',
+                    Style: 'Style',
+                    Description: 'Description'
+                },
                 prefs: {
                     // Comment List
                     CommentList: 'Comment List',
                     CommentListTitle: 'Select the custom list you would like to use. CommentTeam is the default. If you would like your comment list built into this script or have suggestions on the CommentTeam list, please contact dBsooner on Discord or via PM.',
-                    List: 'List',
-                    Style: 'Style',
+                    CommentListStyleTitle: 'Select the style you would like the URC-E panel to be displayed in. This only affects the look of the tab, no functionality is changed.',
                     StyleDefault: 'Default',
                     StyleUrStyle: 'UR Style',
                     // URC-E Preferences
@@ -2495,12 +3318,6 @@
                     HideZoomOutLinksTitle: 'Hide the zoom out links on the comments tab.',
                     UnfollowUrAfterSend: 'Unfollow UR after send',
                     UnfollowUrAfterSendTitle: 'Unfollow the UR after sending a comment.',
-                    // Common Preferences
-                    CommonPrefs: 'Common Preferences',
-                    ReminderDays: 'Reminder days',
-                    ReminderDaysTitle: 'Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment. Must be between 0 and 13 and less than \'Close days\'. 0 is off (no reminder used).',
-                    CloseDays: 'Close days',
-                    CloseDaysTitle: 'Number of days to use when calculating UR filtering. Must be between 2 and 14 and greater than \'Reminder days\'.',
                     // UR Marker Preferences
                     UrMarkerPrefs: 'UR Marker Preferences',
                     EnableUrPillCounts: 'Enable UR pill counts',
@@ -2511,65 +3328,137 @@
                     ReplaceTagNameWithEditorNameTitle: 'When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds when commenting), replace the tag type with the editors name.',
                     UnstackMarkers: 'Unstack markers',
                     UnstackMarkersTitle: 'Attempt to unstack markers by offsetting them, URO+ style.',
+                    NativeSpeedLimits: 'Native speed limits',
+                    NativeSpeedLimitsTitle: 'Replace default UR marker with custom marker for the URs with \'speed limit\' type.',
                     // UR Filtering Preferences
                     UrFilteringPrefs: 'UR Filtering Preferences',
                     EnableUrceUrFiltering: 'Enable URC-E UR filtering',
                     EnableUrceUrFilteringTitle: 'Enable or disable URComments-Enhanced built-in UR filtering.',
-                    HideClosedUrs: 'Hide closed URs',
-                    HideClosedUrsTitle: 'Hide closed URs.',
-                    HideTaggedUrs: 'Hide tagged URs',
-                    HideTaggedUrsTitle: 'Hide URs that are tagged with URO+ style tags. Ex: [NOTE].',
-                    HideWaiting: 'Hide waiting',
+                    HideOutsideEditableArea: 'Hide outside editable area',
+                    HideOutsideEditableAreaTitle: 'Hide URs outside your editable area.',
+                    DoNotHideSelectedUr: 'Do not hide selected UR',
+                    DoNotHideSelectedUrTitle: 'Do not hide a UR if it is actually being selected.',
+                    // Hide by type
+                    HideByType: 'Hide by type',
+                    HideByTypeBlockedRoadTitle: 'Hide all blocked road URs.',
+                    HideByTypeGeneralErrorTitle: 'Hide all general error URs.',
+                    HideByTypeIncorrectAddressTitle: 'Hide all incorrect address URs.',
+                    HideByTypeIncorrectJunctionTitle: 'Hide all incorrect junction URs.',
+                    HideByTypeIncorrectRouteTitle: 'Hide all incorrect route URs.',
+                    HideByTypeIncorrectTurnTitle: 'Hide all incorrect turn URs.',
+                    HideByTypeMissingBridgeOverpassTitle: 'Hide all missing bridge overpass URs.',
+                    HideByTypeMissingExitTitle: 'Hide all missing exit URs.',
+                    HideByTypeMissingLandmarkTitle: 'Hide all missing landmark URs.',
+                    HideByTypeMissingOrInvalidSpeedLimitTitle: 'Hide all missing or invalid speed limit URs',
+                    HideByTypeMissingRoadTitle: 'Hide all missing road URs.',
+                    HideByTypeMissingRoundaboutTitle: 'Hide all missing roundabout URs.',
+                    HideByTypeTurnNotAllowedTitle: 'Hide all turn not allowed URs.',
+                    HideByTypeUndefinedTitle: 'Hide all undefined URs.',
+                    HideByTypeWazeAutomaticTitle: 'Hide all Waze automatic URs.',
+                    HideByTypeWrongDrivingDirectionTitle: 'Hide all wrong driving direction URs.',
+                    // Hide by tagged
+                    HideByTagged: 'Hide by tag',
+                    HideByTaggedBogTitle: 'Hide all URs with [BOG] in description or comments.',
+                    HideByTaggedClosureTitle: 'Hide all URs with [CLOSURE] in description or comments.',
+                    HideByTaggedConstructionTitle: 'Hide all URs with [CONSTRUCTION] in description or comments.',
+                    HideByTaggedDifficultTitle: 'Hide all URs with [DIFFICULT] in description or comments.',
+                    HideByTaggedEventTitle: 'Hide all URs with [EVENT] in description or comments.',
+                    HideByTaggedNoteTitle: 'Hide all URs with [NOTE] in description or comments.',
+                    HideByTaggedRoadworksTitle: 'Hide all URs with [ROADWORKS] in description or comments.',
+                    HideByTaggedWslmTitle: 'Hide all URs with [WSLM] in description or comments.',
+                    // Hide by status
+                    HideByStatus: 'Hide by status',
+                    HideByStatusOpenTitle: 'Hide all open URs.',
+                    HideByStatusClosedTitle: 'Hide all closed (solved and not identified) URs.',
+                    HideByStatusNotIdentifiedTitle: 'Hide all closed as not identified URs.',
+                    HideByStatusSolvedTitle: 'Hide all closed as solved URs.',
+                    // Hide by age of submission
+                    HideByAgeOfSubmission: 'Hide by age of submission',
+                    // Hide by description, comment, following
+                    DescriptionCommentsFollowing: 'Hide by description, comment, following',
+                    HideFollowingTitle: 'Hide URs you are following.',
+                    HideNotFollowingTitle: 'Hide URs you are not following.',
+                    HideWithDescriptionTitle: 'Hide URs that have a description.',
+                    HideWithoutDescriptionTitle: 'Hide URs that do not have a description.',
+                    HideCommentsFromMe: 'Comments from me',
+                    HideWithCommentsFromMeTitle: 'Hide URs you have commented on.',
+                    HideWithoutCommentsFromMeTitle: 'Hide URs you have not commented on.',
+                    HideLastCommentByMe: 'Last comment by me',
+                    HideLastCommentByMeTitle: 'Hide URs where you are the last person to comment.',
+                    HideLastCommentNotByMeTitle: 'Hide URs where someone else is the last person to comment.',
+                    HideLastCommentByReporter: 'Last comment by reporter',
+                    HideLastCommentByReporterTitle: 'Hide URs where the reporter is the last person to comment.',
+                    HideLastCommentNotByReporterTitle: 'Hide URs where the reporter is not the last person to comment.',
+                    HideByAgeOfLastCommentLessThan: 'Last comment less than',
+                    HideByAgeOfLastCommentMoreThan: 'Last comment more than',
+                    // Lifecycle
+                    LifeCycleStatus: 'Hide by lifecycle status',
+                    HideWaiting: 'Waiting',
                     HideWaitingTitle: 'Only show URs that need work (hide URs in other parts of the life-cycle).',
-                    HideUrsCloseNeeded: 'Hide URs where close needed',
+                    HideUrsCloseNeeded: 'Close needed',
                     HideUrsCloseNeededTitle: 'Hide URs that need closing.',
-                    HideUrsReminderNeeded: 'Hide URs where reminders needed',
+                    HideUrsReminderNeeded: 'Reminders needed',
                     HideUrsReminderNeededTitle: 'Hide URs where reminders are needed.',
-                    HideUrsWithUserReplies: 'Hide URs with user replies',
-                    HideUrsWithUserRepliesTitle: 'Hide UR with user replies.',
-                    HideUrsWoComments: 'Hide URs w/o comments',
-                    HideUrsWoCommentsTitle: 'Hide URs that have zero comments.',
-                    HideUrsWoCommentsOrDescriptions: 'Hide URs w/o comments or descripts',
-                    HideUrsWoCommentsOrDescriptionsTitle: 'Hide URs that do not have descriptions or comments.',
-                    HideUrsWoCommentsWithDescriptions: 'Hide URs w/o comments w/ descripts',
-                    HideUrsWoCommentsWithDescriptionsTitle: 'Hide URs that have descriptions and zero comments.',
-                    OnlyShowMyUrs: 'Only show my URs',
-                    OnlyShowMyUrsTitle: 'Hide URs where you have no comments.',
-                    ShowOthersUrsPastReminderClose: 'Show others URs past remind+close',
-                    ShowOthersUrsPastReminderCloseTitle: 'Show URs that others commented on that have gone past the reminder and close day settings added together.'
+                    // Common Preferences
+                    CommonPrefs: 'Common Preferences',
+                    ReminderDays: 'Reminder days',
+                    ReminderDaysTitle: 'Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment. Must be between 0 and 13 and less than \'Close days\'. 0 is off (no reminder used).',
+                    CloseDays: 'Close days',
+                    CloseDaysTitle: 'Number of days to use when calculating UR filtering. Must be between 2 and 14 and greater than \'Reminder days\'.'
                 },
                 tabs: {
                     Comments: 'Comments',
                     Settings: 'Settings'
                 },
-                common: {
-                    Title: 'URComments-Enhanced',
-                    DoubleClickTitle: 'Double click here to send this comment:',
-                    Loading: 'Loading',
-                    PleaseWait: 'Please wait',
-                    ErrorGeneric: 'An error has occurred within URC-E. Please contact dBsooner via Discord or PM.',
-                    Yes: 'Yes',
-                    No: 'No',
-                    ErrorHeader: 'URC-E Error'
+                tags: {
+                    Bog: '[BOG]',
+                    BogTitle: 'Boots On Ground',
+                    Closure: '[CLOSURE]',
+                    ClosureTitle: 'Closures',
+                    Construction: '[CONSTRUCTION]',
+                    ConstructionTitle: 'Construction',
+                    Difficult: '[DIFFICULT]',
+                    DifficultTitle: 'Difficult',
+                    Event: '[EVENT]',
+                    EventTitle: 'Events',
+                    Note: '[NOTE]',
+                    NoteTitle: 'Notes',
+                    Roadworks: '[ROADWORKS]',
+                    RoadworksTitle: 'Roadworks (UK).',
+                    Wslm: '[WSLM]',
+                    WslmTitle: 'Waze Speed Limit Marker'
+                },
+                urStatus: {
+                    Open: 'Open',
+                    Closed: 'Closed',
+                    Solved: 'Solved',
+                    NotIdentified: 'Not identified'
+                },
+                urTypes: {
+                    BlockedRoad: 'Blocked road',
+                    GeneralError: 'General error',
+                    IncorrectAddress: 'Incorrect address',
+                    IncorrectJunction: 'Incorrect junction',
+                    IncorrectRoute: 'Incorrect route',
+                    IncorrectTurn: 'Incorrect turn',
+                    MissingBridgeOverpass: 'Missing bridge overpass',
+                    MissingExit: 'Missing exit',
+                    MissingLandmark: 'Missing landmark',
+                    MissingOrInvalidSpeedLimit: 'Missing/Invalid speed limit',
+                    MissingRoad: 'Missing road',
+                    MissingRoundabout: 'Missing roundabout',
+                    TurnNotAllowed: 'Turn not allowed',
+                    Undefined: 'Undefined',
+                    WazeAutomatic: 'Waze automatic',
+                    WrongDrivingDirection: 'Wrong driving direction'
                 },
                 prompts: {
-                    FilterUrs2Abort: 'URC-E - Aborting FilterURs2 because filtering, counts and auto reminders are disabled.',
-                    LoadingUrDataTimeout: 'URC-E: Loading UR data has timed out, retrying.',
                     NoCommentBox: 'URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.',
                     CommentInsertTimedOut: 'URCE-E timed out waiting for the comment text box to become available.',
                     ReminderMessageAuto: 'URC-E: Automatically sending reminder message to UR:',
                     UnsavedEdits: 'URC-E has detected you had unsaved edits before working this UR. As a precaution, URC-E\'s \'Auto save\' option gives you this warning before saving if there were unsaved edits before opening the UR. Would you like to go ahead and automatically process the unsaved edits as well as this UR?',
                     UnsavedEditsHeader: 'Unsaved Edits Detected',
-                    UrFilteringDisabled: 'URC-E\'s UR Filterin cannot be enabled because URO+\'s UR filters are active. To use URC-E\'s filtering, please disable URO+\'s UR filters.',
                     CustomListUsed: 'URC-E has loaded your "Custom" comment list. However, only the comments themselves have been loaded. The settings text and tooltips were not loaded. Further, this functionality is deprecated and may be discontinued at any time. An alternative solution may or may not be offered at that time.'
-                },
-                commentsTab: {
-                    ZoomOutLink1: 'Zoom out 0 & close UR',
-                    ZoomOutLink1Title: 'Zooms all the way out and closes the UR dialogue.',
-                    ZoomOutLink2: 'Zoom out 2 & close UR',
-                    ZoomOutLink2Title: 'Zooms out to level 2 and closes the UR dialogue.',
-                    ZoomOutLink3: 'Zoom out 3 & close UR',
-                    ZoomOutLink3Title: 'Zooms out to level 3 and closes the UR dialogue.'
                 }
             }
         });
