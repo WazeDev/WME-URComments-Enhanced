@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.16.02
+// @version     2018.12.16.03
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -78,10 +78,11 @@
     let _mousedOverMarkerId = null;
     let _mousedOverMarkerType = null;
     let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId;
-    let _commentLists = [{idx:0, name:'CommentTeam', status:'enabled', oldVarName: 'CommentTeam', listOwner: 'CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/oz10sdb/public/values?alt=json' },
-                           {idx:1, name:'Custom', status:'enabled', oldVarName:'Custom', listOwner: 'Custom', gSheetUrl: '', type: 'static' },
-                           {idx:2, name:'USA - SCR', status:'enabled', oldVarName: 'USA_SouthCentral', listOwner: 'SCR CommentTeam', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/ope05au/public/values?alt=json' },
-                           {idx:3, name:'USA - SER', status:'enabled', oldVarName: 'USA_Southeast', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/o35ezyr/public/values?alt=json' }
+    let _commentLists = [{idx:0, name:'CommentTeam', status:'enabled', oldVarName:'CommentTeam', listOwner:'CommentTeam', gSheetUrl:'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/oz10sdb/public/values?alt=json' },
+                         {idx:1, name:'Custom', status:'enabled', oldVarName:'Custom', listOwner:'Custom', gSheetUrl:'', type:'static' },
+                         {idx:2, name:'USA - SCR', status:'enabled', oldVarName:'USA_SouthCentral', listOwner:'SCR CommentTeam', gSheetUrl:'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/ope05au/public/values?alt=json' },
+                         {idx:3, name:'USA - SER', status:'enabled', oldVarName:'USA_Southeast', gSheetUrl:'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/o35ezyr/public/values?alt=json' },
+                         {idx:4, name:'User: PesachZ', status:'enabled', oldVarName:'PesachZ', listOwner:'PesachZ', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/o84s9w/public/values?alt=json' }
                           ].sort(dynamicSort('name'));
 
     function log(message) { console.log('URC-E:', message); }
