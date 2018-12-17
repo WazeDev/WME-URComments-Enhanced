@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.16.01
+// @version     2018.12.16.02
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -211,6 +211,8 @@
             hideWithoutDeescription: false,
             hideWithCommentsFromMe: false,
             hideWithoutCommentsFromMe: false,
+            hideFirstCommentByMe: false,
+            hideFirstCommentNotByMe: false,
             hideLastCommentByMe: false,
             hideLastCommentNotByMe: false,
             hideLastCommentByReporter: false,
@@ -219,6 +221,10 @@
             hideByCommentCountLessThanNumber: null,
             hideByCommentCountMoreThan: false,
             hideByCommentCountMoreThanNumber: null,
+            hideByAgeOfFirstCommentLessThan: false,
+            hideByAgeOfFirstCommentLessThanDaysOld: null,
+            hideByAgeOfFirstCommentMoreThan: false,
+            hideByAgeOfFirstCommentMoreThanDaysOld: null,
             hideByAgeOfLastCommentLessThan: false,
             hideByAgeOfLastCommentLessThanDaysOld: null,
             hideByAgeOfLastCommentMoreThan: false,
@@ -1231,6 +1237,8 @@
                      (_settings.hideLastCommentNotByReporter && lastCommentBy > 0) ||
                      (_settings.hideByCommentCountLessThan && urCommentCount < _settings.hideByCommentCountLessThanNumber) ||
                      (_settings.hideByCommentCountMoreThan && urCommentCount > _settings.hideByCommentCountMoreThanNumber) ||
+                     (_settings.hideByAgeOfFirstCommentLessThan && urData.comments.length > 0 && uroDateToDays(urData.comments[0].createdOn) < _settings.hideByAgeOfFirstCommentLessThanDaysOld) ||
+                     (_settings.hideByAgeOfFirstCommentMoreThan && urData.comments.length > 0 && uroDateToDays(urdata.comments[0].createdOn) > _settings.hideByAgeOfFirstCommentMoreThanDaysOld) ||
                      (_settings.hideByAgeOfLastCommentLessThan && commentDaysOld < _settings.hideByAgeOfLastCommentLessThanDaysOld) ||
                      (_settings.hideByAgeOfLastCommentMoreThan && commentDaysOld > _settings.hideByAgeOfLastCommentMoreThanDaysOld)
                     )
@@ -2871,6 +2879,47 @@
                                 $('<label>', {for:'_cbHideWithoutCommentsFromMe', style:'padding-left:15px;', title:I18n.t('urce.prefs.HideWithoutCommentsFromMeTitle')}).text(I18n.t('urce.common.Without')),
                             )
                         ),
+                        // -- -- First comment by me yes / no
+                        $('<div>').text(I18n.t('urce.prefs.HideFirstCommentByMe') + ': ').append(
+                            $('<div>', {style:'display:inline;'}).append(
+                                $('<input>', {type:'checkbox', id:'_cbHideFirstCommentByMe', urceprefs:'filtering'}).change(function() {
+                                    _settings.hideFirstCommentByMe = $(this).is(':checked');
+                                    if ($(this).is(':checked')) {
+                                        if (isChecked('_cbHideFirstCommentNotByMe')) {
+                                            _settings.hideFirstCommentNotByMe = false;
+                                            $('#_cbHideFirstCommentNotByMe').prop('checked', false);
+                                        }
+                                    }
+                                    saveSettingsToStorage();
+                                    (async () => {
+                                        try {
+                                            await handleUrLayer('settingsToggle');
+                                        } catch(error) {
+                                            logWarning(error);
+                                        }
+                                    })();
+                                }).prop('checked', _settings.hideFirstCommentByMe),
+                                $('<label>', {for:'_cbHideFirstCommentByMe', style:'padding-left:15px; padding-right:5px;', title:I18n.t('urce.prefs.HideFirstCommentByMeTitle')}).text(I18n.t('urce.common.Yes')),
+                                $('<input>', {type:'checkbox', id:'_cbHideFirstCommentNotByMe', urceprefs:'filtering'}).change(function() {
+                                    _settings.hideFirstCommentNotByMe = $(this).is(':checked');
+                                    if ($(this).is(':checked')) {
+                                        if (isChecked('_cbHideFirstCommentByMe')) {
+                                            _settings.hideFirstCommentByMe = false;
+                                            $('#_cbHideFirstCommentByMe').prop('checked', false);
+                                        }
+                                    }
+                                    saveSettingsToStorage();
+                                    (async () => {
+                                        try {
+                                            await handleUrLayer('settingsToggle');
+                                        } catch(error) {
+                                            logWarning(error);
+                                        }
+                                    })();
+                                }).prop('checked', _settings.hideFirstCommentNotByMe),
+                                $('<label>', {for:'_cbHideFirstCommentNotByMe', style:'padding-left:15px;', title:I18n.t('urce.prefs.HideFirstCommentNotByMeTitle')}).text(I18n.t('urce.common.No')),
+                            )
+                        ),
                         // -- -- Last comment by me yes / no
                         $('<div>').text(I18n.t('urce.prefs.HideLastCommentByMe') + ': ').append(
                             $('<div>', {style:'display:inline;'}).append(
@@ -3016,6 +3065,69 @@
                                 $('<div>', {style:'display:inline; padding-left:4px;'}).append(I18n.t('urce.tabs.Comments').toLowerCase())
                             ),
                         ),
+                         // -- -- Age of first comment less than / more than XX days old
+                        $('<div>').append(
+                            $('<input>', {type:'checkbox', id:'_cbHideByAgeOfFirstCommentLessThan', urceprefs:'filtering'}).change(function() {
+                                changeSetting('hideByAgeOfFirstCommentLessThan', $(this).is(':checked'));
+                                (async () => {
+                                    try {
+                                        await handleUrLayer('settingsToggle');
+                                    } catch(error) {
+                                        logWarning(error);
+                                    }
+                                })();
+                            }).prop('checked', _settings.hideByAgeOfFirstCommentLessThan),
+                            $('<label>', {for:'_cbHideByAgeOfFirstCommentLessThan', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByAgeOfFirstCommentLessThan')),
+                            $('<div>', {style:'display:inline; padding-left:4px;'}).append(
+                                $('<input>', {type:'number', id:'_numHideByAgeOfFirstCommentLessThanDaysOld', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByAgeOfFirstCommentLessThanDaysOld}).on('change', function() {
+                                    let val = Math.abs(parseInt(this.value, 10) || 0);
+                                    val = Math.min(9999,Math.max(0,parseInt(val)));
+                                    if (val !== this.value) {
+                                        changeSetting('hideByAgeOfFirstCommentLessThanDaysOld', val);
+                                        this.value = val;
+                                        (async () => {
+                                            try {
+                                                await handleUrLayer('settingsToggle');
+                                            } catch(error) {
+                                                logWarning(error);
+                                            }
+                                        })();
+                                    }
+                                }),
+                                $('<div>', {style:'display:inline; padding-left:4px;'}).append(I18n.t('urce.common.DaysOld'))
+                            ),
+                        ),
+                        $('<div>').append(
+                            $('<input>', {type:'checkbox', id:'_cbHideByAgeOfFirstCommentMoreThan', urceprefs:'filtering'}).change(function() {
+                                changeSetting('hideByAgeOfFirstCommentMoreThan', $(this).is(':checked'));
+                                (async () => {
+                                    try {
+                                        await handleUrLayer('settingsToggle');
+                                    } catch(error) {
+                                        logWarning(error);
+                                    }
+                                })();
+                            }).prop('checked', _settings.hideByAgeOfFirstCommentMoreThan),
+                            $('<label>', {for:'_cbHideByAgeOfFirstCommentMoreThan', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByAgeOfFirstCommentMoreThan')),
+                            $('<div>', {style:'display:inline; padding-left:4px;'}).append(
+                                $('<input>', {type:'number', id:'_numHideByAgeOfFirstCommentMoreThanDaysAgo', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByAgeOfFirstCommentMoreThanDaysAgo}).on('change', function() {
+                                    let val = Math.abs(parseInt(this.value, 10) || 0);
+                                    val = Math.min(9999,Math.max(0,parseInt(val)));
+                                    if (val !== this.value) {
+                                        changeSetting('hideByAgeOfFirstCommentMoreThanDaysAgo', val);
+                                        this.value = val;
+                                        (async () => {
+                                            try {
+                                                await handleUrLayer('settingsToggle');
+                                            } catch(error) {
+                                                logWarning(error);
+                                            }
+                                        })();
+                                    }
+                                }),
+                                $('<div>', {style:'display:inline; padding-left:4px;'}).append(I18n.t('urce.common.DaysOld'))
+                            ),
+                        ),
                         // -- -- Age of last comment less than / more than XX days old
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbHideByAgeOfLastCommentLessThan', urceprefs:'filtering'}).change(function() {
@@ -3030,7 +3142,7 @@
                             }).prop('checked', _settings.hideByAgeOfLastCommentLessThan),
                             $('<label>', {for:'_cbHideByAgeOfLastCommentLessThan', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByAgeOfLastCommentLessThan')),
                             $('<div>', {style:'display:inline; padding-left:4px;'}).append(
-                                $('<input>', {type:'number', id:'_numHideByAgeOFLastCommentLessThanDaysOld', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByAgeOfLastCommentLessThanDaysOld}).on('change', function() {
+                                $('<input>', {type:'number', id:'_numHideByAgeOfLastCommentLessThanDaysOld', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByAgeOfLastCommentLessThanDaysOld}).on('change', function() {
                                     let val = Math.abs(parseInt(this.value, 10) || 0);
                                     val = Math.min(9999,Math.max(0,parseInt(val)));
                                     if (val !== this.value) {
@@ -3061,7 +3173,7 @@
                             }).prop('checked', _settings.hideByAgeOfLastCommentMoreThan),
                             $('<label>', {for:'_cbHideByAgeOfLastCommentMoreThan', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByAgeOfLastCommentMoreThan')),
                             $('<div>', {style:'display:inline; padding-left:4px;'}).append(
-                                $('<input>', {type:'number', id:'_numHideByAgeofLastCommentMoreThanDaysAgo', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByAgeOfLastCommentMoreThanDaysAgo}).on('change', function() {
+                                $('<input>', {type:'number', id:'_numHideByAgeOfLastCommentMoreThanDaysAgo', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByAgeOfLastCommentMoreThanDaysAgo}).on('change', function() {
                                     let val = Math.abs(parseInt(this.value, 10) || 0);
                                     val = Math.min(9999,Math.max(0,parseInt(val)));
                                     if (val !== this.value) {
@@ -3077,8 +3189,8 @@
                                     }
                                 }),
                                 $('<div>', {style:'display:inline; padding-left:4px;'}).append(I18n.t('urce.common.DaysOld'))
-                            ),
-                        ),
+                            )
+                        )
                     )
                 )
             ),
@@ -3383,12 +3495,17 @@
                     HideCommentsFromMe: 'Comments from me',
                     HideWithCommentsFromMeTitle: 'Hide URs you have commented on.',
                     HideWithoutCommentsFromMeTitle: 'Hide URs you have not commented on.',
+                    HideFirstCommentByMe: 'First comment by me',
+                    HideFirstCommentByMeTitle: 'Hide URs where you were the first person to comment.',
+                    HideFirstCommentNotByMeTitle: 'Hide URs where someone else was the first person to comment.',
                     HideLastCommentByMe: 'Last comment by me',
                     HideLastCommentByMeTitle: 'Hide URs where you are the last person to comment.',
                     HideLastCommentNotByMeTitle: 'Hide URs where someone else is the last person to comment.',
                     HideLastCommentByReporter: 'Last comment by reporter',
                     HideLastCommentByReporterTitle: 'Hide URs where the reporter is the last person to comment.',
                     HideLastCommentNotByReporterTitle: 'Hide URs where the reporter is not the last person to comment.',
+                    HideByAgeOfFirstCommentLessThan: 'First comment less than',
+                    HideByAgeOfFirstCommentMoreThan: 'First comment more than',
                     HideByAgeOfLastCommentLessThan: 'Last comment less than',
                     HideByAgeOfLastCommentMoreThan: 'Last comment more than',
                     // Lifecycle
