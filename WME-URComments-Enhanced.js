@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.18.02
+// @version     2018.12.18.03
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1647,7 +1647,6 @@
             let urId = _selUr.urId || getUrId('urPanelMutation');
             mutations.forEach(function(mutation) {
                 if ($(mutation.target).is('#panel-container') && mutation.type === 'childList' && mutation.addedNodes.length > 0 && urId > 0) {
-                    log(mutation);
                     handleUpdateRequestContainer(urId);
                 } else if ($(mutation.target).is('#panel-container') && mutation.type === 'childList' && mutation.removedNodes.length > 0 && urId > 0) {
                     handleAfterCloseUpdateContainer(urId);
