@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.17.01
+// @version     2018.12.18.01
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
 // @require     https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
+// @require    https://apis.google.com/js/api.js
 // @author      dBsooner
 // @license     MIT/BSD/X11
 // @icon        data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC0AAAAwCAYAAACFUvPfAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNS1jMDIxIDc5LjE1NTc3MiwgMjAxNC8wMS8xMy0xOTo0NDowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTQgKFdpbmRvd3MpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjQyQjZDNjdEODYzODExRTRBRDY0Q0I2QjA1MjU4N0EyIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOjQyQjZDNjdFODYzODExRTRBRDY0Q0I2QjA1MjU4N0EyIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6NDJCNkM2N0I4NjM4MTFFNEFENjRDQjZCMDUyNTg3QTIiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6NDJCNkM2N0M4NjM4MTFFNEFENjRDQjZCMDUyNTg3QTIiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz6++Bk8AAANOElEQVR42tRZ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
@@ -33,6 +34,7 @@
 /* global $ */
 /* global WazeWrap */
 /* global OL */
+/* global gapi */
 
 (function() {
     'use strict';
@@ -41,10 +43,17 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.','Official RC 4' ];
+    const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.','Google API v4' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
+
+    const URCE_CLIENT_ID ='309982510721-uefelja68jujfalgeqjagit4dff7egv5.apps.googleusercontent.com';
+    const URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c';
+    const URCE_DISCOVERY_DOCS = [ 'https://sheets.googleapis.com/$discovery/rest?version=v4' ];
+    const URCE_SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+    const URCE_SPREADSHEET_ID = '1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ';
+
     let _selUr = {};
     let _settings = {};
     let _commentList = [];
@@ -78,11 +87,11 @@
     let _mousedOverMarkerId = null;
     let _mousedOverMarkerType = null;
     let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId;
-    let _commentLists = [{idx:0, name:'CommentTeam', status:'enabled', oldVarName:'CommentTeam', listOwner:'CommentTeam', gSheetUrl:'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/oz10sdb/public/values?alt=json' },
+    let _commentLists = [{idx:0, name:'CommentTeam', status:'enabled', oldVarName:'CommentTeam', listOwner:'CommentTeam', region:'ALL', gSheetRange:'CommentTeam_Output_(do_not_edit)!A1:A' },
                          {idx:1, name:'Custom', status:'enabled', oldVarName:'Custom', listOwner:'Custom', gSheetUrl:'', type:'static' },
-                         {idx:2, name:'USA - SCR', status:'enabled', oldVarName:'USA_SouthCentral', listOwner:'SCR CommentTeam', gSheetUrl:'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/ope05au/public/values?alt=json' },
-                         {idx:3, name:'USA - SER', status:'enabled', oldVarName:'USA_Southeast', gSheetUrl:'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/o35ezyr/public/values?alt=json' },
-                         {idx:4, name:'User: PesachZ', status:'enabled', oldVarName:'PesachZ', listOwner:'PesachZ', gSheetUrl: 'https://spreadsheets.google.com/feeds/list/1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ/o84s9w/public/values?alt=json' }
+                         {idx:2, name:'USA - SCR', status:'enabled', oldVarName:'USA_SouthCentral', listOwner:'SCR CommentTeam', region:'SCR', gSheetRange:'USA_SCR_Output_(do_not_edit)!A1:A' },
+                         {idx:3, name:'USA - SER', status:'enabled', oldVarName:'USA_Southeast', listOwner:'itzwolf', region:'SER', gSheetRange:'USA_SER_Output_(do_not_edit)!A1:A' },
+                         {idx:4, name:'User: PesachZ', status:'enabled', oldVarName:'PesachZ', listOwner:'PesachZ', region:'ALL', gSheetRange:'PesachZ_Output_(do_not_edit)!A1:A' }
                           ].sort(dynamicSort('name'));
 
     function log(message) { console.log('URC-E:', message); }
@@ -1370,18 +1379,17 @@
             let oldUrcArr = window['Urcomments' + oldVarName + 'Array2'];
             let defaultReminderIdx = window['Urcomments' + oldVarName + 'ReminderPosistion'];
             let closedNiIdx = window['Urcomments' + oldVarName + 'CloseNotIdentifiedPosistion'];
-            let data = { 'feed': {
-                'entry': [ ]
-            } };
+            let data = [];
             let entryIdx;
             logDebug('Converting static comment list to URC-E format for comment list: ' + oldVarName);
-            data.feed.entry[0] = { 'title': {'$t':'2018.11.28.01'} };
-            data.feed.entry[1] = { 'title': {'$t':'TITLE|COMMENT|URSTATUS|DR|DC|IT|IA|IR|MRA|GE|TNA|IJ|MBO|WDD|ME|MR|ML|BR|MSN|ISPS|SL'} };
+            data[0] = [ 'URCE' ];
+            data[1] = [ '2018.11.28.01' ];
+            data[2] = [ 'TITLE|COMMENT|URSTATUS|DR|DC|IT|IA|IR|MRA|GE|TNA|IJ|MBO|WDD|ME|MR|ML|BR|MSN|ISPS|SL' ];
             if (oldUrcArr[0].search(/<br>/gi) === -1) {
-                data.feed.entry[2] = { 'title': {'$t':'||GROUP TITLE||||||||||||||||||'} };
-                entryIdx = 3;
+                data[3] = [ '||GROUP TITLE||||||||||||||||||' ];
+                entryIdx = 4;
             } else {
-                entryIdx = 2;
+                entryIdx = 3;
             }
             for (let oldUrcArrIdx = 0; oldUrcArrIdx < oldUrcArr.length; oldUrcArrIdx = oldUrcArrIdx + 3) {
                 let temp;
@@ -1399,14 +1407,14 @@
                     if (i === 17 || i === 20) continue;
                     temp += (window['Urcomments' + oldVarName + 'def_names'][i] == title) ? '|default_is_true' : '|';
                 }
-                data.feed.entry[entryIdx] = { 'title': { '$t':temp} };
+                data[entryIdx] = [ temp ];
                 entryIdx++;
             }
             resolve(data);
         });
     }
 
-    function processCommentListJson(data) {
+    function processCommentList(data) {
         return new Promise((resolve,reject) => {
             logDebug('Procesing comment list data.');
             if (data) {
@@ -1418,14 +1426,19 @@
                 let doubleClickLinkNiComments = _settings.doubleClickLinkNiComments;
                 let doubleClickLinkOpenComments = _settings.doubleClickLinkOpenComments;
                 let doubleClickLinkSolvedComments = _settings.doubleClickLinkSolvedComments;
-                for (let entryIdx = 0; entryIdx < data.feed.entry.length; entryIdx++) {
-                    let cellValue = data.feed.entry[entryIdx].title.$t;
+                for (let entryIdx = 0; entryIdx < data.length; entryIdx++) {
+                    let cellValue = data[entryIdx][0];
                     if (entryIdx === 0) {
+                        if (cellValue !== 'URCE') {
+                            reject('Incorrect format in spreadsheet data received.');
+                            return;
+                        }
+                    } else if (entryIdx === 1) {
                         if (SCRIPT_VERSION < cellValue) {
                             reject('Script must be updated to at least version ' + cellValue + ' before comment definitions can be loaded.');
                             return;
                         }
-                    } else if(entryIdx === 1) {
+                    } else if (entryIdx === 2) {
                         ssFieldNames = cellValue.split('|').map(fldName => fldName.trim());
                         if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length) {
                             reject('Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment definition data. Spreadsheet returned ' + ssFieldNames.length + '.');
@@ -1561,14 +1574,29 @@
         commentListIdx = parseInt(commentListIdx || _settings.commentList);
         logDebug('Beginning comment list async for comment list: ' + getCommentListInfo(commentListIdx).name);
         return new Promise((resolve, reject) => {
-            $.get({
-                url: getCommentListInfo(commentListIdx).gSheetUrl,
-                success: function(data) {
-                    resolve(data);
-                },
-                error: function() {
-                    reject('An error occurred while loading the selected comment lists definition spreadsheet.');
-                }
+            gapi.load('client:auth2', () => {
+                gapi.client.init({
+                    apiKey: URCE_API_KEY,
+                    clientId: URCE_CLIENT_ID,
+                    discoveryDocs: URCE_DISCOVERY_DOCS,
+                    scopes: URCE_SCOPES
+                }).then(() => {
+                    gapi.client.sheets.spreadsheets.values.get({
+                        spreadsheetId: URCE_SPREADSHEET_ID,
+                        range: getCommentListInfo(commentListIdx).gSheetRange
+                    }).then((response) => {
+                        let range = response.result;
+                        if (range.values.length > 0) {
+                            resolve(range.values);
+                        } else {
+                            reject('No comments found in spreadsheet sheet.');
+                        }
+                    }, (response) => {
+                        reject(response.result.error.message);
+                    });
+                }, (error) => {
+                    reject(JSON.stringify(error, null, 2));
+                });
             });
         });
     }
@@ -1590,7 +1618,7 @@
                 return {error:error};
             }
             try {
-                await processCommentListJson(data);
+                await processCommentList(data);
             } catch (error) {
                 return {error:error};
             }
@@ -1601,7 +1629,7 @@
                 return {error:error};
             }
             try {
-                await processCommentListJson(data);
+                await processCommentList(data);
             } catch (error) {
                 return {error:error};
             }
@@ -1807,14 +1835,6 @@
             '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"] { margin:0 5px 0 10px; vertical-align:middle; cursor:pointer; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-controls select { height:22px; vertical-align:middle; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; }',
-/*            '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"]:not(:checked), .URCE-controls input[type="checkbox"]:checked, .URCE-controls input[type="radio"]:not(:checked), .URCE-controls input[type="radio"]:checked { opacity:0; position:absolute; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"]:not(:checked) + label, .URCE-controls input[type="checkbox"]:checked + label, .URCE-controls input[type="radio"]:not(:checked) + label, .URCE-controls input[type="radio"]:checked + label { position:relative; cursor:pointer; font-weight:normal; margin-bottom:0; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"]:not(:checked) + label:before, .URCE-controls input[type="checkbox"]:checked + label:before, .URCE-controls input[type="radio"]:not(:checked) + label:before, .URCE-controls input[type="radio"]:checked + label:before { content:""; position:absolute; left:2px; top:2px; width:12px; height:12px; border:1px solid #dfdfdf; border-radius:3px; background-color:white; transition:background 0.25s, box-shadow 0.25s; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"]:checked + label:before { border:none; background-color:#26bae8; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"]:not(:checked):checked + label:before, .URCE-controls input[type="checkbox"]:checked:checked + label:before { border:none; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"]:not(:checked) + label:after, .URCE-controls input[type="checkbox"]:checked + label:after, .URCE-controls input[type="radio"]:not(:checked) + label:after, .URCE-controls input[type="radio"]:checked + label:after { position:absolute; color:#fff; opacity:0; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"]:not(:checked) + label:after, .URCE-controls input[type="checkbox"]:checked + label:after { display:inline-block; font:normal normal normal 14px/1 FontAwesome; text-rendering:auto; -webkit-font-smoothing: antialiased; transform:scale(0.8); content:"\\F00C"; font-style:normal; font-weight:normal; font-size:10px; top:2px; left:3px; line-height:13px; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"]:not(:checked) + label, .URCE-controls input[type="checkbox"]:checked + label { padding-left:25px; }', */
             // Common
             '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:12px; margin-right: 4px; }',
             '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; }',
