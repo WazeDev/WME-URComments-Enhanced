@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.18.01
+// @version     2018.12.18.02
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -415,17 +415,13 @@
 
     function handleAfterCommentMutation(urId) {
         logDebug('Handling new comment mutation for urId: ' + urId);
-        let unsavedDetected = _selUr.unsavedDetected;
         let newStatus = _selUr.newStatus;
         let doubleClick = _selUr.doubleClick;
         if (_settings.unfollowUrAfterSend) unfollowUrAfterSend(urId);
         if ((_settings.autoCloseCommentWindow && !newStatus) || doubleClick) {
             autoCloseUrPanel();
         } else {
-            if (unsavedDetected && _settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) {
-                logWarning('Unsaved changes detected and comment will require a save.');
-                showAlertBox('fa-exclamation-circle', I18n.t('urce.prompts.UnsavedEditsHeader'), I18n.t('urce.prompts.UnsavedEdits'), true, I18n.t('urce.common.Yes'), I18n.t('urce.common.No'), clickSaveButton, null);
-            } else if (!unsavedDetected && _settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) {
+            if (_settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) {
                 clickSaveButton();
             } else {
                 try {
@@ -438,12 +434,8 @@
     }
 
     function handleAfterCloseUpdateContainer(urId) {
-        let unsavedDetected = _selUr.unsavedDetected;
         let newStatus = _selUr.newStatus;
-        if (unsavedDetected && _settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) {
-            logWarning('Unsaved changes detected and comment will require a save.');
-            showAlertBox('fa-exclamation-circle', I18n.t('urce.prompts.UnsavedEditsHeader'), I18n.t('urce.prompts.UnsavedEdits'), true, I18n.t('urce.common.Yes'), I18n.t('urce.common.No'), clickSaveButton, null);
-        } else if (!unsavedDetected && _settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) {
+        if (_settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) {
             clickSaveButton();
         } else {
             if (_settings.autoZoomOutAfterComemnt) autoZoomOut();
@@ -486,7 +478,6 @@
         let urData = urSessionObj[0];
         let mUrObj = mapUrsObj[0];
         _selUr.urOpen = mUrObj.attributes.open;
-        _selUr.unsavedDetected = await checkForUnsavedChanges();
         if (_settings.autoSwitchToUrCommentsTab) autoSwitchToUrceTab();
         if ($('#panel-container .problem-edit .conversation').hasClass('collapsed')) {
             logDebug('Expanding conversation list.');
@@ -538,7 +529,7 @@
     }
 
     async function handleClickedComment(commentNum, doubleClick) {
-        let urId = _selUr.urId || getUrId();
+        let urId = _selUr.urId || getUrId('clickedComment');
         logDebug('Handling clicked comment. commentNum: ' + commentNum + ' | doubleClick: ' + doubleClick);
         _selUr.doubleClick = doubleClick;
         if (!$('.new-comment-text')[0]) {
@@ -604,14 +595,6 @@
     function autoCloseUrPanel() {
         logDebug('Clicking close on UR panel.');
         $("#panel-container > div > div > div.top-section > a").trigger('click');
-    }
-
-    function checkForUnsavedChanges() {
-        logDebug('Checking for unsaved changes.');
-        return new Promise((resolve) => {
-            let result = ($('#edit-buttons > div > div.toolbar-button.waze-icon-save').hasClass('ItemDisabled') !== true) ? true : false;
-            resolve(result);
-        });
     }
 
     function clickSaveButton() {
@@ -1246,7 +1229,7 @@
                 logDebug('Unhiding UR marker for UR: ' + urId);
                 $($node).show();
             }
-            logDebug('Setting event listener on ' + urId);
+            logDebug('Setting event listeners on ' + urId);
             $($node).off('click', handleUrMarkerClick);
             $($node).on('click', handleUrMarkerClick);
             $($node).off('mouseover', markerMouseOver);
@@ -1326,9 +1309,11 @@
         }
     }
 
-    function getUrId() {
+    function getUrId(phase) {
         if (!(_selUr.urId > 0)) {
-            logWarning('Had to get the urId from the back yard. Please let dBsooner know.');
+            if (phase === 'urPanelMutation') logWarning('Had to get the urId from the back yard for the UR panel mutation. Please let dBsooner know.');
+            else if (phase === 'clickedComment') logWarning('Had to get the urId from the back yard for the clicked comment phase. Please let dBsooner know.');
+            else logWarning('Had to get the urId from the back yard because it was wandering around. Please let dBsooner know.');
             _selUr.urId = $(".update-requests .selected").data("id")
         }
     }
@@ -1659,9 +1644,10 @@
             });
         });
         let urPanelContainerObserver = new MutationObserver(function(mutations) {
-            let urId = _selUr.urId || getUrId();
+            let urId = _selUr.urId || getUrId('urPanelMutation');
             mutations.forEach(function(mutation) {
                 if ($(mutation.target).is('#panel-container') && mutation.type === 'childList' && mutation.addedNodes.length > 0 && urId > 0) {
+                    log(mutation);
                     handleUpdateRequestContainer(urId);
                 } else if ($(mutation.target).is('#panel-container') && mutation.type === 'childList' && mutation.removedNodes.length > 0 && urId > 0) {
                     handleAfterCloseUpdateContainer(urId);
@@ -1690,7 +1676,16 @@
                         let addedNode = mutation.addedNodes[idx];
                         if (addedNode.classList && addedNode.classList.contains('map-marker') && (addedNode.classList.contains('user-generated') || addedNode.classList.contains('map-marker'))) {
                             let urId = addedNode.getAttribute('data-id');
-                            if (urId > 0 && urMapMarkerIds.indexOf(urId) === -1) urMapMarkerIds.push(urId);
+                            if (urId > 0 && urMapMarkerIds.indexOf(urId) === -1) {
+                                logDebug('Setting event listeners on ' + urId);
+                                $(addedNode).off('click', handleUrMarkerClick);
+                                $(addedNode).on('click', handleUrMarkerClick);
+                                $(addedNode).off('mouseover', markerMouseOver);
+                                $(addedNode).on('mouseover', markerMouseOver);
+                                $(addedNode).off('mouseout', markerMouseOut);
+                                $(addedNode).on('mouseout', markerMouseOut);
+                                urMapMarkerIds.push(urId);
+                            }
                         }
                     }
                 } else if (mutation.type === 'attributes' && mutation.target.classList && (mutation.target.classList.contains('user-generated') || mutation.target.classList.contains('has-comments'))) {
@@ -3602,8 +3597,6 @@
                     NoCommentBox: 'URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.',
                     CommentInsertTimedOut: 'URCE-E timed out waiting for the comment text box to become available.',
                     ReminderMessageAuto: 'URC-E: Automatically sending reminder message to UR:',
-                    UnsavedEdits: 'URC-E has detected you had unsaved edits before working this UR. As a precaution, URC-E\'s \'Auto save\' option gives you this warning before saving if there were unsaved edits before opening the UR. Would you like to go ahead and automatically process the unsaved edits as well as this UR?',
-                    UnsavedEditsHeader: 'Unsaved Edits Detected',
                     CustomListUsed: 'URC-E has loaded your "Custom" comment list. However, only the comments themselves have been loaded. The settings text and tooltips were not loaded. Further, this functionality is deprecated and may be discontinued at any time. An alternative solution may or may not be offered at that time.'
                 }
             }
