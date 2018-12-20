@@ -1,12 +1,11 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.19.02
+// @version     2018.12.19.03
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
 // @require     https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @require     https://apis.google.com/js/api.js
 // @author      dBsooner
 // @license     MIT/BSD/X11
 // @icon        data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC0AAAAwCAYAAACFUvPfAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNS1jMDIxIDc5LjE1NTc3MiwgMjAxNC8wMS8xMy0xOTo0NDowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTQgKFdpbmRvd3MpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjQyQjZDNjdEODYzODExRTRBRDY0Q0I2QjA1MjU4N0EyIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOjQyQjZDNjdFODYzODExRTRBRDY0Q0I2QjA1MjU4N0EyIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6NDJCNkM2N0I4NjM4MTFFNEFENjRDQjZCMDUyNTg3QTIiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6NDJCNkM2N0M4NjM4MTFFNEFENjRDQjZCMDUyNTg3QTIiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz6++Bk8AAANOElEQVR42tRZ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
@@ -34,7 +33,6 @@
 /* global $ */
 /* global WazeWrap */
 /* global OL */
-/* global gapi */
 
 (function() {
     'use strict';
@@ -124,7 +122,7 @@
             // URC-E Preferences
             autoCenterOnUr: false,
             autoClickOpenSolvedNi: false,
-            autoCloseCommentWindow: false,
+            autoCloseUrPanel: (_settings.autoCloseCommentWindow) ? true : false,
             autoSaveAfterSolvedOrNiComment: false,
             autoSendReminders: false,
             autoSetNewUrComment: false,
@@ -242,7 +240,7 @@
         }
         _settings.closeDays = Math.min(14,Math.max(1,parseInt(_settings.closeDays)));
         if (_settings.wmeUserId !== _wmeUserId) _settings.wmeUserId = _wmeUserId;
-        ['hideClosedUrs', 'showOthersUrsPastReminderClose', 'onlyShowMyUrs', 'hideTaggedUrs', 'hideUrsWoComments', 'hideUrsWoCommentsOrDescriptions', 'hideUrsWoCommentsWithDescriptions', 'hideUrsWithUserReplies' ].forEach(oldSetting => {
+        ['autoCloseCommentWindow', 'hideClosedUrs', 'showOthersUrsPastReminderClose', 'onlyShowMyUrs', 'hideTaggedUrs', 'hideUrsWoComments', 'hideUrsWoCommentsOrDescriptions', 'hideUrsWoCommentsWithDescriptions', 'hideUrsWithUserReplies' ].forEach(oldSetting => {
             if (_settings.hasOwnProperty(oldSetting)) delete(_settings[oldSetting]);
         });
     }
@@ -416,7 +414,7 @@
         let newStatus = _selUr.newStatus;
         let doubleClick = _selUr.doubleClick;
         if (_settings.unfollowUrAfterSend) unfollowUrAfterSend(urId);
-        if ((_settings.autoCloseCommentWindow && !newStatus) || doubleClick) {
+        if ((_settings.autoCloseUrPanel && !newStatus) || doubleClick) {
             autoCloseUrPanel();
         } else {
             if (_settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) {
@@ -976,6 +974,7 @@
             case 'WSLM':
                 return 5;
             case 'BOG':
+            case 'BOTG':
                 return 6;
             case 'DIFFICULT':
                 return 7;
@@ -985,7 +984,7 @@
     }
 
     function updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj) {
-        let tagRegex = /.*\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|DIFFICULT)\].*/gi;
+        let tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim;
         const customMarkersEnabled = customMarkersEnabledCheck();
         for (let idx = 0; idx < urIds.length; idx++) {
             let urId = urIds[idx];
@@ -1011,6 +1010,7 @@
                     fullText = urDesc ? urDesc : '';
                     commentDaysOld = uroDateToDays(mUrObj.attributes.driveDate);
                 }
+                fullText = fullText.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, ' ');
                 tagType = (fullText.search(tagRegex) > -1) ? fullText.replace(tagRegex, '$1') : null;
                 if (tagType) {
                     customType = converTagToCustomType(tagType);
@@ -1083,7 +1083,7 @@
     }
 
     function filterUrMapMarkers(urIds, urSessionsObj, mapUrsObj) {
-        let tagRegex = /.*\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|DIFFICULT)\].*/gi;
+        let tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim;
         let doNotHideSelectedUr = _settings.doNotHideSelectedUr;
         for (let idx = 0; idx < urIds.length; idx++) {
             let urId = urIds[idx];
@@ -1148,6 +1148,7 @@
                     fullText = urDesc ? urDesc : '';
                     commentDaysOld = uroDateToDays(urDriveDate);
                 }
+                fullText = fullText.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, ' ');
                 tagType = (fullText.search(tagRegex) > -1) ? fullText.replace(tagRegex, '$1') : null;
                 if (tagType) {
                     customType = converTagToCustomType(tagType);
@@ -1443,7 +1444,7 @@
                             logDebug('SKIPPING a removed comment.');
                         } else if (splitRow.title === 'URCE_ERROR') {
                             // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
-                            reject('There is an unknown error in the spreadsheet output. Please contact the list owner.');
+                            reject('There is an unknown error in the spreadsheet output. Please contact the list owner: ' + getCommentListInfo(_settings.commentList).listOwner);
                             return;
                         } else if (splitRow.urstatus === 'group title') {
                             // Group title row. Nothing to set in the arrays, but build html.
@@ -1489,7 +1490,7 @@
                         } else {
                             // SHOULD be a normal comments row, push values to arrays and build html.
                             if (splitRow.urstatus !== 'solved' && splitRow.urstatus !== 'notidentified' && splitRow.urstatus !== 'open' && splitRow.urstatus !== 'blank line') {
-                                return reject('Your current selected list does not have a status set for ' + splitRow.title + '. Please contact list owner.');
+                                return reject('Your current selected list does not have a status set for ' + splitRow.title + '. Please contact list owner: ' + getCommentListInfo(_settings.commentList).listOwner);
                             } else {
                                 _commentList[commentId] = { 'title':splitRow.title, 'comment':splitRow.comment, 'urstatus':splitRow.urstatus };
                                 if (Object.values(splitRow).indexOf('default_is_true') > -1) {
@@ -1531,7 +1532,7 @@
                                             handleClickedComment(parseInt(this.id.replace(/urce-cid-/, '')), false);
                                         })
                                     ).append(
-                                        $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + '\n' + splitRow.comment}).append(
+                                        $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + ':\n' + splitRow.comment}).append(
                                             $('<img>', {src:DOUBLE_CLICK_ICON, class:'URCE-doubleClickIcon', id:'urce-img-cid-'+commentId}).dblclick(function() {
                                                 handleClickedComment(parseInt(this.id.replace(/urce-img-cid-/, '')), true);
                                             })
@@ -1556,29 +1557,16 @@
     function commentListAsync(commentListIdx) {
         commentListIdx = parseInt(commentListIdx || _settings.commentList);
         logDebug('Beginning comment list async for comment list: ' + getCommentListInfo(commentListIdx).name);
-        return new Promise((resolve, reject) => {
-            gapi.load('client', () => {
-                gapi.client.init({
-                    apiKey: URCE_API_KEY,
-                    discoveryDocs: URCE_DISCOVERY_DOCS
-                }).then(() => {
-                    gapi.client.sheets.spreadsheets.values.get({
-                        spreadsheetId: URCE_SPREADSHEET_ID,
-                        range: getCommentListInfo(commentListIdx).gSheetRange
-                    }).then((response) => {
-                        let range = response.result;
-                        if (range.values.length > 0) {
-                            resolve(range.values);
-                        } else {
-                            reject('No comments found in spreadsheet sheet.');
-                        }
-                    }, (response) => {
-                        reject(response.result.error.message);
-                    });
-                }, (error) => {
-                    reject(JSON.stringify(error, null, 2));
-                });
+        return new Promise(async (resolve, reject) => {
+            let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/' + getCommentListInfo(commentListIdx).gSheetRange + '?key=' + URCE_API_KEY;
+            let data = await $.getJSON(gapiUrl).fail((response) => {
+                reject('Spreadsheet call failed. Code: ' + response.status + ' - Text: ' + response.statusText);
             });
+            if (data.values.length > 0) {
+                resolve(data.values);
+            } else {
+                reject('No comments found in spreadsheet sheet.');
+            }
         });
     }
 
@@ -1589,19 +1577,19 @@
         let data, result;
         $('#_commentList').empty();
         $('#_commentList').append(
-            $('<div>', {class:'URCE-commentListName'}).text(I18n.t('urce.prefs.CommentList') + ': ' + getCommentListInfo(_settings.commentList).name)
+            $('<div>', {class:'URCE-commentListName'}).text(I18n.t('urce.common.CommentList') + ': ' + getCommentListInfo(_settings.commentList).name)
         );
         _commentList = [];
         if (getCommentListInfo(commentListIdx).type === 'static') {
             try {
                 data = await convertCommentListStatic(commentListIdx);
             } catch (error) {
-                return {error:error};
+                return {error:error, staticList:true};
             }
             try {
                 await processCommentList(data);
             } catch (error) {
-                return {error:error};
+                return {error:error, staticList:true};
             }
         } else {
             try {
@@ -1620,12 +1608,20 @@
         return {error:false};
     }
 
-    function handleBuildCommentListError(error) {
+    function handleBuildCommentListError(error, staticList) {
         logError(error);
         _commentListLoaded = false;
+        let outputText = I18n.t('urce.common.ErrorGeneric');
+        if (staticList) {
+            outputText += '\n\n' + I18n.t('urce.common.Type') + ': ' + I18n.t('urce.common.Static');
+        } else {
+            let commentListInfo = getCommentListInfo(_settings.commentList);
+            outputText += '\n\n' + I18n.t('urce.common.CommentList') + ': ' + commentListInfo.name;
+            outputText += '\n' + I18n.t('urce.common.ListOwner') + ': ' + commentListInfo.listOwner;
+        }
         $('#_commentList').empty();
         $('#_commentList').append(
-            $('<div>', {class:'URCE-divLoading'}).text(I18n.t('urce.common.ErrorGeneric'))
+            $('<div>', {class:'URCE-divLoading'}).text(outputText)
         );
     }
 
@@ -1889,7 +1885,7 @@
             $('<fieldset>', {id:'urce-prefs-fieldset-commentList', class:`URCE-field${urStyle}`}).append(
                 $('<legend>', {id:'urce-prefs-legend-commentList', class:`URCE-legend${urStyle}`}).append(
                     $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
-                    $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.CommentList'))
+                    $('<span>', {class:'URCE-span'}).text(I18n.t('urce.common.CommentList'))
                 ).click(function() {
                     $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
                     $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
@@ -1978,8 +1974,8 @@
                     }).prop('checked', _settings.autoClickOpenSolvedNi),
                     $('<label>', {for:'_cbAutoClickOpenSolvedNi', title:I18n.t('urce.prefs.AutoClickOpenSolvedNiTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoClickOpenSolvedNi')),
                     $('<br>'),
-                    $('<input>', {type:'checkbox', id:'_cbAutoCloseCommentWindow', urceprefs:'urce'}).change(function() { changeSetting('autoCloseCommentWindow', $(this).is(':checked')); }).prop('checked', _settings.autoCloseCommentWindow),
-                    $('<label>', {for:'_cbAutoCloseCommentWindow', title:I18n.t('urce.prefs.AutoCloseCommentWindowTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoCloseCommentWindow')),
+                    $('<input>', {type:'checkbox', id:'_cbAutoCloseUrPanel', urceprefs:'urce'}).change(function() { changeSetting('autoCloseUrPanel', $(this).is(':checked')); }).prop('checked', _settings.autoCloseUrPanel),
+                    $('<label>', {for:'_cbAutoCloseUrPanel', title:I18n.t('urce.prefs.AutoCloseUrPanelTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoCloseUrPanel')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbAutoSaveAfterSolvedOrNiComment', urceprefs:'urce'}).change(function() {
                         _settings.autoSaveAfterSolvedOrNiComment = $(this).is(':checked');
@@ -2161,7 +2157,7 @@
                                 }
                             })();
                         }).prop('checked', _settings.customMarkersBog),
-                        $('<label>', {for:'_cbCustomMarkersBog', title:I18n.t('urce.tags.BogTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Bog')),
+                        $('<label>', {for:'_cbCustomMarkersBog', title:I18n.t('urce.prefs.BogTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Bog')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersClosures', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersClosures', $(this).is(':checked'));
@@ -2173,7 +2169,7 @@
                                 }
                             })();
                         }).prop('checked', _settings.customMarkersClosures),
-                        $('<label>', {for:'_cbCustomMarkersClosures', title:I18n.t('urce.tags.ClosureTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Closure')),
+                        $('<label>', {for:'_cbCustomMarkersClosures', title:I18n.t('urce.prefs.ClosureTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Closure')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersConstruction', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersConstruction', $(this).is(':checked'));
@@ -2185,7 +2181,7 @@
                                 }
                             })();
                         }).prop('checked', _settings.customMarkersConstruction),
-                        $('<label>', {for:'_cbCustomMarkersConstruction', title:I18n.t('urce.tags.ConstructionTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Construction')),
+                        $('<label>', {for:'_cbCustomMarkersConstruction', title:I18n.t('urce.prefs.ConstructionTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Construction')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersDifficult', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersDifficult', $(this).is(':checked'));
@@ -2197,7 +2193,7 @@
                                 }
                             })();
                         }).prop('checked', _settings.customMarkersDifficult),
-                        $('<label>', {for:'_cbCustomMarkersDifficult', title:I18n.t('urce.tags.DifficultTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Difficult')),
+                        $('<label>', {for:'_cbCustomMarkersDifficult', title:I18n.t('urce.prefs.DifficultTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Difficult')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersEvents', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersEvents', $(this).is(':checked'));
@@ -2209,7 +2205,7 @@
                                 }
                             })();
                         }).prop('checked', _settings.customMarkersEvents),
-                        $('<label>', {for:'_cbCustomMarkersEvents', title:I18n.t('urce.tags.EventTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Event')),
+                        $('<label>', {for:'_cbCustomMarkersEvents', title:I18n.t('urce.prefs.EventTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Event')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersNotes', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersNotes', $(this).is(':checked'));
@@ -2221,7 +2217,7 @@
                                 }
                             })();
                         }).prop('checked', _settings.customMarkersNotes),
-                        $('<label>', {for:'_cbCustomMarkersNotes', title:I18n.t('urce.tags.NoteTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Note')),
+                        $('<label>', {for:'_cbCustomMarkersNotes', title:I18n.t('urce.prefs.NoteTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Note')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersRoadworks', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersRoadworks', $(this).is(':checked'));
@@ -2233,7 +2229,7 @@
                                 }
                             })();
                         }).prop('checked', _settings.customMarkersRoadworks),
-                        $('<label>', {for:'_cbCustomMarkersRoadworks', title:I18n.t('urce.tags.RoadworksTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Roadworks')),
+                        $('<label>', {for:'_cbCustomMarkersRoadworks', title:I18n.t('urce.prefs.RoadworksTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Roadworks')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersWslm', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersWslm', $(this).is(':checked'));
@@ -2245,7 +2241,7 @@
                                 }
                             })();
                         }).prop('checked', _settings.customMarkersWslm),
-                        $('<label>', {for:'_cbCustomMarkersWslm', title:I18n.t('urce.tags.WslmTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Wslm')),
+                        $('<label>', {for:'_cbCustomMarkersWslm', title:I18n.t('urce.prefs.WslmTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Wslm')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersNativeSl', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersNativeSl', $(this).is(':checked'));
@@ -3348,7 +3344,7 @@
         _urceInitialized = true;
         let buildCommentListResult = await buildCommentList();
         if (buildCommentListResult.error) {
-            handleBuildCommentListError(buildCommentListResult.error);
+            handleBuildCommentListError(buildCommentListResult.error, buildCommentListResult.static);
         } else {
             initBackgroundTasks();
         }
@@ -3379,36 +3375,38 @@
             en: {
                 commentsTab: {
                     ZoomOutLink1: 'Zoom out 0 & close UR',
-                    ZoomOutLink1Title: 'Zooms all the way out and closes the UR dialogue.',
+                    ZoomOutLink1Title: 'Zooms all the way out and closes the UR panel.',
                     ZoomOutLink2: 'Zoom out 2 & close UR',
-                    ZoomOutLink2Title: 'Zooms out to level 2 and closes the UR dialogue.',
+                    ZoomOutLink2Title: 'Zooms out to level 2 and closes the UR panel.',
                     ZoomOutLink3: 'Zoom out 3 & close UR',
-                    ZoomOutLink3Title: 'Zooms out to level 3 and closes the UR dialogue.'
+                    ZoomOutLink3Title: 'Zooms out to level 3 and closes the UR panel.'
                 },
                 common: {
-                    Title: 'URComments-Enhanced',
-                    DoubleClickTitle: 'Double click here to send this comment:',
-                    Loading: 'Loading',
-                    PleaseWait: 'Please wait',
-                    ErrorHeader: 'URC-E Error',
-                    ErrorGeneric: 'An error has occurred within URC-E. Please contact dBsooner via Discord or PM.',
-                    Yes: 'Yes',
-                    No: 'No',
                     All: 'All',
+                    CommentList: 'Comment List',
+                    DaysOld: 'days old',
+                    Description: 'Description',
+                    DoubleClickTitle: 'Double click here to send this comment',
+                    ErrorGeneric: 'An error has occurred within URC-E. Please contact dBsooner via Discord or PM.',
+                    ErrorHeader: 'URC-E Error',
+                    Following: 'Following',
+                    LessThan: 'Less than',
+                    List: 'List',
+                    ListOwner: 'List Owner',
+                    Loading: 'Loading',
+                    MoreThan: 'More than',
+                    No: 'No',
+                    NotFollowing: 'Not following',
+                    PleaseWait: 'Please wait',
+                    Style: 'Style',
+                    Title: 'URComments-Enhanced',
+                    Type: 'Type',
                     With: 'With',
                     Without: 'Without',
-                    Following: 'Following',
-                    NotFollowing: 'Not following',
-                    LessThan: 'Less than',
-                    MoreThan: 'More than',
-                    DaysOld: 'days old',
-                    List: 'List',
-                    Style: 'Style',
-                    Description: 'Description'
+                    Yes: 'Yes'
                 },
                 prefs: {
                     // Comment List
-                    CommentList: 'Comment List',
                     CommentListTitle: 'Select the custom list you would like to use. CommentTeam is the default. If you would like your comment list built into this script or have suggestions on the CommentTeam list, please contact dBsooner on Discord or via PM.',
                     CommentListStyleTitle: 'Select the style you would like the URC-E panel to be displayed in. This only affects the look of the tab, no functionality is changed.',
                     StyleDefault: 'Default',
@@ -3416,35 +3414,35 @@
                     // URC-E Preferences
                     UrcePrefs: 'URC-E Preferences',
                     AutoCenterOnUr: 'Auto center on UR',
-                    AutoCenterOnUrTitle: 'Auto Center the map at the current map zoom to the selected UR when it has comments and the zoom is less than 3.',
+                    AutoCenterOnUrTitle: 'Auto center the map to the selected UR at the current map zoom level when the UR has comments and the zoom level is less than 3.',
                     AutoClickOpenSolvedNi: 'Auto click open, solved or not identified',
-                    AutoClickOpenSolvedNiTitle: 'Suppress the message about recent pending questions to the reporter and then, depending on the choice set for that comment, clicks Open, Solved or Not Identified.',
-                    AutoCloseCommentWindow: 'Auto close comment window',
-                    AutoCloseCommentWindowTitle: 'This will automatically close the UR window for user requests that do not require saving after you click a UR comment in the list and then the send button.',
+                    AutoClickOpenSolvedNiTitle: 'Suppress the message about recent pending questions to the reporter and then, depending on the choice set for that comment, automatically select Open, Solved or Not Identified.',
+                    AutoCloseUrPanel: 'Auto close UR panel',
+                    AutoCloseUrPanelTitle: 'Automatically close the UR panel after you click send on a comment that does not require saving.',
                     AutoSaveAfterSolvedOrNiComment: 'Auto save after solved or NI comment',
-                    AutoSaveAfterSolvedOrNiCommentTitle: 'If \'Auto Click Open, Solved or Not Identified\' is also checked, this will click the save button after clicking a UR comment in the list and then the send button.',
+                    AutoSaveAfterSolvedOrNiCommentTitle: 'If \'Auto Click Open, Solved or Not Identified\' is also checked, this will automatically click the save button after you click send on a comment that set the UR to Solved or Not Identified.',
                     AutoSendReminders: 'Auto send reminders',
-                    AutoSendRemindersTitle: 'Auto send reminders to your URs on the screen.',
+                    AutoSendRemindersTitle: 'Automatically send the reminder comment to the URs in the map window (as you pan around) you were the last to comment on and it has reached the days specified in \'Reminder Days\' (currently: ' + _settings.reminderDays + ' days).',
                     AutoSendRemindersWarning: 'WARNING',
-                    AutoSendRemindersWarningTitle: 'This will AUTOMATICALLY send reminders at the reminder days setting (currently: ' + _settings.reminderDays + ' days).\nThis only happens when they are visible on your screen.\n\nNOTE: When using this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to all open URs\nafter \'Reminder days\'.',
+                    AutoSendRemindersWarningTitle: 'AUTOMATICALLY SEND REMINDERS at the reminder days setting (currently: ' + _settings.reminderDays + ' days).\nThis only happens when they are visible on your screen.\n\nNOTE: When using this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to all open URs\nafter \'Reminder days\'.',
                     AutoSetNewUrComment: 'Auto set new UR comment',
-                    AutoSetNewUrCommentTitle: 'Auto set the default UR comment for the UR type on new URs that do not already have comments.',
+                    AutoSetNewUrCommentTitle: 'Automatically set the default UR comment for the UR type on new (do not already have comments) URs.',
                     AutoSetReminderUrComment: 'Auto set reminder UR comment',
-                    AutoSetReminderUrCommentTitle: 'Auto set the UR reminder comment for URs that are older than the \'Reminder days\' setting and have only one comment.',
+                    AutoSetReminderUrCommentTitle: 'Automatically set the UR reminder comment for URs that are older than the \'Reminder days\' setting and have only one comment.',
                     AutoSwitchToUrCommentsTab: 'Auto switch to the URC-E tab',
-                    AutoSwitchToUrCommentsTabTitle: 'Auto switch to the URComments-Enhanced tab when opening a UR. When the UR window is closed you will be switched back to your previous tab.',
+                    AutoSwitchToUrCommentsTabTitle: 'Automatically switch to the URComments-Enhanced tab when opening a UR. When the UR panel is closed you will be switched back to your previous tab.',
                     AutoZoomInOnNewUr: 'Auto zoom in on new UR',
-                    AutoZoomInOnNewUrTitle: 'Auto zoom in when opening URs with no comments and when sending UR reminders.',
+                    AutoZoomInOnNewUrTitle: 'Automatically zoom in when opening new (no comments) URs and when sending reminders.',
                     AutoZoomOutAfterComment: 'Auto zoom out after comment',
-                    AutoZoomOutAfterCommentTitle: 'After clicking on a UR comment in the list and then clicking send on the UR, the map zoom will be set back to your previous zoom.',
+                    AutoZoomOutAfterCommentTitle: 'Automatically zoom the map back to the previous zoom after clicking clicking send on a UR comment.',
                     DisableDoneNextButtons: 'Disable done / next buttons',
-                    DisableDoneNextButtonsTitle: 'Disable the done / next buttons at the bottom of the new UR window.',
+                    DisableDoneNextButtonsTitle: 'Disable the done / next buttons at the bottom of the UR panel.',
                     DoubleClickLinkNiComments: 'Double click link - NI comments',
-                    DoubleClickLinkNiCommentsTitle: 'Add an extra link to the \'not identified\' comments. When double clicked it will automatically send the comment to the UR window, click send, and then will launch all of the other options that are enabled.',
+                    DoubleClickLinkNiCommentsTitle: 'Add an image (extra link) to the \'not identified\' comments. When double clicked it will automatically set and send the UR comment of the one you double clicked, and then launch all of the other options that are enabled.',
                     DoubleClickLinkOpenComments: 'Double click link - Open comments',
-                    DoubleClickLinkOpenCommentsTitle: 'Add an extra link to the \'open\' comments. When double clicked it will automatically send the comment to the UR window, click send, and then will launch all of the other options that are enabled.',
+                    DoubleClickLinkOpenCommentsTitle: 'Add an image (extra link) to the \'open\' comments. When double clicked it will automatically set and send the UR comment of the one you double clicked, and then launch all of the other options that are enabled.',
                     DoubleClickLinkSolvedComments: 'Double click link - Solved comments',
-                    DoubleClickLinkSolvedCommentsTitle: 'Add an extra link to the \'solved\' comments. When double clicked it will automatically send the comment to the UR window, click send, and then will launch all of the other options that are enabled.',
+                    DoubleClickLinkSolvedCommentsTitle: 'Add an image (extra link) to the \'solved\' comments. When double clicked it will automatically set and send the UR comment of the one you double clicked, and then launch all of the other options that are enabled.',
                     HideZoomOutLinks: 'Hide zoom out links',
                     HideZoomOutLinksTitle: 'Hide the zoom out links on the comments tab.',
                     UnfollowUrAfterSend: 'Unfollow UR after send',
@@ -3452,14 +3450,22 @@
                     // UR Marker Preferences
                     UrMarkerPrefs: 'UR Marker Preferences',
                     EnableUrPillCounts: 'Enable UR pill counts',
-                    EnableUrPillCountsTitle: 'Enable or disable the pill with UR counts.',
+                    EnableUrPillCountsTitle: 'Enable or disable the pill with UR counts on the map marker.',
                     DoNotShowTagNameOnPill: 'Don\'t show tag name on pill',
-                    DoNotShowTagNameOnPillTitle: 'Do not show the tag name on the pill where there is a URO tag.',
+                    DoNotShowTagNameOnPillTitle: 'Do not show the tag name on the pill where there is a tag. Example: [NOTE]',
                     ReplaceTagNameWithEditorName: 'Replace tag name with editor name',
                     ReplaceTagNameWithEditorNameTitle: 'When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds when commenting), replace the tag type with the editors name.',
                     UnstackMarkers: 'Unstack markers',
-                    UnstackMarkersTitle: 'Attempt to unstack markers by offsetting them, URO+ style.',
+                    UnstackMarkersTitle: 'Attempt to unstack markers by offsetting them. Similar to how URO+ unstacks markers.',
                     UseCustomMarkersFor: 'Use Custom Markers for',
+                    BogTitle: 'Replace default UR marker with custom marker for the URs with \'[BOG]\' (boots on ground) / \'[BOTG]\' (boots on the ground) in the description or comments.',
+                    ClosureTitle: 'Replace default UR marker with custom marker for the URs with \'[CLOSURES]\' in the description or comments.',
+                    ConstructionTitle: 'Replace default UR marker with custom marker for the URs with \'[CONSTRUCTION]\' in the description or comments.',
+                    DifficultTitle: 'Replace default UR marker with custom marker for the URs with \'[DIFFICULT]\' in the description or comments.',
+                    EventTitle: 'Replace default UR marker with custom marker for the URs with \'[EVENTS]\' in the description or comments.',
+                    NoteTitle: 'Replace default UR marker with custom marker for the URs with \'[NOTES]\' in the description or comments.',
+                    RoadworksTitle: 'Replace default UR marker with custom marker for the URs with \'[ROADWORKS]\' in the description or comments. Used in the UK.',
+                    WslmTitle: 'Waze Speed Limit Marker',
                     NativeSpeedLimits: 'Native speed limits',
                     NativeSpeedLimitsTitle: 'Replace default UR marker with custom marker for the URs with \'speed limit\' type.',
                     // UR Filtering Preferences
@@ -3469,7 +3475,7 @@
                     HideOutsideEditableArea: 'Hide outside editable area',
                     HideOutsideEditableAreaTitle: 'Hide URs outside your editable area.',
                     DoNotHideSelectedUr: 'Do not hide selected UR',
-                    DoNotHideSelectedUrTitle: 'Do not hide a UR if it is actually being selected.',
+                    DoNotHideSelectedUrTitle: 'Do not hide a UR if it is currently being selected.',
                     // Hide by type
                     HideByType: 'Hide by type',
                     HideByTypeBlockedRoadTitle: 'Hide all blocked road URs.',
@@ -3490,7 +3496,7 @@
                     HideByTypeWrongDrivingDirectionTitle: 'Hide all wrong driving direction URs.',
                     // Hide by tagged
                     HideByTagged: 'Hide by tag',
-                    HideByTaggedBogTitle: 'Hide all URs with [BOG] in description or comments.',
+                    HideByTaggedBogTitle: 'Hide all URs with [BOG] (boots on ground) / [BOTG] (boots on the ground) in description or comments.',
                     HideByTaggedClosureTitle: 'Hide all URs with [CLOSURE] in description or comments.',
                     HideByTaggedConstructionTitle: 'Hide all URs with [CONSTRUCTION] in description or comments.',
                     HideByTaggedDifficultTitle: 'Hide all URs with [DIFFICULT] in description or comments.',
@@ -3541,29 +3547,21 @@
                     ReminderDays: 'Reminder days',
                     ReminderDaysTitle: 'Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment. Must be between 0 and 13 and less than \'Close days\'. 0 is off (no reminder used).',
                     CloseDays: 'Close days',
-                    CloseDaysTitle: 'Number of days to use when calculating UR filtering. Must be between 2 and 14 and greater than \'Reminder days\'.'
+                    CloseDaysTitle: 'Number of days to use when calculating UR filtering. Must be between 1 and 14 and greater than \'Reminder days\'.'
                 },
                 tabs: {
                     Comments: 'Comments',
                     Settings: 'Settings'
                 },
                 tags: {
-                    Bog: '[BOG]',
-                    BogTitle: 'Boots On Ground',
+                    Bog: '[BOG] / [BOTG]',
                     Closure: '[CLOSURE]',
-                    ClosureTitle: 'Closures',
                     Construction: '[CONSTRUCTION]',
-                    ConstructionTitle: 'Construction',
                     Difficult: '[DIFFICULT]',
-                    DifficultTitle: 'Difficult',
                     Event: '[EVENT]',
-                    EventTitle: 'Events',
                     Note: '[NOTE]',
-                    NoteTitle: 'Notes',
                     Roadworks: '[ROADWORKS]',
-                    RoadworksTitle: 'Roadworks (UK).',
-                    Wslm: '[WSLM]',
-                    WslmTitle: 'Waze Speed Limit Marker'
+                    Wslm: '[WSLM]'
                 },
                 urStatus: {
                     Open: 'Open',
