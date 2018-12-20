@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.20.01
+// @version     2018.12.20.02
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1094,7 +1094,7 @@
         }
     }
 
-    function filterUrMapMarkers(urIds, urSessionsObj, mapUrsObj) {
+    async function filterUrMapMarkers(urIds, urSessionsObj, mapUrsObj) {
         let tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim;
         let doNotHideSelectedUr = _settings.doNotHideSelectedUr;
         for (let idx = 0; idx < urIds.length; idx++) {
@@ -1275,7 +1275,7 @@
         updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj);
     }
 
-    function handleUrLayer(phase) {
+    async function handleUrLayer(phase) {
         return new Promise(async (resolve,reject) => {
             switch(phase) {
                 case 'init':
@@ -1312,6 +1312,14 @@
             }
             resolve();
         });
+    }
+
+    async function invokeHandleUrLayer(phase) {
+        try {
+            await handleUrLayer(phase);
+        } catch(error) {
+            logWarning(error);
+        }
     }
 
     function handleUrMarkerClick() {
@@ -2112,49 +2120,25 @@
                         } else {
                             $('[urceprefs=marker]').prop('disabled', false);
                         }
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
+                        invokeHandleUrLayer('settingsToggle');
                     }).prop('checked', _settings.enableUrPillCounts),
                     $('<label>', {for:'_cbEnableUrPillCounts', title:I18n.t('urce.prefs.EnableUrPillCountsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrPillCounts')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbDoNotShowTagNameOnPill', urceprefs:'marker'}).change(function() {
                         changeSetting('doNotShowTagNameOnPill', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
+                        invokeHandleUrLayer('settingsToggle');
                     }).prop('checked', _settings.doNotShowTagNameOnPill),
                     $('<label>', {for:'_cbDoNotShowTagNameOnPill', title:I18n.t('urce.prefs.DoNotShowTagNameOnPillTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoNotShowTagNameOnPill')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbReplaceTagNameWithEditorName', urceprefs:'marker'}).change(function() {
                         changeSetting('replaceTagNameWithEditorName', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
+                        invokeHandleUrLayer('settingsToggle');
                     }).prop('checked', _settings.replaceTagNameWithEditorName),
                     $('<label>', {for:'_cbReplaceTagNameWithEditorName', title:I18n.t('urce.prefs.ReplaceTagNameWithEditorNameTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.ReplaceTagNameWithEditorName')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbUnstackMarkers', urceprefs:'marker-nodisable'}).change(function() {
                         changeSetting('unstackMarkers', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
+                        invokeHandleUrLayer('settingsToggle');
                     }).prop('checked', _settings.unstackMarkers),
                     $('<label>', {for:'_cbUnstackMarkers', title:I18n.t('urce.prefs.UnstackMarkersTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.UnstackMarkers')),
                     $('<br>'),
@@ -2164,109 +2148,55 @@
                     ).append(
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersBog', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersBog', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.customMarkersBog),
                         $('<label>', {for:'_cbCustomMarkersBog', title:I18n.t('urce.prefs.BogTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Bog')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersClosures', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersClosures', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.customMarkersClosures),
                         $('<label>', {for:'_cbCustomMarkersClosures', title:I18n.t('urce.prefs.ClosureTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Closure')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersConstruction', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersConstruction', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.customMarkersConstruction),
                         $('<label>', {for:'_cbCustomMarkersConstruction', title:I18n.t('urce.prefs.ConstructionTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Construction')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersDifficult', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersDifficult', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.customMarkersDifficult),
                         $('<label>', {for:'_cbCustomMarkersDifficult', title:I18n.t('urce.prefs.DifficultTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Difficult')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersEvents', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersEvents', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.customMarkersEvents),
                         $('<label>', {for:'_cbCustomMarkersEvents', title:I18n.t('urce.prefs.EventTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Event')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersNotes', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersNotes', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.customMarkersNotes),
                         $('<label>', {for:'_cbCustomMarkersNotes', title:I18n.t('urce.prefs.NoteTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Note')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersRoadworks', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersRoadworks', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.customMarkersRoadworks),
                         $('<label>', {for:'_cbCustomMarkersRoadworks', title:I18n.t('urce.prefs.RoadworksTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Roadworks')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersWslm', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersWslm', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.customMarkersWslm),
                         $('<label>', {for:'_cbCustomMarkersWslm', title:I18n.t('urce.prefs.WslmTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Wslm')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbCustomMarkersNativeSl', urceprefs:'marker-nodisable'}).change(function() {
                             changeSetting('customMarkersNativeSl', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.customMarkersNativeSl),
                         $('<label>', {for:'_cbCustomMarkersNativeSl', title:I18n.t('urce.prefs.NativeSpeedLimitsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.NativeSpeedLimits'))
                     )
@@ -2291,37 +2221,19 @@
                             $('[urceprefs=filtering]').prop('disabled', false);
                         }
                         saveSettingsToStorage();
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
+                        invokeHandleUrLayer('settingsToggle');
                     }).prop('checked', _settings.enableUrceUrFiltering),
                     $('<label>', {for:'_cbEnableUrceUrFiltering', title:I18n.t('urce.prefs.EnableUrceUrFilteringTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrceUrFiltering')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbHideOutsideEditableArea', urceprefs:'filtering'}).change(function() {
                         changeSetting('hideOutsideEditableArea', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
+                        invokeHandleUrLayer('settingsToggle');
                     }).prop('checked', _settings.hideOutsideEditableArea),
                     $('<label>', {for:'_cbHideOutsideEditableArea', title:I18n.t('urce.prefs.HideOutsideEditableAreaTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideOutsideEditableArea')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbDoNotHideSelectedUr', urceprefs:'filtering'}).change(function() {
                         changeSetting('doNotHideSelectedUr', $(this).is(':checked'));
-                        (async () => {
-                            try {
-                                await handleUrLayer('settingsToggle');
-                            } catch(error) {
-                                logWarning(error);
-                            }
-                        })();
+                        invokeHandleUrLayer('settingsToggle');
                     }).prop('checked', _settings.doNotHideSelectedUr),
                     $('<label>', {for:'_cbDoNotHideSelectedUr', title:I18n.t('urce.prefs.DoNotHideSelectedUrTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoNotHideSelectedUr')),
                     $('<br>'),
@@ -2331,37 +2243,19 @@
                     ).append(
                         $('<input>', {type:'checkbox', id:'_cbHideWaiting', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideWaiting', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideWaiting),
                         $('<label>', {for:'_cbHideWaiting', title:I18n.t('urce.prefs.HideWaitingTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideWaiting')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideUrsCloseNeeded', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideUrsCloseNeeded', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideUrsCloseNeeded),
                         $('<label>', {for:'_cbHideUrsCloseNeeded', title:I18n.t('urce.prefs.HideUrsCloseNeededTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsCloseNeeded')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideUrsReminderNeeded', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideUrsReminderNeeded', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideUrsReminderNeeded),
                         $('<label>', {for:'_cbHideUrsReminderNeeded', title:I18n.t('urce.prefs.HideUrsReminderNeededTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideUrsReminderNeeded')),
                         $('<br>')
@@ -2372,49 +2266,25 @@
                     ).append(
                         $('<input>', {type:'checkbox', id:'_cbHideByStatusOpen', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByStatusOpen', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByStatusOpen),
                         $('<label>', {for:'_cbHideByStatusOpen', title:I18n.t('urce.prefs.HideByStatusOpenTitle'), class:'URCE-label'}).text(I18n.t('urce.urStatus.Open')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByStatusClosed', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByStatusClosed', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByStatusClosed),
                         $('<label>', {for:'_cbHideByStatusClosed', title:I18n.t('urce.prefs.HideByStatusClosedTitle'), class:'URCE-label'}).text(I18n.t('urce.urStatus.Closed')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByStatusNotIdentified', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByStatusNotIdentified', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByStatusNotIdentified),
                         $('<label>', {for:'_cbHideByStatusNotIdentified', title:I18n.t('urce.prefs.HideByStatusNotIdentifiedTitle'), class:'URCE-label'}).text(I18n.t('urce.urStatus.NotIdentified')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByStatusSolved', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByStatusSolved', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByStatusSolved),
                         $('<label>', {for:'_cbHideByStatusSolved', title:I18n.t('urce.prefs.HideByStatusSolvedTitle'), class:'URCE-label'}).text(I18n.t('urce.urStatus.Solved')),
                         $('<br>')
@@ -2425,193 +2295,97 @@
                     ).append(
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeBlockedRoad', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeBlockedRoad', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeBlockedRoad),
                         $('<label>', {for:'_cbHideByTypeBlockedRoad', title:I18n.t('urce.prefs.HideByTypeBlockedRoadTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.BlockedRoad')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeGeneralError', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeGeneralError', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeGeneralError),
                         $('<label>', {for:'_cbHideByTypeGeneralError', title:I18n.t('urce.prefs.HideByTypeGeneralErrorTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.GeneralError')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeIncorrectAddress', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeIncorrectAddress', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeIncorrectAddress),
                         $('<label>', {for:'_cbHideByTypeIncorrectAddress', title:I18n.t('urce.prefs.HideByTypeIncorrectAddressTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.IncorrectAddress')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeIncorrectJunction', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeIncorrectJunction', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeIncorrectJunction),
                         $('<label>', {for:'_cbHideByTypeIncorrectJunction', title:I18n.t('urce.prefs.HideByTypeIncorrectJunctionTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.IncorrectJunction')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeIncorrectRoute', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeIncorrectRoute', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeIncorrectRoute),
                         $('<label>', {for:'_cbHideByTypeIncorrectRoute', title:I18n.t('urce.prefs.HideByTypeIncorrectRouteTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.IncorrectRoute')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeIncorrectTurn', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeIncorrectTurn', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeIncorrectTurn),
                         $('<label>', {for:'_cbHideByTypeIncorrectTurn', title:I18n.t('urce.prefs.HideByTypeIncorrectTurnTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.IncorrectTurn')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingBridgeOverpass', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeMissingBridgeOverpass', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeMissingBridgeOverpass),
                         $('<label>', {for:'_cbHideByTypeMissingBridgeOverpass', title:I18n.t('urce.prefs.HideByTypeMissingBridgeOverpassTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingBridgeOverpass')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingExit', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeMissingExit', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeMissingExit),
                         $('<label>', {for:'_cbHideByTypeMissingExit', title:I18n.t('urce.prefs.HideByTypeMissingExitTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingExit')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingLandmark', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeMissingLandmark', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeMissingLandmark),
                         $('<label>', {for:'_cbHideByTypeMissingLandmark', title:I18n.t('urce.prefs.HideByTypeMissingLandmarkTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingLandmark')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingOrInvalidSpeedLimit', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeMissingOrInvalidSpeedLimit', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeMissingOrInvalidSpeedLimit),
                         $('<label>', {for:'_cbHideByTypeMissingOrInvalidSpeedLimit', title:I18n.t('urce.prefs.HideByTypeMissingOrInvalidSpeedLimitTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingOrInvalidSpeedLimit')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingRoad', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeMissingRoad', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeMissingRoad),
                         $('<label>', {for:'_cbHideByTypeMissingRoad', title:I18n.t('urce.prefs.HideByTypeMissingRoadTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingRoad')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingRoundabout', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeMissingRoundabout', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeMissingRoundabout),
                         $('<label>', {for:'_cbHideByTypeMissingRoundabout', title:I18n.t('urce.prefs.HideByTypeMissingRoundaboutTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingRoundabout')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeTurnNotAllowed', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeTurnNotAllowed', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeTurnNotAllowed),
                         $('<label>', {for:'_cbHideByTypeTurnNotAllowed', title:I18n.t('urce.prefs.HideByTypeTurnNotAllowedTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.TurnNotAllowed')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeUndefined', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeUndefined', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeUndefined),
                         $('<label>', {for:'_cbHideByTypeUndefined', title:I18n.t('urce.prefs.HideByTypeUndefinedTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.Undefined')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeWazeAutomatic', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeWazeAutomatic', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeWazeAutomatic),
                         $('<label>', {for:'_cbHideByTypeWazeAutomatic', title:I18n.t('urce.prefs.HideByTypeWazeAutomaticTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.WazeAutomatic')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeWrongDrivingDirection', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeWrongDrivingDirection', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeWrongDrivingDirection),
                         $('<label>', {for:'_cbHideByTypeWrongDrivingDirection', title:I18n.t('urce.prefs.HideByTypeWrongDrivingDirectionTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.WrongDrivingDirection')),
                         $('<br>')
@@ -2622,97 +2396,49 @@
                     ).append(
                         $('<input>', {type:'checkbox', id:'_cbHideByTaggedBog', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTaggedBog', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTaggedBog),
                         $('<label>', {for:'_cbHideByTaggedBog', title:I18n.t('urce.prefs.HideByTaggedBogTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Bog')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTaggedClosure', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTaggedClosure', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTaggedClosure),
                         $('<label>', {for:'_cbHideByTaggedClosure', title:I18n.t('urce.prefs.HideByTaggedClosureTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Closure')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTaggedConstruction', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTaggedConstruction', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTaggedConstruction),
                         $('<label>', {for:'_cbHideByTaggedConstruction', title:I18n.t('urce.prefs.HideByTaggedConstructionTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Construction')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTaggedDifficult', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTaggedDifficult', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTaggedDifficult),
                         $('<label>', {for:'_cbHideByTaggedDifficult', title:I18n.t('urce.prefs.HideByTaggedDifficultTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Difficult')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTaggedEvent', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTaggedEvent', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTaggedEvent),
                         $('<label>', {for:'_cbHideByTaggedEvent', title:I18n.t('urce.prefs.HideByTaggedEventTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Event')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTaggedNote', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTaggedNote', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTaggedNote),
                         $('<label>', {for:'_cbHideByTaggedNote', title:I18n.t('urce.prefs.HideByTaggedNoteTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Note')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTaggedRoadworks', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTaggedRoadworks', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTaggedRoadworks),
                         $('<label>', {for:'_cbHideByTaggedRoadworks', title:I18n.t('urce.prefs.HideByTaggedRoadworksTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Roadworks')),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTaggedWslm', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTaggedWslm', $(this).is(':checked'));
-                            (async () => {
-                                try {
-                                    await handleUrLayer('settingsToggle');
-                                } catch(error) {
-                                    logWarning(error);
-                                }
-                            })();
+                            invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTaggedWslm),
                         $('<label>', {for:'_cbHideByTaggedWslm', title:I18n.t('urce.prefs.HideByTaggedWslmTitle'), class:'URCE-label'}).text(I18n.t('urce.tags.Wslm')),
                         $('<br>')
@@ -2724,13 +2450,7 @@
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbHideByAgeOfSubmissionLessThan', urceprefs:'filtering'}).change(function() {
                                 changeSetting('hideByAgeOfSubmissionLessThan', $(this).is(':checked'));
-                                (async () => {
-                                    try {
-                                        await handleUrLayer('settingsToggle');
-                                    } catch(error) {
-                                        logWarning(error);
-                                    }
-                                })();
+                                invokeHandleUrLayer('settingsToggle');
                             }).prop('checked', _settings.hideByAgeOfSubmissionLessThan),
                             $('<label>', {for:'_cbHideByAgeOfSubmissionLessThan', class:'URCE-label'}).text(I18n.t('urce.common.LessThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -2740,13 +2460,7 @@
                                     if (val !== this.value) {
                                         changeSetting('hideByAgeOfSubmissionLessThanDaysOld', val);
                                         this.value = val;
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }
                                 }),
                                 $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.common.DaysOld'))
@@ -2755,13 +2469,7 @@
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbHideByAgeOfSubmissionMoreThan', urceprefs:'filtering'}).change(function() {
                                 changeSetting('hideByAgeOfSubmissionMoreThan', $(this).is(':checked'));
-                                (async () => {
-                                    try {
-                                        await handleUrLayer('settingsToggle');
-                                    } catch(error) {
-                                        logWarning(error);
-                                    }
-                                })();
+                                invokeHandleUrLayer('settingsToggle');
                             }).prop('checked', _settings.hideByAgeOfSubmissionMoreThan),
                             $('<label>', {for:'_cbHideByAgeOfSubmissionMoreThan', class:'URCE-label'}).text(I18n.t('urce.common.MoreThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -2771,13 +2479,7 @@
                                     if (val !== this.value) {
                                         changeSetting('hideByAgeOfSubmissionMoreThanDaysOld', val);
                                         this.value = val;
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }
                                 }),
                                 $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.common.DaysOld'))
@@ -2801,13 +2503,7 @@
                                             }
                                         }
                                         saveSettingsToStorage();
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }).prop('checked', _settings.hideFollowing),
                                     $('<label>', {for:'_cbHideFollowing', title:I18n.t('urce.prefs.HideFollowingTitle')}).text(I18n.t('urce.common.Following')),
                                     $('<input>', {type:'checkbox', id:'_cbHideNotFollowing', urceprefs:'filtering'}).change(function() {
@@ -2819,13 +2515,7 @@
                                             }
                                         }
                                         saveSettingsToStorage();
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }).prop('checked', _settings.hideNotFollowing),
                                     $('<label>', {for:'_cbHideNotFollowing', title:I18n.t('urce.prefs.HideNotFollowingTitle')}).text(I18n.t('urce.common.NotFollowing')),
                                 )
@@ -2842,13 +2532,7 @@
                                             }
                                         }
                                         saveSettingsToStorage();
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }).prop('checked', _settings.hideWithDescription),
                                     $('<label>', {for:'_cbHideWithDescription', title:I18n.t('urce.prefs.HideWithDescriptionTitle')}).text(I18n.t('urce.common.With')),
                                     $('<input>', {type:'checkbox', id:'_cbHideWithoutDescription', urceprefs:'filtering'}).change(function() {
@@ -2860,13 +2544,7 @@
                                             }
                                         }
                                         saveSettingsToStorage();
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }).prop('checked', _settings.hideWithoutDescription),
                                     $('<label>', {for:'_cbHideWithoutDescription', title:I18n.t('urce.prefs.HideWithoutDescriptionTitle')}).text(I18n.t('urce.common.Without')),
                                 )
@@ -2883,13 +2561,7 @@
                                             }
                                         }
                                         saveSettingsToStorage();
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }).prop('checked', _settings.hideWithCommentsFromMe),
                                     $('<label>', {for:'_cbHideWithCommentsFromMe', title:I18n.t('urce.prefs.HideWithCommentsFromMeTitle')}).text(I18n.t('urce.common.With')),
                                     $('<input>', {type:'checkbox', id:'_cbHideWithoutCommentsFromMe', urceprefs:'filtering'}).change(function() {
@@ -2901,13 +2573,7 @@
                                             }
                                         }
                                         saveSettingsToStorage();
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }).prop('checked', _settings.hideWithoutCommentsFromMe),
                                     $('<label>', {for:'_cbHideWithoutCommentsFromMe', title:I18n.t('urce.prefs.HideWithoutCommentsFromMeTitle')}).text(I18n.t('urce.common.Without')),
                                 )
@@ -2924,13 +2590,7 @@
                                             }
                                         }
                                         saveSettingsToStorage();
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }).prop('checked', _settings.hideFirstCommentByMe),
                                     $('<label>', {for:'_cbHideFirstCommentByMe', title:I18n.t('urce.prefs.HideFirstCommentByMeTitle')}).text(I18n.t('urce.common.Yes')),
                                     $('<input>', {type:'checkbox', id:'_cbHideFirstCommentNotByMe', urceprefs:'filtering'}).change(function() {
@@ -2942,13 +2602,7 @@
                                             }
                                         }
                                         saveSettingsToStorage();
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }).prop('checked', _settings.hideFirstCommentNotByMe),
                                     $('<label>', {for:'_cbHideFirstCommentNotByMe', title:I18n.t('urce.prefs.HideFirstCommentNotByMeTitle')}).text(I18n.t('urce.common.No')),
                                 )
@@ -2965,13 +2619,7 @@
                                             }
                                         }
                                         saveSettingsToStorage();
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }).prop('checked', _settings.hideLastCommentByMe),
                                     $('<label>', {for:'_cbHideLastCommentByMe', title:I18n.t('urce.prefs.HideLastCommentByMeTitle')}).text(I18n.t('urce.common.Yes')),
                                     $('<input>', {type:'checkbox', id:'_cbHideLastCommentNotByMe', urceprefs:'filtering'}).change(function() {
@@ -2983,13 +2631,7 @@
                                             }
                                         }
                                         saveSettingsToStorage();
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }).prop('checked', _settings.hideLastCommentNotByMe),
                                     $('<label>', {for:'_cbHideLastCommentNotByMe', title:I18n.t('urce.prefs.HideLastCommentNotByMeTitle')}).text(I18n.t('urce.common.No')),
                                 )
@@ -3006,13 +2648,7 @@
                                             }
                                         }
                                         saveSettingsToStorage();
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }).prop('checked', _settings.hideLastCommentByReporter),
                                     $('<label>', {for:'_cbHideLastCommentByReporter', title:I18n.t('urce.prefs.HideLastCommentByReporterTitle')}).text(I18n.t('urce.common.Yes')),
                                     $('<input>', {type:'checkbox', id:'_cbHideLastCommentNotByReporter', urceprefs:'filtering'}).change(function() {
@@ -3024,13 +2660,7 @@
                                             }
                                         }
                                         saveSettingsToStorage();
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }).prop('checked', _settings.hideLastCommentNotByReporter),
                                     $('<label>', {for:'_cbHideLastCommentNotByReporter', title:I18n.t('urce.prefs.HideLastCommentNotByReporterTitle')}).text(I18n.t('urce.common.No')),
                                 )
@@ -3040,13 +2670,7 @@
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbHideByCommentCountLessThan', urceprefs:'filtering'}).change(function() {
                                 changeSetting('hideByCommentCountLessThan', $(this).is(':checked'));
-                                (async () => {
-                                    try {
-                                        await handleUrLayer('settingsToggle');
-                                    } catch(error) {
-                                        logWarning(error);
-                                    }
-                                })();
+                                invokeHandleUrLayer('settingsToggle');
                             }).prop('checked', _settings.hideByCommentCountLessThan),
                             $('<label>', {for:'_cbHideByCommentCountLessThan', class:'URCE-label'}).text(I18n.t('urce.common.LessThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3056,13 +2680,7 @@
                                     if (val !== this.value) {
                                         changeSetting('hideByCommentCountLessThanNumber', val);
                                         this.value = val;
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }
                                 }),
                                 $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.tabs.Comments').toLowerCase())
@@ -3071,13 +2689,7 @@
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbHideByCommentCountMoreThan', urceprefs:'filtering'}).change(function() {
                                 changeSetting('hideByCommentCountMoreThan', $(this).is(':checked'));
-                                (async () => {
-                                    try {
-                                        await handleUrLayer('settingsToggle');
-                                    } catch(error) {
-                                        logWarning(error);
-                                    }
-                                })();
+                                invokeHandleUrLayer('settingsToggle');
                             }).prop('checked', _settings.hideByCommentCountMoreThan),
                             $('<label>', {for:'_cbHideByCommentCountMoreThan', class:'URCE-label'}).text(I18n.t('urce.common.MoreThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3087,13 +2699,7 @@
                                     if (val !== this.value) {
                                         changeSetting('hideByCommentCountMoreThanNumber', val);
                                         this.value = val;
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }
                                 }),
                                 $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.tabs.Comments').toLowerCase())
@@ -3103,13 +2709,7 @@
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbHideByAgeOfFirstCommentLessThan', urceprefs:'filtering'}).change(function() {
                                 changeSetting('hideByAgeOfFirstCommentLessThan', $(this).is(':checked'));
-                                (async () => {
-                                    try {
-                                        await handleUrLayer('settingsToggle');
-                                    } catch(error) {
-                                        logWarning(error);
-                                    }
-                                })();
+                                invokeHandleUrLayer('settingsToggle');
                             }).prop('checked', _settings.hideByAgeOfFirstCommentLessThan),
                             $('<label>', {for:'_cbHideByAgeOfFirstCommentLessThan', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByAgeOfFirstCommentLessThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3119,13 +2719,7 @@
                                     if (val !== this.value) {
                                         changeSetting('hideByAgeOfFirstCommentLessThanDaysOld', val);
                                         this.value = val;
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }
                                 }),
                                 $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.common.DaysOld'))
@@ -3134,13 +2728,7 @@
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbHideByAgeOfFirstCommentMoreThan', urceprefs:'filtering'}).change(function() {
                                 changeSetting('hideByAgeOfFirstCommentMoreThan', $(this).is(':checked'));
-                                (async () => {
-                                    try {
-                                        await handleUrLayer('settingsToggle');
-                                    } catch(error) {
-                                        logWarning(error);
-                                    }
-                                })();
+                                invokeHandleUrLayer('settingsToggle');
                             }).prop('checked', _settings.hideByAgeOfFirstCommentMoreThan),
                             $('<label>', {for:'_cbHideByAgeOfFirstCommentMoreThan', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByAgeOfFirstCommentMoreThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3150,13 +2738,7 @@
                                     if (val !== this.value) {
                                         changeSetting('hideByAgeOfFirstCommentMoreThanDaysAgo', val);
                                         this.value = val;
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }
                                 }),
                                 $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.common.DaysOld'))
@@ -3166,13 +2748,7 @@
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbHideByAgeOfLastCommentLessThan', urceprefs:'filtering'}).change(function() {
                                 changeSetting('hideByAgeOfLastCommentLessThan', $(this).is(':checked'));
-                                (async () => {
-                                    try {
-                                        await handleUrLayer('settingsToggle');
-                                    } catch(error) {
-                                        logWarning(error);
-                                    }
-                                })();
+                                invokeHandleUrLayer('settingsToggle');
                             }).prop('checked', _settings.hideByAgeOfLastCommentLessThan),
                             $('<label>', {for:'_cbHideByAgeOfLastCommentLessThan', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByAgeOfLastCommentLessThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3182,13 +2758,7 @@
                                     if (val !== this.value) {
                                         changeSetting('hideByAgeOfLastCommentLessThanDaysOld', val);
                                         this.value = val;
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }
                                 }),
                                 $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.common.DaysOld'))
@@ -3197,13 +2767,7 @@
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbHideByAgeOfLastCommentMoreThan', urceprefs:'filtering'}).change(function() {
                                 changeSetting('hideByAgeOfLastCommentMoreThan', $(this).is(':checked'));
-                                (async () => {
-                                    try {
-                                        await handleUrLayer('settingsToggle');
-                                    } catch(error) {
-                                        logWarning(error);
-                                    }
-                                })();
+                                invokeHandleUrLayer('settingsToggle');
                             }).prop('checked', _settings.hideByAgeOfLastCommentMoreThan),
                             $('<label>', {for:'_cbHideByAgeOfLastCommentMoreThan', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByAgeOfLastCommentMoreThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3213,13 +2777,7 @@
                                     if (val !== this.value) {
                                         changeSetting('hideByAgeOfLastCommentMoreThanDaysAgo', val);
                                         this.value = val;
-                                        (async () => {
-                                            try {
-                                                await handleUrLayer('settingsToggle');
-                                            } catch(error) {
-                                                logWarning(error);
-                                            }
-                                        })();
+                                        invokeHandleUrLayer('settingsToggle');
                                     }
                                 }),
                                 $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.common.DaysOld'))
@@ -3249,13 +2807,7 @@
                             if (numReminderDays !== this.value) {
                                 changeSetting('reminderDays', numReminderDays);
                                 this.value = numReminderDays;
-                                (async () => {
-                                    try {
-                                        await handleUrLayer('settingsToggle');
-                                    } catch(error) {
-                                        logWarning(error);
-                                    }
-                                })();
+                                invokeHandleUrLayer('settingsToggle');
                             }
                         })
                     ),
@@ -3269,13 +2821,7 @@
                             if (numCloseDays !== this.value) {
                                 changeSetting('closeDays', numCloseDays);
                                 this.value = numCloseDays;
-                                (async () => {
-                                    try {
-                                        await handleUrLayer('settingsToggle');
-                                    } catch(error) {
-                                        logWarning(error);
-                                    }
-                                })();
+                                invokeHandleUrLayer('settingsToggle');
                             }
                         })
                     )
