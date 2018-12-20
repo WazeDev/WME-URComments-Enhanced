@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.19.03
+// @version     2018.12.20.01
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -489,17 +489,15 @@
         logDebug('Waiting 250ms before scrolling to bottom of the conversation list to give it time to load.');
         await setTimeout(scrollToBottom, 250);
         if (urData.comments.length === 0) {
+            if (_settings.autoZoomInOnNewUr) autoZoomIn(urId);
             commentNum = Object.values(_defaultComments).find(defaultComment => { return defaultComment.urNum === mUrObj.attributes.type }).commentNum;
-            if (_settings.autoSetNewUrComment) {
-                if (_settings.autoZoomInOnNewUr) autoZoomIn(urId);
-                if (_selUr.urOpen) {
-                    if (_settings.autoClickOpenSolvedNi) autoClickOpenSolvedNi(commentNum);
-                    try {
-                        await postUrComment(_commentList[commentNum].comment);
-                    } catch(error) {
-                        logError(error);
-                        showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
-                    }
+            if (_settings.autoSetNewUrComment && commentNum && _selUr.urOpen) {
+                if (_settings.autoClickOpenSolvedNi) autoClickOpenSolvedNi(commentNum);
+                try {
+                    await postUrComment(_commentList[commentNum].comment);
+                } catch(error) {
+                    logError(error);
+                    showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
                 }
             }
         } else if (urData.comments.length === 1) {
@@ -507,16 +505,14 @@
             if (_settings.autoCenterOnUr) autoCenterOnUr(urId);
             let lastCommentBy = urData.comments[(urData.comments.length - 1)].userID;
             let commentDaysOld = urData.comments[(urData.comments.length - 1)].createdOn === null ? -1 : uroDateToDays(urData.comments[(urData.comments.length - 1)].createdOn);
-            if (_settings.autoSetReminderUrComment && urData.comments.length > 0 && _settings.reminderDays !== 0 &&commentDaysOld > (_settings.reminderDays - 1) && lastCommentBy > 1) {
-                if (_selUr.urOpen) {
-                    if (_settings.autoZoomInOnNewUr) autoZoomIn(urId);
-                    if (_settings.autoClickOpenSolvedNi) autoClickOpenSolvedNi(commentNum);
-                    try {
-                        await postUrComment(_commentList[commentNum].comment);
-                    } catch(error) {
-                        logError(error);
-                        showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
-                    }
+            if (_settings.autoSetReminderUrComment && commentNum && urData.comments.length > 0 && _settings.reminderDays !== 0 && commentDaysOld > (_settings.reminderDays - 1) && lastCommentBy > 1 && _selUr.urOpen) {
+                if (_settings.autoZoomInOnNewUr) autoZoomIn(urId);
+                if (_settings.autoClickOpenSolvedNi) autoClickOpenSolvedNi(commentNum);
+                try {
+                    await postUrComment(_commentList[commentNum].comment);
+                } catch(error) {
+                    logError(error);
+                    showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
                 }
             }
         } else {
@@ -697,6 +693,22 @@
             }
         }
         return text.replace(/\\[r|n]+/gmi, '\n');
+    }
+
+    function autoPostReminderComment(urId, comment) {
+        return new Promise((resolve, reject) => {
+            try {
+                logDebug('Automatically sending reminder comment to urId: ' + urId);
+                showAlertBanner(I18n.t('urce.prompts.ReminderMessageAuto') + ' ' + urId, 3000);
+                W.model.updateRequestSessions.objects[urId].addComment(comment);
+                W.model.mapUpdateRequests.objects[urId].attributes.reminderSent = 'true';
+            } catch(error) {
+                delete(W.model.mapUpdateRequests.objects[urId].attributes.reminderSent);
+                reject(error);
+                return;
+            }
+            resolve();
+        });
     }
 
     function postUrComment(comment) {
@@ -1118,11 +1130,14 @@
                         if (lastCommentBy > 1) {
                             if (_settings.reminderDays !== 0 && commentDaysOld > (_settings.reminderDays - 1)) {
                                 if (_wmeUserId === lastCommentBy && !urReminderSent && _settings.autoSendReminders) {
-                                    showAlertBanner(I18n.t('urce.prompts.ReminderMessageAuto') + ' ' + urId, 3000);
-                                    W.model.updateRequestSessions.objects[urId].addComment(_defaultComments.dr.commentNum);
-                                    W.model.mapUpdateRequests.objects[urId].attributes.reminderSent = 'true';
-                                    if (_settings.unfollowUrAfterSend) unfollowUrAfterSend(urId);
-                                    urWaiting = true;
+                                    try {
+                                        await autoPostReminderComment(urId, formatText(_commentList[_defaultComments.dr.commentNum].comment));
+                                        if (_settings.unfollowUrAfterSend) unfollowUrAfterSend(urId);
+                                        urWaiting = true;
+                                    } catch(error) {
+                                        needsReminder = true;
+                                        logWarning(error); // Don't return here as we should go ahead and process the filtering.
+                                    }
                                 } else {
                                     needsReminder = true;
                                 }
