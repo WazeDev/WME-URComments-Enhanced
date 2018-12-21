@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.21.01
+// @version     2018.12.21.02
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -41,7 +41,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.','Comment Lists now controlled from spreadsheet' ];
+    const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.','es-419 translations', 'Minor bugfixes' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -170,6 +170,7 @@
             hideByTypeIncorrectAddress: false,
             hideByTypeIncorrectJunction: false,
             hideByTypeIncorrectRoute: false,
+            hideByTypeIncorrectStreetPrefixOrSuffix: false,
             hideByTypeIncorrectTurn: false,
             hideByTypeMissingBridgeOverpass: false,
             hideByTypeMissingExit: false,
@@ -177,6 +178,7 @@
             hideByTypeMissingOrInvalidSpeedLimit: false,
             hideByTypeMissingRoad: false,
             hideByTypeMissingRoundabout: false,
+            hideByTypeMissingStreetName: false,
             hideByTypeTurnNotAllowed: false,
             hideByTypeUndefined: false,
             hideByTypeWazeAutomatic: false,
@@ -192,9 +194,9 @@
             hideByTaggedWslm: false,
             // -- Hide by age of submission
             hideByAgeOfSubmissionLessThan: false,
-            hideByAgeOfSubmissionLessThanDaysOld: null,
+            hideByAgeOfSubmissionLessThanDaysOld: undefined,
             hideByAgeOfSubmissionMoreThan: false,
-            hideByAgeOfSubmissionMoreThanDaysOld: null,
+            hideByAgeOfSubmissionMoreThanDaysOld: undefined,
             // -- Hide by Descriptions / Comments / Following
             hideFollowing: false,
             hideNotFollowing: false,
@@ -209,22 +211,22 @@
             hideLastCommentByReporter: false,
             hideLastCommentNotByReporter: false,
             hideByCommentCountLessThan: false,
-            hideByCommentCountLessThanNumber: null,
+            hideByCommentCountLessThanNumber: undefined,
             hideByCommentCountMoreThan: false,
-            hideByCommentCountMoreThanNumber: null,
+            hideByCommentCountMoreThanNumber: undefined,
             hideByAgeOfFirstCommentLessThan: false,
-            hideByAgeOfFirstCommentLessThanDaysOld: null,
+            hideByAgeOfFirstCommentLessThanDaysOld: undefined,
             hideByAgeOfFirstCommentMoreThan: false,
-            hideByAgeOfFirstCommentMoreThanDaysOld: null,
+            hideByAgeOfFirstCommentMoreThanDaysOld: undefined,
             hideByAgeOfLastCommentLessThan: false,
-            hideByAgeOfLastCommentLessThanDaysOld: null,
+            hideByAgeOfLastCommentLessThanDaysOld: undefined,
             hideByAgeOfLastCommentMoreThan: false,
-            hideByAgeOfLastCommentMoreThanDaysOld: null,
+            hideByAgeOfLastCommentMoreThanDaysOld: undefined,
             // Common Prefs
             reminderDays: 0,
             closeDays: 7,
-            wmeUserId: null,
-            lastVersion: null
+            wmeUserId: undefined,
+            lastVersion: undefined
         };
          _settings = loadedSettings ? loadedSettings : defaultSettings;
         for (let prop in defaultSettings) {
@@ -1191,6 +1193,7 @@
                      (_settings.hideByTypeIncorrectAddress && urType === 7) ||
                      (_settings.hideByTypeIncorrectJunction && urType === 12) ||
                      (_settings.hideByTypeIncorrectRoute && urType === 8) ||
+                     (_settings.hideByTypeIncorrectStreetPrefixOrSuffix && urType === 22) ||
                      (_settings.hideByTypeIncorrectTurn && urType === 6) ||
                      (_settings.hideByTypeMissingBridgeOverpass && urType === 13) ||
                      (_settings.hideByTypeMissingExit && urType === 15) ||
@@ -1198,8 +1201,9 @@
                      (_settings.hideByTypeMissingOrInvalidSpeedLimit && urType === 23) ||
                      (_settings.hideByTypeMissingRoad && urType === 16) ||
                      (_settings.hideByTypeMissingRoundabout && urType === 9) ||
+                     (_settings.hideByTypeMissingStreetName && urType === 21) ||
                      (_settings.hideByTypeTurnNotAllowed && urType === 11) ||
-                     (_settings.hideByTypeUndefined && (!urType || (urType > 19 && urType !== 23) || urType < 6 || urType === 17)) ||
+                     (_settings.hideByTypeUndefined && (!urType || urType > 23 || urType < 6 || urType === 17 || urType === 20)) ||
                      (_settings.hideByTypeWazeAutomatic && urDesc.indexOf('Waze Automatic:') > -1) ||
                      (_settings.hideByTypeWrongDrivingDirection && urType === 14) ||
                      //Tags
@@ -1342,10 +1346,10 @@
     }
 
     async function changeCommentList(commentListIdx) {
-        commentListIdx = parseInt(commentListIdx || 0);
-        if (commentListIdx != _settings.commentList) {
-            logDebug('Switching comment list from ' + _commentLists[_settings.commentList].name + ' to ' + _commentLists[commentListIdx].name + '.');
-            _settings.commentList = parseInt(commentListIdx);
+        commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
+        if (commentListIdx !== _settings.commentList) {
+            logDebug('Switching comment list from ' + getCommentListInfo(_settings.commentList).name + ' to ' + getCommentListInfo(commentListIdx).name + '.');
+            _settings.commentList = commentListIdx;
             let buildCommentListResult = await buildCommentList(commentListIdx);
             if (buildCommentListResult.error) {
                 handleBuildCommentListError(buildCommentListResult.error);
@@ -1355,7 +1359,7 @@
     }
 
     function getCommentListInfo(commentListIdx) {
-        commentListIdx = parseInt(commentListIdx || _settings.commentList);
+        commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
         return _commentLists.find(cList => { return cList.idx === commentListIdx });
     }
 
@@ -1376,7 +1380,7 @@
 
     function convertCommentListStatic(commentListIdx) {
         return new Promise(async (resolve, reject) => {
-            commentListIdx = parseInt(commentListIdx || _settings.commentList);
+            commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
             let oldVarName = getCommentListInfo(commentListIdx).oldVarName;
             try {
                 await checkForStaticListArray(oldVarName);
@@ -1579,7 +1583,7 @@
     }
 
     function commentListAsync(commentListIdx) {
-        commentListIdx = parseInt(commentListIdx || _settings.commentList);
+        commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
         logDebug('Beginning comment list async for comment list: ' + getCommentListInfo(commentListIdx).name);
         return new Promise(async (resolve, reject) => {
             let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/' + getCommentListInfo(commentListIdx).gSheetRange + '?key=' + URCE_API_KEY;
@@ -1595,7 +1599,7 @@
     }
 
     async function buildCommentList(commentListIdx) {
-        commentListIdx = parseInt(commentListIdx || _settings.commentList);
+        commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
         logDebug('Building comment list for: ' + getCommentListInfo(commentListIdx).name);
         _commentListLoaded = false;
         let data, result;
@@ -1819,8 +1823,8 @@
         logDebug('Injecting CSS.');
         let css = [
             // Comments tab
-            '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:12px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-commentListName { padding-left:12px; font-size:12px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:11px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-commentListName { padding-left:12px; font-size:10px; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:11px; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }',
@@ -1831,6 +1835,7 @@
             '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-bottom:4px; height:16px; float:right; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }',
+            '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { float:right; font-size:8px; padding-top:2px; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-group_body.urStyle { padding-left:23px !important; }',
             // Settings tab
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }',
@@ -1838,11 +1843,11 @@
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-daysInput { width:38px; height:20px; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-span { text-transform:uppercase; cursor:pointer; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:12px;}',
+            '#sidepanel-urc-e #panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:10px;}',
             '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-subHeading { font-weight:600; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 10px !important; line-height:12px }',
+            '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 8px !important; line-height:10px }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline { display:inline; padding-left:4px; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"] { margin:0 5px 0 10px; vertical-align:middle; cursor:pointer; }',
+            '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"] { margin:0 5px 0 5px; vertical-align:middle; cursor:pointer; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-controls select { height:22px; vertical-align:middle; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; }',
             // Common
@@ -1853,9 +1858,9 @@
             '#sidepanel-urc-e .URCE-legend.urStyle { border-bottom-style:unset !important; margin-bottom:2px !important; width:100% !important; background-color:#F6F7F7 !important; line-height:20px !important; padding:0 2px 0 2px !important; border-top:1px solid #C0C0C0 !important; border-bottom:1px solid #C0C0C0 !important; }',
             '#sidepanel-urc-e .URCE-divCC { /* padding-top:2px !important; */ }',
             '#sidepanel-urc-e .URCE-label { white-space:pre-line; margin:0 0 0 0; }',
-            '#sidepanel-urc-e .URCE-span { font-size:14px; font-weight:600; }',
-            '#sidepanel-urc-e .URCE-spanTitle { font-size:14px; font-weight:600; }',
-            '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:10px; color:#aaa; }',
+            '#sidepanel-urc-e .URCE-span { font-size:12px; font-weight:600; }',
+            '#sidepanel-urc-e .URCE-spanTitle { font-size:12px; font-weight:600; }',
+            '#sidepanel-urc-e .URCE-spanVersion { font-size:8px; margin-left:10px; color:#aaa; }',
             '#sidepanel-urc-e .URCE-divTabs { padding:8px; padding-top:2px; }',
             // Main Tabs
             '.URCE-tabIcon { padding-bottom:6px; width:18px; }',
@@ -1909,7 +1914,13 @@
             $('<fieldset>', {id:'urce-prefs-fieldset-commentList', class:`URCE-field${urStyle}`}).append(
                 $('<legend>', {id:'urce-prefs-legend-commentList', class:`URCE-legend${urStyle}`}).append(
                     $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
-                    $('<span>', {class:'URCE-span'}).text(I18n.t('urce.common.CommentList'))
+                    $('<span>', {class:'URCE-span'}).text(I18n.t('urce.common.CommentList')).append(
+                        $('<a>', {class:'URCE-Controls URCE-spreadsheetLink', id:'urce-spreadsheet-link', title:I18n.t('urce.prefs.SpreadsheetLinkTitle'), href:'http://bit.ly/urc-e_ss'}).text(I18n.t('urce.prefs.SpreadsheetLink')).click(function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.open(this.href, '_blank');
+                        })
+                    )
                 ).click(function() {
                     $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
                     $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
@@ -1929,7 +1940,7 @@
                             }
                         });
                         return $selList.val(_settings.commentList).change(function() {
-                            changeCommentList($(this).val());
+                            changeCommentList(parseInt($(this).val(), 10), this);
                         });
                     }),
                     // Comment list style
@@ -2269,7 +2280,7 @@
                             changeSetting('hideByStatusOpen', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByStatusOpen),
-                        $('<label>', {for:'_cbHideByStatusOpen', title:I18n.t('urce.prefs.HideByStatusOpenTitle'), class:'URCE-label'}).text(I18n.t('urce.urStatus.Open')),
+                        $('<label>', {for:'_cbHideByStatusOpen', title:I18n.t('urce.prefs.HideByStatusOpenTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].venues.update_requests.panel.action.open),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByStatusClosed', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByStatusClosed', $(this).is(':checked'));
@@ -2287,7 +2298,7 @@
                             changeSetting('hideByStatusSolved', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByStatusSolved),
-                        $('<label>', {for:'_cbHideByStatusSolved', title:I18n.t('urce.prefs.HideByStatusSolvedTitle'), class:'URCE-label'}).text(I18n.t('urce.urStatus.Solved')),
+                        $('<label>', {for:'_cbHideByStatusSolved', title:I18n.t('urce.prefs.HideByStatusSolvedTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].venues.update_requests.panel.solved),
                         $('<br>')
                     ),
                     // -- Hide by type
@@ -2298,79 +2309,91 @@
                             changeSetting('hideByTypeBlockedRoad', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeBlockedRoad),
-                        $('<label>', {for:'_cbHideByTypeBlockedRoad', title:I18n.t('urce.prefs.HideByTypeBlockedRoadTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.BlockedRoad')),
+                        $('<label>', {for:'_cbHideByTypeBlockedRoad', title:I18n.t('urce.prefs.HideByTypeBlockedRoadTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[19]),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeGeneralError', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeGeneralError', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeGeneralError),
-                        $('<label>', {for:'_cbHideByTypeGeneralError', title:I18n.t('urce.prefs.HideByTypeGeneralErrorTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.GeneralError')),
+                        $('<label>', {for:'_cbHideByTypeGeneralError', title:I18n.t('urce.prefs.HideByTypeGeneralErrorTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[10]),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeIncorrectAddress', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeIncorrectAddress', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeIncorrectAddress),
-                        $('<label>', {for:'_cbHideByTypeIncorrectAddress', title:I18n.t('urce.prefs.HideByTypeIncorrectAddressTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.IncorrectAddress')),
+                        $('<label>', {for:'_cbHideByTypeIncorrectAddress', title:I18n.t('urce.prefs.HideByTypeIncorrectAddressTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[7]),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeIncorrectJunction', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeIncorrectJunction', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeIncorrectJunction),
-                        $('<label>', {for:'_cbHideByTypeIncorrectJunction', title:I18n.t('urce.prefs.HideByTypeIncorrectJunctionTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.IncorrectJunction')),
+                        $('<label>', {for:'_cbHideByTypeIncorrectJunction', title:I18n.t('urce.prefs.HideByTypeIncorrectJunctionTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[12]),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeIncorrectRoute', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeIncorrectRoute', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeIncorrectRoute),
-                        $('<label>', {for:'_cbHideByTypeIncorrectRoute', title:I18n.t('urce.prefs.HideByTypeIncorrectRouteTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.IncorrectRoute')),
+                        $('<label>', {for:'_cbHideByTypeIncorrectRoute', title:I18n.t('urce.prefs.HideByTypeIncorrectRouteTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[8]),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeIncorrectStreetPrefixOrSuffix', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeIncorrectStreetPrefixOrSuffix', $(this).is(':checked'));
+                            invokeHandleUrLayer('settingsToggle');
+                        }).prop('checked', _settings.hideByTypeIncorrectStreetPrefixOrSuffix),
+                        $('<label>', {for:'_cbHideByTypeIncorrectStreetPrefixOrSuffix', title:I18n.t('urce.prefs.HideByTypeIncorrectStreetPrefixOrSuffixTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[22]),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeIncorrectTurn', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeIncorrectTurn', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeIncorrectTurn),
-                        $('<label>', {for:'_cbHideByTypeIncorrectTurn', title:I18n.t('urce.prefs.HideByTypeIncorrectTurnTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.IncorrectTurn')),
+                        $('<label>', {for:'_cbHideByTypeIncorrectTurn', title:I18n.t('urce.prefs.HideByTypeIncorrectTurnTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[6]),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingBridgeOverpass', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeMissingBridgeOverpass', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeMissingBridgeOverpass),
-                        $('<label>', {for:'_cbHideByTypeMissingBridgeOverpass', title:I18n.t('urce.prefs.HideByTypeMissingBridgeOverpassTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingBridgeOverpass')),
+                        $('<label>', {for:'_cbHideByTypeMissingBridgeOverpass', title:I18n.t('urce.prefs.HideByTypeMissingBridgeOverpassTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[13]),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingExit', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeMissingExit', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeMissingExit),
-                        $('<label>', {for:'_cbHideByTypeMissingExit', title:I18n.t('urce.prefs.HideByTypeMissingExitTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingExit')),
+                        $('<label>', {for:'_cbHideByTypeMissingExit', title:I18n.t('urce.prefs.HideByTypeMissingExitTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[15]),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingLandmark', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeMissingLandmark', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeMissingLandmark),
-                        $('<label>', {for:'_cbHideByTypeMissingLandmark', title:I18n.t('urce.prefs.HideByTypeMissingLandmarkTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingLandmark')),
+                        $('<label>', {for:'_cbHideByTypeMissingLandmark', title:I18n.t('urce.prefs.HideByTypeMissingLandmarkTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[18]),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingOrInvalidSpeedLimit', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeMissingOrInvalidSpeedLimit', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeMissingOrInvalidSpeedLimit),
-                        $('<label>', {for:'_cbHideByTypeMissingOrInvalidSpeedLimit', title:I18n.t('urce.prefs.HideByTypeMissingOrInvalidSpeedLimitTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingOrInvalidSpeedLimit')),
+                        $('<label>', {for:'_cbHideByTypeMissingOrInvalidSpeedLimit', title:I18n.t('urce.prefs.HideByTypeMissingOrInvalidSpeedLimitTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[23]),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingRoad', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeMissingRoad', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeMissingRoad),
-                        $('<label>', {for:'_cbHideByTypeMissingRoad', title:I18n.t('urce.prefs.HideByTypeMissingRoadTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingRoad')),
+                        $('<label>', {for:'_cbHideByTypeMissingRoad', title:I18n.t('urce.prefs.HideByTypeMissingRoadTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[16]),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingRoundabout', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeMissingRoundabout', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeMissingRoundabout),
-                        $('<label>', {for:'_cbHideByTypeMissingRoundabout', title:I18n.t('urce.prefs.HideByTypeMissingRoundaboutTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.MissingRoundabout')),
+                        $('<label>', {for:'_cbHideByTypeMissingRoundabout', title:I18n.t('urce.prefs.HideByTypeMissingRoundaboutTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[9]),
+                        $('<br>'),
+                        $('<input>', {type:'checkbox', id:'_cbHideByTypeMissingStreetName', urceprefs:'filtering'}).change(function() {
+                            changeSetting('hideByTypeMissingStreetName', $(this).is(':checked'));
+                            invokeHandleUrLayer('settingsToggle');
+                        }).prop('checked', _settings.hideByTypeMissingStreetName),
+                        $('<label>', {for:'_cbHideByTypeMissingStreetName', title:I18n.t('urce.prefs.HideByTypeMissingStreetNameTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[21]),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeTurnNotAllowed', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeTurnNotAllowed', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeTurnNotAllowed),
-                        $('<label>', {for:'_cbHideByTypeTurnNotAllowed', title:I18n.t('urce.prefs.HideByTypeTurnNotAllowedTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.TurnNotAllowed')),
+                        $('<label>', {for:'_cbHideByTypeTurnNotAllowed', title:I18n.t('urce.prefs.HideByTypeTurnNotAllowedTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[11]),
                         $('<br>'),
                         $('<input>', {type:'checkbox', id:'_cbHideByTypeUndefined', urceprefs:'filtering'}).change(function() {
                             changeSetting('hideByTypeUndefined', $(this).is(':checked'));
@@ -2388,7 +2411,7 @@
                             changeSetting('hideByTypeWrongDrivingDirection', $(this).is(':checked'));
                             invokeHandleUrLayer('settingsToggle');
                         }).prop('checked', _settings.hideByTypeWrongDrivingDirection),
-                        $('<label>', {for:'_cbHideByTypeWrongDrivingDirection', title:I18n.t('urce.prefs.HideByTypeWrongDrivingDirectionTitle'), class:'URCE-label'}).text(I18n.t('urce.urTypes.WrongDrivingDirection')),
+                        $('<label>', {for:'_cbHideByTypeWrongDrivingDirection', title:I18n.t('urce.prefs.HideByTypeWrongDrivingDirectionTitle'), class:'URCE-label'}).text(I18n.translations[I18n.currentLocale()].update_requests.types[14]),
                         $('<br>')
                     ),
                     // -- Hide by tagged
@@ -2464,8 +2487,8 @@
                                         invokeHandleUrLayer('settingsToggle');
                                     }
                                 }),
-                                $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.common.DaysOld'))
-                            ),
+                                $('<div>', {class:'URCE-divDaysInline'}).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
+                            )
                         ),
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbHideByAgeOfSubmissionMoreThan', urceprefs:'filtering'}).change(function() {
@@ -2483,7 +2506,7 @@
                                         invokeHandleUrLayer('settingsToggle');
                                     }
                                 }),
-                                $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.common.DaysOld'))
+                                $('<div>', {class:'URCE-divDaysInline'}).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
                             )
                         )
                     ),
@@ -2522,7 +2545,7 @@
                                 )
                             ),
                             // -- -- With / without description
-                            $('<div>').text(I18n.t('urce.common.Description') + ': ').append(
+                            $('<div>').text(I18n.translations[I18n.currentLocale()].objects.venue.fields.description + ': ').append(
                                 $('<div>', {style:'display:inline;'}).append(
                                     $('<input>', {type:'checkbox', id:'_cbHideWithDescription', urceprefs:'filtering'}).change(function() {
                                         _settings.hideWithDescription = $(this).is(':checked');
@@ -2685,7 +2708,7 @@
                                     }
                                 }),
                                 $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.tabs.Comments').toLowerCase())
-                            ),
+                            )
                         ),
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbHideByCommentCountMoreThan', urceprefs:'filtering'}).change(function() {
@@ -2704,7 +2727,7 @@
                                     }
                                 }),
                                 $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.tabs.Comments').toLowerCase())
-                            ),
+                            )
                         ),
                         // -- -- Age of first comment less than / more than XX days old
                         $('<div>').append(
@@ -2723,8 +2746,8 @@
                                         invokeHandleUrLayer('settingsToggle');
                                     }
                                 }),
-                                $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.common.DaysOld'))
-                            ),
+                                $('<div>', {class:'URCE-divDaysInline'}).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
+                            )
                         ),
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbHideByAgeOfFirstCommentMoreThan', urceprefs:'filtering'}).change(function() {
@@ -2742,8 +2765,8 @@
                                         invokeHandleUrLayer('settingsToggle');
                                     }
                                 }),
-                                $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.common.DaysOld'))
-                            ),
+                                $('<div>', {class:'URCE-divDaysInline'}).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
+                            )
                         ),
                         // -- -- Age of last comment less than / more than XX days old
                         $('<div>').append(
@@ -2762,8 +2785,8 @@
                                         invokeHandleUrLayer('settingsToggle');
                                     }
                                 }),
-                                $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.common.DaysOld'))
-                            ),
+                                $('<div>', {class:'URCE-divDaysInline'}).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
+                            )
                         ),
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbHideByAgeOfLastCommentMoreThan', urceprefs:'filtering'}).change(function() {
@@ -2781,7 +2804,7 @@
                                         invokeHandleUrLayer('settingsToggle');
                                     }
                                 }),
-                                $('<div>', {class:'URCE-divDaysInline'}).append(I18n.t('urce.common.DaysOld'))
+                                $('<div>', {class:'URCE-divDaysInline'}).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
                             )
                         )
                     )
@@ -2946,10 +2969,9 @@
                 common: {
                     All: 'All',
                     CommentList: 'Comment List',
-                    DaysOld: 'days old',
                     Description: 'Description',
                     DoubleClickTitle: 'Double click here to send this comment',
-                    ErrorGeneric: 'An error has occurred within URC-E. Please contact dBsooner via Discord or PM.',
+                    ErrorGeneric: 'An error has occurred within URC-E. Please contact ' + SCRIPT_AUTHOR + ' via Discord or PM.',
                     ErrorHeader: 'URC-E Error',
                     Following: 'Following',
                     LessThan: 'Less than',
@@ -2971,6 +2993,8 @@
                     // Comment List
                     CommentListTitle: 'Select the custom list you would like to use. CommentTeam is the default. If you would like your comment list built into this script or have suggestions on the CommentTeam list, please contact dBsooner on Discord or via PM.',
                     CommentListStyleTitle: 'Select the style you would like the URC-E panel to be displayed in. This only affects the look of the tab, no functionality is changed.',
+                    SpreadsheetLink: 'Spreadsheet',
+                    SpreadsheetLinkTitle: 'Click here to view the URC-E spreadsheet.',
                     StyleDefault: 'Default',
                     StyleUrStyle: 'UR Style',
                     // URC-E Preferences
@@ -3045,6 +3069,7 @@
                     HideByTypeIncorrectAddressTitle: 'Hide all incorrect address URs.',
                     HideByTypeIncorrectJunctionTitle: 'Hide all incorrect junction URs.',
                     HideByTypeIncorrectRouteTitle: 'Hide all incorrect route URs.',
+                    HideByTypeIncorrectStreetPrefixOrSuffixTitle: 'Hide all incorrect street prefix or suffix URs',
                     HideByTypeIncorrectTurnTitle: 'Hide all incorrect turn URs.',
                     HideByTypeMissingBridgeOverpassTitle: 'Hide all missing bridge overpass URs.',
                     HideByTypeMissingExitTitle: 'Hide all missing exit URs.',
@@ -3052,6 +3077,7 @@
                     HideByTypeMissingOrInvalidSpeedLimitTitle: 'Hide all missing or invalid speed limit URs',
                     HideByTypeMissingRoadTitle: 'Hide all missing road URs.',
                     HideByTypeMissingRoundaboutTitle: 'Hide all missing roundabout URs.',
+                    HideByTypeMissingStreetNameTitle: 'Hide all missing street name URs.',
                     HideByTypeTurnNotAllowedTitle: 'Hide all turn not allowed URs.',
                     HideByTypeUndefinedTitle: 'Hide all undefined URs.',
                     HideByTypeWazeAutomaticTitle: 'Hide all Waze automatic URs.',
@@ -3126,34 +3152,226 @@
                     Wslm: '[WSLM]'
                 },
                 urStatus: {
-                    Open: 'Open',
                     Closed: 'Closed',
-                    Solved: 'Solved',
                     NotIdentified: 'Not identified'
                 },
                 urTypes: {
-                    BlockedRoad: 'Blocked road',
-                    GeneralError: 'General error',
-                    IncorrectAddress: 'Incorrect address',
-                    IncorrectJunction: 'Incorrect junction',
-                    IncorrectRoute: 'Incorrect route',
-                    IncorrectTurn: 'Incorrect turn',
-                    MissingBridgeOverpass: 'Missing bridge overpass',
-                    MissingExit: 'Missing exit',
-                    MissingLandmark: 'Missing landmark',
-                    MissingOrInvalidSpeedLimit: 'Missing/Invalid speed limit',
-                    MissingRoad: 'Missing road',
-                    MissingRoundabout: 'Missing roundabout',
-                    TurnNotAllowed: 'Turn not allowed',
                     Undefined: 'Undefined',
-                    WazeAutomatic: 'Waze automatic',
-                    WrongDrivingDirection: 'Wrong driving direction'
+                    WazeAutomatic: 'Waze automatic'
                 },
                 prompts: {
                     NoCommentBox: 'URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.',
                     CommentInsertTimedOut: 'URCE-E timed out waiting for the comment text box to become available.',
                     ReminderMessageAuto: 'URC-E: Automatically sending reminder message to UR:',
                     CustomListUsed: 'URC-E has loaded your "Custom" comment list. However, only the comments themselves have been loaded. The settings text and tooltips were not loaded. Further, this functionality is deprecated and may be discontinued at any time. An alternative solution may or may not be offered at that time.'
+                }
+            },
+            'es-419': {
+                commentsTab: {
+                    ZoomOutLink1: 'Alejar Zoom a 0 & cerrar UR',
+                    ZoomOutLink1Title: 'Alejar Zoom completamente y cerrar el panel de UR.',
+                    ZoomOutLink2: 'Alejar Zoom a 2 & cerrar UR',
+                    ZoomOutLink2Title: 'Aleja el Zoom anivel 2 y cierra el panel de UR.',
+                    ZoomOutLink3: 'Alejar Zoom a 3 & cerrar UR',
+                    ZoomOutLink3Title: 'Aleja el Zoom a nivel 3 y cierra el panel de UR.'
+                },
+                common: {
+                    All: 'Todo',
+                    CommentList: 'Lista de Comentarios',
+                    Description: 'Descripción',
+                    DoubleClickTitle: 'Doble clic aquí para enviar este comentario',
+                    ErrorGeneric: 'Se ha producido un error dentro del URC-E. Por favor contacte a ' + SCRIPT_AUTHOR + ' a través de Discord o PM.',
+                    ErrorHeader: 'Error de URC-E',
+                    Following: 'Seguimiento',
+                    LessThan: 'Menos de',
+                    List: 'Lista',
+                    ListOwner: 'Dueño de la lista',
+                    Loading: 'Cargando',
+                    MoreThan: 'Mas de',
+                    No: 'No',
+                    NotFollowing: 'Sin Seguimiento',
+                    PleaseWait: 'Espere por favor',
+                    Style: 'Estilo',
+                    Title: 'URComments-Enhanced',
+                    Type: 'Tipo',
+                    With: 'Con',
+                    Without: 'Sin',
+                    Yes: 'Sí'
+                },
+                prefs: {
+                    // Comment List
+                    CommentListTitle: 'Seleccione la lista customizada que usted desee utilizar. La lista CommentTeam es la lista seleccionada por defecto. Si desea que su lista de comentarios sea integrada a este script o si tiene sugerencias sobre la lista CommentTeam, por favor, póngase en contacto con dBsooner en Discord o a través de PM.',
+                    CommentListStyleTitle: 'Seleccione el estilo en el que desea que se muestre el panel URC-E. Esto solo afecta el aspecto de la pestaña, no se cambia la funcionalidad.',
+                    SpreadsheetLink: 'Hoja de cálculo',
+                    SpreadsheetLinkTitle: 'Dar clic aquí para ver la Hoja de cálculo de URC-E',
+                    StyleDefault: 'Default',
+                    StyleUrStyle: 'UR Style',
+                    // URC-E Preferences
+                    UrcePrefs: 'Preferencias de URC-E',
+                    AutoCenterOnUr: 'Auto centrar en el UR',
+                    AutoCenterOnUrTitle: 'Centrar automáticamente el mapa en el UR seleccionado al nivel de zoom del mapa actual cuando la UR tiene comentarios y el nivel de zoom es inferior a 3.',
+                    AutoClickOpenSolvedNi: 'Auto-clic abierto, resuelto o no identificado',
+                    AutoClickOpenSolvedNiTitle: 'Suprime el mensaje sobre las preguntas pendientes recientes al reportero y luego, dependiendo de la opción configurada para ese comentario, selecciona Abierto, Resuelto o No identificado automáticamente.',
+                    AutoCloseUrPanel: 'Auto cerrar el panel UR',
+                    AutoCloseUrPanelTitle: 'Cierra automáticamente el panel UR después de hacer clic en enviar en un comentario que no requiere guardar.',
+                    AutoSaveAfterSolvedOrNiComment: 'Auto-Guardar después de resolver o comentario de NI',
+                    AutoSaveAfterSolvedOrNiCommentTitle: 'Si \'Auto Click Open, Solved or Not Identified\' is also checked, this will automatically click the save button after you click send on a comment that set the UR to Solved or Not Identified.',
+                    AutoSendReminders: 'Auto envio de recordatorios',
+                    AutoSendRemindersTitle: 'Envía automáticamente el comentario de recordatorio a los URs en la ventana del mapa (a medida que se desplaza), donde usted fue el último en comentar y ha llegado a los días especificados en \'Reminder Days\' (actualmente: ' + _settings.reminderDays + ' días).',
+                    AutoSendRemindersWarning: 'ADVERTENCIA',
+                    AutoSendRemindersWarningTitle: 'ENVIA AUTOMÁTICAMENTE RECORDATORIOS en el ajuste de días de recordatorio (actualmente: ' + _settings.reminderDays + ' días).\nEsto solo ocurre cuando están visibles en tu pantalla.\n\nNOTA: cuando use esta función, no debe dejar los URs abiertos a menos que haya hecho una pregunta \nque necesite una respuesta del reportero, ya que este script enviará recordatorios a todos los URs abiertos\ndespués \'de transcurridos los días de espera para recodatorio\'.',
+                    AutoSetNewUrComment: 'Auto set nuevo comentario de UR',
+                    AutoSetNewUrCommentTitle: 'Establece automáticamente el comentario de UR predeterminado para el tipo de UR en los URs nuevos (que no tienen comentarios).',
+                    AutoSetReminderUrComment: 'Auto Programar comentario de recordatorio a URs',
+                    AutoSetReminderUrCommentTitle: 'Establezce automáticamente el comentario de recordatorio para los URs que sean más antiguos que la configuración de \'Días de recordatorio\' y que solo tengan un comentario.',
+                    AutoSwitchToUrCommentsTab: 'Cambio automático a la pestaña URC-E',
+                    AutoSwitchToUrCommentsTabTitle: 'Cambia automáticamente a la pestaña URComments-Enhanced al abrir un UR. Cuando el panel UR es cerrado, volverás a la pestaña anterior.',
+                    AutoZoomInOnNewUr: 'Zoom automático en UR nuevo',
+                    AutoZoomInOnNewUrTitle: 'Acerca el zoom automáticamente cuando se abren URs nuevos (sin comentarios) y al enviar recordatorios.',
+                    AutoZoomOutAfterComment: 'Aleja el zoom automáticamente después de comentar',
+                    AutoZoomOutAfterCommentTitle: 'Ajusta el zoom automáticamente en el mapa al zoom anterior después de hacer clic en enviar en un comentario de UR.',
+                    DisableDoneNextButtons: 'Desactivar los botones done / next',
+                    DisableDoneNextButtonsTitle: 'Desactivar los botones Listo / Siguiente en la parte inferior del panel UR.',
+                    DoubleClickLinkNiComments: 'Doble clic en el enlace - Comentarios de NI',
+                    DoubleClickLinkNiCommentsTitle: 'Añadir una imagen (enlace adicional) a los comentarios de \'No Identificado\'. Cuando haga doble clic, se establecerá y enviará automáticamente el comentario de UR del que hizo doble clic, y luego lanzará todas las demás opciones que están habilitadas.',
+                    DoubleClickLinkOpenComments: 'Doble clic en el enlace - Comentarios de UR Abierto',
+                    DoubleClickLinkOpenCommentsTitle: 'Añadir una imagen (enlace adicional) a los comentarios de \'Abierto\'. Cuando haga doble clic, se establecerá y enviará automáticamente el comentario de UR del que hizo doble clic, y luego lanzará todas las demás opciones que están habilitadas.',
+                    DoubleClickLinkSolvedComments: 'Doble clic en el enlace - Comentarios de UR Arreglado',
+                    DoubleClickLinkSolvedCommentsTitle: 'Añadir una imagen (enlace adicional) a los comentarios de \'Arreglado\'. Cuando haga doble clic, se establecerá y enviará automáticamente el comentario de UR del que hizo doble clic, y luego lanzará todas las demás opciones que están habilitadas.',
+                    HideZoomOutLinks: 'Ocultar enlaces de alejar zoom',
+                    HideZoomOutLinksTitle: 'Ocultar los enlaces de alejamiento del zoom en la pestaña de comentarios.',
+                    UnfollowUrAfterSend: 'Dejar de seguir UR después de enviar',
+                    UnfollowUrAfterSendTitle: 'Dejar de seguir el UR después de enviar un comentario.',
+                    // UR Marker Preferences
+                    UrMarkerPrefs: 'Preferencias Marcadores de URs',
+                    EnableUrPillCounts: 'Habilitar las píldoras de conteo URs',
+                    EnableUrPillCountsTitle: 'Habilita o deshabilita las píldoras con recuentos de URs en el marcador del mapa.',
+                    DoNotShowTagNameOnPill: 'No mostrar el nombre de la etiqueta en la píldora',
+                    DoNotShowTagNameOnPillTitle: 'No mostrar el nombre de la etiqueta en la píldora donde hay una etiqueta. Ejemplo: [NOTE]',
+                    ReplaceTagNameWithEditorName: 'Remplz. el nbr de la etiqueta con el nbr del editor',
+                    ReplaceTagNameWithEditorNameTitle: 'Cuando un UR tiene el nombre de los editores registrados en la descripción o cualquiera de los comentarios del UR (no el nombre que Waze agrega automáticamente al comentar), reemplaza el tipo de etiqueta con el nombre de los editores.',
+                    UnstackMarkers: 'Desapilar marcadores',
+                    UnstackMarkersTitle: 'Intenta desapilar los marcadores compensándolos. Similar a cómo URO+ desapila los marcadores.',
+                    UseCustomMarkersFor: 'Use marcadores personalizados para',
+                    BogTitle: 'Reemplaza el marcador de UR predeterminado con el marcador personalizado para los UR con \'[BOG]\' (boots on ground) / \'[BOTG]\' (boots on the ground) en la descripción o comentarios.',
+                    ClosureTitle: 'Reemplaza el marcador de UR predeterminado con el marcador personalizado para los UR con \'[CLOSURES]\' en la descripción o comentarios.',
+                    ConstructionTitle: 'Reemplaza el marcador de UR predeterminado con el marcador personalizado para los UR con \'[CONSTRUCTION]\' en la descripción o comentarios. ',
+                    DifficultTitle: 'Reemplaza el marcador de UR predeterminado con el marcador personalizado para los UR con \'[DIFFICULT]\' en la descripción o comentarios. ',
+                    EventTitle: 'Reemplaza el marcador de UR predeterminado con el marcador personalizado para los UR con \'[EVENTS]\' en la descripción o comentarios.',
+                    NoteTitle: 'Reemplaza el marcador UR predeterminado con el marcador personalizado para los UR con \'[NOTES]\' en la descripción o comentarios.',
+                    RoadworksTitle: 'Reemplaza el marcador UR predeterminado con el marcador personalizado para los UR con \'[ROADWORKS]\' en la descripción o comentarios. Utilizado en el Reino Unido.',
+                    WslmTitle: 'Marcador de límite de velocidad de Waze',
+                    NativeSpeedLimits: 'Límites de velocidad nativos',
+                    NativeSpeedLimitsTitle: 'Reemplaza el marcador de UR predeterminado con un marcador personalizado para los UR con el tipo de \'límite de velocidad\'.',
+                    // UR Filtering Preferences
+                    UrFilteringPrefs: 'Preferencias de Filtrado',
+                    EnableUrceUrFiltering: 'Habilitar el filtrado de URC-E',
+                    EnableUrceUrFilteringTitle: 'Habilita o deshabilita el filtrado de URs incorporado en URComments-Enhanced.',
+                    HideOutsideEditableArea: 'Ocultar URs fuera del área editable',
+                    HideOutsideEditableAreaTitle: 'Oculta URs fuera de su área editable.',
+                    DoNotHideSelectedUr: 'No ocultar UR seleccionado',
+                    DoNotHideSelectedUrTitle: 'No ocultar un UR si está siendo actualmente seleccionado.',
+                    // Hide by type
+                    HideByType: 'Ocultar por tipo de UR',
+                    HideByTypeBlockedRoadTitle: 'Ocultar todos los URs de carreteras bloqueadas.',
+                    HideByTypeGeneralErrorTitle: 'Ocultar todos los URs de error general.',
+                    HideByTypeIncorrectAddressTitle: 'Ocultar todos los URs de dirección incorrecta.',
+                    HideByTypeIncorrectJunctionTitle: 'Ocultar todos los URs de unión incorrecta.',
+                    HideByTypeIncorrectRouteTitle: 'Ocultar todos los URs de ruta incorrecta.',
+                    HideByTypeIncorrectStreetPrefixOrSuffixTitle: 'Ocultar todos los URs de prefijo o sufijo de carretera incorrecto',
+                    HideByTypeIncorrectTurnTitle: 'Ocultar todos los URs de giro incorrecto.',
+                    HideByTypeMissingExitTitle: 'Ocultar todos los URs de salida faltante.',
+                    HideByTypeMissingLandmarkTitle: 'Ocultar todos los URs de puntos de referencia faltantes.',
+                    HideByTypeMissingOrInvalidSpeedLimitTitle: 'Ocultar todos los URs de límites de velocidad faltantes o inválidos.',
+                    HideByTypeMissingRoadTitle: 'Ocultar todos los URs de carretera faltante.',
+                    HideByTypeMissingRoundaboutTitle: 'Oculta todos los URs de rotonda faltante.',
+                    HideByTypeMissingStreetNameTitle: 'Ocultar todos los URs de nombre de calle faltante.',
+                    HideByTypeTurnNotAllowedTitle: 'Ocultar todos los URs de giro no permitido.',
+                    HideByTypeUndefinedTitle: 'Ocultar todos los URs indefinidos.',
+                    HideByTypeWazeAutomaticTitle: 'Ocultar todos los URs automáticos de Waze.',
+                    HideByTypeWrongDrivingDirectionTitle: 'Ocultar todos los  URs de sentido de conducción incorrecto.',
+                    // Hide by tagged
+                    HideByTagged: 'Ocultar por tipo de etiqueta',
+                    HideByTaggedBogTitle: 'Ocultar todos los URs con [BOG] (boots on ground) / [BOTG] (boots on the ground) en la descripción o en los comentarios.',
+                    HideByTaggedClosureTitle: 'Ocultar todos los URs con [CLOSURE] en la descripción o en los comentarios.',
+                    HideByTaggedConstructionTitle: 'Ocultar todos los URs con [CONSTRUCTION] en la descripción o en los comentarios.',
+                    HideByTaggedDifficultTitle: 'Ocultar todos los URs con [DIFFICULT] en la descripción o en los comentarios.',
+                    HideByTaggedEventTitle: 'Ocultar todos los URs con [EVENT] en la descripción o en los comentarios.',
+                    HideByTaggedNoteTitle: 'Ocultar todos los URs con [NOTE] en la descripción o en los comentarios.',
+                    HideByTaggedRoadworksTitle: 'Ocultar todos los URs con [ROADWORKS] en la descripción o en los comentarios.',
+                    HideByTaggedWslmTitle: 'Ocultar todos los URs con [WSLM] en la descripción o en los comentarios.',
+                    // Hide by status
+                    HideByStatus: 'Ocultar por status',
+                    HideByStatusOpenTitle: 'Ocultar todos los URs abiertos.',
+                    HideByStatusClosedTitle: 'Ocultar todos los URs cerrados.',
+                    HideByStatusNotIdentifiedTitle: 'Ocultar todos los URs cerrados como no identificado.',
+                    HideByStatusSolvedTitle: 'Ocultar todos los URs cerrados como arreglado.',
+                    // Hide by age of submission
+                    HideByAgeOfSubmission: 'Ocultar por edad de presentación',
+                    // Hide by description, comment, following
+                    DescriptionCommentsFollowing: 'Ocultar por descripción, comentario, seguimiento',
+                    HideFollowingTitle: 'Oculta las UR que estás siguiendo.',
+                    HideNotFollowingTitle: 'Ocultar los URs que no estás siguiendo.',
+                    HideWithDescriptionTitle: 'Ocultar los URs que tienen una descripción.',
+                    HideWithoutDescriptionTitle: 'Ocultar los URs que no tienen una descripción.',
+                    HideCommentsFromMe: 'Comentarios de mi parte',
+                    HideWithCommentsFromMeTitle: 'Ocultar los URs en los que has comentado.',
+                    HideWithoutCommentsFromMeTitle: 'Ocultar URs en los que no has comentado.',
+                    HideFirstCommentByMe: 'Primer comentario por mi.',
+                    HideFirstCommentByMeTitle: 'Ocultar los URs donde fuiste la primera persona en comentar.',
+                    HideFirstCommentNotByMeTitle: 'Ocultar los URs donde alguien más fue la primera persona en comentar.',
+                    HideLastCommentByMe: 'Último comentario por mi.',
+                    HideLastCommentByMeTitle: 'Ocultar URs donde eres la última persona en comentar.',
+                    HideLastCommentNotByMeTitle: 'Ocultar los URs donde otra persona es la última persona en comentar.',
+                    HideLastCommentByReporter: 'Último comentario por el reportero',
+                    HideLastCommentByReporterTitle: 'Ocultar los URs donde el reportero es la última persona en comentar.',
+                    HideLastCommentNotByReporterTitle: 'Ocultar los URs donde el reportero no es la última persona en comentar.',
+                    HideByAgeOfFirstCommentLessThan: 'Primer comentario menos de',
+                    HideByAgeOfFirstCommentMoreThan: 'Primer comentario más de',
+                    HideByAgeOfLastCommentLessThan: 'Último comentario menos de',
+                    HideByAgeOfLastCommentMoreThan: 'Último comentario más de',
+                    // Lifecycle
+                    LifeCycleStatus: 'Ocultar por estado del ciclo de vida',
+                    HideWaiting: 'URs en espera',
+                    HideWaitingTitle: 'Mostrar solo los UR que necesitan trabajo (ocultar los URs en otras etapas del ciclo de vida).',
+                    HideUrsCloseNeeded: 'Cierre necesario',
+                    HideUrsCloseNeededTitle: 'Ocultar los URs que necesitan cerrarse.',
+                    HideUrsReminderNeeded: 'Recordatorios necesarios',
+                    HideUrsReminderNeededTitle: 'Ocultar URs que se necesitan recordatorios.',
+                    // Common Preferences
+                    CommonPrefs: 'Preferencias Comunes',
+                    ReminderDays: 'Dias de espera para recordatorio:',
+                    ReminderDaysTitle: 'Número de días a usar al calcular el filtrado de UR y al configurar y / o enviar el comentario de recordatorio. Debe estar entre 0 y 13 y menos de "Días de cierre". 0 está desactivado (no se usa recordatorio).',
+                    CloseDays: 'Días de espera para Cierre:',
+                    CloseDaysTitle: 'Número de días a utilizar para calcular el filtrado de UR. Debe estar entre 1 y 14 y mayor que "Dias de espera para recordatorio".'
+                },
+                tabs: {
+                    Comments: 'Comentarios',
+                    Settings: 'Ajustes'
+                },
+                tags: {
+                    Bog: '[BOG] / [BOTG]',
+                    Closure: '[CLOSURE]',
+                    Construction: '[CONSTRUCTION]',
+                    Difficult: '[DIFFICULT]',
+                    Event: '[EVENT]',
+                    Note: '[NOTE]',
+                    Roadworks: '[ROADWORKS]',
+                    Wslm: '[WSLM]'
+                },
+                urStatus: {
+                    Closed: 'Cerrado',
+                    NotIdentified: 'No identificado'
+                },
+                urTypes: {
+                    Undefined: 'Indefinido',
+                    WazeAutomatic: 'Waze automatico'
+                },
+                prompts: {
+                    NoCommentBox: 'URC-E: No pudo encontrar el cuadro de comentarios! Para que este script funcione, necesita tener un UR abierto.',
+                    CommentInsertTimedOut: 'URC-E agotó el tiempo de espera para que el cuadro de texto estuviera disponible',
+                    ReminderMessageAuto: 'URC-E: Enviando automáticamente un mensaje de recordatorio a UR:',
+                    CustomListUsed: 'URC-E ha cargado su lista de comentarios "Customizada". Sin embargo, solo los comentarios han sido cargados. El texto de configuración y la información sobre herramientas no se cargaron. Además, esta funcionalidad está obsoleta y se puede suspender en cualquier momento. Una solución alternativa puede o no ofrecerse en ese momento.'
                 }
             }
         });
@@ -3165,7 +3383,7 @@
         for (let i = 0; i < Object.keys(translations).length; i++) {
             let locale = Object.keys(translations)[i];
             if (I18n.currentLocale() == locale) {
-                I18n.translations[locale].urce.prefs = translations[locale].prefs;
+                I18n.translations[locale].urce = translations[locale];
                 return;
             }
         }
