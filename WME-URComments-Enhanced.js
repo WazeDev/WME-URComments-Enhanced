@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.21.02
+// @version     2018.12.21.03
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1233,8 +1233,8 @@
                      (_settings.hideByCommentCountMoreThan && urCommentCount > _settings.hideByCommentCountMoreThanNumber) ||
                      (_settings.hideByAgeOfFirstCommentLessThan && urData.comments.length > 0 && uroDateToDays(urData.comments[0].createdOn) < _settings.hideByAgeOfFirstCommentLessThanDaysOld) ||
                      (_settings.hideByAgeOfFirstCommentMoreThan && urData.comments.length > 0 && uroDateToDays(urdata.comments[0].createdOn) > _settings.hideByAgeOfFirstCommentMoreThanDaysOld) ||
-                     (_settings.hideByAgeOfLastCommentLessThan && commentDaysOld < _settings.hideByAgeOfLastCommentLessThanDaysOld) ||
-                     (_settings.hideByAgeOfLastCommentMoreThan && commentDaysOld > _settings.hideByAgeOfLastCommentMoreThanDaysOld)
+                     (_settings.hideByAgeOfLastCommentLessThan && urCommentCount > 0 && commentDaysOld < _settings.hideByAgeOfLastCommentLessThanDaysOld) ||
+                     (_settings.hideByAgeOfLastCommentMoreThan && urCommentCount > 0 && commentDaysOld > _settings.hideByAgeOfLastCommentMoreThanDaysOld)
                     )
                    ) hideUr = true;
                 if (hideUr && _settings.enableUrceUrFiltering) {
