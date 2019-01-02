@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2018.12.21.03
+// @version     2019.01.02.01
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -41,7 +41,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.','es-419 translations', 'Minor bugfixes' ];
+    const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.', 'Minor bugfixes', 'Added "Do not filter tagged URs"' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -51,6 +51,7 @@
 
     let _selUr = {};
     let _settings = {};
+    let _commentLists = [];
     let _commentList = [];
     let _alertBoxArray = [];
     let _markerStackArray = [];
@@ -82,14 +83,6 @@
     let _mousedOverMarkerId = null;
     let _mousedOverMarkerType = null;
     let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId;
-    let _commentLists = [{idx:0, name:'CommentTeam', status:'enabled', oldVarName:'CommentTeam', listOwner:'CommentTeam', region:'ALL', gSheetRange:'CommentTeam_Output_(do_not_edit)!A1:A' },
-                         {idx:1, name:'Custom', status:'enabled', oldVarName:'Custom', listOwner:'Custom', gSheetUrl:'', type:'static' },
-                         {idx:2, name:'USA - SCR', status:'enabled', oldVarName:'USA_SouthCentral', listOwner:'SCR CommentTeam', region:'USA_SCR', gSheetRange:'USA_SCR_Output_(do_not_edit)!A1:A' },
-                         {idx:3, name:'USA - SER', status:'enabled', oldVarName:'USA_Southeast', listOwner:'itzwolf', region:'USA_SER', gSheetRange:'USA_SER_Output_(do_not_edit)!A1:A' },
-                         {idx:4, name:'User: PesachZ', status:'enabled', oldVarName:'PesachZ', listOwner:'PesachZ', region:'ALL', gSheetRange:'PesachZ_Output_(do_not_edit)!A1:A' },
-                         {idx:5, name:'Dutch', status:'enabled', oldVarName:'Dutch', listOwner:'WimVandierendonck', region:'ROW_BE', gSheetRange:'Dutch_Output_(do_not_edit)!A1:A' },
-                         {idx:6, name:'Spanish', status:'enabled', oldVarName:'Spanish', listOwner:'cotero2002', region:'NA', gSheetRange:'Spanish_Output_(do_not_edit)!A1:A' }
-                          ].sort(dynamicSort('name'));
 
     function log(message) { console.log('URC-E:', message); }
     function logError(message) { console.error('URC-E:', message); }
@@ -154,6 +147,7 @@
             // UR Filtering Prefs
             enableUrceUrFiltering: false,
             hideOutsideEditableArea: false,
+            doNotFilterTaggedUrs: false,
             doNotHideSelectedUr: false,
             // -- Lifecycle
             hideWaiting: false,
@@ -1179,6 +1173,7 @@
                     tagType = fullText.search(regex) > -1 ? wmeUsername : null;
                 }
                 if ((!preventHiding && _settings.enableUrceUrFiltering) &&
+                    (tagType && !_settings.doNotFilterTaggedUrs) &&
                     ((_settings.hideOutsideEditableArea && !mUrObj.canEdit()) ||
                      (_settings.hideWaiting && urWaiting) ||
                      (_settings.needsClosed && needsClosed) ||
@@ -2243,6 +2238,12 @@
                     }).prop('checked', _settings.hideOutsideEditableArea),
                     $('<label>', {for:'_cbHideOutsideEditableArea', title:I18n.t('urce.prefs.HideOutsideEditableAreaTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideOutsideEditableArea')),
                     $('<br>'),
+                    $('<input>', {type:'checkbox', id:'_cbDoNotFilterTaggedUrs', urceprefs:'filtering'}).change(function() {
+                        changeSetting('doNotFilterTaggedUrs', $(this).is(':checked'));
+                        invokeHandleUrLayer('settingsToggle');
+                    }).prop('checked', _settings.doNotFilterTaggedUrs),
+                    $('<label>', {for:'_cbDoNotFilterTaggedUrs', title:I18n.t('urce.prefs.DoNotFilterTaggedUrsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoNotFilterTaggedUrs')),
+                    $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbDoNotHideSelectedUr', urceprefs:'filtering'}).change(function() {
                         changeSetting('doNotHideSelectedUr', $(this).is(':checked'));
                         invokeHandleUrLayer('settingsToggle');
@@ -2915,11 +2916,65 @@
         showScriptInfoAlert();
     }
 
+    function initCommentLists() {
+        logDebug('Initializing available comment lists.');
+        return new Promise(async (resolve,reject) => {
+            let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/CommentLists!A3:H?key=' + URCE_API_KEY;
+            let data = await $.getJSON(gapiUrl).fail((response) => {
+                reject('Spreadsheet call failed. Code: ' + response.status + ' - Text: ' + response.statusText);
+            });
+            if (data.values.length > 0) {
+                const EXPECTED_FIELD_NAMES = ['idx','name','status','type','oldVarName','Prefix','listOwner','region'];
+                let ssFieldNames;
+                let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
+                for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
+                    if (entryIdx === 0) {
+                        if (SCRIPT_VERSION < data.values[entryIdx][0]) {
+                            reject('Script must be updated to at least version ' + data.values[entryIdx][0] + ' before comment lists can be loaded.');
+                            return;
+                        }
+                    } else if (entryIdx === 1) {
+                        ssFieldNames = data.values[entryIdx].map(fldName => fldName.trim());
+                        if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length) {
+                            reject('Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment lists data. Spreadsheet returned ' + ssFieldNames.length + '.');
+                            return;
+                        } else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName))) {
+                            reject('Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', '));
+                            return;
+                        }
+                    } else {
+                        let output = Object.create(null);
+                        for (let valIdx = 0; valIdx < data.values[entryIdx].length; valIdx++) {
+                            if (ssFieldNames[valIdx] === 'idx') {
+                                output[ssFieldNames[valIdx]] = parseInt(data.values[entryIdx][valIdx]);
+                            } else if (ssFieldNames[valIdx] === 'Prefix') {
+                                output.gSheetRange = data.values[entryIdx][valIdx] + '_Output_(do_not_edit)!A1:A';
+                            } else {
+                                output[ssFieldNames[valIdx]] = data.values[entryIdx][valIdx]
+                            }
+                        }
+                        _commentLists.push(output);
+                    }
+                }
+                _commentLists.sort(dynamicSort('name'));
+                resolve();
+            } else {
+                reject('No lists available.');
+            }
+        });
+    }
+
     async function init() {
         log('Initializing.');
         _wmeUserId = W.loginManager.user.id;
         loadSettingsFromStorage();
         loadTranslations();
+        try {
+            await initCommentLists();
+        } catch(error) {
+            logError(error);
+            return;
+        }
         initGui();
         window.addEventListener("beforeunload", function() {
             saveSettingsToStorage();
@@ -3045,11 +3100,11 @@
                     UnstackMarkersTitle: 'Attempt to unstack markers by offsetting them. Similar to how URO+ unstacks markers.',
                     UseCustomMarkersFor: 'Use Custom Markers for',
                     BogTitle: 'Replace default UR marker with custom marker for the URs with \'[BOG]\' (boots on ground) / \'[BOTG]\' (boots on the ground) in the description or comments.',
-                    ClosureTitle: 'Replace default UR marker with custom marker for the URs with \'[CLOSURES]\' in the description or comments.',
+                    ClosureTitle: 'Replace default UR marker with custom marker for the URs with \'[CLOSURE]\' in the description or comments.',
                     ConstructionTitle: 'Replace default UR marker with custom marker for the URs with \'[CONSTRUCTION]\' in the description or comments.',
                     DifficultTitle: 'Replace default UR marker with custom marker for the URs with \'[DIFFICULT]\' in the description or comments.',
-                    EventTitle: 'Replace default UR marker with custom marker for the URs with \'[EVENTS]\' in the description or comments.',
-                    NoteTitle: 'Replace default UR marker with custom marker for the URs with \'[NOTES]\' in the description or comments.',
+                    EventTitle: 'Replace default UR marker with custom marker for the URs with \'[EVENT]\' in the description or comments.',
+                    NoteTitle: 'Replace default UR marker with custom marker for the URs with \'[NOTE]\' in the description or comments.',
                     RoadworksTitle: 'Replace default UR marker with custom marker for the URs with \'[ROADWORKS]\' in the description or comments. Used in the UK.',
                     WslmTitle: 'Waze Speed Limit Marker',
                     NativeSpeedLimits: 'Native speed limits',
@@ -3060,6 +3115,8 @@
                     EnableUrceUrFilteringTitle: 'Enable or disable URComments-Enhanced built-in UR filtering.',
                     HideOutsideEditableArea: 'Hide outside editable area',
                     HideOutsideEditableAreaTitle: 'Hide URs outside your editable area.',
+                    DoNotFilterTaggedUrs: 'Do not filter tagged URs',
+                    DoNotFilterTaggedUrsTitle: 'Do not filter URs that are tagged with a [] tag. Example: [NOTE]',
                     DoNotHideSelectedUr: 'Do not hide selected UR',
                     DoNotHideSelectedUrTitle: 'Do not hide a UR if it is currently being selected.',
                     // Hide by type
@@ -3254,11 +3311,11 @@
                     UnstackMarkersTitle: 'Intenta desapilar los marcadores compensándolos. Similar a cómo URO+ desapila los marcadores.',
                     UseCustomMarkersFor: 'Use marcadores personalizados para',
                     BogTitle: 'Reemplaza el marcador de UR predeterminado con el marcador personalizado para los UR con \'[BOG]\' (boots on ground) / \'[BOTG]\' (boots on the ground) en la descripción o comentarios.',
-                    ClosureTitle: 'Reemplaza el marcador de UR predeterminado con el marcador personalizado para los UR con \'[CLOSURES]\' en la descripción o comentarios.',
+                    ClosureTitle: 'Reemplaza el marcador de UR predeterminado con el marcador personalizado para los UR con \'[CLOSURE]\' en la descripción o comentarios.',
                     ConstructionTitle: 'Reemplaza el marcador de UR predeterminado con el marcador personalizado para los UR con \'[CONSTRUCTION]\' en la descripción o comentarios. ',
                     DifficultTitle: 'Reemplaza el marcador de UR predeterminado con el marcador personalizado para los UR con \'[DIFFICULT]\' en la descripción o comentarios. ',
-                    EventTitle: 'Reemplaza el marcador de UR predeterminado con el marcador personalizado para los UR con \'[EVENTS]\' en la descripción o comentarios.',
-                    NoteTitle: 'Reemplaza el marcador UR predeterminado con el marcador personalizado para los UR con \'[NOTES]\' en la descripción o comentarios.',
+                    EventTitle: 'Reemplaza el marcador de UR predeterminado con el marcador personalizado para los UR con \'[EVENT]\' en la descripción o comentarios.',
+                    NoteTitle: 'Reemplaza el marcador UR predeterminado con el marcador personalizado para los UR con \'[NOTE]\' en la descripción o comentarios.',
                     RoadworksTitle: 'Reemplaza el marcador UR predeterminado con el marcador personalizado para los UR con \'[ROADWORKS]\' en la descripción o comentarios. Utilizado en el Reino Unido.',
                     WslmTitle: 'Marcador de límite de velocidad de Waze',
                     NativeSpeedLimits: 'Límites de velocidad nativos',
@@ -3269,6 +3326,8 @@
                     EnableUrceUrFilteringTitle: 'Habilita o deshabilita el filtrado de URs incorporado en URComments-Enhanced.',
                     HideOutsideEditableArea: 'Ocultar URs fuera del área editable',
                     HideOutsideEditableAreaTitle: 'Oculta URs fuera de su área editable.',
+                    DoNotFilterTaggedUrs: 'No filtrar URs etiquetados',
+                    DoNotFilterTaggedUrsTitle: 'No filtrar los URs que están etiquetados con la etiqueta [ ]. Ejemplo: [NOTE]',
                     DoNotHideSelectedUr: 'No ocultar UR seleccionado',
                     DoNotHideSelectedUrTitle: 'No ocultar un UR si está siendo actualmente seleccionado.',
                     // Hide by type
