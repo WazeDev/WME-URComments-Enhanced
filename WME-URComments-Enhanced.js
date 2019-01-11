@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2019.01.10.02
+// @version     2019.01.11.01
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -41,7 +41,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.', 'Bugfixes', 'Custom Marker by Custom Text', 'Filter by including / not including a keyword', 'Removed 0c from pills that do not have comments', 'Moved locale translations to google sheet'];
+    const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.', 'Mouse-over double click adds border around comment (temporary style).', 'Slimmed down code.', 'Normalized isChecked function', 'Began framework for auto switching comment lists based on area UR is in.'];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -52,6 +52,8 @@
 
     let _selUr = {};
     let _settings = {};
+    let _autoSwitchCountries = [];
+    let _autoSwitchStates = [];
     let _commentLists = [];
     let _commentList = [];
     let _alertBoxArray = [];
@@ -115,6 +117,7 @@
             commentList: 0,
             commentListStyle: 'default',
             commentListCollapses: {},
+            autoSwitchCommentList: false,
             // URC-E Preferences
             autoCenterOnUr: false,
             autoClickOpenSolvedNi: false,
@@ -288,9 +291,8 @@
             $('#urceAlertCrossBtnCaption').text(_alertBoxArray[0].crossText);
             $('#urceAlertCrossBtn').css('visibility', 'visible');
             if(typeof _alertBoxArray[0].crossAction === "function") alertBoxCrossAction = _alertBoxArray[0].crossAction;
-        } else {
-            $('#urceAlertCrossBtn').css('visibility', 'hidden');
         }
+        else $('#urceAlertCrossBtn').css('visibility', 'hidden');
         $('#urceAlertTickBtn').off('click');
         $('#urceAlertTickBtn').on('click', function() {
             if (alertBoxTickAction !== null) alertBoxTickAction();
@@ -320,15 +322,14 @@
                     releaseNotes += '<li>' + SCRIPT_VERSION_CHANGES[idx];
                 }
                 releaseNotes += '</ul>';
-            } else {
-                releaseNotes += '<ul><li>Nothing major.</ul>';
             }
+            else releaseNotes += '<ul><li>Nothing major.</ul>';
             showAlertBox('fa-info-circle', 'URC-E Release Notes', releaseNotes, false, "OK", "", null, null);
         }
     }
 
-    function isChecked(checkboxId) {
-        return $(`#${checkboxId}`).is(':checked');
+    function isChecked(obj) {
+        return $(obj).is(':checked');
     }
 
     function changeCommentListStyle(settingVal) {
@@ -351,9 +352,7 @@
             let rObj = {};
             for (let idx = 0; idx < $getDivs.length; idx++) {
                 let div = $getDivs[idx];
-                if (div.id.indexOf('urceComments-for-') > -1) {
-                    rObj[div.id] = $(div).hasClass('collapse');
-                }
+                if (div.id.indexOf('urceComments-for-') > -1)  rObj[div.id] = $(div).hasClass('collapse');
             }
             resolve(rObj);
         });
@@ -371,13 +370,9 @@
                     if (tries < 50) msg += ' Retrying.';
                     logDebug(msg);
                 }
-                if (tries > 49 && !urSessionsObj) {
-                    reject('50 tries at getting urSessions async have elapsed. Stopping loop.');
-                } else if (!urSessionsObj) {
-                    setTimeout(retry, 100, urIds, ++tries);
-                } else {
-                    resolve(urSessionsObj);
-                }
+                if (tries > 49 && !urSessionsObj) reject('50 tries at getting urSessions async have elapsed. Stopping loop.');
+                else if (!urSessionsObj) setTimeout(retry, 100, urIds, ++tries);
+                else resolve(urSessionsObj);
             })(urIds, null);
         });
     }
@@ -394,13 +389,9 @@
                     if (tries < 50) msg += ' Retrying.';
                     logDebug(msg);
                 }
-                if (tries > 49 && !mapUrsObj) {
-                    reject('50 tries at getting mapUpdateRequests async have elapsed. Stopping loop.');
-                } else if (!mapUrsObj) {
-                    setTimeout(retry, 100, urIds, ++tries);
-                } else {
-                    resolve(mapUrsObj);
-                }
+                if (tries > 49 && !mapUrsObj) reject('50 tries at getting mapUpdateRequests async have elapsed. Stopping loop.');
+                else if (!mapUrsObj) setTimeout(retry, 100, urIds, ++tries);
+                else resolve(mapUrsObj);
             })(urIds, null);
         });
     }
@@ -410,12 +401,10 @@
         let newStatus = _selUr.newStatus;
         let doubleClick = _selUr.doubleClick;
         if (_settings.unfollowUrAfterSend) unfollowUrAfterSend(urId);
-        if ((_settings.autoCloseUrPanel && !newStatus) || doubleClick) {
-            autoCloseUrPanel();
-        } else {
-            if (_settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) {
-                clickSaveButton();
-            } else {
+        if ((_settings.autoCloseUrPanel && !newStatus) || doubleClick) autoCloseUrPanel();
+        else {
+            if (_settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) clickSaveButton();
+            else {
                 try {
                     handleUrLayer('sendComment')
                 } catch(error) {
@@ -427,9 +416,8 @@
 
     function handleAfterCloseUpdateContainer(urId) {
         let newStatus = _selUr.newStatus;
-        if (_settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) {
-            clickSaveButton();
-        } else {
+        if (_settings.autoSaveAfterSolvedOrNiComment && (newStatus === 'solved' || newStatus === 'notidentified')) clickSaveButton();
+        else {
             if (_settings.autoZoomOutAfterComemnt) autoZoomOut();
             if (_settings.autoSwitchToUrCommentsTab) autoSwitchToPrevTab();
             try {
@@ -453,19 +441,20 @@
 
     async function handleUpdateRequestContainer(urId) {
         let commentNum, urSessionObj, mapUrsObj;
+        let mapCountry = W.model.countries.top.name;
+        let mapState = W.model.states.top.name;
+//        if (mapCountry === 'United States')
         _selUr.handling = true;
         logDebug('Handling update request container mutation. urId: ' + urId);
         try {
             urSessionObj = await getUrSessionsAsync([urId]);
         } catch(error) {
-            logError(error);
-            return;
+            return logError(error);
         }
         try {
             mapUrsObj = await getMapUrsAsync([urId]);
         } catch(error) {
-            logDebug(error);
-            return;
+            return logDebug(error);
         }
         let urData = urSessionObj[0];
         let mUrObj = mapUrsObj[0];
@@ -526,8 +515,7 @@
             return;
         }
         if (!urId) {
-            logError('No urId was found.');
-            return;
+            return logError('No urId was found.');
         }
         if (doubleClick) {
             $('.new-comment-text').off('blur', autoClickSendButton);
@@ -570,8 +558,8 @@
     function handleUrPanelCrosshairsClick(event) {
         logDebug('Handling UR Panel crosshairs click event.');
         let mUrObj = event.data.mUrObj;
-            let x = getXY(null, mUrObj).x;
-            let y = getXY(null, mUrObj).y;
+        let x = getXY(null, mUrObj).x;
+        let y = getXY(null, mUrObj).y;
         W.map.setCenter([x,y], 5);
     }
 
@@ -670,22 +658,15 @@
             if (selFeatures.length > 0 && selFeatures.length < 3) {
                 for (let idx = 0; idx < selFeatures.length; idx++) {
                     if (selFeatures[idx].model.CLASS_NAME === 'W.Feature.Vector.Segment') {
-                        if (selFeatures.length === 1) {
-                            streetName = W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
-                        } else {
-                            if (idx === 0) {
-                                streetName = 'the intersection of ' + W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name + ' and ';
-                            } else {
-                                streetName += W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
-                            }
+                        if (selFeatures.length === 1) streetName = W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
+                        else {
+                            if (idx === 0) streetName = 'the intersection of ' + W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name + ' and ';
+                            else streetName += W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
                         }
                     }
                 }
-                if (streetName && streetName.length > 0) {
-                    text = text.replace('$SELSEGS', streetName);
-                } else {
-                    text = text.replace('$SELSEGS', '');
-                }
+                if (streetName && streetName.length > 0) text = text.replace('$SELSEGS', streetName);
+                else text = text.replace('$SELSEGS', '');
             }
         }
         return text.replace(/\\[r|n]+/gmi, '\n');
@@ -700,8 +681,7 @@
                 W.model.mapUpdateRequests.objects[urId].attributes.reminderSent = 'true';
             } catch(error) {
                 delete(W.model.mapUpdateRequests.objects[urId].attributes.reminderSent);
-                reject(error);
-                return;
+                return reject(error);
             }
             resolve();
         });
@@ -711,11 +691,9 @@
         return new Promise((resolve, reject) => {
             (function retry(comment, tries) {
                 logDebug('Attemping to insert comment into comment box. Tries: ' + tries);
-                if (tries > 100) {
-                    reject('Timed out waiting for the comment text box to become available.');
-                } else if (!$('.new-comment-text')[0]) {
-                    setTimeout(retry, 100, comment, ++tries);
-                } else {
+                if (tries > 100) reject('Timed out waiting for the comment text box to become available.');
+                else if (!$('.new-comment-text')[0]) setTimeout(retry, 100, comment, ++tries);
+                else {
                     $('.new-comment-text').val(formatText(comment)).change().keyup();
                     $('.new-comment-text').blur();
                     resolve();
@@ -848,9 +826,7 @@
                 restackMarkers();
                 _unstackedMasterId = urId;
                 _markerStackArray = [];
-
                 _markerStackArray.push(new stackListObj(urId, unstackedX, unstackedY));
-
                 for (let idx = 0; idx < stackList.length; idx++) {
                     let thisUrId = stackList[idx];
                     let x = parsePxString(markerCollection[thisUrId].icon.imageDiv.style.left);
@@ -864,9 +840,8 @@
                     }
                 }
             }
-        } else {
-            restackMarkers();
         }
+        else restackMarkers();
     }
 
     function highlightedItemsCheck(event) {
@@ -875,9 +850,8 @@
                 let unstackedX = parsePxString(W.map.updateRequestLayer.markers[_mousedOverMarkerId].icon.imageDiv.style.left);
                 let unstackedY = parsePxString(W.map.updateRequestLayer.markers[_mousedOverMarkerId].icon.imageDiv.style.top);
                 checkMarkerStacking(_mousedOverMarkerId, unstackedX, unstackedY);
-            } else {
-                restackMarkers();
             }
+            else restackMarkers();
         }
     }
 
@@ -942,9 +916,8 @@
             $($node).append(
                 $('<span>', {id:`urceCustomMarker_${urId}`, style:'position:absolute;pointer-events:none;top:-3px;left:-2px;'})
             );
-        } else {
-            logDebug('Updating custom marker for UR: ' + urId);
         }
+        else logDebug('Updating custom marker for UR: ' + urId);
         let customMarker = getCustomMarkerIdx(customType);
         let customVariant = (!urOpen) ? 2 : 0;
         $(`#urceCustomMarker_${urId}`).empty().append(
@@ -961,35 +934,22 @@
         if (customType === 5) return 5;      // WSLM
         if (customType === 6) return 11;     // BOG
         if (customType === 7) return 12;     // DIFFICULT
-
         if (customType === 98) return 5;     // Native speed limit URs
         if (customType === 99) return 2;     // custom text
-
         return -1;
     }
 
     function converTagToCustomType(tag) {
-        switch(tag) {
-            case 'ROADWORKS':
-                return 0;
-            case 'CONSTRUCTION':
-                return 1;
-            case 'CLOSURE':
-                return 2;
-            case 'EVENT':
-                return 3;
-            case 'NOTE':
-                return 4;
-            case 'WSLM':
-                return 5;
-            case 'BOG':
-            case 'BOTG':
-                return 6;
-            case 'DIFFICULT':
-                return 7;
-            default:
-                return -1;
-        }
+        if (tag === 'ROADWORKS') return 0;
+        if (tag === 'CONSTRUCTION') return 1;
+        if (tag === 'CLOSURE') return 2;
+        if (tag === 'EVENT') return 3;
+        if (tag === 'NOTE') return 4;
+        if (tag === 'WSLM') return 5;
+        if (tag === 'BOG') return 6;
+        if (tag === 'BOTG') return 6;
+        if (tag === 'DIFFICULT') return 7;
+        return -1;
     }
 
     function updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj) {
@@ -1025,9 +985,8 @@
                 }
                 fullText = fullText.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, ' ');
                 tagType = (fullText.search(tagRegex) > -1) ? fullText.replace(tagRegex, '$1') : null;
-                if (tagType) {
-                    customType = converTagToCustomType(tagType);
-                } else {
+                if (tagType) customType = converTagToCustomType(tagType);
+                else {
                     if ((tagCustomRegex !== null) && (fullText.search(tagCustomRegex) > -1)) {
                         customType = 99;
                         tagType = _settings.customMarkersCustomText.trim();
@@ -1061,19 +1020,14 @@
                         tagOffset = (tagContent.length < 3) ? 0 : Math.round(tagContent.length * 2.28);
                     }
                     tagOffset = '-' + tagOffset + 'px';
-                    if (urCountBackground === '#CCCCCC') {
-                        $($node).css({'z-index':'999'});
-                    } else if (urCountBackground === '#FFFFFF'|| urCountBackground === '#79B5C7') {
-                        $($node).css({'z-index':'998'});
-                    } else if (urCountBackground === '#FF8B8B') {
-                        $($node).css({'z-index':'997'});
-                    }
+                    if (urCountBackground === '#CCCCCC') $($node).css({'z-index':'999'});
+                    else if (urCountBackground === '#FFFFFF'|| urCountBackground === '#79B5C7') $($node).css({'z-index':'998'});
+                    else if (urCountBackground === '#FF8B8B') $($node).css({'z-index':'997'});
                     if ($(`#urceCounters-${urId}`).length > 0) {
                         logDebug('Updating marker counters on UR marker for UR: ' + urId);
                         $(`#urceCounters-${urId}`).remove();
-                    } else {
-                        logDebug('Adding marker counters on UR marker for UR: ' + urId);
                     }
+                    else logDebug('Adding marker counters on UR marker for UR: ' + urId);
                     $($node).append(
                         $('<div>', {id:`urceCounters-${urId}`}).css('clear', 'both').css('margin-bottom', '10px').append(
                             $('<div>').html(tagContent).css({'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}).addClass('urceCounts')
@@ -1088,9 +1042,8 @@
                 if (customMarkersEnabled) {
                     if (customType > -1) addCustomMarker(urId, urOpen, customType, $node);
                     else removeCustomMarker(urId);
-                } else {
-                    removeCustomMarker(urId);
                 }
+                else removeCustomMarker(urId);
             } else {
                 if ($(`#urceCounters-${urId}`).length > 0) {
                     logDebug('Removing marker counters on UR marker for UR: ' + urId);
@@ -1158,25 +1111,19 @@
                                         needsReminder = true;
                                         logWarning(error); // Don't return here as we should go ahead and process the filtering.
                                     }
-                                } else {
-                                    needsReminder = true;
                                 }
-                            } else {
-                                urWaiting = true;
+                                else needsReminder = true;
                             }
+                            else urWaiting = true;
                         }
                     }
                     if (urCommentCount > 1) {
                         if (lastCommentBy > 1) {
                             if (commentDaysOld > (_settings.closeDays - 1)) {
-                                if (_wmeUserId === lastCommentBy) {
-                                    needsClosed = true;
-                                } else {
-                                    if (commentDaysOld < (_settings.reminderDays + _settings.closeDays)) urWaiting = true;
-                                }
-                            } else {
-                                urWaiting = true;
+                                if (_wmeUserId === lastCommentBy) needsClosed = true;
+                                else if (commentDaysOld < (_settings.reminderDays + _settings.closeDays)) urWaiting = true;
                             }
+                            else urWaiting = true;
                         }
                     }
                 } else {
@@ -1185,18 +1132,13 @@
                 }
                 fullText = fullText.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, ' ');
                 tagType = (fullText.search(tagRegex) > -1) ? fullText.replace(tagRegex, '$1') : null;
-                if (tagType) {
-                    customType = converTagToCustomType(tagType);
-                } else {
-                    if (urType === 23) customType = 98;
-                    else customType = -1;
-                }
+                if (tagType) customType = converTagToCustomType(tagType);
+                else if (urType === 23) customType = 98;
+                else customType = -1;
                 if ((keywordIncludingRegex !== null) && (fullText.search(keywordIncludingRegex) > -1)) keywordIncluding = true;
                 if ((keywordNotIncludingRegex !== null) && (fullText.search(keywordNotIncludingRegex) === -1)) keywordNotIncluding = true;
-                if (!tagType) {
-                    if (mUrObj.attributes.type === 23) customType = 98;
-                    else customType = -1;
-                }
+                if (!tagType && (mUrObj.attributes.type === 23)) customType = 98;
+                else if (!tagType) customType = -1;
                 if (!tagType) tagType = fullText.search(usernameRegex) > -1 ? wmeUsername : null;
                 if (tagType && _settings.doNotFilterTaggedUrs) preventHiding = true;
                 if ((!preventHiding && _settings.enableUrceUrFiltering) &&
@@ -1290,14 +1232,12 @@
                 return a.id - b.id;
             });
         } catch(error) {
-            logDebug(error);
-            return;
+            return logDebug(error);
         }
         try {
             mapUrsObj = await getMapUrsAsync(urIds);
         } catch(error) {
-            logDebug(error);
-            return;
+            return logDebug(error);
         }
         filterUrMapMarkers(urIds, urSessionsObj, mapUrsObj);
         updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj);
@@ -1305,26 +1245,12 @@
 
     async function handleUrLayer(phase) {
         return new Promise(async (resolve,reject) => {
-            switch(phase) {
-                case 'init':
-                    logDebug('Checking for UR markers already present before URC-E completed initialization.');
-                    break;
-                case 'save':
-                    logDebug('Updating UR markers after save.');
-                    break;
-                case 'close':
-                    logDebug('Updating UR markers after closing UR panel.');
-                    break;
-                case 'settingsToggle':
-                    logDebug('Updating UR markers after a setting toggle.');
-                    break;
-                case 'sendComment':
-                    logDebug('Updating UR markers after sending a comment.');
-                    break;
-                default:
-                    reject('No phase available in request.');
-                    return;
-            }
+            if (phase === 'init') logDebug('Checking for UR markers already present before URC-E completed initialization.');
+            else if (phase === 'save') logDebug('Updating UR markers after save.');
+            else if (phase === 'close') logDebug('Updating UR markers after closing UR panel.');
+            else if (phase === 'settingsToggle') logDebug('Updating UR markers after a setting toggle.');
+            else if (phase === 'sendComment') logDebug('Updating UR markers after sending a comment.');
+            else return reject('No phase available in request.');
             let urList = [];
             let urMapMarkerIds = [];
             for (let urId in W.map.updateRequestLayer.markers) {
@@ -1334,8 +1260,7 @@
                 try {
                     await handleUrMapMarkers(urMapMarkerIds);
                 } catch(error) {
-                    reject(error);
-                    return;
+                    return reject(error);
                 }
             }
             resolve();
@@ -1379,9 +1304,7 @@
             logDebug('Switching comment list from ' + getCommentListInfo(_settings.commentList).name + ' to ' + getCommentListInfo(commentListIdx).name + '.');
             _settings.commentList = commentListIdx;
             let buildCommentListResult = await buildCommentList(commentListIdx);
-            if (buildCommentListResult.error) {
-                handleBuildCommentListError(buildCommentListResult.error);
-            }
+            if (buildCommentListResult.error) handleBuildCommentListError(buildCommentListResult.error);
             saveSettingsToStorage();
         }
     }
@@ -1395,13 +1318,9 @@
         return new Promise((resolve, reject) => {
             (function checking(oldVarName, tries) {
                 tries = tries || 1;
-                if (tries > 100) {
-                    reject('Timed out waiting for static list variable to be set.');
-                } else if (!window['Urcomments' + oldVarName + 'Array2']) {
-                    setTimeout(checking, 100, oldVarName, ++tries);
-                } else {
-                    resolve();
-                }
+                if (tries > 100) reject('Timed out waiting for static list variable to be set.');
+                else if (!window['Urcomments' + oldVarName + 'Array2']) setTimeout(checking, 100, oldVarName, ++tries);
+                else resolve();
             })(oldVarName, null);
         });
     }
@@ -1413,8 +1332,7 @@
             try {
                 await checkForStaticListArray(oldVarName);
             } catch (error) {
-                reject(error);
-                return;
+                return reject(error);
             }
             let oldUrcArr = window['Urcomments' + oldVarName + 'Array2'];
             let defaultReminderIdx = window['Urcomments' + oldVarName + 'ReminderPosistion'];
@@ -1428,9 +1346,8 @@
             if (oldUrcArr[0].search(/<br>/gi) === -1) {
                 data[3] = [ '||GROUP TITLE||||||||||||||||||' ];
                 entryIdx = 4;
-            } else {
-                entryIdx = 3;
             }
+            else entryIdx = 3;
             for (let oldUrcArrIdx = 0; oldUrcArrIdx < oldUrcArr.length; oldUrcArrIdx = oldUrcArrIdx + 3) {
                 let temp;
                 let title = oldUrcArr[oldUrcArrIdx];
@@ -1469,24 +1386,13 @@
                 for (let entryIdx = 0; entryIdx < data.length; entryIdx++) {
                     let cellValue = data[entryIdx][0];
                     if (entryIdx === 0) {
-                        if (cellValue !== 'URCE') {
-                            reject('Incorrect format in spreadsheet data received.');
-                            return;
-                        }
+                        if (cellValue !== 'URCE') return reject('Incorrect format in spreadsheet data received.');
                     } else if (entryIdx === 1) {
-                        if (SCRIPT_VERSION < cellValue) {
-                            reject('Script must be updated to at least version ' + cellValue + ' before comment definitions can be loaded.');
-                            return;
-                        }
+                        if (SCRIPT_VERSION < cellValue) return reject('Script must be updated to at least version ' + cellValue + ' before comment definitions can be loaded.');
                     } else if (entryIdx === 2) {
                         ssFieldNames = cellValue.split('|').map(fldName => fldName.trim());
-                        if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length) {
-                            reject('Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment definition data. Spreadsheet returned ' + ssFieldNames.length + '.');
-                            return;
-                        } else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName))) {
-                            reject('Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', '));
-                            return;
-                        }
+                        if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length) return reject('Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment definition data. Spreadsheet returned ' + ssFieldNames.length + '.');
+                        else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName))) return reject('Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', '));
                     } else {
                         let splitRow = cellValue.split('|');
                         let rObj = {};
@@ -1495,15 +1401,9 @@
                             rObj[rObjKey] = rObjKey === 'comment' ? splitRow[i] : rObjKey === 'title' ? splitRow[i].trim() : splitRow[i].trim().toLowerCase();
                         }
                         splitRow = rObj;
-                        if (splitRow.title === 'URCE_REMOVED_SO_SKIP') {
-                            // Nothing to do here. Move along. This is a comment that has been set to 'REMOVED' in the spreadsheet.
-                            logDebug('SKIPPING a removed comment.');
-                        } else if (splitRow.title === 'URCE_ERROR') {
-                            // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
-                            reject('There is an unknown error in the spreadsheet output. Please contact the list owner: ' + getCommentListInfo(_settings.commentList).listOwner);
-                            return;
-                        } else if (splitRow.urstatus === 'group title') {
-                            // Group title row. Nothing to set in the arrays, but build html.
+                        if (splitRow.title === 'URCE_REMOVED_SO_SKIP') logDebug('SKIPPING a removed comment.'); // Nothing to do here. Move along. This is a comment that has been set to 'REMOVED' in the spreadsheet.
+                        else if (splitRow.title === 'URCE_ERROR') return reject('There is an unknown error in the spreadsheet output. Please contact the list owner: ' + getCommentListInfo(_settings.commentList).listOwner); // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
+                        else if (splitRow.urstatus === 'group title') { // Group title row. Nothing to set in the arrays, but build html.
                             groupDivId = 'urceComments-for-';
                             if (splitRow.title != '') {
                                 groupDivId += splitRow.title.replace(/[^\w]+/gi, '').toLowerCase();
@@ -1516,15 +1416,12 @@
                                     splitRow.titleMouseOver = splitRow.title;
                                     splitRow.title = splitRow.title.substring(0, 30) + '...';
                                 }
-                            } else {
-                                groupDivId += 'blankGroup' + (++blankGroup);
                             }
-                            let collapsed;
+                            else groupDivId += 'blankGroup' + (++blankGroup);
+                            let collapsed = '';
                             if (_settings.commentListCollapses.hasOwnProperty(_settings.commentList)) {
                                 let cListCollapses = _settings.commentListCollapses[_settings.commentList];
                                 collapsed = (cListCollapses.hasOwnProperty(groupDivId+'_body')) ? (cListCollapses[groupDivId+'_body'] === true) ? 'collapse' : '' : '';
-                            } else {
-                                collapsed = '';
                             }
                             let chevron = (collapsed === 'collapse') ? 'fa-chevron-right' : 'fa-chevron-down';
                             let urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '';
@@ -1543,19 +1440,15 @@
                                     $('<div>', {id:groupDivId+'_body', class:`${collapsed} URCE-group_body ${urStyle}`})
                                 )
                             )
-                        } else {
-                            // SHOULD be a normal comments row, push values to arrays and build html.
-                            if (splitRow.urstatus !== 'solved' && splitRow.urstatus !== 'notidentified' && splitRow.urstatus !== 'open' && splitRow.urstatus !== 'blank line') {
-                                return reject('Your current selected list does not have a status set for ' + splitRow.title + '. Please contact list owner: ' + getCommentListInfo(_settings.commentList).listOwner);
-                            } else {
+                        } else { // SHOULD be a normal comments row, push values to arrays and build html.
+                            if (splitRow.urstatus !== 'solved' && splitRow.urstatus !== 'notidentified' && splitRow.urstatus !== 'open' && splitRow.urstatus !== 'blank line') return reject('Your current selected list does not have a status set for ' + splitRow.title + '. Please contact list owner: ' + getCommentListInfo(_settings.commentList).listOwner);
+                            else {
                                 _commentList[commentId] = { 'title':splitRow.title, 'comment':splitRow.comment, 'urstatus':splitRow.urstatus };
                                 if (Object.values(splitRow).indexOf('default_is_true') > -1) {
                                     let drIdx = ssFieldNames.indexOf('DR');
                                     let splitRowDefaultCommentsBoolean = Object.values(splitRow).slice(drIdx);
                                     for (let boolIdx = 0; boolIdx < splitRowDefaultCommentsBoolean.length; boolIdx++) {
-                                        if (splitRowDefaultCommentsBoolean[boolIdx].toLowerCase() === 'default_is_true') {
-                                            _defaultComments[ssFieldNames[(boolIdx+drIdx)].toLowerCase()].commentNum = commentId;
-                                        }
+                                        if (splitRowDefaultCommentsBoolean[boolIdx].toLowerCase() === 'default_is_true') _defaultComments[ssFieldNames[(boolIdx+drIdx)].toLowerCase()].commentNum = commentId;
                                     }
                                 }
                                 let linkClass;
@@ -1565,25 +1458,19 @@
                                 if (splitRow.urstatus === 'solved') {
                                     linkClass = 'URCE-solvedLink';
                                     divDoubleClickId = 'URCE-divDoubleClickSolved';
-                                    if (!doubleClickLinkSolvedComments) {
-                                        divDoubleClickStyle = 'display:none;';
-                                    }
+                                    if (!doubleClickLinkSolvedComments) divDoubleClickStyle = 'display:none;';
                                 } else if (splitRow.urstatus === 'notidentified') {
                                     linkClass = 'URCE-niLink';
                                     divDoubleClickId = 'URCE-divDoubleClickNi';
-                                    if (!doubleClickLinkNiComments) {
-                                        divDoubleClickStyle = 'display:none;';
-                                    }
+                                    if (!doubleClickLinkNiComments) divDoubleClickStyle = 'display:none;';
                                 } else {
                                     linkClass = 'URCE-openLink';
                                     divDoubleClickId = splitRow.title != '' ? 'URCE-divDoubleClickOpen' : 'URCE-divDoubleClickOpen-Hidden';
                                     divDoubleClickClass = splitRow.title != '' ? 'URCE-divDoubleClick' : 'URCE-divDoubleClick-Hidden';
-                                    if (!doubleClickLinkOpenComments || splitRow.urstatus === 'blank line') {
-                                        divDoubleClickStyle = 'display:none;';
-                                    }
+                                    if (!doubleClickLinkOpenComments || splitRow.urstatus === 'blank line') divDoubleClickStyle = 'display:none;';
                                 }
                                 $(`#${groupDivId}_body`).append(
-                                    $('<div>').append(
+                                    $('<div>', {class:'URCE-divComment'}).append(
                                         $('<a>', {class:'URCE-Comments', id:'urce-cid-'+commentId, title:splitRow.comment, class:linkClass + ' URCE-Comments'}).text(splitRow.title).click(function() {
                                             handleClickedComment(parseInt(this.id.replace(/urce-cid-/, '')), false);
                                         })
@@ -1591,21 +1478,21 @@
                                         $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + ':\n' + splitRow.comment}).append(
                                             $('<img>', {src:DOUBLE_CLICK_ICON, class:'URCE-doubleClickIcon', id:'urce-img-cid-'+commentId}).dblclick(function() {
                                                 handleClickedComment(parseInt(this.id.replace(/urce-img-cid-/, '')), true);
+                                            }).hover(function() {
+                                                $(this).parent().parent().addClass(`URCE-doubleClickIconHover-${splitRow.urstatus}`);
+                                            }, function() {
+                                                $(this).parent().parent().removeClass(`URCE-doubleClickIconHover-${splitRow.urstatus}`)
                                             })
                                         )
-                                    ).append(
-                                        $('<br>')
-                                    ),
+                                    ).append($('<br>')),
                                 )
                                 commentId++;
                             }
                         }
                     }
                 }
-            } else {
-                reject('No data passed to the JSON processing function.');
-                return;
             }
+            else return reject('No data passed to the JSON processing function.');
             resolve();
         });
     }
@@ -1618,11 +1505,8 @@
             let data = await $.getJSON(gapiUrl).fail((response) => {
                 reject('Spreadsheet call failed. Code: ' + response.status + ' - Text: ' + response.statusText);
             });
-            if (data.values.length > 0) {
-                resolve(data.values);
-            } else {
-                reject('No comments found in spreadsheet sheet.');
-            }
+            if (data.values.length > 0) resolve(data.values);
+            else reject('No comments found in spreadsheet sheet.');
         });
     }
 
@@ -1668,9 +1552,8 @@
         logError(error);
         _commentListLoaded = false;
         let outputText = I18n.t('urce.common.ErrorGeneric');
-        if (staticList) {
-            outputText += '\n\n' + I18n.t('urce.common.Type') + ': ' + I18n.t('urce.common.Static');
-        } else {
+        if (staticList) outputText += '\n\n' + I18n.t('urce.common.Type') + ': ' + I18n.t('urce.common.Static');
+        else {
             let commentListInfo = getCommentListInfo(_settings.commentList);
             outputText += '\n\n' + I18n.t('urce.common.CommentList') + ': ' + commentListInfo.name;
             outputText += '\n' + I18n.t('urce.common.ListOwner') + ': ' + commentListInfo.listOwner;
@@ -1684,33 +1567,21 @@
     function initMutationObservers(status) {
         let saveButtonObserver = new MutationObserver(function(mutations) {
             mutations.forEach(function(mutation) {
-                if ($(mutation.target).hasClass('waze-icon-save') && mutation.type === 'attributes' && mutation.attributeName === 'class' && mutation.target.classList.contains('ItemDisabled')) {
-                    if (mutation.oldValue.toString().indexOf('ItemDisabled') === -1) {
-                        handleAfterSave();
-                    }
-                }
+                if ($(mutation.target).hasClass('waze-icon-save') && mutation.type === 'attributes' && mutation.attributeName === 'class' && mutation.target.classList.contains('ItemDisabled') && (mutation.oldValue.toString().indexOf('ItemDisabled') === -1)) handleAfterSave();
             });
         });
         let urPanelContainerObserver = new MutationObserver(async function(mutations) {
             let urId = _selUr.urId || await getUrId('urPanelMutation');
             mutations.forEach(function(mutation) {
-                if ($(mutation.target).is('#panel-container') && mutation.type === 'childList' && mutation.addedNodes.length > 0 && urId > 0) {
-                    handleUpdateRequestContainer(urId);
-                } else if ($(mutation.target).is('#panel-container') && mutation.type === 'childList' && mutation.removedNodes.length > 0 && urId > 0) {
-                    handleAfterCloseUpdateContainer(urId);
-                } else if ($(mutation.target).hasClass('comment-list') && mutation.type === 'childList' && mutation.addedNodes.length > 0 && urId > 0) {
-                    handleAfterCommentMutation(urId);
-                } else if (mutation.type === 'attributes' && mutation.attributeName === 'data-state') {
+                if ($(mutation.target).is('#panel-container') && mutation.type === 'childList' && mutation.addedNodes.length > 0 && urId > 0) handleUpdateRequestContainer(urId);
+                else if ($(mutation.target).is('#panel-container') && mutation.type === 'childList' && mutation.removedNodes.length > 0 && urId > 0) handleAfterCloseUpdateContainer(urId);
+                else if ($(mutation.target).hasClass('comment-list') && mutation.type === 'childList' && mutation.addedNodes.length > 0 && urId > 0) handleAfterCommentMutation(urId);
+                else if (mutation.type === 'attributes' && mutation.attributeName === 'data-state') {
                     logDebug('Handling UR status change mutation.');
-                    if (mutation.target.attributes['data-state'].nodeValue === 'open') {
-                        _selUr.newStatus = 'open';
-                    } else if (mutation.target.attributes['data-state'].nodeValue === 'solved') {
-                        _selUr.newStatus = 'solved';
-                    } else if (mutation.target.attributes['data-state'].nodeValue === 'not-identified') {
-                        _selUr.newStatus = 'notidentified';
-                    } else {
-                        logWarning(mutation.target.attributes['data-state'].nodeValue);
-                    }
+                    if (mutation.target.attributes['data-state'].nodeValue === 'open') _selUr.newStatus = 'open';
+                    else if (mutation.target.attributes['data-state'].nodeValue === 'solved') _selUr.newStatus = 'solved';
+                    else if (mutation.target.attributes['data-state'].nodeValue === 'not-identified') _selUr.newStatus = 'notidentified';
+                    else logWarning(mutation.target.attributes['data-state'].nodeValue);
                 }
             });
         });
@@ -1750,9 +1621,7 @@
                     }
                 }
             });
-            if (urMapMarkerIds.length > 0) {
-                handleUrMapMarkers(urMapMarkerIds);
-            }
+            if (urMapMarkerIds.length > 0) handleUrMapMarkers(urMapMarkerIds);
         });
         if (status === 'enable' && (!saveButtonObserver.isObserving || !urPanelContainerObserver.isObserving || !urMarkerObserver.isObserving)) {
             logDebug('Enabling MOs.');
@@ -1791,60 +1660,45 @@
 
     async function initBackgroundTasks() {
         logDebug('Initializing background tasks.');
-        let parentLayerEnabled = $('#layer-switcher-group_issues').is(':checked');
-        let mapIssuesEnabled = $('#layer-switcher-group_map_issues').is(':checked');
-        let openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
-        let closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
+        let parentLayerEnabled = isChecked('#layer-switcher-group_issues');
+        let mapIssuesEnabled = isChecked('#layer-switcher-group_map_issues');
+        let openUrsEnabled = isChecked('#layer-switcher-item_update_requests');
+        let closedUrsEnabled = isChecked('#layer-switcher-item_closed_update_requests');
         logDebug('Setting event hooks on layer toggles.');
         $('#layer-switcher-group_issues').change(function() {
-            if (!$(this).is(':checked')) {
-                initMutationObservers('disable');
-            } else {
-                mapIssuesEnabled = $('#layer-switcher-group_map_issues').is(':checked');
-                openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
-                closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
-                if ((mapIssuesEnabled) && (openUrsEnabled || closedUrsEnabled)) {
-                    initMutationObservers('enable');
-                } else {
-                    initMutationObservers('disable');
-                }
+            if (!isChecked(this)) initMutationObservers('disable');
+            else {
+                mapIssuesEnabled = isChecked('#layer-switcher-group_map_issues');
+                openUrsEnabled = isChecked('#layer-switcher-item_update_requests');
+                closedUrsEnabled = isChecked('#layer-switcher-item_closed_update_requests');
+                if ((mapIssuesEnabled) && (openUrsEnabled || closedUrsEnabled)) initMutationObservers('enable');
+                else initMutationObservers('disable');
             }
         });
         $('#layer-switcher-group_map_issues').change(function() {
-            if (!$(this).is(':checked')) {
-                initMutationObservers('disable');
-            } else {
-                openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
-                closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
-                if (openUrsEnabled || closedUrsEnabled) {
-                    initMutationObservers('enable');
-                } else {
-                    initMutationObservers('disable');
-                }
+            if (!isChecked(this)) initMutationObservers('disable');
+            else {
+                openUrsEnabled = isChecked('#layer-switcher-item_update_requests');
+                closedUrsEnabled = isChecked('#layer-switcher-item_closed_update_requests');
+                if (openUrsEnabled || closedUrsEnabled) initMutationObservers('enable');
+                else initMutationObservers('disable');
             }
         });
         $('#layer-switcher-item_update_requests').change(function() {
-            closedUrsEnabled = $('#layer-switcher-item_closed_update_requests').is(':checked');
-            if (!$(this).is(':checked') && !closedUrsEnabled) {
-                initMutationObservers('disable');
-            } else {
-                initMutationObservers('enable');
-            }
+            closedUrsEnabled = isChecked('#layer-switcher-item_closed_update_requests');
+            if (!isChecked(this) && !closedUrsEnabled) initMutationObservers('disable');
+            else initMutationObservers('enable');
         });
         $('#layer-switcher-item_closed_update_requests').change(function() {
-            openUrsEnabled = $('#layer-switcher-item_update_requests').is(':checked');
-            if (!$(this).is(':checked') && !openUrsEnabled) {
-                initMutationObservers('disable');
-            } else {
-                initMutationObservers('enable');
-            }
+            openUrsEnabled = isChecked('#layer-switcher-item_update_requests');
+            if (!isChecked(this) && !openUrsEnabled) initMutationObservers('disable');
+            else initMutationObservers('enable');
         });
         if (parentLayerEnabled && mapIssuesEnabled && (openUrsEnabled || closedUrsEnabled)) {
             try {
                 await handleUrLayer('init');
             } catch(error) {
-                logWarning(error);
-                // Don't need to return here, go ahead and setup the MOs.
+                logWarning(error); // Don't need to return here, go ahead and setup the MOs.
             }
             initMutationObservers('enable');
         }
@@ -1860,10 +1714,14 @@
             '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-icon { cursor:default; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment { padding:0px 4px 0px 4px; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-solvedLink { color:#008F00; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-niLink { color:#E68A00; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-openLink { color:#000000; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-bottom:4px; height:16px; float:right; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-top:4px; height:16px; float:right; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIconHover-solved { border:1px solid #008F00; border-radius:5px; margin:-1px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIconHover-notidentified { border:1px solid #E68A00; border-radius:5px; margin:-1px; }',
+            '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIconHover-open { border:1px solid #000000; border-radius:5px; margin:-1px; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }',
             '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:8px; padding-top:2px; padding-left:25px; }',
@@ -1992,6 +1850,8 @@
                         })
                         return $selList;
                     })
+/*                    $('<input>', {type:'checkbox', id:'_cbautoSwitchCommentList', urceprefs:'commentList', class:'urceSettingsCheckbox'}).prop('checked', _settings.autoSwitchCommentList),
+                    $('<label>', {for:'_cbautoSwitchCommentList', title:I18n.t('urce.prefs.AutoSwitchCommentListTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSwitchCommentList')) */
                 )
             ),
             // URC-E Preferences
@@ -2009,21 +1869,21 @@
                     $('<label>', {for:'_cbautoCenterOnUr', title:I18n.t('urce.prefs.AutoCenterOnUrTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoCenterOnUr')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbautoClickOpenSolvedNi', urceprefs:'urce'}).change(function() {
-                        _settings.autoClickOpenSolvedNi = $(this).is(':checked');
-                        if (!$(this).is(':checked')) {
-                            if (isChecked('_cbautoSaveAfterSolvedOrNiComment')) {
+                        _settings.autoClickOpenSolvedNi = isChecked(this);
+                        if (!_settings.autoClickOpenSolvedNi) {
+                            if (isChecked('#_cbautoSaveAfterSolvedOrNiComment')) {
                                 _settings.autoSaveAfterSolvedOrNiComment = false;
                                 $('#_cbautoSaveAfterSolvedOrNiComment').prop('checked', false);
                             }
-                            if (isChecked('_cbdoubleClickLinkNiComments')) {
+                            if (isChecked('#_cbdoubleClickLinkNiComments')) {
                                 _settings.doubleClickLinkNiComments = false;
                                 $('#_cbdoubleClickLinkNiComments').prop('checked', false);
                             }
-                            if (isChecked('_cbdoubleClickLinkOpenComments')) {
+                            if (isChecked('#_cbdoubleClickLinkOpenComments')) {
                                 _settings.doubleClickLinkOpenComments = false;
                                 $('#_cbdoubleClickLinkOpenComments').prop('checked', false);
                             }
-                            if (isChecked('_cbdoubleClickLinkSolvedComments')) {
+                            if (isChecked('#_cbdoubleClickLinkSolvedComments')) {
                                 _settings.doubleClickLinkSolvedComments = false;
                                 $('#_cbdoubleClickLinkSolvedComments').prop('checked', false);
                             }
@@ -2036,8 +1896,8 @@
                     $('<label>', {for:'_cbautoCloseUrPanel', title:I18n.t('urce.prefs.AutoCloseUrPanelTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoCloseUrPanel')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbautoSaveAfterSolvedOrNiComment', urceprefs:'urce'}).change(function() {
-                        _settings.autoSaveAfterSolvedOrNiComment = $(this).is(':checked');
-                        if ($(this).is(':checked') && !isChecked('_cbautoClickOpenSolvedNi')) {
+                        _settings.autoSaveAfterSolvedOrNiComment = isChecked(this);
+                        if (_settings.autoClickOpenSolvedNi && !isChecked('#_cbautoClickOpenSolvedNi')) {
                             _settings.autoClickOpenSolvedNi = true;
                             $('#_cbautoClickOpenSolvedNi').prop('checked', true);
                         }
@@ -2072,11 +1932,10 @@
                     $('<label>', {for:'_cbdisableDoneNextButtons', title:I18n.t('urce.prefs.DisableDoneNextButtonsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DisableDoneNextButtons')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbdoubleClickLinkNiComments', urceprefs:'urce'}).change(function() {
-                        _settings.doubleClickLinkNiComments = $(this).is(':checked');
-                        if (!$(this).is(':checked')) {
-                            $('div#URCE-divDoubleClickNi').hide();
-                        } else {
-                            if (!isChecked('_cbautoClickOpenSolvedNi')) {
+                        _settings.doubleClickLinkNiComments = isChecked(this);
+                        if (!_settings.doubleClickLinkNiComments) $('div#URCE-divDoubleClickNi').hide();
+                        else {
+                            if (!isChecked('#_cbautoClickOpenSolvedNi')) {
                                 _settings.autoClickOpenSolvedNi = true;
                                 $('#_cbautoClickOpenSolvedNi').prop('checked', true);
                             }
@@ -2087,11 +1946,10 @@
                     $('<label>', {for:'_cbdoubleClickLinkNiComments', title:I18n.t('urce.prefs.DoubleClickLinkNiCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkNiComments')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbdoubleClickLinkOpenComments', urceprefs:'urce'}).change(function() {
-                        _settings.doubleClickLinkOpenComments = $(this).is(':checked');
-                        if (!$(this).is(':checked')) {
-                            $('div#URCE-divDoubleClickOpen').hide();
-                        } else {
-                            if (!isChecked('_cbautoClickOpenSolvedNi')) {
+                        _settings.doubleClickLinkOpenComments = isChecked(this);
+                        if (!_settings.doubleClickLinkOpenComments) $('div#URCE-divDoubleClickOpen').hide();
+                        else {
+                            if (!isChecked('#_cbautoClickOpenSolvedNi')) {
                                 _settings.autoClickOpenSolvedNi = true;
                                 $('#_cbautoClickOpenSolvedNi').prop('checked', true);
                             }
@@ -2102,11 +1960,10 @@
                     $('<label>', {for:'_cbdoubleClickLinkOpenComments', title:I18n.t('urce.prefs.DoubleClickLinkOpenCommentsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoubleClickLinkOpenComments')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbdoubleClickLinkSolvedComments', urceprefs:'urce'}).change(function() {
-                        _settings.doubleClickLinkSolvedComments = $(this).is(':checked');
-                        if (!$(this).is(':checked')) {
-                            $('div#URCE-divDoubleClickSolved').hide();
-                        } else {
-                            if (!isChecked('_cbautoClickOpenSolvedNi')) {
+                        _settings.doubleClickLinkSolvedComments = isChecked(this);
+                        if (!_settings.doubleClickLinkSolvedComments) $('div#URCE-divDoubleClickSolved').hide();
+                        else {
+                            if (!isChecked('#_cbautoClickOpenSolvedNi')) {
                                 _settings.autoClickOpenSolvedNi = true;
                                 $('#_cbautoClickOpenSolvedNi').prop('checked', true);
                             }
@@ -2501,12 +2358,12 @@
                 )
             )
         );
-        if (!isChecked('_cbenableUrPillCounts')) {
+        if (!isChecked('#_cbenableUrPillCounts')) {
             $('[urceprefs=marker]').prop('disabled', true).addClass('urceDisabled');
         } else {
             $('[urceprefs=marker]').prop('disabled', false).removeClass('urceDisabled');
         }
-        if (!isChecked('_cbenableUrceUrFiltering')) {
+        if (!isChecked('#_cbenableUrceUrFiltering')) {
             $('[urceprefs=filtering]').prop('disabled', true).addClass('urceDisabled');
         } else {
             $('[urceprefs=filtering]').prop('disabled', false).removeClass('urceDisabled');
@@ -2528,7 +2385,7 @@
             if (settingName === 'hideLastCommentByReporter') otherSettingName = 'hideLastCommentNotByReporter';
             if (settingName === 'hideLastCommentNotByReporter') otherSettingName = 'hideLastCommentByReporter';
             if (otherSettingName !== null) {
-                if (this.checked && isChecked('_cb' + otherSettingName)) {
+                if (this.checked && isChecked('#_cb' + otherSettingName)) {
                     _settings[otherSettingName] = false;
                     $(`#_cb${otherSettingName}`).prop('checked', false);
                 }
@@ -2560,15 +2417,11 @@
             let val = Math.abs(parseInt(this.value, 10) || minVal);
             if (settingName === 'reminderDays') {
                 maxVal = 13;
-                if (val >= _settings.closeDays) {
-                    val = ((_settings.closeDays - 1) < 0) ? 0 : (_settings.closeDays - 1);
-                }
+                if (val >= _settings.closeDays) val = ((_settings.closeDays - 1) < 0) ? 0 : (_settings.closeDays - 1);
             }
             if (settingName === 'closeDays') {
                 maxVal = 14;
-                if (val <= _settings.reminderDays) {
-                    val = (_settings.reminderDays + 1) > 14 ? 14 : (_settings.reminderDays + 1);
-                }
+                if (val <= _settings.reminderDays) val = (_settings.reminderDays + 1) > 14 ? 14 : (_settings.reminderDays + 1);
             }
             val = Math.min(maxVal,Math.max(minVal,parseInt(val)));
             if ((val !== this.value) || (_settings[settingName] !== val)) {
@@ -2659,29 +2512,17 @@
                 let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
                 for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
                     if (entryIdx === 0) {
-                        if (SCRIPT_VERSION < data.values[entryIdx][0]) {
-                            reject('Script must be updated to at least version ' + data.values[entryIdx][0] + ' before comment lists can be loaded.');
-                            return;
-                        }
+                        if (SCRIPT_VERSION < data.values[entryIdx][0]) return reject('Script must be updated to at least version ' + data.values[entryIdx][0] + ' before comment lists can be loaded.');
                     } else if (entryIdx === 1) {
                         ssFieldNames = data.values[entryIdx].map(fldName => fldName.trim());
-                        if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length) {
-                            reject('Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment lists data. Spreadsheet returned ' + ssFieldNames.length + '.');
-                            return;
-                        } else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName))) {
-                            reject('Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', '));
-                            return;
-                        }
+                        if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length) return reject('Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment lists data. Spreadsheet returned ' + ssFieldNames.length + '.');
+                        else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName))) return reject('Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', '));
                     } else {
                         let output = Object.create(null);
                         for (let valIdx = 0; valIdx < data.values[entryIdx].length; valIdx++) {
-                            if (ssFieldNames[valIdx] === 'idx') {
-                                output[ssFieldNames[valIdx]] = parseInt(data.values[entryIdx][valIdx]);
-                            } else if (ssFieldNames[valIdx] === 'Prefix') {
-                                output.gSheetRange = data.values[entryIdx][valIdx] + '_Output_(do_not_edit)!A1:A';
-                            } else {
-                                output[ssFieldNames[valIdx]] = data.values[entryIdx][valIdx];
-                            }
+                            if (ssFieldNames[valIdx] === 'idx') output[ssFieldNames[valIdx]] = parseInt(data.values[entryIdx][valIdx]);
+                            else if (ssFieldNames[valIdx] === 'Prefix') output.gSheetRange = data.values[entryIdx][valIdx] + '_Output_(do_not_edit)!A1:A';
+                            else output[ssFieldNames[valIdx]] = data.values[entryIdx][valIdx];
                         }
                         _commentLists.push(output);
                     }
@@ -2694,10 +2535,30 @@
                     _commentLists.push({idx:1, name:'Custom', status:'enabled', type:'static', oldVarName:'Custom', listOwner:'Custom', region:'ALL', gSheetRange:''});
                     _commentLists.push({idx:3, name:'USA - SER', status:'enabled', type:'static', oldVarName:'USA_Southeast', listOwner:'itzwolf', region:'USA_SER', gSheetRange:''});
                     resolve();
-                } else {
-                    reject('No lists available.');
+                }
+                else reject('No lists available.');
+            }
+        });
+    }
+
+    async function initAutoSwitchArrays() {
+        logDebug('Initializing auto switch arrays.');
+        return new Promise(async (resolve,reject) => {
+            let errorText, data;
+            let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/CommentLists_AutoSwitch!A3:ZZ?majorDimension=COLUMNS&key=' + URCE_API_KEY;
+            try {
+                data = await $.getJSON(gapiUrl).fail((response) => {
+                    errorText = 'Spreadsheet call failed. Code: ' + response.status + ' - Text: ' + response.responseText;
+                });
+            } catch(error) {
+                if (!errorText) errorText = 'Spreadsheet call failed. Code: ' + error.status + ' - Text: ' + error.responseText;
+            }
+            if (data && data.values.length > 0) {
+                for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
+                    if (entryIdx === 0 && SCRIPT_VERSION < data.values[entryIdx][0]) return reject('Script must be updated to at least version ' + data.values[entryIdx][0] + ' before comment lists can be loaded.');
                 }
             }
+            resolve();
         });
     }
 
@@ -2705,12 +2566,22 @@
         log('Initializing.');
         _wmeUserId = W.loginManager.user.id;
         loadSettingsFromStorage();
-        await loadTranslations();
+        try {
+            await loadTranslations();
+        } catch(error) {
+            logError(error);
+            return;
+        }
         try {
             await initCommentLists();
         } catch(error) {
             logError(error);
             return;
+        }
+        try {
+            await initAutoSwitchArrays();
+        } catch(error) {
+            logWarning(error);
         }
         initGui();
         window.addEventListener("beforeunload", function() {
@@ -2720,11 +2591,8 @@
         setTimeout(saveSettingsToStorage, 5000);
         _urceInitialized = true;
         let buildCommentListResult = await buildCommentList();
-        if (buildCommentListResult.error) {
-            handleBuildCommentListError(buildCommentListResult.error, buildCommentListResult.static);
-        } else {
-            initBackgroundTasks();
-        }
+        if (buildCommentListResult.error) handleBuildCommentListError(buildCommentListResult.error, buildCommentListResult.static);
+        else initBackgroundTasks();
         logDebug('Loaded in ' + Math.round(performance.now() - LOAD_BEGIN_TIME) + ' ms.');
     }
 
@@ -2739,9 +2607,8 @@
         } else if (tries < 1000) {
             logDebug('Bootstrap failed. Retrying ' + tries + ' of 1000');
             setTimeout(function () { bootstrap(++tries); }, 200);
-        } else {
-            logError('Bootstrap timed out waiting for WME to become ready.');
         }
+        else logError('Bootstrap timed out waiting for WME to become ready.');
     }
 
     bootstrap();
@@ -2763,15 +2630,11 @@
             if (data && data.values.length > 0) {
                 for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
                     if (entryIdx === 0) {
-                        if (SCRIPT_VERSION < data.values[entryIdx][0]) {
-                            reject('Script must be updated to at least version ' + data.values[entryIdx][0] + ' before translations can be loaded.');
-                            return;
-                        }
+                        if (SCRIPT_VERSION < data.values[entryIdx][0]) return reject('Script must be updated to at least version ' + data.values[entryIdx][0] + ' before translations can be loaded.');
                     } else if (entryIdx === 1) {
                         for (let idx = 0; idx < data.values[entryIdx].length; idx++) {
-                            if (idx === 0) {
-                                continue;
-                            } else {
+                            if (idx === 0) continue;
+                            else {
                                 translationLocales.push(data.values[entryIdx][idx].trim());
                                 translations[data.values[entryIdx][idx].trim()] = {};
                             }
@@ -2779,9 +2642,8 @@
                     } else {
                         let translationDefinition = [];
                         for (let valIdx = 0; valIdx < data.values[entryIdx].length; valIdx++) {
-                            if (valIdx === 0) {
-                                translationDefinition = data.values[entryIdx][valIdx].split('.');
-                            } else {
+                            if (valIdx === 0) translationDefinition = data.values[entryIdx][valIdx].split('.');
+                            else {
                                 let translationLocale = translationLocales[(valIdx-1)];
                                 let translationDef0 = translationDefinition[0];
                                 let translationDef1 = translationDefinition[1];
@@ -3033,10 +2895,7 @@
             I18n.translations[I18n.currentLocale()].urce = translations.en;
             for (let i = 0; i < Object.keys(translations).length; i++) {
                 let locale = Object.keys(translations)[i];
-                if (I18n.currentLocale() == locale) {
-                    I18n.translations[locale].urce = translations[locale];
-                    return;
-                }
+                if (I18n.currentLocale() == locale) return I18n.translations[locale].urce = translations[locale];
             }
             resolve();
         });
