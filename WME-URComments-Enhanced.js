@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2019.01.10.01
+// @version     2019.01.10.02
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -41,10 +41,11 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.', 'Bugfixes', 'Custom Marker by Custom Text', 'Filter by including / not including a keyword', 'Removed 0c from pills that do not have comments'];
+    const SCRIPT_VERSION_CHANGES = [ 'Initial release of URComments-Enhanced.', 'Bugfixes', 'Custom Marker by Custom Text', 'Filter by including / not including a keyword', 'Removed 0c from pills that do not have comments', 'Moved locale translations to google sheet'];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
+    const STATIC_ONLY_USERS = [ 'itzwolf', 'dBsooner' ];
     const URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c';
     const URCE_DISCOVERY_DOCS = [ 'https://sheets.googleapis.com/$discovery/rest?version=v4' ];
     const URCE_SPREADSHEET_ID = '1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ';
@@ -87,7 +88,7 @@
 
     function log(message) { console.log('URC-E:', message); }
     function logError(message) { console.error('URC-E:', message); }
-    function logDebug(message) { if (DEBUG) console.log('URC-E:', message); }
+    function logDebug(message) { if (DEBUG) console.debug('URC-E:', message); }
     function logWarning(message) { console.warn('URC-E:', message); }
 
     function dynamicSort(property) {
@@ -2410,7 +2411,7 @@
                         // -- -- Less than / more than XX comments
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbhideByCommentCountLessThan', urceprefs:'filtering', class:'urceSettingsCheckbox'}).prop('checked', _settings.hideByCommentCountLessThan),
-                            $('<label>', {for:'_cbhideByCommentCountLessThan', urceprefs:'filtering', class:'URCE-label'}).text(I18n.t('urce.common.LessThan')),
+                            $('<label>', {for:'_cbhideByCommentCountLessThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByCommentCountLessThanTitle')}).text(I18n.t('urce.common.LessThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
                                 $('<input>', {type:'number', id:'_numhideByCommentCountLessThanNumber', class:'urceSettingsNumberBox', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByCommentCountLessThanNumber}),
                                 $('<div>', {class:'URCE-divDaysInline', urceprefs:'filtering'}).append(I18n.t('urce.tabs.Comments').toLowerCase())
@@ -2418,7 +2419,7 @@
                         ),
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbhideByCommentCountMoreThan', urceprefs:'filtering', class:'urceSettingsCheckbox'}).prop('checked', _settings.hideByCommentCountMoreThan),
-                            $('<label>', {for:'_cbhideByCommentCountMoreThan', urceprefs:'filtering', class:'URCE-label'}).text(I18n.t('urce.common.MoreThan')),
+                            $('<label>', {for:'_cbhideByCommentCountMoreThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByCommentCountMoreThanTitle')}).text(I18n.t('urce.common.MoreThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
                                 $('<input>', {type:'number', id:'_numhideByCommentCountMoreThanNumber', class:'urceSettingsNumberBox', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByCommentCountMoreThanNumber}),
                                 $('<div>', {class:'URCE-divDaysInline', urceprefs:'filtering'}).append(I18n.t('urce.tabs.Comments').toLowerCase())
@@ -2427,7 +2428,7 @@
                         // -- -- Age of first comment less than / more than XX days old
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbhideByAgeOfFirstCommentLessThan', urceprefs:'filtering', class:'urceSettingsCheckbox'}).prop('checked', _settings.hideByAgeOfFirstCommentLessThan),
-                            $('<label>', {for:'_cbhideByAgeOfFirstCommentLessThan', urceprefs:'filtering', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByAgeOfFirstCommentLessThan')),
+                            $('<label>', {for:'_cbhideByAgeOfFirstCommentLessThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByAgeOfFirstCommentLessThanTitle')}).text(I18n.t('urce.prefs.HideByAgeOfFirstCommentLessThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
                                 $('<input>', {type:'number', id:'_numhideByAgeOfFirstCommentLessThanDaysOld', class:'urceSettingsNumberBox', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByAgeOfFirstCommentLessThanDaysOld}),
                                 $('<div>', {class:'URCE-divDaysInline', urceprefs:'filtering'}).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
@@ -2435,7 +2436,7 @@
                         ),
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbhideByAgeOfFirstCommentMoreThan', urceprefs:'filtering', class:'urceSettingsCheckbox'}).prop('checked', _settings.hideByAgeOfFirstCommentMoreThan),
-                            $('<label>', {for:'_cbhideByAgeOfFirstCommentMoreThan', urceprefs:'filtering', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByAgeOfFirstCommentMoreThan')),
+                            $('<label>', {for:'_cbhideByAgeOfFirstCommentMoreThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByAgeOfFirstCommentMoreThanTitle')}).text(I18n.t('urce.prefs.HideByAgeOfFirstCommentMoreThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
                                 $('<input>', {type:'number', id:'_numhideByAgeOfFirstCommentMoreThanDaysAgo', class:'urceSettingsNumberBox', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByAgeOfFirstCommentMoreThanDaysAgo}),
                                 $('<div>', {class:'URCE-divDaysInline', urceprefs:'filtering'}).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
@@ -2444,7 +2445,7 @@
                         // -- -- Age of last comment less than / more than XX days old
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbhideByAgeOfLastCommentLessThan', urceprefs:'filtering', class:'urceSettingsCheckbox'}).prop('checked', _settings.hideByAgeOfLastCommentLessThan),
-                            $('<label>', {for:'_cbhideByAgeOfLastCommentLessThan', urceprefs:'filtering', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByAgeOfLastCommentLessThan')),
+                            $('<label>', {for:'_cbhideByAgeOfLastCommentLessThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByAgeOfLastCommentLessThanTitle')}).text(I18n.t('urce.prefs.HideByAgeOfLastCommentLessThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
                                 $('<input>', {type:'number', id:'_numhideByAgeOfLastCommentLessThanDaysOld', class:'urceSettingsNumberBox URCE-daysInput', class:'URCE-daysInput', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByAgeOfLastCommentLessThanDaysOld}),
                                 $('<div>', {class:'URCE-divDaysInline', urceprefs:'filtering'}).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
@@ -2452,7 +2453,7 @@
                         ),
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbhideByAgeOfLastCommentMoreThan', urceprefs:'filtering', class:'urceSettingsCheckbox'}).prop('checked', _settings.hideByAgeOfLastCommentMoreThan),
-                            $('<label>', {for:'_cbhideByAgeOfLastCommentMoreThan', urceprefs:'filtering', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByAgeOfLastCommentMoreThan')),
+                            $('<label>', {for:'_cbhideByAgeOfLastCommentMoreThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByAgeOfLastCommentMoreThanTitle')}).text(I18n.t('urce.prefs.HideByAgeOfLastCommentMoreThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
                                 $('<input>', {type:'number', id:'_numhideByAgeOfLastCommentMoreThanDaysAgo', class:'urceSettingsNumberBox', style:'width:36px; height:20px;', urceprefs:'filtering', min:'0', max:'9999', step:'1', value:_settings.hideByAgeOfLastCommentMoreThanDaysAgo}),
                                 $('<div>', {class:'URCE-divDaysInline', urceprefs:'filtering'}).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
@@ -2461,21 +2462,21 @@
                         // -- -- Including / not including keyword
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbhideByKeywordIncluding', urceprefs:'filtering', class:'urceSettingsCheckbox'}).prop('checked', _settings.hideByKeywordIncluding),
-                            $('<label>', {for:'_cbhideByKeywordIncluding', urceprefs:'filtering', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByKeywordIncluding')),
+                            $('<label>', {for:'_cbhideByKeywordIncluding', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByKeywordIncludingTitle')}).text(I18n.t('urce.prefs.HideByKeywordIncluding')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
                                 $('<input>', {type:'text', id:'_texthideByKeywordIncludingKeyword', class:'urceSettingsTextBox', style:'width:75px; height:20px;', urceprefs:'filtering', value:_settings.hideByKeywordIncludingKeyword})
                             )
                         ),
                         $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbhideByKeywordNotIncluding', urceprefs:'filtering', class:'urceSettingsCheckbox'}).prop('checked', _settings.hideByKeywordNotIncluding),
-                            $('<label>', {for:'_cbhideByKeywordNotIncluding', urceprefs:'filtering', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByKeywordNotIncluding')),
+                            $('<label>', {for:'_cbhideByKeywordNotIncluding', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByKeywordNotIncludingTitle')}).text(I18n.t('urce.prefs.HideByKeywordNotIncluding')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
                                 $('<input>', {type:'text', id:'_texthideByKeywordNotIncludingKeyword', class:'urceSettingsTextBox', style:'width:75px; height:20px;', urceprefs:'filtering', value:_settings.hideByKeywordNotIncludingKeyword})
                             )
                         ),
                         $('<div>', {style:'padding-left:15px; font-style:italic;'}).append(
                             $('<input>', {type:'checkbox', id:'_cbhideByKeywordCaseInsensitive', urceprefs:'filtering', class:'urceSettingsCheckbox'}).prop('checked', _settings.hideByKeywordCaseInsensitive),
-                            $('<label>', {for:'_cbhideByKeywordCaseInsensitive', urceprefs:'filtering', class:'URCE-label'}).text(I18n.t('urce.prefs.HideByKeywordCaseInsensitive'))
+                            $('<label>', {for:'_cbhideByKeywordCaseInsensitive', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByKeywordCaseInsensitiveTitle')}).text(I18n.t('urce.prefs.HideByKeywordCaseInsensitive'))
                         )
                     )
                 )
@@ -2643,11 +2644,16 @@
     function initCommentLists() {
         logDebug('Initializing available comment lists.');
         return new Promise(async (resolve,reject) => {
+            let errorText, data;
             let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/CommentLists!A3:H?key=' + URCE_API_KEY;
-            let data = await $.getJSON(gapiUrl).fail((response) => {
-                reject('Spreadsheet call failed. Code: ' + response.status + ' - Text: ' + response.statusText);
-            });
-            if (data.values.length > 0) {
+            try {
+                data = await $.getJSON(gapiUrl).fail((response) => {
+                    errorText = 'Spreadsheet call failed. Code: ' + response.status + ' - Text: ' + response.responseText;
+                });
+            } catch(error) {
+                if (!errorText) errorText = 'Spreadsheet call failed. Code: ' + error.status + ' - Text: ' + error.responseText;
+            }
+            if (data && data.values.length > 0) {
                 const EXPECTED_FIELD_NAMES = ['idx','name','status','type','oldVarName','Prefix','listOwner','region'];
                 let ssFieldNames;
                 let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
@@ -2674,7 +2680,7 @@
                             } else if (ssFieldNames[valIdx] === 'Prefix') {
                                 output.gSheetRange = data.values[entryIdx][valIdx] + '_Output_(do_not_edit)!A1:A';
                             } else {
-                                output[ssFieldNames[valIdx]] = data.values[entryIdx][valIdx]
+                                output[ssFieldNames[valIdx]] = data.values[entryIdx][valIdx];
                             }
                         }
                         _commentLists.push(output);
@@ -2683,7 +2689,14 @@
                 _commentLists.sort(dynamicSort('name'));
                 resolve();
             } else {
-                reject('No lists available.');
+                if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1)) {
+                    logWarning(errorText);
+                    _commentLists.push({idx:1, name:'Custom', status:'enabled', type:'static', oldVarName:'Custom', listOwner:'Custom', region:'ALL', gSheetRange:''});
+                    _commentLists.push({idx:3, name:'USA - SER', status:'enabled', type:'static', oldVarName:'USA_Southeast', listOwner:'itzwolf', region:'USA_SER', gSheetRange:''});
+                    resolve();
+                } else {
+                    reject('No lists available.');
+                }
             }
         });
     }
@@ -2692,12 +2705,7 @@
         log('Initializing.');
         _wmeUserId = W.loginManager.user.id;
         loadSettingsFromStorage();
-        try {
-            await loadTranslations();
-        } catch(error) {
-            logError(error);
-            return;
-        }
+        await loadTranslations();
         try {
             await initCommentLists();
         } catch(error) {
@@ -2741,13 +2749,18 @@
     function loadTranslations() {
         logDebug('Loading translations.');
         return new Promise(async (resolve,reject) => {
+            let errorText, data;
             let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/Script_Translations!A3:AA?key=' + URCE_API_KEY;
-            let data = await $.getJSON(gapiUrl).fail((response) => {
-                reject('Spreadsheet call failed. Code: ' + response.status + ' - Text: ' + response.statusText);
-            });
+            try {
+                data = await $.getJSON(gapiUrl).fail((response) => {
+                    errorText = 'Spreadsheet call failed. Code: ' + response.status + ' - Text: ' + response.responseText;
+                });
+            } catch(error) {
+                if (!errorText) errorText = 'Spreadsheet call failed. Code: ' + error.status + ' - Text: ' + error.responseText;
+            }
             let translationLocales = [];
             let translations = {};
-            if (data.values.length > 0) {
+            if (data && data.values.length > 0) {
                 for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
                     if (entryIdx === 0) {
                         if (SCRIPT_VERSION < data.values[entryIdx][0]) {
@@ -2779,7 +2792,8 @@
                     }
                 }
             } else {
-                logWarning('No translations available.');
+                if (errorText) logWarning(errorText);
+                else logWarning('No translations available.');
                 translations = {
                     en: {
                         commentsTab: {
@@ -2793,6 +2807,7 @@
                         common: {
                             All: 'All',
                             CommentList: 'Comment List',
+                            Custom: 'Custom',
                             Description: 'Description',
                             DoubleClickTitle: 'Double click here to send this comment',
                             ErrorGeneric: 'An error has occurred within URC-E. Please contact ' + SCRIPT_AUTHOR + ' via Discord or PM.',
@@ -2878,6 +2893,7 @@
                             WslmTitle: 'Waze Speed Limit Marker',
                             NativeSpeedLimits: 'Native speed limits',
                             NativeSpeedLimitsTitle: 'Replace default UR marker with custom marker for the URs with \'speed limit\' type.',
+                            CustomTitle: 'Replace default UR marker with custom marker for the URs with the text in the box to the right in the description or comments.',
                             // UR Filtering Preferences
                             UrFilteringPrefs: 'UR Filtering Preferences',
                             EnableUrceUrFiltering: 'Enable URC-E UR filtering',
@@ -2944,10 +2960,22 @@
                             HideLastCommentByReporter: 'Last comment by reporter',
                             HideLastCommentByReporterTitle: 'Hide URs where the reporter is the last person to comment.',
                             HideLastCommentNotByReporterTitle: 'Hide URs where the reporter is not the last person to comment.',
+                            HideByCommentCountLessThanTitle: 'Hide URs that contain less comments than the number specified in the textbox to the right.',
+                            HideByCommentCountMoreThanTitle: 'Hide URs that contain more comments than the number specified in the textbox to the right.',
                             HideByAgeOfFirstCommentLessThan: 'First comment less than',
+                            HideByAgeOfFirstCommentLessThanTitle: 'Hide URs where the first comment is less than the days specified in the textbox to the right.',
                             HideByAgeOfFirstCommentMoreThan: 'First comment more than',
+                            HideByAgeOfFirstCommentMoreThanTitle: 'Hide URs where the first comment is more than the days specified in the textbox to the right.',
                             HideByAgeOfLastCommentLessThan: 'Last comment less than',
+                            HideByAgeOfLastCommentLessThanTitle: 'Hide URs where the last comment is less than the days specified in the textbox to the right.',
                             HideByAgeOfLastCommentMoreThan: 'Last comment more than',
+                            HideByAgeOfLastCommentMoreThanTitle: 'Hide URs where the last comment is more than the days specified in the textbox to the right.',
+                            HideByKeywordIncluding: 'Hide URs including keyword',
+                            HideBykeywordIncludingTitle: 'Hide URs that include the custom word / text specified in the box to the right.',
+                            HideByKeyworkNotIncluding: 'Hide URs not including keyword',
+                            HideByKeywordNotIncludingTitle: 'Hide URs that do not include the custom word / text specified in the box to the right.',
+                            HideByKeywordCaseInsensitive: 'Case-insensitive keyword matches',
+                            HideByKeywordCaseInsensitiveTitle: 'If enabled, searching for the above including or not including keywords will be done using case insensitive searching.',
                             // Lifecycle
                             LifeCycleStatus: 'Hide by lifecycle status',
                             HideWaiting: 'Waiting',
@@ -2994,12 +3022,7 @@
                     }
                 };
             }
-            try {
-                await setTranslations(translations);
-            } catch(error) {
-                reject(error);
-                return;
-            }
+            await setTranslations(translations);
             resolve();
         });
     }
