@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2019.01.18.01
+// @version     2019.01.18.02
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -41,7 +41,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'Changed comment link highlighting to prettier version. Thank you JustinS83!!!', 'Enhanced speed of script by moving event handler attachments.', 'Added ability to disable filters / customer markers / pill counts above a specified zoom level.', 'Added ability to auto-switch to a comment list specified as a default for a URs area.', 'Added lightbox masking of UR Panel and URC-E side panel during load, comment list switching.', 'Added catch for UR in URL and handling it', 'Bugfixes (restore previous tab, restore previous zoom, zoom out links, text replacement in translations, stacked UR pill count).' ];
+    const SCRIPT_VERSION_CHANGES = [ 'Changed comment link highlighting to prettier version. Thank you JustinS83!!!', 'Enhanced speed of script by moving event handler attachments.', 'Added ability to disable filtering above or below specified zoom levels. (Pill counts and markers still show)', 'Added ability to auto-switch to a comment list specified as a default for a URs area.', 'Added lightbox masking of UR Panel and URC-E side panel during load, comment list switching.', 'Added catch for UR in URL and handling it.', 'Bugfixes (restore previous tab, restore previous zoom, zoom out links, text replacement in translations, stacked UR pill count, country auto-switch).' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -233,7 +233,8 @@
             // Common Prefs
             reminderDays: 0,
             closeDays: 7,
-            disableAboveZoomLevel: 3,
+            disableFilteringAboveZoomLevel: 0,
+            disableFilteringBelowZoomLevel: 5,
             wmeUserId: undefined,
             lastVersion: undefined
         };
@@ -252,7 +253,7 @@
         }
         _settings.closeDays = Math.min(14,Math.max(1,parseInt(_settings.closeDays)));
         if (_settings.wmeUserId !== _wmeUserId) _settings.wmeUserId = _wmeUserId;
-        ['autoCloseCommentWindow', 'hideClosedUrs', 'showOthersUrsPastReminderClose', 'onlyShowMyUrs', 'hideTaggedUrs', 'hideUrsWoComments', 'hideUrsWoCommentsOrDescriptions', 'hideUrsWoCommentsWithDescriptions', 'hideUrsWithUserReplies' ].forEach(oldSetting => {
+        ['autoCloseCommentWindow', 'hideClosedUrs', 'showOthersUrsPastReminderClose', 'onlyShowMyUrs', 'hideTaggedUrs', 'hideUrsWoComments', 'hideUrsWoCommentsOrDescriptions', 'hideUrsWoCommentsWithDescriptions', 'hideUrsWithUserReplies', 'disableAboveZoomLevel' ].forEach(oldSetting => {
             if (_settings.hasOwnProperty(oldSetting)) delete(_settings[oldSetting]);
         });
     }
@@ -432,8 +433,8 @@
         let mapState = W.model.states.top.name;
         if (_settings.autoSwitchCommentList) {
             let commentListNum = _settings.commentList;
-            if ((_autoSwitchCountries[mapCountry] > -1) && !_autoSwitchStates[mapCountry][mapState] && (_autoSwitchCountries[mapCountry] !== commentListNum)) await changeCommentList(_autoSwitchCountries[mapCountry], true);
-            else if ((_autoSwitchStates[mapCountry][mapState] > -1) && (_autoSwitchStates[mapCountry][mapState] !== commentListNum)) await changeCommentList(_autoSwitchStates[mapCountry][mapState], true);
+            if ((_autoSwitchCountries[mapCountry] > -1) && (!_autoSwitchStates[mapCountry] || !_autoSwitchStates[mapCountry][mapState]) && (_autoSwitchCountries[mapCountry] !== commentListNum)) await changeCommentList(_autoSwitchCountries[mapCountry], true);
+            else if (_autoSwitchStates[mapCountry] && (_autoSwitchStates[mapCountry][mapState] > -1) && (_autoSwitchStates[mapCountry][mapState] !== commentListNum)) await changeCommentList(_autoSwitchStates[mapCountry][mapState], true);
             else if (_currentCommentList !== commentListNum) await changeCommentList(commentListNum, true);
         }
         let urData = urSessionObj[0];
@@ -932,7 +933,7 @@
         return -1;
     }
 
-    function updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj, doNotApply) {
+    function updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj) {
         let wmeUsername = W.model.loginManager.user.userName;
         let tagCustomRegex = null;
         let tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim;
@@ -942,7 +943,7 @@
         for (let idx = 0; idx < urIds.length; idx++) {
             let urId = urIds[idx];
             let $node = $(`[data-id="${urId}"]`);
-            if (!doNotApply && (_settings.enableUrPillCounts || customMarkersEnabled)) {
+            if (_settings.enableUrPillCounts || customMarkersEnabled) {
                 let urData = urSessionsObj[idx];
                 let mUrObj = mapUrsObj[idx];
                 let urDesc = mUrObj.attributes.description;
@@ -1031,7 +1032,7 @@
         }
     }
 
-    async function filterUrMapMarkers(urIds, urSessionsObj, mapUrsObj, doNotApply) {
+    async function filterUrMapMarkers(urIds, urSessionsObj, mapUrsObj, filter) {
         let wmeUsername = W.model.loginManager.user.userName;
         let keywordIncludingRegex = null;
         let keywordNotIncludingRegex = null;
@@ -1118,7 +1119,7 @@
                 else if (!tagType) customType = -1;
                 if (!tagType) tagType = fullText.search(usernameRegex) > -1 ? wmeUsername : null;
                 if (tagType && _settings.doNotFilterTaggedUrs) preventHiding = true;
-                if ((!preventHiding && !doNotApply && _settings.enableUrceUrFiltering) &&
+                if ((!preventHiding && filter && _settings.enableUrceUrFiltering) &&
                     ((_settings.hideOutsideEditableArea && !mUrObj.canEdit()) ||
                      (_settings.hideWaiting && urWaiting) ||
                      (_settings.needsClosed && needsClosed) ||
@@ -1193,7 +1194,7 @@
         }
     }
 
-    async function handleUrMapMarkers(urIds, doNotApply) {
+    async function handleUrMapMarkers(urIds, filter) {
         let urSessionsObj, mapUrsObj;
         urIds = urIds.sort();
         try {
@@ -1209,46 +1210,36 @@
         } catch(error) {
             return logDebug(error);
         }
-        filterUrMapMarkers(urIds, urSessionsObj, mapUrsObj, doNotApply);
-        updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj, doNotApply);
+        filterUrMapMarkers(urIds, urSessionsObj, mapUrsObj, filter);
+        updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj);
     }
 
-    async function handleUrLayer(phase) {
+    async function handleUrLayer(phase, filter) {
         return new Promise(async (resolve) => {
-            if ((phase === 'zoomInUnderThresh') || (phase === 'zoomOutOverThresh') || (getZoomLevel() > (_settings.disableAboveZoomLevel - 1))) {
-                if (!_filtersApplying) {
-                    _filtersApplying = true;
-                    if (phase === 'init') logDebug('Checking for UR markers already present before URC-E completed initialization.');
-                    else if (phase === 'save') logDebug('Updating UR markers after save.');
-                    else if (phase === 'close') logDebug('Updating UR markers after closing UR panel.');
-                    else if (phase === 'settingsToggle') logDebug('Updating UR markers after a setting toggle.');
-                    else if (phase === 'sendComment') logDebug('Updating UR markers after sending a comment.');
-                    else if (phase === 'zoomInUnderThresh') logDebug('Updating UR markers after zooming in under threshold.');
-                    else if (phase === 'zoomOutOverThresh') logDebug('Updating UR markers after zooming out over threshold.');
-                    else return resolve(logWarning('No phase available in request.'));
-                    let urList = [];
-                    let urMapMarkerIds = [];
-                    for (let urId in W.map.updateRequestLayer.markers) {
-                        if (urMapMarkerIds.indexOf(urId) === -1) urMapMarkerIds.push(urId);
-                    }
-                    if (urMapMarkerIds.length > 0) {
-                        try {
-                            if (phase === 'zoomOutOverThresh') {
-                                if (_filtersAppliedOnZoom) {
-                                    await handleUrMapMarkers(urMapMarkerIds, true);
-                                    _filtersAppliedOnZoom = false;
-                                }
-                            } else {
-                                if (!_filtersAppliedOnZoom) {
-                                    await handleUrMapMarkers(urMapMarkerIds, false);
-                                    _filtersAppliedOnZoom = true;
-                                }
-                            }
-                            _filtersApplying = false;
-                        } catch(error) {
-                            _filtersApplying = false;
-                            return resolve(logWarning(error));
-                        }
+            if (!_filtersApplying) {
+                _filtersApplying = true;
+                let zoomLevel = getZoomLevel();
+                if (filter === undefined) filter = (zoomLevel <= _settings.disableFilteringAboveZoomLevel || zoomLevel >= _settings.disableFilteringBelowZoomLevel) ? false : true;
+                if (phase === 'init') logDebug('Checking for UR markers already present before URC-E completed initialization.');
+                if (phase === 'save') logDebug('Updating UR markers after save.');
+                if (phase === 'close') logDebug('Updating UR markers after closing UR panel.');
+                if (phase === 'settingsToggle') logDebug('Updating UR markers after a setting toggle.');
+                if (phase === 'sendComment') logDebug('Updating UR markers after sending a comment.');
+                if (phase === 'zoomed') logDebug('Updating UR markers after zooming.');
+                let urList = [];
+                let urMapMarkerIds = [];
+                for (let urId in W.map.updateRequestLayer.markers) {
+                    if (urMapMarkerIds.indexOf(urId) === -1) urMapMarkerIds.push(urId);
+                }
+                if (urMapMarkerIds.length > 0) {
+                    try {
+                        await handleUrMapMarkers(urMapMarkerIds, filter);
+                        _filtersApplying = false;
+                        _filtersAppliedOnZoom = filter;
+                    } catch(error) {
+                        _filtersApplying = false;
+                        _filtersAppliedOnZoom = filter;
+                        return resolve(logWarning(error));
                     }
                 }
             }
@@ -1258,8 +1249,9 @@
 
     async function invokeZoomEnd() {
         logDebug('Invoking function on zoomEnd event.');
-        if ((getZoomLevel() > (_settings.disableAboveZoomLevel - 1)) && !_filtersAppliedOnZoom) await handleUrLayer('zoomInUnderThresh');
-        else if ((getZoomLevel() < _settings.disableAboveZoomLevel) && _filtersAppliedOnZoom) await handleUrLayer('zoomOutOverThresh')
+        let zoomLevel = getZoomLevel();
+        if (!_filtersAppliedOnZoom && (zoomLevel >= _settings.disableFilteringAboveZoomLevel) && (zoomLevel <= _settings.disableFilteringBelowZoomLevel)) await handleUrLayer('zoomed', true);
+        else if (_filtersAppliedOnZoom && ((zoomLevel <= _settings.disableFilteringAboveZoomLevel) || (zoomLevel >= _settings.disableFilteringBelowZoomLevel))) await handleUrLayer('zoomed', false);
     }
 
     function handleUrMarkerClick() {
@@ -1644,7 +1636,9 @@
                     }
                 }
             });
-            if ((urMapMarkerIds.length > 0) && (getZoomLevel() > (_settings.disableAboveZoomLevel - 1))) handleUrMapMarkers(urMapMarkerIds, false);
+            let zoomLevel = getZoomLevel();
+            let filter = (zoomLevel <= _settings.disableFilteringAboveZoomLevel || zoomLevel >= _settings.disableFilteringBelowZoomLevel) ? false : true;
+            if (urMapMarkerIds.length > 0) handleUrMapMarkers(urMapMarkerIds, filter);
         });
         if (status === 'enable' && (!saveButtonObserver.isObserving || !urPanelContainerObserver.isObserving || !urMarkerObserver.isObserving)) {
             logDebug('Enabling MOs.');
@@ -2393,8 +2387,11 @@
                     $('<div>', {title:I18n.t('urce.prefs.CloseDaysTitle'), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.CloseDays') + ': ').append(
                         $('<input>', {type:'number', id:'_numcloseDays', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'common', min:'1', max:'14', step:'1', value:_settings.closeDays, title:I18n.t('urce.prefs.CloseDaysTitle')})
                     ),
-                    $('<div>', {title:I18n.t('urce.prefs.DisableAboveZoomLevelTitle'), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.DisableAboveZoomLevel') + ': ').append(
-                        $('<input>', {type:'number', id:'_numdisableAboveZoomLevel', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'common', min:'0', max:'10', step:'1', value:_settings.disableAboveZoomLevel, title:I18n.t('urce.prefs.DisableAboveZoomLevelTitle')})
+                    $('<div>', {title:I18n.t('urce.prefs.DisableFilteringAboveZoomLevelTitle'), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.DisableFilteringAboveZoomLevel') + ': ').append(
+                        $('<input>', {type:'number', id:'_numdisableFilteringAboveZoomLevel', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'common', min:'0', max:'10', step:'1', value:_settings.disableFilteringAboveZoomLevel, title:I18n.t('urce.prefs.DisableFilteringAboveZoomLevelTitle')})
+                    ),
+                    $('<div>', {title:I18n.t('urce.prefs.DisableFilteringBelowZoomLevelTitle'), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.DisableFilteringBelowZoomLevel') + ': ').append(
+                        $('<input>', {type:'number', id:'_numdisableFilteringBelowZoomLevel', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'common', min:'0', max:'10', step:'1', value:_settings.disableFilteringBelowZoomLevel, title:I18n.t('urce.prefs.DisableFilteringBelowZoomLevelTitle')})
                     )
                 )
             )
@@ -2449,7 +2446,7 @@
             }
             _settings[settingName] = this.checked;
             saveSettingsToStorage();
-            if (urcePrefs === 'marker' || urcePrefs === 'marker-nodisable' || urcePrefs === 'filtering') invokeHandleUrLayer('settingsToggle');
+            if (urcePrefs === 'marker' || urcePrefs === 'marker-nodisable' || urcePrefs === 'filtering') handleUrLayer('settingsToggle');
         });
         $('.urceSettingsNumberBox').on('change', function() {
             let settingName = $(this)[0].id.substr(4);
@@ -2464,13 +2461,13 @@
                 maxVal = 14;
                 if (val <= _settings.reminderDays) val = (_settings.reminderDays + 1) > 14 ? 14 : (_settings.reminderDays + 1);
             }
-            if (settingName === 'disableZoomAbove') maxVal = 10;
+            if (settingName === 'disableFilteringAboveZoomLevel' || settingName === 'disableFilteringBelowZoomLevel') maxVal = 10;
             val = Math.min(maxVal,Math.max(minVal,parseInt(val)));
             if ((val !== this.value) || (_settings[settingName] !== val)) {
                 if (val !== this.value) this.value = val;
                 _settings[settingName] = val;
                 saveSettingsToStorage();
-                invokeHandleUrLayer('settingsToggle');
+                handleUrLayer('settingsToggle');
             }
         });
         $('.urceSettingsTextBox').on('change', function() {
@@ -2480,7 +2477,7 @@
                 if (val !== this.value) this.value = val;
                 _settings[settingName] = val;
                 saveSettingsToStorage();
-                invokeHandleUrLayer('settingsToggle');
+                handleUrLayer('settingsToggle');
             }
         });
     }
@@ -2541,7 +2538,7 @@
         logDebug('Initializing available comment lists.');
         return new Promise(async (resolve,reject) => {
             let errorText, data;
-            let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/CommentLists!A3:H?key=' + URCE_API_KEY;
+            let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/CommentLists!A3:G?key=' + URCE_API_KEY;
             try {
                 data = await $.getJSON(gapiUrl).fail((response) => {
                     errorText = 'Spreadsheet call failed. Code: ' + response.status + ' - Text: ' + response.responseText;
@@ -2550,7 +2547,7 @@
                 if (!errorText) errorText = 'Spreadsheet call failed. Code: ' + error.status + ' - Text: ' + error.responseText;
             }
             if (data && data.values.length > 0) {
-                const EXPECTED_FIELD_NAMES = ['idx','name','status','type','oldVarName','Prefix','listOwner','region'];
+                const EXPECTED_FIELD_NAMES = ['idx','name','status','type','oldVarName','Prefix','listOwner'];
                 let ssFieldNames;
                 let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
                 for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
@@ -2575,8 +2572,8 @@
             } else {
                 if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1)) {
                     logWarning(errorText);
-                    _commentLists.push({idx:1, name:'Custom', status:'enabled', type:'static', oldVarName:'Custom', listOwner:'Custom', region:'ALL', gSheetRange:''});
-                    _commentLists.push({idx:3, name:'USA - SER', status:'enabled', type:'static', oldVarName:'USA_Southeast', listOwner:'itzwolf', region:'USA_SER', gSheetRange:''});
+                    _commentLists.push({idx:1, name:'Custom', status:'enabled', type:'static', oldVarName:'Custom', listOwner:'Custom', gSheetRange:''});
+                    _commentLists.push({idx:3, name:'USA - SER', status:'enabled', type:'static', oldVarName:'USA_Southeast', listOwner:'itzwolf', gSheetRange:''});
                     resolve();
                 }
                 else if (errorText) reject(errorText);
@@ -2923,8 +2920,10 @@
                             ReminderDaysTitle: 'Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment. Must be between 0 and 13 and less than \'Close days\'. 0 is off (no reminder used).',
                             CloseDays: 'Close days',
                             CloseDaysTitle: 'Number of days to use when calculating UR filtering. Must be between 1 and 14 and greater than \'Reminder days\'.',
-                            DisableAboveZoomLevel: 'Disable filtering/markers above zoom level',
-                            DisableAboveZoomLevelTitle: 'Disabled UR filtering and custom markers above the specified zoom level.'
+                            DisableFilteringAboveZoomLevel: 'Disable filtering above zoom level',
+                            DisableFilteringAboveZoomLevelTitle: 'Disabled UR filtering when zoomed out above the specified zoom level.',
+                            DisableFilteringBelowZoomLevel: 'Disable filtering below zoom level',
+                            DisableFilteringBelowZoomLevelTitle: 'Disabled UR filtering when zoomed in below the specified zoom level.'
                         },
                         tabs: {
                             Comments: 'Comments',
