@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2019.01.18.02
+// @version     2019.01.19.01
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1219,7 +1219,7 @@
             if (!_filtersApplying) {
                 _filtersApplying = true;
                 let zoomLevel = getZoomLevel();
-                if (filter === undefined) filter = (zoomLevel <= _settings.disableFilteringAboveZoomLevel || zoomLevel >= _settings.disableFilteringBelowZoomLevel) ? false : true;
+                if (filter === undefined) filter = (zoomLevel < _settings.disableFilteringAboveZoomLevel || zoomLevel > _settings.disableFilteringBelowZoomLevel) ? false : true;
                 if (phase === 'init') logDebug('Checking for UR markers already present before URC-E completed initialization.');
                 if (phase === 'save') logDebug('Updating UR markers after save.');
                 if (phase === 'close') logDebug('Updating UR markers after closing UR panel.');
@@ -1250,8 +1250,8 @@
     async function invokeZoomEnd() {
         logDebug('Invoking function on zoomEnd event.');
         let zoomLevel = getZoomLevel();
-        if (!_filtersAppliedOnZoom && (zoomLevel >= _settings.disableFilteringAboveZoomLevel) && (zoomLevel <= _settings.disableFilteringBelowZoomLevel)) await handleUrLayer('zoomed', true);
-        else if (_filtersAppliedOnZoom && ((zoomLevel <= _settings.disableFilteringAboveZoomLevel) || (zoomLevel >= _settings.disableFilteringBelowZoomLevel))) await handleUrLayer('zoomed', false);
+        if (!_filtersAppliedOnZoom && (zoomLevel > _settings.disableFilteringAboveZoomLevel) && (zoomLevel < _settings.disableFilteringBelowZoomLevel)) await handleUrLayer('zoomed', true);
+        else if (_filtersAppliedOnZoom && ((zoomLevel < _settings.disableFilteringAboveZoomLevel) || (zoomLevel > _settings.disableFilteringBelowZoomLevel))) await handleUrLayer('zoomed', false);
     }
 
     function handleUrMarkerClick() {
@@ -1637,7 +1637,7 @@
                 }
             });
             let zoomLevel = getZoomLevel();
-            let filter = (zoomLevel <= _settings.disableFilteringAboveZoomLevel || zoomLevel >= _settings.disableFilteringBelowZoomLevel) ? false : true;
+            let filter = (zoomLevel < _settings.disableFilteringAboveZoomLevel || zoomLevel > _settings.disableFilteringBelowZoomLevel) ? false : true;
             if (urMapMarkerIds.length > 0) handleUrMapMarkers(urMapMarkerIds, filter);
         });
         if (status === 'enable' && (!saveButtonObserver.isObserving || !urPanelContainerObserver.isObserving || !urMarkerObserver.isObserving)) {
