@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2019.01.19.01
+// @version     2019.01.21.01
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -41,11 +41,11 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'Changed comment link highlighting to prettier version. Thank you JustinS83!!!', 'Enhanced speed of script by moving event handler attachments.', 'Added ability to disable filtering above or below specified zoom levels. (Pill counts and markers still show)', 'Added ability to auto-switch to a comment list specified as a default for a URs area.', 'Added lightbox masking of UR Panel and URC-E side panel during load, comment list switching.', 'Added catch for UR in URL and handling it.', 'Bugfixes (restore previous tab, restore previous zoom, zoom out links, text replacement in translations, stacked UR pill count, country auto-switch).' ];
+    const SCRIPT_VERSION_CHANGES = [ 'Changed comment link highlighting to prettier version. Thank you JustinS83!!!', 'Enhanced speed of script by moving event handler attachments.', 'Added ability to disable filtering above or below specified zoom levels. (Pill counts and markers still show)', 'Revised disable filtering by zoom to allow disable by checkbox.', 'Added ability to auto-switch to a comment list specified as a default for a URs area.', 'Added lightbox masking of UR Panel and URC-E side panel during load, comment list switching.', 'Added catch for UR in URL and handling it.', 'Bugfixes (restore previous tab, restore previous zoom, zoom out links, text replacement in translations, stacked UR pill count, country auto-switch).', 'Better handle on errors and removing the lightboxes.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
-    const STATIC_ONLY_USERS = [ 'itzwolf', 'dBsooner' ];
+    const STATIC_ONLY_USERS = [ 'itzwolf' ];
     const URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c';
     const URCE_DISCOVERY_DOCS = [ 'https://sheets.googleapis.com/$discovery/rest?version=v4' ];
     const URCE_SPREADSHEET_ID = '1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ';
@@ -112,7 +112,6 @@
 
     function loadSettingsFromStorage() {
         logDebug('Loading settings from storage.');
-        let convertUrcSettings = false;
         let loadedSettings = $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
         let defaultSettings = {
             //Comment List
@@ -158,6 +157,10 @@
             hideOutsideEditableArea: false,
             doNotFilterTaggedUrs: false,
             doNotHideSelectedUr: false,
+            disableFilteringAboveZoom: false,
+            disableFilteringAboveZoomLevel: 0,
+            disableFilteringBelowZoom: false,
+            disableFilteringBelowZoomLevel: 10,
             // -- Lifecycle
             hideWaiting: false,
             hideUrsCloseNeeded: false,
@@ -233,8 +236,6 @@
             // Common Prefs
             reminderDays: 0,
             closeDays: 7,
-            disableFilteringAboveZoomLevel: 0,
-            disableFilteringBelowZoomLevel: 5,
             wmeUserId: undefined,
             lastVersion: undefined
         };
@@ -1219,7 +1220,7 @@
             if (!_filtersApplying) {
                 _filtersApplying = true;
                 let zoomLevel = getZoomLevel();
-                if (filter === undefined) filter = (zoomLevel < _settings.disableFilteringAboveZoomLevel || zoomLevel > _settings.disableFilteringBelowZoomLevel) ? false : true;
+                if (filter === undefined) filter = ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))) ? false : true;
                 if (phase === 'init') logDebug('Checking for UR markers already present before URC-E completed initialization.');
                 if (phase === 'save') logDebug('Updating UR markers after save.');
                 if (phase === 'close') logDebug('Updating UR markers after closing UR panel.');
@@ -1250,8 +1251,14 @@
     async function invokeZoomEnd() {
         logDebug('Invoking function on zoomEnd event.');
         let zoomLevel = getZoomLevel();
-        if (!_filtersAppliedOnZoom && (zoomLevel > _settings.disableFilteringAboveZoomLevel) && (zoomLevel < _settings.disableFilteringBelowZoomLevel)) await handleUrLayer('zoomed', true);
-        else if (_filtersAppliedOnZoom && ((zoomLevel < _settings.disableFilteringAboveZoomLevel) || (zoomLevel > _settings.disableFilteringBelowZoomLevel))) await handleUrLayer('zoomed', false);
+        let filter = null;
+        if (_settings.disableFilteringAboveZoom || _settings.disableFilteringBelowZoom) {
+            if (!_filtersAppliedOnZoom && _settings.disableFilteringAboveZoom && (zoomLevel > _settings.disableFilteringAboveZoom)) filter = true;
+            if (!_filtersAppliedOnZoom && _settings.disableFilteringBelowZoom && (zoomLevel < _settings.disableFilteringBelowZoom)) filter = true;
+            if (_filtersAppliedOnZoom && _settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) filter = false;
+            if (_filtersAppliedOnZoom && _settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel)) filter = false;
+        }
+        if (filter === true || filter === false) await handleUrLayer('zoomed', filter);
     }
 
     function handleUrMarkerClick() {
@@ -1270,7 +1277,7 @@
             if (!(_selUr.urId > 0) || (_selUr.UrId !== newUrId)) {
                 if (phase === 'urPanelMutation') logDebug('Had to get the urId ' + newUrId + ' from the back yard for the UR panel mutation.');
                 else if (phase === 'clickedComment') logDebug('Had to get the urId ' + newUrId + ' from the back yard for the clicked comment phase.');
-                else logDebug('Had to get the urId ' + newUrId + ' from the back yard because it was wandering around. Please let dBsooner know.');
+                else logDebug('Had to get the urId ' + newUrId + ' from the back yard because it was wandering around. Please let ' + SCRIPT_AUTHOR + ' know.');
                 _selUr.urId = newUrId;
             }
             resolve();
@@ -1285,13 +1292,14 @@
         } else if (!unmask) {
             if ($(`#urceTabLightbox-${phase}`).length == 0) {
                 $('#sidepanel-urc-e').css('position', 'relative');
-                let $urceTabDisabled = $('<div>', {id:`urceTabLightbox-${phase}`, style:`position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.75); color:white; z-index:${zIndex};`});
+                let sidepanelHeight = $('aside#sidebar').height();
+                let $urceTabDisabled = $('<div>', {id:`urceTabLightbox-${phase}`, style:`position:relative; top:0; left:0; width:100%; height:${sidepanelHeight}px; background:rgba(0,0,0,.75); color:white; z-index:${zIndex};`});
                 $urceTabDisabled.html('<div style="text-align:center; padding-top:200px; width:100%; font-weight:800;">' + message + '</div>');
                 (function retry(tries) {
                     let $urceSidePanel = $('#sidepanel-urc-e');
                     if (tries > 99 && $urceSidePanel.length == 0) return logError('Timed out trying to add mask to URCE side panel.');
                     else if ($urceSidePanel.length == 0) setTimeout(retry, 100, ++tries);
-                    else $urceSidePanel.append($urceTabDisabled);
+                    else $urceSidePanel.prepend($urceTabDisabled);
                 })(1);
             }
             if (maskUrPanel && ($(`#urPanelLightbox-${phase}`).length == 0)) {
@@ -1302,7 +1310,7 @@
                     let $urPanel = $('.mapUpdateRequest.panel.show');
                     if (tries > 99 && $urPanel.length == 0) return logError('Timed out trying to add mask to UR panel.');
                     else if ($urPanel.length == 0) setTimeout(retry, 100, ++tries);
-                    else $($urPanel.children()[0]).append($urPanelDisabled);
+                    else $($urPanel.children()[0]).prepend($urPanelDisabled);
                 })(1);
             }
         }
@@ -1329,8 +1337,8 @@
             let debugMsg = (autoSwitch) ? 'Automatically switching comment lists' : 'Switching comment lists';
             logDebug(debugMsg + ' from ' + getCommentListInfo(_currentCommentList).name + ' to ' + getCommentListInfo(commentListIdx).name + '.');
             if (!autoSwitch) _settings.commentList = commentListIdx;
-            let buildCommentListResult = await buildCommentList(commentListIdx);
-            if (buildCommentListResult.error) handleBuildCommentListError(buildCommentListResult.error);
+            let buildCommentListResult = await buildCommentList(commentListIdx, 'changeList');
+            if (buildCommentListResult.error) handleError(buildCommentListResult.error, (getCommentListInfo(commentListIdx).type === 'static'), 'changeList', (_selUr.urId > 0));
             if (!autoSwitch) saveSettingsToStorage();
         }
         return new Promise((resolve) => { resolve(); });
@@ -1345,7 +1353,7 @@
         return new Promise((resolve, reject) => {
             (function checking(oldVarName, tries) {
                 tries = tries || 1;
-                if (tries > 100) reject('Timed out waiting for static list variable to be set.');
+                if (tries > 100) reject('timedOutWaitingStatic|');
                 else if (!window['Urcomments' + oldVarName + 'Array2']) setTimeout(checking, 100, oldVarName, ++tries);
                 else resolve();
             })(oldVarName, null);
@@ -1415,7 +1423,7 @@
                     if (entryIdx === 0) {
                         if (cellValue !== 'URCE') return reject('Incorrect format in spreadsheet data received.');
                     } else if (entryIdx === 1) {
-                        if (SCRIPT_VERSION < cellValue) return reject('Script must be updated to at least version ' + cellValue + ' before comment definitions can be loaded.');
+                        if (SCRIPT_VERSION < cellValue) return reject('updateRequired|' + cellValue);
                     } else if (entryIdx === 2) {
                         ssFieldNames = cellValue.split('|').map(fldName => fldName.trim());
                         if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length) return reject('Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment definition data. Spreadsheet returned ' + ssFieldNames.length + '.');
@@ -1534,59 +1542,62 @@
         });
     }
 
-    async function buildCommentList(commentListIdx) {
+    async function buildCommentList(commentListIdx, phase) {
         commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
         let commentListInfo = getCommentListInfo(commentListIdx);
         logDebug('Building comment list for: ' + commentListInfo.name);
         let data, result;
         _commentListLoaded = false;
-        maskBoxes(I18n.t('urce.prompts.SwitchingCommentLists') + '.<br>' + I18n.t('urce.common.PleaseWait') + '.', false, 'buildCommentList', (_selUr.urId > 0));
+        if (phase !== 'init') maskBoxes(I18n.t('urce.prompts.SwitchingCommentLists') + '.<br>' + I18n.t('urce.common.PleaseWait') + '.', false, phase, (_selUr.urId > 0));
         $('#_commentList').empty();
         $('#_commentList').append(
             $('<div>', {class:'URCE-commentListName'}).text(I18n.t('urce.common.CommentList') + ': ' + commentListInfo.name)
         );
         _commentList = [];
-        if (commentListInfo.type === 'static') {
-            try {
-                data = await convertCommentListStatic(commentListIdx);
-            } catch (error) {
-                return {error:error, staticList:true};
-            }
-        } else {
-            try {
-                data = await commentListAsync(commentListIdx);
-            } catch (error) {
-                return {error:error};
-            }
+        try {
+            data = (commentListInfo.type === 'static') ? await convertCommentListStatic(commentListIdx) : await commentListAsync(commentListIdx);
+        } catch (error) {
+            return {error:error, staticList:(commentListInfo.type === 'static'), phase:phase, maskUrPanel:(_selUr.urId > 0)};
         }
         try {
             await processCommentList(data);
         } catch (error) {
-            if (commentListInfo.type === 'static') return {error:error, staticList:true};
-            else return {error:error};
+            return {error:error, staticList:(commentListInfo.type === 'static'), phase:phase, maskUrPanel:(_selUr.urId > 0)};
         }
-        //$('#_selCommentList').val(commentListIdx);
         _currentCommentList = commentListIdx;
         _commentListLoaded = true;
-        maskBoxes(null, true, 'buildCommentList', (_selUr.urId > 0));
-        return {error:false};
+        if (phase !== 'init') maskBoxes(null, true, phase, (_selUr.urId > 0));
+        return {error:undefined, staticList:(commentListInfo.type === 'static'), phase:phase, maskUrPanel:(_selUr.urId > 0)};
     }
 
-    function handleBuildCommentListError(error, staticList) {
-        logError(error);
+    function handleError(error, staticList, phase, maskUrPanel) {
+        let errorText, outputText;
+        if (error.indexOf('|') > -1) {
+            let actualError = error.split('|')[0];
+            if (actualError === 'updateRequired') errorText = I18n.t('urce.prompts.UpdateRequired') + ': ' + error.split('|')[1];
+            else if (actualError === 'timedOutWaitingStatic') errorText = I18n.t('urce.prompts.TimedOutWaitingStatic');
+            outputText = errorText;
+        } else {
+            errorText = error;
+            outputText = I18n.t('urce.common.ErrorGeneric');
+        }
+        logError(errorText);
         _commentListLoaded = false;
         _currentCommentList = null;
-        let outputText = I18n.t('urce.common.ErrorGeneric');
-        if (staticList) outputText += '\n\n' + I18n.t('urce.common.Type') + ': ' + I18n.t('urce.common.Static');
-        else {
-            let commentListInfo = getCommentListInfo(_settings.commentList);
-            outputText += '\n\n' + I18n.t('urce.common.CommentList') + ': ' + commentListInfo.name;
-            outputText += '\n' + I18n.t('urce.common.ListOwner') + ': ' + commentListInfo.listOwner;
+        if (phase === 'changeList') {
+            if (staticList) outputText += '\n\n' + I18n.t('urce.common.Type') + ': ' + I18n.t('urce.common.Static');
+            else {
+                let commentListInfo = getCommentListInfo(_settings.commentList);
+                outputText += '\n\n' + I18n.t('urce.common.CommentList') + ': ' + commentListInfo.name;
+                outputText += '\n' + I18n.t('urce.common.ListOwner') + ': ' + commentListInfo.listOwner;
+            }
         }
         $('#_commentList').empty();
         $('#_commentList').append(
             $('<div>', {class:'URCE-divLoading'}).text(outputText)
         );
+        showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), outputText, false, 'OK', '', null, null);
+        maskBoxes(null, true, phase, maskUrPanel);
     }
 
     function initMutationObservers(status) {
@@ -1637,7 +1648,7 @@
                 }
             });
             let zoomLevel = getZoomLevel();
-            let filter = (zoomLevel < _settings.disableFilteringAboveZoomLevel || zoomLevel > _settings.disableFilteringBelowZoomLevel) ? false : true;
+            let filter = ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))) ? false : true;
             if (urMapMarkerIds.length > 0) handleUrMapMarkers(urMapMarkerIds, filter);
         });
         if (status === 'enable' && (!saveButtonObserver.isObserving || !urPanelContainerObserver.isObserving || !urMarkerObserver.isObserving)) {
@@ -2097,6 +2108,21 @@
                     $('<input>', {type:'checkbox', id:'_cbdoNotHideSelectedUr', urceprefs:'filtering', class:'urceSettingsCheckbox'}).prop('checked', _settings.doNotHideSelectedUr),
                     $('<label>', {for:'_cbdoNotHideSelectedUr', urceprefs:'filtering', title:I18n.t('urce.prefs.DoNotHideSelectedUrTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DoNotHideSelectedUr')),
                     $('<br>'),
+                    $('<div>').append(
+                        $('<input>', {type:'checkbox', id:'_cbdisableFilteringAboveZoom', urceprefs:'filtering', class:'urceSettingsCheckbox'}).prop('checked', _settings.disableFilteringAboveZoom),
+                        $('<label>', {for:'_cbdisableFilteringAboveZoom', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.DisableFilteringAboveZoomLevelTitle')}).text(I18n.t('urce.prefs.DisableFilteringAboveZoomLevel')),
+                        $('<div>', {class:'URCE-divDaysInline'}).append(
+                            $('<input>', {type:'number', id:'_numdisableFilteringAboveZoomLevel', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'filtering', min:'0', max:'10', step:'1', value:_settings.disableFilteringAboveZoomLevel, title:I18n.t('urce.prefs.DisableFilteringAboveZoomLevelTitle')})
+                        )
+                    ),
+                    $('<div>').append(
+                        $('<input>', {type:'checkbox', id:'_cbdisableFilteringBelowZoom', urceprefs:'filtering', class:'urceSettingsCheckbox'}).prop('checked', _settings.disableFilteringBelowZoom),
+                        $('<label>', {for:'_cbdiableFilteringBelowZoom', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.DisableFilteringBelowZoomLevelTitle')}).text(I18n.t('urce.prefs.DisableFilteringBelowZoomLevel')),
+                        $('<div>', {class:'URCE-divDaysInline'}).append(
+                            $('<input>', {type:'number', id:'_numdisableFilteringBelowZoomLevel', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'filtering', min:'0', max:'10', step:'1', value:_settings.disableFilteringBelowZoomLevel, title:I18n.t('urce.prefs.DisableFilteringBelowZoomLevelTitle')})
+                        )
+                    ),
+                    $('<br>'),
                     // -- Lifecycle
                     $('<div>').append(
                         $('<div>', {class:'URCE-subHeading'}).text(I18n.t('urce.prefs.LifeCycleStatus') + ':').append('<br>')
@@ -2386,12 +2412,6 @@
                     ),
                     $('<div>', {title:I18n.t('urce.prefs.CloseDaysTitle'), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.CloseDays') + ': ').append(
                         $('<input>', {type:'number', id:'_numcloseDays', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'common', min:'1', max:'14', step:'1', value:_settings.closeDays, title:I18n.t('urce.prefs.CloseDaysTitle')})
-                    ),
-                    $('<div>', {title:I18n.t('urce.prefs.DisableFilteringAboveZoomLevelTitle'), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.DisableFilteringAboveZoomLevel') + ': ').append(
-                        $('<input>', {type:'number', id:'_numdisableFilteringAboveZoomLevel', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'common', min:'0', max:'10', step:'1', value:_settings.disableFilteringAboveZoomLevel, title:I18n.t('urce.prefs.DisableFilteringAboveZoomLevelTitle')})
-                    ),
-                    $('<div>', {title:I18n.t('urce.prefs.DisableFilteringBelowZoomLevelTitle'), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.DisableFilteringBelowZoomLevel') + ': ').append(
-                        $('<input>', {type:'number', id:'_numdisableFilteringBelowZoomLevel', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'common', min:'0', max:'10', step:'1', value:_settings.disableFilteringBelowZoomLevel, title:I18n.t('urce.prefs.DisableFilteringBelowZoomLevelTitle')})
                     )
                 )
             )
@@ -2536,7 +2556,7 @@
 
     function initCommentLists() {
         logDebug('Initializing available comment lists.');
-        return new Promise(async (resolve,reject) => {
+        return new Promise(async (resolve) => {
             let errorText, data;
             let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/CommentLists!A3:G?key=' + URCE_API_KEY;
             try {
@@ -2552,11 +2572,15 @@
                 let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
                 for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
                     if (entryIdx === 0) {
-                        if (SCRIPT_VERSION < data.values[entryIdx][0]) return reject('Script must be updated to at least version ' + data.values[entryIdx][0] + ' before comment lists can be loaded.');
+                        if (SCRIPT_VERSION < data.values[entryIdx][0]) {
+                            errorText = 'updateRequired' + data.values[entryIdx][0];
+                            break;
+                        }
                     } else if (entryIdx === 1) {
                         ssFieldNames = data.values[entryIdx].map(fldName => fldName.trim());
-                        if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length) return reject('Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment lists data. Spreadsheet returned ' + ssFieldNames.length + '.');
-                        else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName))) return reject('Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', '));
+                        if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length) errorText = 'Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment lists data. Spreadsheet returned ' + ssFieldNames.length + '.';
+                        else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName))) errorText = 'Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', ');
+                        if (errorText) break;
                     } else {
                         let output = Object.create(null);
                         for (let valIdx = 0; valIdx < data.values[entryIdx].length; valIdx++) {
@@ -2567,24 +2591,21 @@
                         _commentLists.push(output);
                     }
                 }
-                _commentLists.sort(dynamicSort('name'));
-                resolve();
-            } else {
-                if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1)) {
-                    logWarning(errorText);
-                    _commentLists.push({idx:1, name:'Custom', status:'enabled', type:'static', oldVarName:'Custom', listOwner:'Custom', gSheetRange:''});
-                    _commentLists.push({idx:3, name:'USA - SER', status:'enabled', type:'static', oldVarName:'USA_Southeast', listOwner:'itzwolf', gSheetRange:''});
-                    resolve();
-                }
-                else if (errorText) reject(errorText);
-                else reject('No lists available.');
+                if (!errorText) _commentLists.sort(dynamicSort('name'));
+            } else errorText = errorText || 'No lists available.';
+            if (errorText) logWarning(errorText);
+            if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1)) {
+                _commentLists.push({idx:1, name:'Custom', status:'enabled', type:'static', oldVarName:'Custom', listOwner:'Custom', gSheetRange:''});
+                _commentLists.push({idx:3, name:'USA - SER', status:'enabled', type:'static', oldVarName:'USA_Southeast', listOwner:'itzwolf', gSheetRange:''});
+                return resolve({error:undefined});
             }
+            resolve({error:errorText});
         });
     }
 
     async function initAutoSwitchArrays() {
         logDebug('Initializing auto switch arrays.');
-        return new Promise(async (resolve,reject) => {
+        return new Promise(async (resolve) => {
             let errorText, data;
             let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/CommentLists_AutoSwitch!A3:ZZ?majorDimension=COLUMNS&key=' + URCE_API_KEY;
             try {
@@ -2596,7 +2617,10 @@
             }
             if (data && data.values.length > 0) {
                 for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
-                    if (entryIdx === 0 && SCRIPT_VERSION < data.values[entryIdx][0]) return reject('Script must be updated to at least version ' + data.values[entryIdx][0] + ' before comment lists can be loaded.');
+                    if (entryIdx === 0 && SCRIPT_VERSION < data.values[entryIdx][0]) {
+                        errorText = 'updateRequired|' + data.values[entryIdx][0];
+                        break;
+                    }
                     if (data.values[entryIdx].length < 4) continue;
                     let commentListNum = parseInt(data.values[entryIdx][2]);
                     for (let idx = 3; idx < data.values[entryIdx].length; idx++) {
@@ -2608,14 +2632,10 @@
                         if ((values[0] === 'country') && (!_autoSwitchCountries[country])) _autoSwitchCountries[country] = commentListNum;
                     }
                 }
-                resolve();
-            } else {
-                if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1)) {
-                    logWarning(errorText);
-                    resolve();
-                }
-                else reject(errorText);
-            }
+            } else errorText = errorText || 'No autoswitch data available';
+            if (errorText) logWarning(errorText);
+            if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1)) return resolve({error:undefined});
+            resolve({error:errorText});
         });
     }
 
@@ -2624,41 +2644,30 @@
         let urIdInUrl = parseInt(location.search.split('mapUpdateRequest=')[1]);
         _wmeUserId = W.loginManager.user.id;
         loadSettingsFromStorage();
-        try {
-            await loadTranslations();
-        } catch(error) {
-            logError(error);
-            return;
-        }
-        maskBoxes(I18n.t('urce.prompts.WaitingOnInit') + '.<br>' + I18n.t('urce.common.PleaseWait') + '.', false, 'init', (urIdInUrl > 0));
-        try {
-            await initCommentLists();
-        } catch(error) {
-            logError(error);
-            return;
-        }
-        try {
-            await initAutoSwitchArrays();
-        } catch(error) {
-            logWarning(error);
-        }
+        let loadTranslationsError = await loadTranslations();
+        let initCommentListsError = await initCommentLists();
+        let initAutoSwitchArraysError = await initAutoSwitchArrays();
         await initGui();
-        let buildCommentListResult = await buildCommentList();
-        if (buildCommentListResult.error) handleBuildCommentListError(buildCommentListResult.error, buildCommentListResult.static);
-        else if (!urIdInUrl) await initBackgroundTasks();
-        window.addEventListener("beforeunload", function() {
-            saveSettingsToStorage();
-        }, false);
-        setTimeout(saveSettingsToStorage, 5000);
-        logDebug('Fully initialized in ' + Math.round(performance.now() - LOAD_BEGIN_TIME) + ' ms.');
-        maskBoxes(null, true, 'init', (urIdInUrl > 0));
-        if (urIdInUrl > 0) {
-            autoCloseUrPanel();
-            await initBackgroundTasks();
-            logDebug('urId ' + urIdInUrl + ' found in URL. Re-clicking.');
-            $(`div[data-id="${urIdInUrl}"]`).click();
-            urIdInUrl = null;
-        }
+        let errorText = loadTranslationsError.error || initCommentListsError.error || initAutoSwitchArraysError.error || undefined;
+        if (!errorText) {
+            maskBoxes(I18n.t('urce.prompts.WaitingOnInit') + '.<br>' + I18n.t('urce.common.PleaseWait') + '.', false, 'init', (urIdInUrl > 0));
+            let buildCommentListResult = await buildCommentList(undefined, 'init');
+            if (buildCommentListResult.error) handleError(buildCommentListResult.error, buildCommentListResult.static, buildCommentListResult.phase, (urIdInUrl > 0));
+            else if (!urIdInUrl) await initBackgroundTasks();
+            window.addEventListener("beforeunload", function() {
+                saveSettingsToStorage();
+            }, false);
+            setTimeout(saveSettingsToStorage, 5000);
+            logDebug('Fully initialized in ' + Math.round(performance.now() - LOAD_BEGIN_TIME) + ' ms.');
+            maskBoxes(null, true, 'init', (urIdInUrl > 0));
+            if (urIdInUrl > 0) {
+                autoCloseUrPanel();
+                await initBackgroundTasks();
+                logDebug('urId ' + urIdInUrl + ' found in URL. Re-clicking.');
+                $(`div[data-id="${urIdInUrl}"]`).click();
+                urIdInUrl = null;
+            }
+        } else handleBuildCommentListError(errorText);
     }
 
     function bootstrap(tries) {
@@ -2680,7 +2689,7 @@
 
     function loadTranslations() {
         logDebug('Loading translations.');
-        return new Promise(async (resolve,reject) => {
+        return new Promise(async (resolve) => {
             let errorText, data;
             let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/Script_Translations!A3:AA?key=' + URCE_API_KEY;
             try {
@@ -2695,7 +2704,10 @@
             if (data && data.values.length > 0) {
                 for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
                     if (entryIdx === 0) {
-                        if (SCRIPT_VERSION < data.values[entryIdx][0]) return reject('Script must be updated to at least version ' + data.values[entryIdx][0] + ' before translations can be loaded.');
+                        if (SCRIPT_VERSION < data.values[entryIdx][0]) {
+                            errorText = 'updateRequired|' + data.values[entryIdx][0];
+                            break;
+                        }
                     } else if (entryIdx === 1) {
                         for (let idx = 0; idx < data.values[entryIdx].length; idx++) {
                             if (idx === 0) continue;
@@ -2718,248 +2730,241 @@
                         }
                     }
                 }
-            } else {
-                if (errorText) logWarning(errorText);
-                else logWarning('No translations available.');
+            } else errorText = errorText || 'No translations available.';
+            data = null;
+            if (errorText || !data || data.values.length < 1) {
                 translations = {
-                    en: {
-                        commentsTab: {
-                            ZoomOutLink1: 'Zoom out 0 & close UR',
-                            ZoomOutLink1Title: 'Zooms all the way out and closes the UR panel.',
-                            ZoomOutLink2: 'Zoom out 2 & close UR',
-                            ZoomOutLink2Title: 'Zooms out to level 2 and closes the UR panel.',
-                            ZoomOutLink3: 'Zoom out 3 & close UR',
-                            ZoomOutLink3Title: 'Zooms out to level 3 and closes the UR panel.'
+                    "en":{
+                        "commentsTab":{
+                            "ZoomOutLink1":"Zoom out 0 & close UR",
+                            "ZoomOutLink1Title":"Zooms all the way out and closes the UR panel.",
+                            "ZoomOutLink2":"Zoom out 2 & close UR",
+                            "ZoomOutLink2Title":"Zooms out to level 2 and closes the UR panel.",
+                            "ZoomOutLink3":"Zoom out 3 & close UR",
+                            "ZoomOutLink3Title":"Zooms out to level 3 and closes the UR panel."
                         },
-                        common: {
-                            All: 'All',
-                            CommentList: 'Comment List',
-                            Custom: 'Custom',
-                            Description: 'Description',
-                            DoubleClickTitle: 'Double click here to send this comment',
-                            ErrorGeneric: 'An error has occurred within URC-E. Please contact ' + SCRIPT_AUTHOR + ' via Discord or PM.',
-                            ErrorHeader: 'URC-E Error',
-                            Following: 'Following',
-                            LessThan: 'Less than',
-                            List: 'List',
-                            ListOwner: 'List owner',
-                            Loading: 'Loading',
-                            MoreThan: 'More than',
-                            No: 'No',
-                            NotFollowing: 'Not following',
-                            PleaseWait: 'Please wait',
-                            Style: 'Style',
-                            Title: 'URComments-Enhanced',
-                            Type: 'Type',
-                            With: 'With',
-                            Without: 'Without',
-                            Yes: 'Yes'
+                        "common":{
+                            "All":"All",
+                            "CommentList":"Comment List",
+                            "Custom":"Custom",
+                            "Description":"Description",
+                            "DoubleClickTitle":"Double click here to send this comment",
+                            "ErrorGeneric":"An error has occurred within URC-E. Please contact " + SCRIPT_AUTHOR + " via Discord or PM.",
+                            "ErrorHeader":"URC-E Error",
+                            "Following":"Following",
+                            "LessThan":"Less than",
+                            "List":"List",
+                            "ListOwner":"List owner",
+                            "Loading":"Loading",
+                            "MoreThan":"More than",
+                            "No":"No",
+                            "NotFollowing":"Not following",
+                            "PleaseWait":"Please wait",
+                            "Style":"Style",
+                            "Title":"URComment-Enhanced",
+                            "Type":"Type",
+                            "With":"With",
+                            "Without":"Without",
+                            "Yes":"Yes"
                         },
-                        prefs: {
-                            // Comment List
-                            DefaultList: 'Default list',
-                            DefaultListTitle: 'Select the custom list you would like to use. CommentTeam is the default. If you would like your comment list built into this script or have suggestions on the CommentTeam list, please contact dBsooner on Discord or via PM.',
-                            CommentListStyleTitle: 'Select the style you would like the URC-E panel to be displayed in. This only affects the look of the tab, no functionality is changed.',
-                            SpreadsheetLink: 'Spreadsheet',
-                            SpreadsheetLinkTitle: 'Click here to view the URC-E spreadsheet.',
-                            StyleDefault: 'Default',
-                            StyleUrStyle: 'UR Style',
-                            AutoSwitchCommentList: 'Automatically switch comment lists',
-                            AutoSwitchCommentListTitle: 'Automatically switch to the comment list designated for the area the UR is in, if there is a list associated with the area.\nOpening a UR in an area that does not have a list associated will use the "Comment List" you have selected above.',
-                            // URC-E Preferences
-                            UrcePrefs: 'URC-E Preferences',
-                            AutoCenterOnUr: 'Auto center on UR',
-                            AutoCenterOnUrTitle: 'Auto center the map to the selected UR at the current map zoom level when the UR has comments and the zoom level is less than 3.',
-                            AutoClickOpenSolvedNi: 'Auto click open, solved or not identified',
-                            AutoClickOpenSolvedNiTitle: 'Suppress the message about recent pending questions to the reporter and then, depending on the choice set for that comment, automatically select Open, Solved or Not Identified.',
-                            AutoCloseUrPanel: 'Auto close UR panel',
-                            AutoCloseUrPanelTitle: 'Automatically close the UR panel after you click send on a comment that does not require saving.',
-                            AutoSaveAfterSolvedOrNiComment: 'Auto save after solved or NI comment',
-                            AutoSaveAfterSolvedOrNiCommentTitle: 'If \'Auto Click Open, Solved or Not Identified\' is also checked, this will automatically click the save button after you click send on a comment that set the UR to Solved or Not Identified.',
-                            AutoSendReminders: 'Auto send reminders',
-                            AutoSendRemindersTitle: 'Automatically send the reminder comment to the URs in the map window (as you pan around) you were the last to comment on and it has reached the days specified in \'Reminder Days\'.',
-                            AutoSendRemindersWarning: 'WARNING',
-                            AutoSendRemindersWarningTitle: 'AUTOMATICALLY SEND REMINDERS at the reminder days setting.\nThis only happens when they are visible on your screen.\n\nNOTE: When using this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to all open URs\nafter \'Reminder days\'.',
-                            AutoSetNewUrComment: 'Auto set new UR comment',
-                            AutoSetNewUrCommentTitle: 'Automatically set the default UR comment for the UR type on new (do not already have comments) URs.',
-                            AutoSetReminderUrComment: 'Auto set reminder UR comment',
-                            AutoSetReminderUrCommentTitle: 'Automatically set the UR reminder comment for URs that are older than the \'Reminder days\' setting and have only one comment.',
-                            AutoSwitchToUrCommentsTab: 'Auto switch to the URC-E tab',
-                            AutoSwitchToUrCommentsTabTitle: 'Automatically switch to the URComments-Enhanced tab when opening a UR. When the UR panel is closed you will be switched back to your previous tab.',
-                            AutoZoomInOnNewUr: 'Auto zoom in on new UR',
-                            AutoZoomInOnNewUrTitle: 'Automatically zoom in when opening new (no comments) URs and when sending reminders.',
-                            AutoZoomOutAfterComment: 'Auto zoom out after comment',
-                            AutoZoomOutAfterCommentTitle: 'Automatically zoom the map back to the previous zoom after clicking clicking send on a UR comment.',
-                            DisableDoneNextButtons: 'Disable done / next buttons',
-                            DisableDoneNextButtonsTitle: 'Disable the done / next buttons at the bottom of the UR panel.',
-                            DoubleClickLinkNiComments: 'Double click link - NI comments',
-                            DoubleClickLinkNiCommentsTitle: 'Add an image (extra link) to the \'not identified\' comments. When double clicked it will automatically set and send the UR comment of the one you double clicked, and then launch all of the other options that are enabled.',
-                            DoubleClickLinkOpenComments: 'Double click link - Open comments',
-                            DoubleClickLinkOpenCommentsTitle: 'Add an image (extra link) to the \'open\' comments. When double clicked it will automatically set and send the UR comment of the one you double clicked, and then launch all of the other options that are enabled.',
-                            DoubleClickLinkSolvedComments: 'Double click link - Solved comments',
-                            DoubleClickLinkSolvedCommentsTitle: 'Add an image (extra link) to the \'solved\' comments. When double clicked it will automatically set and send the UR comment of the one you double clicked, and then launch all of the other options that are enabled.',
-                            HideZoomOutLinks: 'Hide zoom out links',
-                            HideZoomOutLinksTitle: 'Hide the zoom out links on the comments tab.',
-                            UnfollowUrAfterSend: 'Unfollow UR after send',
-                            UnfollowUrAfterSendTitle: 'Unfollow the UR after sending a comment.',
-                            // UR Marker Preferences
-                            UrMarkerPrefs: 'UR Marker Preferences',
-                            EnableUrPillCounts: 'Enable UR pill counts',
-                            EnableUrPillCountsTitle: 'Enable or disable the pill with UR counts on the map marker.',
-                            DoNotShowTagNameOnPill: 'Don\'t show tag name on pill',
-                            DoNotShowTagNameOnPillTitle: 'Do not show the tag name on the pill where there is a tag. Example: [NOTE]',
-                            ReplaceTagNameWithEditorName: 'Replace tag name with editor name',
-                            ReplaceTagNameWithEditorNameTitle: 'When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds when commenting), replace the tag type with the editors name.',
-                            UnstackMarkers: 'Unstack markers',
-                            UnstackMarkersTitle: 'Attempt to unstack markers by offsetting them. Similar to how URO+ unstacks markers.',
-                            UseCustomMarkersFor: 'Use Custom Markers for',
-                            BogTitle: 'Replace default UR marker with custom marker for the URs with \'[BOG]\' (boots on ground) / \'[BOTG]\' (boots on the ground) in the description or comments.',
-                            ClosureTitle: 'Replace default UR marker with custom marker for the URs with \'[CLOSURE]\' in the description or comments.',
-                            ConstructionTitle: 'Replace default UR marker with custom marker for the URs with \'[CONSTRUCTION]\' in the description or comments.',
-                            DifficultTitle: 'Replace default UR marker with custom marker for the URs with \'[DIFFICULT]\' in the description or comments.',
-                            EventTitle: 'Replace default UR marker with custom marker for the URs with \'[EVENT]\' in the description or comments.',
-                            NoteTitle: 'Replace default UR marker with custom marker for the URs with \'[NOTE]\' in the description or comments.',
-                            RoadworksTitle: 'Replace default UR marker with custom marker for the URs with \'[ROADWORKS]\' in the description or comments. Used in the UK.',
-                            WslmTitle: 'Waze Speed Limit Marker',
-                            NativeSpeedLimits: 'Native speed limits',
-                            NativeSpeedLimitsTitle: 'Replace default UR marker with custom marker for the URs with \'speed limit\' type.',
-                            CustomTitle: 'Replace default UR marker with custom marker for the URs with the text in the box to the right in the description or comments.',
-                            // UR Filtering Preferences
-                            UrFilteringPrefs: 'UR Filtering Preferences',
-                            EnableUrceUrFiltering: 'Enable URC-E UR filtering',
-                            EnableUrceUrFilteringTitle: 'Enable or disable URComments-Enhanced built-in UR filtering.',
-                            HideOutsideEditableArea: 'Hide outside editable area',
-                            HideOutsideEditableAreaTitle: 'Hide URs outside your editable area.',
-                            DoNotFilterTaggedUrs: 'Do not filter tagged URs',
-                            DoNotFilterTaggedUrsTitle: 'Do not filter URs that are tagged with a [] tag. Example: [NOTE]',
-                            DoNotHideSelectedUr: 'Do not hide selected UR',
-                            DoNotHideSelectedUrTitle: 'Do not hide a UR if it is currently being selected.',
-                            // Hide by type
-                            HideByType: 'Hide by type',
-                            HideByTypeBlockedRoadTitle: 'Hide all blocked road URs.',
-                            HideByTypeGeneralErrorTitle: 'Hide all general error URs.',
-                            HideByTypeIncorrectAddressTitle: 'Hide all incorrect address URs.',
-                            HideByTypeIncorrectJunctionTitle: 'Hide all incorrect junction URs.',
-                            HideByTypeIncorrectRouteTitle: 'Hide all incorrect route URs.',
-                            HideByTypeIncorrectStreetPrefixOrSuffixTitle: 'Hide all incorrect street prefix or suffix URs',
-                            HideByTypeIncorrectTurnTitle: 'Hide all incorrect turn URs.',
-                            HideByTypeMissingBridgeOverpassTitle: 'Hide all missing bridge overpass URs.',
-                            HideByTypeMissingExitTitle: 'Hide all missing exit URs.',
-                            HideByTypeMissingLandmarkTitle: 'Hide all missing landmark URs.',
-                            HideByTypeMissingOrInvalidSpeedLimitTitle: 'Hide all missing or invalid speed limit URs',
-                            HideByTypeMissingRoadTitle: 'Hide all missing road URs.',
-                            HideByTypeMissingRoundaboutTitle: 'Hide all missing roundabout URs.',
-                            HideByTypeMissingStreetNameTitle: 'Hide all missing street name URs.',
-                            HideByTypeTurnNotAllowedTitle: 'Hide all turn not allowed URs.',
-                            HideByTypeUndefinedTitle: 'Hide all undefined URs.',
-                            HideByTypeWazeAutomaticTitle: 'Hide all Waze automatic URs.',
-                            HideByTypeWrongDrivingDirectionTitle: 'Hide all wrong driving direction URs.',
-                            // Hide by tagged
-                            HideByTagged: 'Hide by tag',
-                            HideByTaggedBogTitle: 'Hide all URs with [BOG] (boots on ground) / [BOTG] (boots on the ground) in description or comments.',
-                            HideByTaggedClosureTitle: 'Hide all URs with [CLOSURE] in description or comments.',
-                            HideByTaggedConstructionTitle: 'Hide all URs with [CONSTRUCTION] in description or comments.',
-                            HideByTaggedDifficultTitle: 'Hide all URs with [DIFFICULT] in description or comments.',
-                            HideByTaggedEventTitle: 'Hide all URs with [EVENT] in description or comments.',
-                            HideByTaggedNoteTitle: 'Hide all URs with [NOTE] in description or comments.',
-                            HideByTaggedRoadworksTitle: 'Hide all URs with [ROADWORKS] in description or comments.',
-                            HideByTaggedWslmTitle: 'Hide all URs with [WSLM] in description or comments.',
-                            // Hide by status
-                            HideByStatus: 'Hide by status',
-                            HideByStatusOpenTitle: 'Hide all open URs.',
-                            HideByStatusClosedTitle: 'Hide all closed (solved and not identified) URs.',
-                            HideByStatusNotIdentifiedTitle: 'Hide all closed as not identified URs.',
-                            HideByStatusSolvedTitle: 'Hide all closed as solved URs.',
-                            // Hide by age of submission
-                            HideByAgeOfSubmission: 'Hide by age of submission',
-                            // Hide by description, comment, following
-                            DescriptionCommentsFollowing: 'Hide by description, comment, following',
-                            HideFollowingTitle: 'Hide URs you are following.',
-                            HideNotFollowingTitle: 'Hide URs you are not following.',
-                            HideWithDescriptionTitle: 'Hide URs that have a description.',
-                            HideWithoutDescriptionTitle: 'Hide URs that do not have a description.',
-                            HideCommentsFromMe: 'Comments from me',
-                            HideWithCommentsFromMeTitle: 'Hide URs you have commented on.',
-                            HideWithoutCommentsFromMeTitle: 'Hide URs you have not commented on.',
-                            HideFirstCommentByMe: 'First comment by me',
-                            HideFirstCommentByMeTitle: 'Hide URs where you were the first person to comment.',
-                            HideFirstCommentNotByMeTitle: 'Hide URs where someone else was the first person to comment.',
-                            HideLastCommentByMe: 'Last comment by me',
-                            HideLastCommentByMeTitle: 'Hide URs where you are the last person to comment.',
-                            HideLastCommentNotByMeTitle: 'Hide URs where someone else is the last person to comment.',
-                            HideLastCommentByReporter: 'Last comment by reporter',
-                            HideLastCommentByReporterTitle: 'Hide URs where the reporter is the last person to comment.',
-                            HideLastCommentNotByReporterTitle: 'Hide URs where the reporter is not the last person to comment.',
-                            HideByCommentCountLessThanTitle: 'Hide URs that contain less comments than the number specified in the textbox to the right.',
-                            HideByCommentCountMoreThanTitle: 'Hide URs that contain more comments than the number specified in the textbox to the right.',
-                            HideByAgeOfFirstCommentLessThan: 'First comment less than',
-                            HideByAgeOfFirstCommentLessThanTitle: 'Hide URs where the first comment is less than the days specified in the textbox to the right.',
-                            HideByAgeOfFirstCommentMoreThan: 'First comment more than',
-                            HideByAgeOfFirstCommentMoreThanTitle: 'Hide URs where the first comment is more than the days specified in the textbox to the right.',
-                            HideByAgeOfLastCommentLessThan: 'Last comment less than',
-                            HideByAgeOfLastCommentLessThanTitle: 'Hide URs where the last comment is less than the days specified in the textbox to the right.',
-                            HideByAgeOfLastCommentMoreThan: 'Last comment more than',
-                            HideByAgeOfLastCommentMoreThanTitle: 'Hide URs where the last comment is more than the days specified in the textbox to the right.',
-                            HideByKeywordIncluding: 'Hide URs including keyword',
-                            HideBykeywordIncludingTitle: 'Hide URs that include the custom word / text specified in the box to the right.',
-                            HideByKeyworkNotIncluding: 'Hide URs not including keyword',
-                            HideByKeywordNotIncludingTitle: 'Hide URs that do not include the custom word / text specified in the box to the right.',
-                            HideByKeywordCaseInsensitive: 'Case-insensitive keyword matches',
-                            HideByKeywordCaseInsensitiveTitle: 'If enabled, searching for the above including or not including keywords will be done using case insensitive searching.',
-                            // Lifecycle
-                            LifeCycleStatus: 'Hide by lifecycle status',
-                            HideWaiting: 'Waiting',
-                            HideWaitingTitle: 'Only show URs that need work (hide URs in other parts of the life-cycle).',
-                            HideUrsCloseNeeded: 'Close needed',
-                            HideUrsCloseNeededTitle: 'Hide URs that need closing.',
-                            HideUrsReminderNeeded: 'Reminders needed',
-                            HideUrsReminderNeededTitle: 'Hide URs where reminders are needed.',
-                            // Common Preferences
-                            CommonPrefs: 'Common Preferences',
-                            ReminderDays: 'Reminder days',
-                            ReminderDaysTitle: 'Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment. Must be between 0 and 13 and less than \'Close days\'. 0 is off (no reminder used).',
-                            CloseDays: 'Close days',
-                            CloseDaysTitle: 'Number of days to use when calculating UR filtering. Must be between 1 and 14 and greater than \'Reminder days\'.',
-                            DisableFilteringAboveZoomLevel: 'Disable filtering above zoom level',
-                            DisableFilteringAboveZoomLevelTitle: 'Disabled UR filtering when zoomed out above the specified zoom level.',
-                            DisableFilteringBelowZoomLevel: 'Disable filtering below zoom level',
-                            DisableFilteringBelowZoomLevelTitle: 'Disabled UR filtering when zoomed in below the specified zoom level.'
+                        "prefs":{
+                            "DefaultList":"Default list",
+                            "DefaultListTitle":"Select the custom list you would like to use. CommentTeam is the default. If you would like your comment list built into this script or have suggestions on the CommentTeam list, please contact " + SCRIPT_AUTHOR + " on Discord or via PM.",
+                            "CommentListStyleTitle":"Select the style you would like the URC-E panel to be displayed in. This only affects the look of the tab, no functionality is changed.",
+                            "SpreadsheetLink":"Spreadsheet",
+                            "SpreadsheetLinkTitle":"Click here to view the URC-E spreadsheet.",
+                            "StyleDefault":"Default",
+                            "StyleUrStyle":"UR Style",
+                            "AutoSwitchCommentList":"Automatically switch comment lists",
+                            "AutoSwitchCommentListTitle":"Automatically switch to the comment list designated for the area the UR is in, if there is a list associated with the area.\nOpening a UR in an area that does not have a list associated will use the \"Comment List\" you have selected above.",
+                            "UrcePrefs":"URC-E Preferences",
+                            "AutoCenterOnUr":"Auto center on UR",
+                            "AutoCenterOnUrTitle":"Auto center the map to the selected UR at the current map zoom level when the UR has comments and the zoom level is less than 3.",
+                            "AutoClickOpenSolvedNi":"Auto click open, solved or not identified",
+                            "AutoClickOpenSolvedNiTitle":"Suppress the message about recent pending questions to the reporter and then, depending on the choice set for that comment, automatically select Open, Solved or Not Identified.",
+                            "AutoCloseUrPanel":"Auto close UR panel",
+                            "AutoCloseUrPanelTitle":"Automatically close the UR panel after you click send on a comment that does not require saving.",
+                            "AutoSaveAfterSolvedOrNiComment":"Auto save after solved or NI comment",
+                            "AutoSaveAfterSolvedOrNiCommentTitle":"If 'Auto Click Open, Solved or Not Identified' is also checked, this will automatically click the save button after you click send on a comment that set the UR to Solved or Not Identified.",
+                            "AutoSendReminders":"Auto send reminders",
+                            "AutoSendRemindersTitle":"Automatically send the reminder comment to the URs in the map window (as you pan around) you were the last to comment on and it has reached the days specified in 'Reminder Days'.",
+                            "AutoSendRemindersWarning":"WARNING",
+                            "AutoSendRemindersWarningTitle":"AUTOMATICALLY SEND REMINDERS at the reminder days setting.\nThis only happens when they are visible on your screen.\n\nNOTE: When using this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to all open URs\nafter 'Reminder days'.",
+                            "AutoSetNewUrComment":"Auto set new UR comment",
+                            "AutoSetNewUrCommentTitle":"Automatically set the default UR comment for the UR type on new (do not already have comments) URs.",
+                            "AutoSetReminderUrComment":"Auto set reminder UR comment",
+                            "AutoSetReminderUrCommentTitle":"Automatically set the UR reminder comment for URs that are older than the 'Reminder days' setting and have only one comment.",
+                            "AutoSwitchToUrCommentsTab":"Auto switch to the URC-E tab",
+                            "AutoSwitchToUrCommentsTabTitle":"Automatically switch to the URComments-Enhanced tab when opening a UR. When the UR panel is closed you will be switched back to your previous tab.",
+                            "AutoZoomInOnNewUr":"Auto zoom in on new UR",
+                            "AutoZoomInOnNewUrTitle":"Automatically zoom in when opening new (no comments) URs and when sending reminders.",
+                            "AutoZoomOutAfterComment":"Auto zoom out after comment",
+                            "AutoZoomOutAfterCommentTitle":"Automatically zoom the map back to the previous zoom after clicking clicking send on a UR comment.",
+                            "DisableDoneNextButtons":"Disable done / next buttons",
+                            "DisableDoneNextButtonsTitle":"Disable the done / next buttons at the bottom of the UR panel.",
+                            "DoubleClickLinkNiComments":"Double click link - NI comments",
+                            "DoubleClickLinkNiCommentsTitle":"Add an image (extra link) to the 'not identified' comments. When double clicked it will automatically set and send the UR comment of the one you double clicked, and then launch all of the other options that are enabled.",
+                            "DoubleClickLinkOpenComments":"Double click link - Open comments",
+                            "DoubleClickLinkOpenCommentsTitle":"Add an image (extra link) to the 'open' comments. When double clicked it will automatically set and send the UR comment of the one you double clicked, and then launch all of the other options that are enabled.",
+                            "DoubleClickLinkSolvedComments":"Double click link - Solved comments",
+                            "DoubleClickLinkSolvedCommentsTitle":"Add an image (extra link) to the 'solved' comments. When double clicked it will automatically set and send the UR comment of the one you double clicked, and then launch all of the other options that are enabled.",
+                            "HideZoomOutLinks":"Hide zoom out links",
+                            "HideZoomOutLinksTitle":"Hide the zoom out links on the comments tab.",
+                            "UnfollowUrAfterSend":"Unfollow UR after send",
+                            "UnfollowUrAfterSendTitle":"Unfollow the UR after sending a comment.",
+                            "UrMarkerPrefs":"UR Marker Preferences",
+                            "EnableUrPillCounts":"Enable UR pill counts",
+                            "EnableUrPillCountsTitle":"Enable or disable the pill with UR counts on the map marker.",
+                            "DoNotShowTagNameOnPill":"Don't show tag name on pill",
+                            "DoNotShowTagNameOnPillTitle":"Do not show the tag name on the pill where there is a tag. Example: [NOTE]",
+                            "ReplaceTagNameWithEditorName":"Replace tag name with editor name",
+                            "ReplaceTagNameWithEditorNameTitle":"When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds when commenting), replace the tag type with the editors name.",
+                            "UnstackMarkers":"Unstack markers",
+                            "UnstackMarkersTitle":"Attempt to unstack markers by offsetting them. Similar to how URO+ unstacks markers.",
+                            "UseCustomMarkersFor":"Use Custom Markers for",
+                            "BogTitle":"Replace default UR marker with custom marker for the URs with '[BOG]' (boots on ground) / '[BOTG]' (boots on the ground) in the description or comments.",
+                            "ClosureTitle":"Replace default UR marker with custom marker for the URs with '[CLOSURE]' in the description or comments.",
+                            "ConstructionTitle":"Replace default UR marker with custom marker for the URs with '[CONSTRUCTION]' in the description or comments.",
+                            "DifficultTitle":"Replace default UR marker with custom marker for the URs with '[DIFFICULT]' in the description or comments.",
+                            "EventTitle":"Replace default UR marker with custom marker for the URs with '[EVENT]' in the description or comments.",
+                            "NoteTitle":"Replace default UR marker with custom marker for the URs with '[NOTE]' in the description or comments.",
+                            "RoadworksTitle":"Replace default UR marker with custom marker for the URs with '[ROADWORKS]' in the description or comments. Used in the UK.",
+                            "WslmTitle":"Waze Speed Limit Marker",
+                            "NativeSpeedLimits":"Native speed limits",
+                            "NativeSpeedLimitsTitle":"Replace default UR marker with custom marker for the URs with 'speed limit' type.",
+                            "CustomTitle":"Replace default UR marker with custom marker for the URs with the text in the box to the right in the description or comments.",
+                            "UrFilteringPrefs":"UR Filtering Preferences",
+                            "EnableUrceUrFiltering":"Enable URC-E UR filtering",
+                            "EnableUrceUrFilteringTitle":"Enable or disable URComments-Enhanced built-in UR filtering.",
+                            "HideOutsideEditableArea":"Hide outside editable area",
+                            "HideOutsideEditableAreaTitle":"Hide URs outside your editable area.",
+                            "DoNotFilterTaggedUrs":"Do not filter tagged URs",
+                            "DoNotFilterTaggedUrsTitle":"Do not filter URs that are tagged with a [] tag. Example: [NOTE]",
+                            "DoNotHideSelectedUr":"Do not hide selected UR",
+                            "DoNotHideSelectedUrTitle":"Do not hide a UR if it is currently being selected.",
+                            "HideByType":"Hide by type",
+                            "HideByTypeBlockedRoadTitle":"Hide all blocked road URs.",
+                            "HideByTypeGeneralErrorTitle":"Hide all general error URs.",
+                            "HideByTypeIncorrectAddressTitle":"Hide all incorrect address URs.",
+                            "HideByTypeIncorrectJunctionTitle":"Hide all incorrect junction URs.",
+                            "HideByTypeIncorrectRouteTitle":"Hide all incorrect route URs.",
+                            "HideByTypeIncorrectStreetPrefixOrSuffixTitle":"Hide all incorrect street prefix or suffix URs.",
+                            "HideByTypeIncorrectTurnTitle":"Hide all incorrect turn URs.",
+                            "HideByTypeMissingBridgeOverpassTitle":"Hide all missing bridge overpass URs.",
+                            "HideByTypeMissingExitTitle":"Hide all missing exit URs.",
+                            "HideByTypeMissingLandmarkTitle":"Hide all missing landmark URs.",
+                            "HideByTypeMissingOrInvalidSpeedLimitTitle":"Hide all missing or invalid speed limit URs.",
+                            "HideByTypeMissingRoadTitle":"Hide all missing road URs.",
+                            "HideByTypeMissingRoundaboutTitle":"Hide all missing roundabout URs.",
+                            "HideByTypeMissingStreetNameTitle":"Hide all missing street name URs.",
+                            "HideByTypeTurnNotAllowedTitle":"Hide all turn not allowed URs.",
+                            "HideByTypeUndefinedTitle":"Hide all undefined URs.",
+                            "HideByTypeWazeAutomaticTitle":"Hide all Waze automatic URs.",
+                            "HideByTypeWrongDrivingDirectionTitle":"Hide all wrong driving direction URs.",
+                            "HideByTagged":"Hide by tagged",
+                            "HideByTaggedBogTitle":"Hide all URs with [BOG] (boots on ground) / [BOTG] (boots on the ground) in description or comments.",
+                            "HideByTaggedClosureTitle":"Hide all URs with [CLOSURE] in description or comments.",
+                            "HideByTaggedConstructionTitle":"Hide all URs with [CONSTRUCTION] in description or comments.",
+                            "HideByTaggedDifficultTitle":"Hide all URs with [DIFFICULT] in description or comments.",
+                            "HideByTaggedEventTitle":"Hide all URs with [EVENT] in description or comments.",
+                            "HideByTaggedNoteTitle":"Hide all URs with [NOTE] in description or comments.",
+                            "HideByTaggedRoadworksTitle":"Hide all URs with [ROADWORKS] in description or comments. Used in the UK.",
+                            "HideByTaggedWslmTitle":"Hide all URs with [WSLM] in description or comments.",
+                            "HideByStatus":"Hide by status",
+                            "HideByStatusOpenTitle":"Hide all open URs.",
+                            "HideByStatusClosedTitle":"Hide all closed (solved and not identified) URs.",
+                            "HideByStatusNotIdentifiedTitle":"Hide all closed as not identified URs.",
+                            "HideByStatusSolvedTitle":"Hide all closed as solved URs.",
+                            "HideByAgeOfSubmission":"Hide by age of submission",
+                            "DescriptionCommentsFollowing":"Hide by description, comment, following",
+                            "HideFollowingTitle":"Hide URs you are following.",
+                            "HideNotFollowingTitle":"Hide URs you are not following.",
+                            "HideWithDescriptionTitle":"Hide URs that have a description.",
+                            "HideWithoutDescriptionTitle":"Hide URs that do not have a description.",
+                            "HideCommentsFromMe":"Comments from me",
+                            "HideWithCommentsFromMeTitle":"Hide URs you have commented on.",
+                            "HideWithoutCommentsFromMeTitle":"Hide URs you have not commented on.",
+                            "HideFirstCommentByMe":"First comment by me",
+                            "HideFirstCommentByMeTitle":"Hide URs where you were the first person to comment.",
+                            "HideFirstCommentNotByMeTitle":"Hide URs where someone else was the first person to comment.",
+                            "HideLastCommentByMe":"Last comment by me",
+                            "HideLastCommentByMeTitle":"Hide URs where you are the last person to comment.",
+                            "HideLastCommentNotByMeTitle":"Hide URs where someone else is the last person to comment.",
+                            "HideLastCommentByReporter":"Last comment by reporter",
+                            "HideLastCommentByReporterTitle":"Hide URs where the reporter is the last person to comment.",
+                            "HideLastCommentNotByReporterTitle":"Hide URs where the reporter is not the last person to comment.",
+                            "HideByCommentCountLessThanTitle":"Hide URs that contain less comments than the number specified in the textbox to the right.",
+                            "HideByCommentCountMoreThanTitle":"Hide URs that contain more comments than the number specified in the textbox to the right.",
+                            "HideByAgeOfFirstCommentLessThan":"First comment less than",
+                            "HideByAgeOfFirstCommentLessThanTitle":"Hide URs where the first comment is less than the days specified in the textbox to the right.",
+                            "HideByAgeOfFirstCommentMoreThan":"First comment more than",
+                            "HideByAgeOfFirstCommentMoreThanTitle":"Hide URs where the first comment is more than the days specified in the textbox to the right.",
+                            "HideByAgeOfLastCommentLessThan":"Last comment less than",
+                            "HideByAgeOfLastCommentLessThanTitle":"Hide URs where the last comment is less than the days specified in the textbox to the right.",
+                            "HideByAgeOfLastCommentMoreThan":"Last comment more than",
+                            "HideByAgeOfLastCommentMoreThanTitle":"Hide URs where the last comment is more than the days specified in the textbox to the right.",
+                            "HideByKeywordIncluding":"Hide URs including keyword",
+                            "HideByKeywordIncludingTitle":"Hide URs that include the custom word / text specified in the box to the right.",
+                            "HideByKeywordNotIncluding":"Hide URs not including keyword",
+                            "HideByKeywordNotIncludingTitle":"Hide URs that do not include the custom word / text specified in the box to the right.",
+                            "HideByKeywordCaseInsensitive":"Case-insensitive keyword matches",
+                            "HideByKeywordCaseInsensitiveTitle":"If enabled, searching for the above including or not including keywords will be done using case insensitive searching.",
+                            "LifeCycleStatus":"Hide by lifecycle status",
+                            "HideWaiting":"Waiting",
+                            "HideWaitingTitle":"Only show URs that need work (hide URs in other parts of the life-cycle).",
+                            "HideUrsCloseNeeded":"Close needed",
+                            "HideUrsCloseNeededTitle":"Hide URs that need closing.",
+                            "HideUrsReminderNeeded":"Reminders needed",
+                            "HideUrsReminderNeededTitle":"Hide URs where reminders are needed.",
+                            "CommonPrefs":"Common Preferences",
+                            "ReminderDays":"Reminder days",
+                            "ReminderDaysTitle":"Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment. Must be between 0 and 13 and less than 'Close days'. 0 is off (no reminder used).",
+                            "CloseDays":"Close days",
+                            "CloseDaysTitle":"Number of days to use when calculating UR filtering. Must be between 1 and 14 and greater than 'Reminder days'.",
+                            "DisableFilteringAboveZoomLevel":"Disable filtering above zoom level",
+                            "DisableFilteringAboveZoomLevelTitle":"Disabled UR filtering when zoomed out above the specified zoom level. Set to '0' to enable all filtering.",
+                            "DisableFilteringBelowZoomLevel":"Disable filtering below zoom level",
+                            "DisableFilteringBelowZoomLevelTitle":"Disable UR filtering when zoomed in below the specified zoom level. Set to '10' to enable all filtering."
                         },
-                        tabs: {
-                            Comments: 'Comments',
-                            Settings: 'Settings'
+                        "tabs":{
+                            "Comments":"Comments",
+                            "Settings":"Settings"
                         },
-                        tags: {
-                            Bog: '[BOG] / [BOTG]',
-                            Closure: '[CLOSURE]',
-                            Construction: '[CONSTRUCTION]',
-                            Difficult: '[DIFFICULT]',
-                            Event: '[EVENT]',
-                            Note: '[NOTE]',
-                            Roadworks: '[ROADWORKS]',
-                            Wslm: '[WSLM]'
+                        "tags":{
+                            "Bog":"[BOG] / [BOTG]",
+                            "Closure":"[CLOSURE]",
+                            "Construction":"[CONSTRUCTION]",
+                            "Difficult":"[DIFFICULT]",
+                            "Event":"[EVENT]",
+                            "Note":"[NOTE]",
+                            "Roadworks":"[ROADWORKS]",
+                            "Wslm":"[WSLM]"
                         },
-                        urStatus: {
-                            Closed: 'Closed',
-                            NotIdentified: 'Not identified'
+                        "urStatus":{
+                            "Closed":"Closed",
+                            "NotIdentified":"Not identified"
                         },
-                        urTypes: {
-                            Undefined: 'Undefined',
-                            WazeAutomatic: 'Waze automatic'
+                        "urTypes":{
+                            "Undefined":"Undefined",
+                            "WazeAutomatic":"Waze automatic"
                         },
-                        prompts: {
-                            NoCommentBox: 'URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.',
-                            CommentInsertTimedOut: 'URC-E timed out waiting for the comment text box to become available.',
-                            ReminderMessageAuto: 'URC-E: Automatically sending reminder message to UR:',
-                            CustomListUsed: 'URC-E has loaded your "Custom" comment list. However, only the comments themselves have been loaded. The settings text and tooltips were not loaded. Further, this functionality is deprecated and may be discontinued at any time. An alternative solution may or may not be offered at that time.',
-                            SwitchingCommentLists: 'Switching comment lists',
-                            WaitingOnInit: 'Waiting for URC-E to full initialize'
+                        "prompts":{
+                            "NoCommentBox":"URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.",
+                            "CommentInsertTimeOut":"URC-E timed out waiting for the comment text box to become available.'",
+                            "ReminderMessageAuto":"URC-E: Automatically sending reminder message to UR:",
+                            "CustomListUsed":"URC-E has loaded your \"Custom\" comment list. However, only the comments themselves have been loaded. The settings text and tooltips were not loaded. Further, this functionality is deprecated and may be discontinued at any time. An alternative solution may or may not be offered at that time.",
+                            "SwitchingCommentLists":"Switching comment lists",
+                            "TimedOutWaitingStatic":"Timed out waiting for the static list to become available. Is it enabled?",
+                            "UpdateRequired":"You are using an older version of URC-E, which has caused an error. Please update to at least version",
+                            "WaitingOnInit":"Waiting for URC-E to fully initialize"
                         }
                     }
                 };
             }
             await setTranslations(translations);
-            resolve();
+            if (errorText) logWarning(errorText);
+            if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1)) return resolve({error:undefined});
+            resolve({error:errorText});
         });
     }
 
