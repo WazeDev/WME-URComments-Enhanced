@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2019.01.25.01
+// @version     2019.01.25.02
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -83,7 +83,7 @@
     let _alertBoxInUse = false;
     let _unstackedMasterId = null;
     let _mousedOverMarkerId = null;
-    let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId, _popupTimeout;
+    let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId, _popupTimeout, _urceTabLightboxTo, _urPanelLightboxTo, _initUrIdInUrlObserver, _initUrIdInUrlTo;
 
     function log(message) { console.log('URC-E:', message); }
     function logError(message) { console.error('URC-E:', message); }
@@ -402,7 +402,7 @@
         else {
             if (_settings.autoZoomOutAfterComemnt) autoZoomOut();
             if (_settings.autoSwitchToUrCommentsTab) autoSwitchToPrevTab();
-            await handleUrLayer('close');
+            if (!_selUr.noRefreshMarkersOnClose) await handleUrLayer('close');
         }
         _selUr = {};
     }
@@ -485,16 +485,12 @@
     }
 
     async function handleClickedComment(commentNum, doubleClick) {
-        let urId = _selUr.urId || await getUrId('clickedComment');
         logDebug('Handling clicked comment. commentNum: ' + commentNum + ' | doubleClick: ' + doubleClick);
         _selUr.doubleClick = doubleClick;
         if (!$('.new-comment-text')[0]) {
             logWarning('No comment box found after clicking a comment from the list.');
             showAlertBanner(I18n.t('urce.prompts.NoCommentBox'), 5000);
             return;
-        }
-        if (!urId) {
-            return logError('No urId was found.');
         }
         if (doubleClick) {
             $('.new-comment-text').off('blur', autoClickSendButton);
@@ -975,6 +971,10 @@
     function openUrPanel(urId) {
         let t = {showNext: false, nextButtonString: I18n.t('problems.panel.done')};
         let urObj = W.model.mapUpdateRequests.objects[urId];
+        if (urId != _selUr.urId) {
+            _selUr = {};
+            _selUr.urId = urId;
+        }
         W.reqres.request('problems:browse', _.extend(t, {problem: urObj}));
     }
 
@@ -1392,6 +1392,7 @@
         if ($(this).hasClass('user-generated') || $(this).hasClass('has-comments')) {
             let clickedUrId = $(this).attr('data-id');
             if (!(_selUr.urId > 0) || (_selUr.urId !== clickedUrId)) {
+                _selUr = {};
                 _selUr.urId = clickedUrId;
                 logDebug('Clicked UR: ' + _selUr.urId);
             }
@@ -1405,6 +1406,7 @@
                 if (phase === 'urPanelMutation') logDebug('Had to get the urId ' + newUrId + ' from the back yard for the UR panel mutation.');
                 else if (phase === 'clickedComment') logDebug('Had to get the urId ' + newUrId + ' from the back yard for the clicked comment phase.');
                 else logDebug('Had to get the urId ' + newUrId + ' from the back yard because it was wandering around. Please let ' + SCRIPT_AUTHOR + ' know.');
+                _selUr = {};
                 _selUr.urId = newUrId;
             }
             resolve();
@@ -1413,9 +1415,11 @@
 
     function maskBoxes(message, unmask, phase, maskUrPanel) {
         let zIndex = (phase === 'init') ? 19999 : 10000;
+        if (_urPanelLightboxTo !== undefined) window.clearTimeout(_urPanelLightboxTo);
+        if (_urceTabLightboxTo !== undefined) window.clearTimeout(_urPanelLightboxTo);
         if (unmask) {
-            if ($(`#urceTabLightbox-${phase}`).length > 0) $(`#urceTabLightbox-${phase}`).remove();
-            if ($(`#urPanelLightbox-${phase}`).length > 0) $(`#urPanelLightbox-${phase}`).remove();
+            $(`#urceTabLightbox-${phase}`).remove();
+            $(`#urPanelLightbox-${phase}`).remove();
         } else if (!unmask) {
             if ($(`#urceTabLightbox-${phase}`).length == 0) {
                 $('#sidepanel-urc-e').css('position', 'relative');
@@ -1425,7 +1429,7 @@
                 (function retry(tries) {
                     let $urceSidePanel = $('#sidepanel-urc-e');
                     if (tries > 99 && $urceSidePanel.length == 0) return logError('Timed out trying to add mask to URCE side panel.');
-                    else if ($urceSidePanel.length == 0) setTimeout(retry, 100, ++tries);
+                    else if ($urceSidePanel.length == 0) window.setTimeout(retry, 100, ++tries);
                     else $urceSidePanel.prepend($urceTabDisabled);
                 })(1);
             }
@@ -1436,7 +1440,7 @@
                 (function retry(tries) {
                     let $urPanel = $('.mapUpdateRequest.panel.show');
                     if (tries > 99 && $urPanel.length == 0) return logError('Timed out trying to add mask to UR panel.');
-                    else if ($urPanel.length == 0) setTimeout(retry, 100, ++tries);
+                    else if ($urPanel.length == 0) window.setTimeout(retry, 100, ++tries);
                     else $($urPanel.children()[0]).prepend($urPanelDisabled);
                 })(1);
             }
@@ -2777,6 +2781,27 @@
         });
     }
 
+    async function initFinish(urId) {
+        if (_initUrIdInUrlTo !== undefined) window.clearTimeout(_initUrIdInUrlTo);
+        _initUrIdInUrlObserver.disconnect();
+        logDebug('Closing UR Panel.');
+        maskBoxes(null, true, 'init', (urId > 0));
+        _selUr.noRefreshMarkersOnClose = true;
+        autoCloseUrPanel();
+        await initBackgroundTasks();
+        _selUr.noRefreshMarkersOnClose = false;
+        logDebug('UR ' + urId + ' marker in URL. Re-opening.');
+        openUrPanel(urId);
+    }
+
+    function initCheckForUrPanel(urId, tries) {
+        if (tries > 150) return logWarning('UR ' + urId + ' found in URL, but UR panel failed to open.');
+        else if ($('#panel-container').children().length === 0) {
+            if ($(`div[data-id="${urId}"]`).length > 0) openUrPanel(urId);
+            else _initUrIdInUrlTo = window.setTimeout(initCheckForUrPanel, 100, urId, ++tries);
+        }
+    }
+
     async function init() {
         log('Initializing.');
         let urIdInUrl = parseInt(location.search.split('mapUpdateRequest=')[1]);
@@ -2788,23 +2813,29 @@
         await initGui();
         let errorText = loadTranslationsError.error || initCommentListsError.error || initAutoSwitchArraysError.error || undefined;
         if (!errorText) {
-            maskBoxes(I18n.t('urce.prompts.WaitingOnInit') + '.<br>' + I18n.t('urce.common.PleaseWait') + '.', false, 'init', (urIdInUrl > 0));
+            maskBoxes(I18n.t('urce.prompts.WaitingOnInit') + '.<br>' + I18n.t('urce.common.PleaseWait') + '.', false, 'init', false);
             let buildCommentListResult = await buildCommentList(undefined, 'init');
             if (buildCommentListResult.error) handleError(buildCommentListResult.error, buildCommentListResult.static, buildCommentListResult.phase, (urIdInUrl > 0));
             else if (!urIdInUrl) await initBackgroundTasks();
             window.addEventListener("beforeunload", function() {
                 saveSettingsToStorage();
             }, false);
-            setTimeout(saveSettingsToStorage, 5000);
             logDebug('Fully initialized in ' + Math.round(performance.now() - LOAD_BEGIN_TIME) + ' ms.');
-            maskBoxes(null, true, 'init', (urIdInUrl > 0));
             if (urIdInUrl > 0) {
-                autoCloseUrPanel();
-                await initBackgroundTasks();
-                logDebug('urId ' + urIdInUrl + ' found in URL. Re-clicking.');
-                $(`div[data-id="${urIdInUrl}"]`).click();
-                urIdInUrl = null;
-            }
+                if ($('#panel-container').children().length === 0) {
+                    logDebug('urId ' + urIdInUrl + ' found in URL, but the UR Panel has not shown up yet. Waiting.');
+                    _initUrIdInUrlObserver = new MutationObserver(function(mutations) {
+                        mutations.forEach((mutation) => {
+                            if (mutation.type === 'attributes' && $(mutation.target.parentNode).is('#panel-container') && $(mutation.target).hasClass('show')) initFinish(urIdInUrl);
+                        });
+                    });
+                    _initUrIdInUrlObserver.observe(document.getElementById('panel-container'), { childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true });
+                    _initUrIdInUrlObserver.isObserving = true;
+                    _initUrIdInUrlTo = window.setTimeout(initCheckForUrPanel, 100, urIdInUrl, 1);
+                } else {
+                    initFinish(urIdInUrl);
+                }
+            } else maskBoxes(null, true, 'init', (urIdInUrl > 0));
         } else handleError(errorText, false, 'init', (urIdInUrl > 0))
     }
 
