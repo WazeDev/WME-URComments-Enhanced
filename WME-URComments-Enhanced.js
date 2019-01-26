@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2019.01.25.03
+// @version     2019.01.26.01
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -41,7 +41,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'Added UR marker mouse over tooltip (UR popup)', 'Bugfixes', 'UR in URL / PL fixed!', 'Filtering fixed!' ];
+    const SCRIPT_VERSION_CHANGES = [ 'Added functionality for comment tags for certain regions.', 'Added UR marker mouse over tooltip (UR popup)', 'Bugfixes', 'UR in URL / PL fixed!', 'Filtering fixed!' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -112,6 +112,7 @@
             commentList: 0,
             commentListStyle: 'default',
             commentListCollapses: {},
+            tagEmail: '',
             autoSwitchCommentList: false,
             // URC-E Preferences
             autoCenterOnUr: false,
@@ -465,11 +466,11 @@
         let mapState = W.model.states.top.name;
         if (_settings.autoSwitchCommentList) {
             if ((_autoSwitchCountries[mapCountry] > -1) && (!_autoSwitchStates[mapCountry] || !_autoSwitchStates[mapCountry][mapState]) && (_autoSwitchCountries[mapCountry] !== _settings.commentList))
-                await changeCommentList(_autoSwitchCountries[mapCountry], true);
+                await changeCommentList(_autoSwitchCountries[mapCountry], true, false);
             else if (_autoSwitchStates[mapCountry] && (_autoSwitchStates[mapCountry][mapState] > -1) && (_autoSwitchStates[mapCountry][mapState] !== _settings.commentList))
-                await changeCommentList(_autoSwitchStates[mapCountry][mapState], true);
+                await changeCommentList(_autoSwitchStates[mapCountry][mapState], true, false);
             else if (_currentCommentList !== _settings.commentList)
-                await changeCommentList(_settings.commentList, true);
+                await changeCommentList(_settings.commentList, true, false);
         }
         let urData = urSessionObj[0];
         let mUrObj = mapUrsObj[0];
@@ -659,6 +660,12 @@
     }
 
     function formatText(text) {
+        if (text.indexOf('$CLOSED_NOR_EMAIL_TAG$') > 0) {
+            if ((_settings.tagEmail.length > 0) && (W.model.loginManager.user.userName.length > 0))
+                text = text.replace('$CLOSED_NOR_EMAIL_TAG$', 'Since this report is closed, please send further correspondence to ' + _settings.tagEmail + ' and include ' + W.model.loginManager.user.userName + ' in the subject line.');
+            else
+                text = text.replace('$CLOSED_NOR_EMAIL_TAG$', '');
+        }
         if (text.indexOf('$URD') > 0) {
             if ($('#update-request-panel .solution p').length > 0)
                 text = text.replace('$URD', $('#update-request.panel .solution p').text()).replace(/\n+/gmi, '');
@@ -1648,17 +1655,18 @@
         saveSettingsToStorage();
     }
 
-    async function changeCommentList(commentListIdx, autoSwitch) {
+    async function changeCommentList(commentListIdx, autoSwitch, refresh) {
+        refresh = (refresh === true);
         commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
-        if ((!autoSwitch && ((commentListIdx !== _settings.commentList) || (commentListIdx !== _currentCommentList))) || (autoSwitch && (commentListIdx !== _currentCommentList))) {
-            let debugMsg = (autoSwitch) ? 'Automatically switching comment lists' : 'Switching comment lists';
+        if (refresh || (!autoSwitch && ((commentListIdx !== _settings.commentList) || (commentListIdx !== _currentCommentList))) || (autoSwitch && (commentListIdx !== _currentCommentList))) {
+            let debugMsg = (autoSwitch) ? 'Automatically switching comment lists' : (refresh) ? 'Refreshing comment list' : 'Switching comment lists';
             logDebug(debugMsg + ' from ' + getCommentListInfo(_currentCommentList).name + ' to ' + getCommentListInfo(commentListIdx).name + '.');
-            if (!autoSwitch)
+            if (!autoSwitch && !refresh)
                 _settings.commentList = commentListIdx;
             let buildCommentListResult = await buildCommentList(commentListIdx, 'changeList');
             if (buildCommentListResult.error)
                 handleError(buildCommentListResult.error, (getCommentListInfo(commentListIdx).type === 'static'), 'changeList', (_selUr.urId > 0));
-            if (!autoSwitch)
+            if (!autoSwitch && !refresh)
                 saveSettingsToStorage();
         }
         return new Promise((resolve) => { resolve(); });
@@ -1848,11 +1856,11 @@
                                 }
                                 $(`#${groupDivId}_body`).append(
                                     $('<div>', {class:`URCE-divComment hover expand ${linkClass}`, style:'position:relative;'}).append(
-                                        $('<a>', {class:'URCE-Comments ' + linkClass + ' URCE-Comments', id:'urce-cid-'+commentId, title:splitRow.comment}).text(splitRow.title).click(function() {
+                                        $('<a>', {class:'URCE-Comments ' + linkClass + ' URCE-Comments', id:'urce-cid-'+commentId, title:formatText(splitRow.comment)}).text(splitRow.title).click(function() {
                                             handleClickedComment(parseInt(this.id.replace(/urce-cid-/, '')), false);
                                         })
                                     ).append(
-                                        $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + ':\n' + splitRow.comment}).append(
+                                        $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + ':\n' + formatText(splitRow.comment)}).append(
                                             $('<img>', {src:DOUBLE_CLICK_ICON, class:'URCE-doubleClickIcon', id:'urce-img-cid-'+commentId}).dblclick(function() {
                                                 handleClickedComment(parseInt(this.id.replace(/urce-img-cid-/, '')), true);
                                             })
@@ -2155,6 +2163,7 @@
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-daysInput { width:38px; height:20px; }',
+            '#sidepanel-urc-e #panel-urce-settings .URCE-textInput { width:175px; height:20px; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-span { text-transform:uppercase; cursor:pointer; }',
             '#sidepanel-urc-e #panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:10px;}',
             '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-subHeading { font-weight:600; }',
@@ -2248,7 +2257,7 @@
                             }
                         });
                         return $selList.val(_settings.commentList).change(function() {
-                            changeCommentList(parseInt($(this).val()), false);
+                            changeCommentList(parseInt($(this).val()), false, false);
                         });
                     }),
                     // Comment list style
@@ -2270,6 +2279,13 @@
                         })
                         return $selList;
                     }),
+                    $('<div>', {title:I18n.t('urce.prefs.TagEmailTitle').replace(/\\[r|n]+/gmi, '\n')}).text(I18n.t('urce.prefs.TagEmail') + ': ').append(
+                        $('<div>', {style:'display:inline;'}).append(
+                            $('<div>', {class:'URCE-divDaysInline'}).append(
+                                $('<input>', {type:'text', id:'_texttagEmail', class:'URCE-textInput urceSettingsTextBox', urceprefs:'commentList', value:_settings.tagEmail, title:I18n.t('urce.prefs.TagEmailTitle').replace(/\\[r|n]+/gmi, '\n')})
+                            )
+                        )
+                    ),
                     $('<input>', {type:'checkbox', id:'_cbautoSwitchCommentList', urceprefs:'commentList', class:'urceSettingsCheckbox'}).prop('checked', _settings.autoSwitchCommentList),
                     $('<label>', {for:'_cbautoSwitchCommentList', title:I18n.t('urce.prefs.AutoSwitchCommentListTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSwitchCommentList'))
                 )
@@ -2901,7 +2917,10 @@
                     this.value = val;
                 _settings[settingName] = val;
                 saveSettingsToStorage();
-                handleUrLayer('settingsToggle');
+                if (settingName === 'tagEmail')
+                    changeCommentList(_settings.commentList, false, true);
+                else
+                    handleUrLayer('settingsToggle');
             }
         });
     }
@@ -3070,7 +3089,10 @@
     async function initFinish(urId) {
         if (_initUrIdInUrlTo !== undefined)
             window.clearTimeout(_initUrIdInUrlTo);
-        _initUrIdInUrlObserver.disconnect();
+        if (_initUrIdInUrlObserver && _initUrIdInUrlObserver.isObserving) {
+            _initUrIdInUrlObserver.isObserving = false;
+            _initUrIdInUrlObserver.disconnect();
+        }
         logDebug('Closing UR Panel.');
         maskBoxes(null, true, 'init', (urId > 0));
         _selUr.noRefreshMarkersOnClose = true;
@@ -3103,7 +3125,7 @@
         await initGui();
         let errorText = loadTranslationsError.error || initCommentListsError.error || initAutoSwitchArraysError.error || undefined;
         if (!errorText) {
-            maskBoxes(I18n.t('urce.prompts.WaitingOnInit') + '.<br>' + I18n.t('urce.common.PleaseWait') + '.', false, 'init', false);
+            maskBoxes(I18n.t('urce.prompts.WaitingOnInit') + '.<br>' + I18n.t('urce.common.PleaseWait') + '.', false, 'init', ($('#panel-container').children().length > 0));
             let buildCommentListResult = await buildCommentList(undefined, 'init');
             if (buildCommentListResult.error)
                 handleError(buildCommentListResult.error, buildCommentListResult.static, buildCommentListResult.phase, (urIdInUrl > 0));
@@ -3435,7 +3457,7 @@
                         },
                         "prompts":{
                             "NoCommentBox":"URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.",
-                            "CommentInsertTimeOut":"URC-E timed out waiting for the comment text box to become available.'",
+                            "CommentInsertTimedOut":"URC-E timed out waiting for the comment text box to become available.'",
                             "ReminderMessageAuto":"URC-E: Automatically sending reminder message to UR:",
                             "CustomListUsed":"URC-E has loaded your \"Custom\" comment list. However, only the comments themselves have been loaded. The settings text and tooltips were not loaded. Further, this functionality is deprecated and may be discontinued at any time. An alternative solution may or may not be offered at that time.",
                             "SwitchingCommentLists":"Switching comment lists",
