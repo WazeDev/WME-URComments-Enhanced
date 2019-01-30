@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2019.01.29.02
+// @version     2019.01.29.03
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -502,7 +502,7 @@
             for (let idx = 0; idx < W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount; idx++) {
                 if ($($('#panel-container .top-section .body .conversation-view .comment .comment-title .date')[idx]).children().length === 0)
                     $($('#panel-container .top-section .body .conversation-view .comment .comment-title .date')[idx]).append(
-                        $('<div>', {style:"float:right; margin:5px 5px 0 0;"}).text(I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[urId].comments[0].createdOn)))
+                        $('<div>', {style:"float:right; margin:5px 5px 0 0;"}).text(I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[urId].comments[idx].createdOn)))
                     );
             }
         }
