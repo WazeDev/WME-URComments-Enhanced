@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2019.01.29.01
+// @version     2019.01.29.02
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -492,15 +492,18 @@
             hidePopup();
         logDebug('Handling update request container after ' + caller + ' for urId: ' + urId);
         await updateUrceData([urId]);
-        $('#panel-container .top-section .header .main-title').append(' (' + urId + ') ');
-        $('#panel-container .top-section .header').append(
-            $('<div>', {class:'reported'}).text(I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[urId].attributes.urceData.driveDaysOld))
-        );
+        if ($('#panel-container .top-section .header .main-title').html().indexOf(urId) === -1)
+            $('#panel-container .top-section .header .main-title').append(' (' + urId + ') ');
+        if ($('#panel-container .top-section .header .reported').length === 1)
+            $('#panel-container .top-section .header').append(
+                $('<div>', {class:'reported'}).text(I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[urId].attributes.urceData.driveDaysOld))
+            );
         if (W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount > 0) {
             for (let idx = 0; idx < W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount; idx++) {
-                $($('#panel-container .top-section .body .conversation-view .comment .comment-title .date')[idx]).append(
-                    $('<div>', {style:"float:right; margin:5px 5px 0 0;"}).text(I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[urId].comments[0].createdOn)))
-                )
+                if ($($('#panel-container .top-section .body .conversation-view .comment .comment-title .date')[idx]).children().length === 0)
+                    $($('#panel-container .top-section .body .conversation-view .comment .comment-title .date')[idx]).append(
+                        $('<div>', {style:"float:right; margin:5px 5px 0 0;"}).text(I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[urId].comments[0].createdOn)))
+                    );
             }
         }
         if (_settings.autoSwitchCommentList) {
@@ -1935,7 +1938,7 @@
         let urPanelContainerObserver = new MutationObserver(async (mutations) => {
             let newUrId = await getUrId();
             mutations.forEach((mutation) => {
-                if ($(mutation.target).is('#panel-container') && (mutation.type === 'childList') && (mutation.addedNodes.length > 0) && (mutation.addedNodes[0].className.indexOf('show') > -1) && (newUrId > 0) && (newUrId !== _selUr.urId))
+                if ($(mutation.target).is('#panel-container') && (mutation.type === 'childList') && (mutation.addedNodes.length > 0) && (mutation.addedNodes[0].className.indexOf('show') > -1) && (newUrId > 0))
                     return handleUpdateRequestContainer(newUrId, 'UR panel mutation');
                 else if ($(mutation.target).is('#panel-container') && (mutation.type === 'childList') && (mutation.removedNodes.length > 0) && (mutation.removedNodes[0].className.indexOf('show') > -1) && (newUrId > 0) && (newUrId === _selUr.urId))
                     return handleAfterCloseUpdateContainer();
