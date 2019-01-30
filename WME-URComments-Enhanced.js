@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
-// @namespace   daniel@dbsooner.com
-// @version     2019.01.29.03
-// @description Handle WME update requests more quickly and efficiently.
+// @namespace   https://greasyfork.org/users/166843
+// @version     2019.01.30.01
+// @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
 // @require     https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @author      dBsooner
 // @license     MIT/BSD/X11
+// @connect     sheets.googleapis.com
 // @icon        data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC0AAAAwCAYAAACFUvPfAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNS1jMDIxIDc5LjE1NTc3MiwgMjAxNC8wMS8xMy0xOTo0NDowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTQgKFdpbmRvd3MpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjQyQjZDNjdEODYzODExRTRBRDY0Q0I2QjA1MjU4N0EyIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOjQyQjZDNjdFODYzODExRTRBRDY0Q0I2QjA1MjU4N0EyIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6NDJCNkM2N0I4NjM4MTFFNEFENjRDQjZCMDUyNTg3QTIiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6NDJCNkM2N0M4NjM4MTFFNEFENjRDQjZCMDUyNTg3QTIiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz6++Bk8AAANOElEQVR42tRZCWxU1xW9M39mPB5v431fMLYJdmpjthQUVsdlS9IQQkpIIDRhl5pKQUpbKkAEpakQIhVVRUytQIGwihCaBkgItQELQosxdrDZ7Njjbbx7vM0+f3ruZDz1NmTGhEj59tOb//979553313fl9jtdvqpXbLHRVgikTz0NbdJkyYJERERUp1OJ1Wr1WJLS4tYXFxswzu7s408+XFJ2g1oSUZGhtzf318piqLKx8dHZbPZFFKpVMC9TRAEs8lk0uNe39vbaywvL7eMBP5HAz179myZxWLxxfNg3IZHRkbG5OTkpEPSkQAs1Wq1nQUFBVXt7e2twNSGMdx3yuVyQ2FhofVHBw01kCsUigA8i1m9evXc3Nzc5TExMRMhUfnAOZC6VaPRlJ8+ffrzM2fOXMW9BvgazWZzD9TG8qOBZgnr9fqg5OTklPfff39bUlLSfL3ZKvmmqZ2q2rqoy2h2jAtSKmhsaBD9LDqUVAqZ/fbt29c2b978IfS9HCqjUalUXf0Sfyygp0+f7kB8584d6bhx4/xTU1PT9uzZk69WB2derdHSxQf1ZLTaRpyrlAmUkxpH05OiqbGxoWrjxo07Wltbb0KFNNevX+/FENEBmqUyWvCTJ0+WDPEKrh4S8oFXiDp+/HhedHT0M6fKvqWbDa0e0Z0YG05LMpPp/v37xWvXrn0XqlRWX1+vraysNEkfZu38zE1zXHPmzOH53ARuAQEBUuieBM2OJoaFhSl27NixAPr7TGFVo8eA+eKxPAc7Nen111/PgX5HxMXF+TIsmSe+1bkbEuintKamRoBeyqxWq6Knp0eA2xJAUAJ3Zce9+PTTT9tkMpkF7opgQEEwwjU6g4kKKhu83sWCynrKjg2jhQsXPrd///4L2Dkm0iv9PntiSUIF5JmZmSpMCsI2hwNMNBYSC4+QgLUkoE909vF4HoP3kVhY+Pz589Mh/czi+layiqLXoK2inXhuVFRUUlZWViIE45eSkiI8LCKyZAUAZbfki8sfxhA4bdq0+GXLluUmJCRMBqCxkHQY9E2BdxwY2iDtqtra2hsHDhy4jIVOYTqV8BIDr3ERakd/r0Xn9nf/9aBNx4YpmTlzZtrNmzcvBwUFuQXNIZaDgRJS84eDV8+bN2/cqlWr1rF+AqTMbDFRU72WdI29ZNZbSaGSKdQx/jFRcdExERGTZ6Snp/8GYbmGiXVBPQZeyyakOvrtX/7X7e/+S2f4ziXCPoIhaam73MMBGJcvBgXBP4bv3LnztSlTpmwAWOW9svtU/kkd1V/rINE23ONIBQnFTQuh1OciZXHJsSn8TBwy7NitB67g7O53/yX8386sHOqhgnbZSCrBEoaOqpVKZXReXt5W6OfC5uZGuvjnW9RU2v1QPbRZ7aS50kbVl5spY2kHLdg4i0L9lNRtMrvGDNx+d7/7rxCVj6Nva2vTArARPts21BClHR0dPqy7MKgIAOYItrD8ZgUdWXmFtCVdZIfYPGsILufqsBsipYYHjTpQpYWrCXjEixcv3oKX6oNXGgRasmDBAhkyMD+MCd21a9dKAF5QUVxB598uJZvR5nB9njZHcOm20oOva2lKfAT5yASvAXN0nIy5zc3NJRUVFd/CvvpY26QDsjABhqMEw0AYXQZ0eG1TUwOd+30pr9QrwA7Q+JfapVT0j1sE46BF4xO9Bv1sehIDF8+ePfsR7KmF01UOG/06LUGIFIKDg33hwtRvvPHGagzyOf9uMVlNVrdEx+ZEUdZLSZSYlkBymYK6ejrp/rVqupFfTT3NBodNNd1pp6IjJTRzxSRHcsR5hyfXL9LiaWJcOOcvJ/Pz8wvgSjud+bXLe0iR3yogIb+JEyeOiY+Pn1VRUkHaMt3I5Y5CSs/unkTjJ4wf9FwdGEJT54VQ1px0Or21kKqLWhGdZHRpXwn5h6goZ9F4ig5UEecgBsvIwghVKSHhRPjsYIIgv3jrrbfeMxqNWrhQA0DbXaChGhKkjwpI2W/JkiXsh4XS4xq3SdSczRnDAA+8fBS+9OKOuZS/4jPS1fUhlRTo0z8VUGeHjua+Ng3pp47+U9viGv8Egkp0oB+NCQlEehrI6mhEarpvw4YNfzMYDM3IEntPnjxpG1QjsmogPCtgnX6JiYnZJrPRISW7OBy0b4Ccsudkfu/2KuQ+NGXtGPrij9+QiD8b/vyDVWSDfVQ0dTrGBPjI6YUnk+mJyGDOF+wACCj1Xx47duwQ9Pge7ruReJmcdePgwjY8PFzKtRoinxKpZFJjbSNXESOCCc8IIgQdj/QyeUI8AkupA3DChCiaujCTyps7KF7tT2mQ7oSYMJJJyFp840beoUOHjiBM17OHAG8DUgTzgCJ3eDXOKSUsU4ZtUSDHUHc0drlVjYAYpcfWLyBL6KczY/kkkkgl9CQqE27skZAb30Cuve/ChQuFiA9aCM9YVFRke1gl7gKN1UkQtlnaUq7bLMglyA3omGzPA0VjdZODDjJwOrXlIl3PKiOFv5ySc8IoKT2BkMt8AL4VXMjCyPq+D+ywcw+AtbNKoFnkKplctItDPIZArx6cRWOSx3oMuvhgFfXTsejtVH2tyZHspuZGENwru68upAt9UDeLp4DJWXUQJyFI6kVMtvX19XWExquHBQsL/PX9As8T+Suffk0PLjcOCjZkl3CFR5Fjwnh3O2BDlv4kyJvA5QDNFYczizK3t7fXxMbHkVQhcUhpYCvaW0H7Vp+iqsoHDwX87xNF9MWOkmHzuTHdmLg4gg5XMz/m6+RPXkkamZOIbeItMty7d++WXCan1LnRHOaHtbpbzVT4QZljxTbRRof/8E/au+oEHd3+LxewygtNI87llga6TP/u3bulzI/5Mn+vz/JQMNpQdXCmrj948GBRbm7uqqmvjfOpOKsZcdK317T0l5c/JptJpM7671LV+jJCFvixw0O01ejcV++vphFU0XT48OEi2I+e8yrm77WkCwsLRURDM3S6j8t0RKPC1CfSaOysGLd61VrZSR11XYOetWl01Frd6XYO00sbP47gKQpRkmmZH/Nl/l6DZhMBWOT+FnY7nbt37z4Bwfcs3jaLfIOUXmd4IzWmw/SYLtNnPsyP+XrjOQaBhqO3wmfqwUBXVVVVjVj/kTooxL48fzYJPsKIRuVp4/lMh+kxXabPfJgf8x0taEcph2TbzPEev1v27t174dKlS6fGpqTSm0fnU0C4alQS5nk8n+mA3idMl+kzH+bntFAaLWiWNm+VHv6zHX3D1q1bD3/11VcnksYki7898yvKfGkMOHgGlsdlvphMPI/nMx3QO8R0nfT1Tn5en8e5zvIGFrZc6fDBDIhHwJfGvvLKK7NXrFjxa+QoIVptA109WUqlJ2uot1M/jKBcIaOpq9Jo+tIsio6O5RjQgWToo6NHj15C1G2AHrfA+PggxAgDdOUZ3pwlDgU9CDhcUgDcUxisPDIkJCQBCflzTz311BzUkUG1dTX01+c/Iat5sLd6YefPadaiGQy2+/r16wV79uz5rLOzUwNazdDhNtDqGQr4hwDtAg7GCpVK5YeQq4bUQyCpSDCOfeedd55HHTm/8MwV+nTzVdekJ+cn0Zu7XubsrWLNmjUfYpfq0Jqw8HaEah0KjT5OOYcC/qFAu87xAF6u0+mU2FJ/gOZTnkg8jz9w4MCm5OTkjL+/fYxun9eQOiqAfvf5ShQOEt26deve1Wg0d0FbC3VoR+tBns7StTgNzz7SIedoDJFGOGfmbbYhxzZBWj0A3c6SQ2vYtm1bPpKrruXvLSJ1tD+9ujeHfJV+Yl5e3n4EjkoGDJVoY8A8f0ColgykP6qvDCPp9NKlS6UlJSUyqIYMDAU+u8MYmfNLlD+kHQbgcYsXL56xadOm9XpDr9RPFUAFBQVfbtmy5Qho1rFb4zVjjhH31sDAQCvcHJ+7WLu7u22IitaBn94eRT1cugxg/CXKl8/vMEbOF/d8tIBxfIIaivvI7du3/zInJ2d2XV1dzcqVKz+EZDlb4tPzHrw3YryZQXNihN0y8yIw1xAREWE8d+5cv7o8EmhpSkqKHGWPH0Cr+XiMz4TZk3Apxh6tHziYx+J3KNYSCA+xaOfOnVeqq6ubQUuH941o7NYYlJULC4w14Z0ehtyLe37XY8SFOtD6HWa7d1newEVwkcuqwODQs5T5k4EvepY+PxMgMTkWwc9l4Gtfv379ebwX0QS89+HzE/Qc7fhs28qVCcYL/LUAcy0Od65QCJj7g3xmtrPBREVFOXJrMOdi1wYAnLbKISHWbWbOC+vg+XzPjZUV4/mrq5V7bpC2o7jghnszABv4EJH9NPhY+w9fHhl0dna2FQQNXE1gK01wdQpIhMexWjgAcyXt7LmxivEnGTvXmUyDF8D3zm13nCszcNZrVhN4HRaC2Z37G5X36P/YjtJLCA0NlfIRA38UQi+BtCT8Ycj5hVUy/NhAcIFgb8H3SqVSZCH4+fmJ7DmgguLjiIhDvwmyG+SyTALmHvtYLNIOcHaei5S0H5X9UYPL/wQYAOwQASZqvrLnAAAAAElFTkSuQmCC
 // @contributionURL https://github.com/WazeDev/Thank-The-Authors
 // ==/UserScript==
@@ -18,6 +19,7 @@
 /* global $ */
 /* global WazeWrap */
 /* global OL */
+/* global _ */
 
 /*
  * Original concept and code for URComments (URC) was written by rickzabel and licensed under MIT/BSD/X11.
@@ -34,42 +36,6 @@
  *
  */
 
-/*
- * urceData object stored on W.model.mapUpdateRequests.objects[ID].attributes.urceData:
- *
- * commentCount: int
- * commentUserIds: array
- * commentsByMe: boolean
- * customType: int
- * driveDaysOld: int
- * fisrtCommentBy: int
- * firstCommentDaysOld: int
- * fullText: string
- * hideUr: boolean
- * keywordIncluding: boolean
- * keywordNotIncluding: boolean
- * lastCommentBy: int
- * lastCommentDaysOld: int
- * needsClosed: boolean
- * needsReminder: boolean
- * resolveDaysAgo: int
- * reporterHasCommented: boolean
- * tagType: int or string
- * waiting: boolean
- *
- */
-
-/*
- * _selUr object:
- *
- * doubleClick: boolean
- * handling: boolean
- * newStatus: string
- * noRefreshMarkersOnClose: boolean
- * urId: int
- * urOpen: boolean
- *
- */
 
 (function() {
     'use strict';
@@ -78,7 +44,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'Speed and memory improvements.', 'Added more information to mouse over popup and UR panel.', 'Prevent popup when click-dragging.', 'Bugfixes.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'Final beta release before public release.', 'Added setting to replace Next UR with Done.', 'Minor tweaks.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -86,7 +52,13 @@
     const URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c';
     const URCE_SPREADSHEET_ID = '1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ';
 
-    let _selUr = {};
+    let _selUr = {
+        doubleClick: false,
+        handling: false,
+        newStatus: undefined,
+        urId: -1,
+        urOpen: false
+    };
     let _settings = {};
     let _autoSwitchCountries = {};
     let _autoSwitchStates = {};
@@ -164,6 +136,7 @@
             autoZoomInOnNewUr: false,
             autoZoomOutAfterComment: false,
             disableDoneNextButtons: false,
+            replaceNextWithDoneButton: false,
             doubleClickLinkNiComments: false,
             doubleClickLinkOpenComments: false,
             doubleClickLinkSolvedComments: false,
@@ -457,6 +430,14 @@
         if ((_settings.autoCloseUrPanel && !_selUr.newStatus) || _selUr.doubleClick)
             autoCloseUrPanel();
         else {
+            await updateUrceData([urId]);
+            if ($($('#panel-container .top-section .body .conversation-view .comment .comment-content .text')[(W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount-1)]).children().length === 1) {
+                $($('#panel-container .top-section .body .conversation-view .comment .comment-content .text')[(W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount-1)]).prepend(
+                    $('<div>', {class:"date", style:"float:right; margin-top:-6px; font-weight:normal;"}).text(
+                        I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[urId].comments[(W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount-1)].createdOn))
+                    )
+                );
+            }
             if (_settings.autoSaveAfterSolvedOrNiComment && (_selUr.newStatus === 'solved' || _selUr.newStatus === 'notidentified'))
                 clickSaveButton();
             else
@@ -465,6 +446,8 @@
     }
 
     async function handleAfterCloseUpdateContainer() {
+        if (parseInt($('.update-requests .selected').data('id')) > 0)
+            return;
         if (_settings.autoSaveAfterSolvedOrNiComment && ((_selUr.newStatus === 'solved') || (_selUr.newStatus === 'notidentified')))
             clickSaveButton();
         else {
@@ -472,10 +455,15 @@
                 autoZoomOut();
             if (_settings.autoSwitchToUrCommentsTab)
                 autoSwitchToPrevTab();
-            if (!_selUr.noRefreshMarkersOnClose)
-                await handleUrLayer('close', null, [_selUr.urId]);
+            await handleUrLayer('close', null, [_selUr.urId]);
         }
-        _selUr = {};
+        _selUr = {
+            doubleClick: false,
+            handling: false,
+            newStatus: undefined,
+            urId: -1,
+            urOpen: false
+        };
     }
 
     async function handleAfterSave() {
@@ -487,6 +475,8 @@
     }
 
     async function handleUpdateRequestContainer(urId, caller) {
+        if (_settings.replaceNextWithDoneButton && ($('#panel-container .mapUpdateRequest.panel .section .content .navigation .done').length === 0))
+            return W.reqres.request('problems:browse', _.extend({showNext: false, nextButtonString: I18n.t('problems.panel.done')}, {problem: W.model.mapUpdateRequests.objects[urId]}));
         _selUr.handling = true;
         if (_popupTimeout !== undefined)
             hidePopup();
@@ -500,9 +490,9 @@
             );
         if (W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount > 0) {
             for (let idx = 0; idx < W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount; idx++) {
-                if ($($('#panel-container .top-section .body .conversation-view .comment .comment-title .date')[idx]).children().length === 0)
-                    $($('#panel-container .top-section .body .conversation-view .comment .comment-title .date')[idx]).append(
-                        $('<div>', {style:"float:right; margin:5px 5px 0 0;"}).text(I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[urId].comments[idx].createdOn)))
+                if ($($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .text')[idx]).children().length === 1)
+                    $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .text')[idx]).prepend(
+                        $('<div>', {class:"date", style:"float:right; margin-top:-6px; font-weight:normal;"}).text(I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[urId].comments[idx].createdOn)))
                     );
             }
         }
@@ -517,19 +507,18 @@
         _selUr.urOpen = W.model.mapUpdateRequests.objects[urId].attributes.open;
         if (_settings.autoSwitchToUrCommentsTab)
             autoSwitchToUrceTab();
-        if ($('#panel-container .problem-edit .conversation').hasClass('collapsed')) {
+        if ($('#panel-container .mapUpdateRequest .top-section .body .conversation').hasClass('collapsed')) {
             logDebug('Expanding conversation list.');
-            $('#panel-container .problem-edit .conversation').removeClass('collapsed');
+            $('#panel-container .mapUpdateRequest .top-section .body .conversation').removeClass('collapsed');
         }
         if (_settings.disableDoneNextButtons) {
             logDebug('Removing the done / next buttons.');
-            $('#panel-container .content .navigation').css({'display':'none'});
+            $('#panel-container .mapUpdateRequest .actions .content .navigation').css({'display':'none'});
         }
         logDebug('Setting event hook for center on UR crosshairs in UR panel title bar.');
-        $('#panel-container > div > div > div.top-section > div.header > div.title > div > a.focus').off('click', handleUrPanelCrosshairsClick);
-        $('#panel-container > div > div > div.top-section > div.header > div.title > div > a.focus').on('click', {mUrObj:W.model.mapUpdateRequests.objects[urId]}, handleUrPanelCrosshairsClick);
-        logDebug('Waiting 250ms before scrolling to bottom of the conversation list to give it time to load.');
-        await setTimeout(scrollToBottom, 250);
+        $('#panel-container .mapUpdateRequest .top-section .header .title .focus').off('click', handleUrPanelCrosshairsClick);
+        $('#panel-container .mapUpdateRequest .top-section .header .title .focus').on('click', {mUrObj:W.model.mapUpdateRequests.objects[urId]}, handleUrPanelCrosshairsClick);
+        $('#panel-container .mapUpdateRequest .top-section').scrollTop($('#panel-container .mapUpdateRequest .top-section')[0].scrollHeight);
         if (W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount === 0) {
             if (_settings.autoZoomInOnNewUr)
                 autoZoomIn(urId);
@@ -574,14 +563,14 @@
     async function handleClickedComment(commentNum, doubleClick) {
         logDebug('Handling clicked comment. commentNum: ' + commentNum + ' | doubleClick: ' + doubleClick);
         _selUr.doubleClick = doubleClick;
-        if (!$('.new-comment-text')[0]) {
+        if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length === 0) {
             logWarning('No comment box found after clicking a comment from the list.');
             showAlertBanner(I18n.t('urce.prompts.NoCommentBox'), 5000);
             return;
         }
         if (doubleClick) {
-            $('.new-comment-text').off('blur', autoClickSendButton);
-            $('.new-comment-text').on('blur', autoClickSendButton);
+            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').off('blur', autoClickSendButton);
+            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').on('blur', autoClickSendButton);
         }
         if (_settings.autoClickOpenSolvedNi && _selUr.urOpen)
             autoClickOpenSolvedNi(commentNum);
@@ -596,7 +585,7 @@
 
     function autoSwitchToUrceTab() {
         logDebug('Switching to URC-E > Comments tab.');
-        _$restoreTab = _$restoreTab || $('#user-tabs > ul > li.active > a');
+        _$restoreTab = _$restoreTab || $('#user-tabs .nav .active > a');
         _restoreTabPosition = _restoreTabPosition || $($('#user-info .tab-content')[0]).scrollTop();
         $('a[href="#sidepanel-urc-e"]').trigger('click');
         $('a[href="#panel-urce-comments"]').trigger('click');
@@ -613,11 +602,6 @@
         }
     }
 
-    function scrollToBottom() {
-        logDebug('Scrolling to the bottom of comment list.');
-        $('.top-section').scrollTop($('.top-section')[0].scrollHeight);
-    }
-
     function handleUrPanelCrosshairsClick(event) {
         logDebug('Handling UR Panel crosshairs click event.');
         W.map.setCenter([getXY(null, event.data.mUrObj).x, getXY(null, event.data.mUrObj).y], 5);
@@ -630,7 +614,7 @@
 
     function autoCloseUrPanel() {
         logDebug('Clicking close on UR panel.');
-        $("#panel-container > div > div > div.top-section > a").trigger('click');
+        $('#panel-container .mapUpdateRequest .top-section .close-panel').trigger('click');
     }
 
     function clickSaveButton() {
@@ -652,7 +636,7 @@
             // Dummy confirm to prevent WME from being able to send confirmations during auto clicking
             return true;
         }
-        $('.problem-edit .body').scrollTop($('.problem-edit .body')[0].scrollHeight);
+        $('#panel-container .mapUpdateRequest .top-section .body').scrollTop($('#panel-container .mapUpdateRequest .top-section .body')[0].scrollHeight);
         if (_commentList[commentNum].urstatus === 'notidentified' && _selUr.newStatus !== 'notidentified') {
             logDebug('Clicking Not Identified');
             $('input[value="not-identified"]').trigger('click');
@@ -1006,7 +990,7 @@
                         popupContent += ', ' + I18n.t('element_history.actions.default.UPDATE') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentDaysOld);
                     if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount > 0) {
                         popupContent += '<br>' + I18n.t('urce.mouseOver.FirstComment') + ': ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentDaysOld) + ' ' + I18n.t('element_history.changed_by') + ' ';
-                        if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy < 1)
+                        if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy === -1)
                             popupContent += I18n.t('conversation.reporter');
                         else {
                             popupContent += '<a href="' + W.Config.user_profile.url + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy).username + '">';
@@ -1015,7 +999,7 @@
                         }
                         if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount > 1) {
                             popupContent += '<br>' + I18n.t('urce.mouseOver.LastComment') + ': ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentDaysOld) + ' ' + I18n.t('element_history.changed_by') + ' ';
-                            if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy < 1)
+                            if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy === -1)
                                 popupContent += I18n.t('conversation.reporter');
                             else {
                                 popupContent += '<a href="' + W.Config.user_profile.url + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentBy).username + '">';
@@ -1097,8 +1081,13 @@
     function openUrPanel(urId) {
         let t = {showNext: false, nextButtonString: I18n.t('problems.panel.done')};
         if (urId !== _selUr.urId) {
-            _selUr = {};
-            _selUr.urId = urId;
+            _selUr = {
+                doubleClick: false,
+                handling: false,
+                newStatus: undefined,
+                urId: urId,
+                urOpen: false
+            };
         }
         W.reqres.request('problems:browse', _.extend(t, {problem: W.model.mapUpdateRequests.objects[urId]}));
     }
@@ -1222,7 +1211,7 @@
     function updateUrMapMarkers(urIds, filter) {
         for (let idx = 0; idx < urIds.length; idx++) {
             if ((filter && _settings.enableUrceUrFiltering && W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.hideUr) &&
-                !((W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType && _settings.doNotFilterTaggedUrs) || ((urIds[idx] === _selUr.urId) && _settings.doNotHideSelectedUr))) {
+                !(((W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs) || ((urIds[idx] === _selUr.urId) && _settings.doNotHideSelectedUr))) {
                 logDebug('Hiding UR marker for UR: ' + urIds[idx]);
                 $(`.map-marker[data-id="${urIds[idx]}"]`).css('visibility', 'hidden');
             }
@@ -1239,28 +1228,28 @@
                         if (_wmeUserId === W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy)
                             urCountBackground = '#FFFFFF';
                         if ((W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentUserIds.indexOf(_wmeUserId) > -1) &&
-                            (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy < 1))
+                            (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy === -1))
                             urCountBackground = '#79B5C7';
                         if ((_wmeUserId !== W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy) &&
                             (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount > 0) &&
-                            (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy < 1) &&
+                            (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy === -1) &&
                             (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld < _settings.closeDays))
                             urCountBackground = '#FFCC99';
                         if ((_wmeUserId !== W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy) &&
                             (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount > 0) &&
-                            (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy > 1) &&
+                            (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy > 0) &&
                             (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld > (_settings.closeDays - 1)))
                             urCountBackground = '#FF8B8B';
-                        if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType)
+                        if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType !== -1)
                             urCountBackground = '#CCCCCC';
-                        if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType && _settings.doNotShowTagNameOnPill) {
+                        if ((W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType !== -1) && _settings.doNotShowTagNameOnPill) {
                             if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount > 0)
                                 tagContent += W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount + 'c ';
-                            tagContent += (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld !== undefined) ? W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld : W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.driveDaysOld;
+                            tagContent += (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld !== -1) ? W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld : W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.driveDaysOld;
                             tagContent += 'd';
                             tagOffset = (tagContent.length < 3) ? 0 : Math.round(tagContent.length * 2.28);
                         }
-                        else if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType) {
+                        else if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType !== -1) {
                             tagContent += W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType;
                             if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount > 0)
                                 tagContent += ' ' + W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount + 'c';
@@ -1269,7 +1258,7 @@
                         else {
                             if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount > 0)
                                 tagContent += W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount + 'c ';
-                            tagContent += (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld !== undefined) ? W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld : W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.driveDaysOld;
+                            tagContent += (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld !== -1) ? W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld : W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.driveDaysOld;
                             tagContent += 'd';
                             tagOffset = (tagContent.length < 3) ? 0 : Math.round(tagContent.length * 2.28);
                         }
@@ -1335,26 +1324,35 @@
             catch(error) {
                 return logDebug(error);
             }
+
             for (let idx = 0; idx < urIds.length; idx++) {
-                urceData = {commentCount:urSessionsObj[idx].comments.length,
-                            commentUserIds:[],
-                            driveDaysOld:(mapUrsObj[idx].attributes.driveDate) ? uroDateToDays(mapUrsObj[idx].attributes.driveDate) : -1,
-                            commentsByMe:false,
-                            hideUr:false,
-                            needsClosed:false,
-                            needsReminder:false,
-                            keywordIncluding:false,
-                            keywordNotIncluding:false,
-                            reporterHasCommented:false,
-                            resolveDaysAgo:(mapUrsObj[idx].attributes.resolvedOn !== null) ? uroDateToDays(mapUrsObj[idx].attributes.resolvedOn) : undefined,
-                            waiting:false
-                           };
+                urceData = {
+                    commentCount: urSessionsObj[idx].comments.length,
+                    commentsByMe: false,
+                    commentUserIds: [],
+                    customType: -1,
+                    driveDaysOld: (mapUrsObj[idx].attributes.driveDate) ? uroDateToDays(mapUrsObj[idx].attributes.driveDate) : -1,
+                    firstCommentBy: -2,
+                    firstCommentDaysOld: -1,
+                    fullText: '',
+                    hideUr: false,
+                    keywordIncluding: false,
+                    keywordNotIncluding: false,
+                    lastCommentBy: -2,
+                    lastCommentDaysOld: -1,
+                    needsClosed: false,
+                    needsReminder: false,
+                    reporterHasCommented: false,
+                    resolveDaysAgo: (mapUrsObj[idx].attributes.resolvedOn !== null) ? uroDateToDays(mapUrsObj[idx].attributes.resolvedOn) : undefined,
+                    tagType: -1,
+                    waiting: false
+                };
                 if (urceData.commentCount > 0) {
                     urceData.firstCommentDaysOld = uroDateToDays(urSessionsObj[idx].comments[0].createdOn);
                     urceData.firstCommentBy = parseInt(urSessionsObj[idx].comments[0].userID);
                     urceData.lastCommentDaysOld = uroDateToDays(urSessionsObj[idx].comments[(urceData.commentCount - 1)].createdOn)
                     urceData.lastCommentBy = parseInt(urSessionsObj[idx].comments[(urceData.commentCount - 1)].userID);
-                    urceData.fullText = (mapUrsObj[idx].attributes.description) ? mapUrsObj[idx].attributes.description + ' ' : '';
+                    urceData.fullText += (mapUrsObj[idx].attributes.description) ? mapUrsObj[idx].attributes.description + ' ' : '';
                     for (let commentIdx = 0; commentIdx < urceData.commentCount; commentIdx++) {
                         urceData.fullText += urSessionsObj[idx].comments[commentIdx].text + ' ';
                         urceData.commentUserIds.push(urSessionsObj[idx].comments[commentIdx].userID);
@@ -1398,10 +1396,10 @@
                         }
                     }
                 } else
-                    urceData.fullText = (mapUrsObj[idx].attributes.description) ? mapUrsObj[idx].attributes.description : '';
+                    urceData.fullText += (mapUrsObj[idx].attributes.description) ? mapUrsObj[idx].attributes.description : '';
                 urceData.fullText = urceData.fullText.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, ' ');
-                urceData.tagType = (urceData.fullText.search(tagRegex) > -1) ? urceData.fullText.replace(tagRegex, '$1') : undefined;
-                if (urceData.tagType)
+                urceData.tagType = (urceData.fullText.search(tagRegex) > -1) ? urceData.fullText.replace(tagRegex, '$1') : -1;
+                if (urceData.tagType !== -1)
                     urceData.customType = convertTagToCustomType(urceData.tagType);
                 else if (mapUrsObj[idx].attributes.type === 23)
                     urceData.customType = 98;
@@ -1411,12 +1409,12 @@
                     urceData.keywordIncluding = true;
                 if ((keywordNotIncludingRegex !== null) && (urceData.fullText.search(keywordNotIncludingRegex) === -1))
                     urceData.keywordNotIncluding = true;
-                if (!urceData.tagType && (mapUrsObj[idx].attributes.type === 23))
+                if ((urceData.tagType === -1) && (mapUrsObj[idx].attributes.type === 23))
                     urceData.customType = 98;
-                else if (!urceData.tagType)
+                else if (urceData.tagType === -1)
                     urceData.customType = -1;
-                if (!urceData.tagType || _settings.replaceTagNameWithEditorName)
-                    urceData.tagType = urceData.fullText.search(tagUsernameRegex) > -1 ? W.model.loginManager.user.userName : (urceData.tagType) ? urceData.tagType : undefined;
+                if ((urceData.tagType === -1) || _settings.replaceTagNameWithEditorName)
+                    urceData.tagType = urceData.fullText.search(tagUsernameRegex) > -1 ? W.model.loginManager.user.userName : (urceData.tagType) ? urceData.tagType : -1;
                 if ((_settings.hideOutsideEditableArea && !mapUrsObj[idx].canEdit()) ||
                     (_settings.hideWaiting && urceData.waiting) ||
                     (_settings.needsClosed && urceData.needsClosed) ||
@@ -1561,8 +1559,13 @@
     function handleUrMarkerClick() {
         if ($(this).hasClass('user-generated') || $(this).hasClass('has-comments')) {
             if (!(_selUr.urId > 0) || (_selUr.urId !== parseInt($(this).attr('data-id')))) {
-                _selUr = {};
-                _selUr.urId = parseInt($(this).attr('data-id'));
+                _selUr = {
+                    doubleClick: false,
+                    handling: false,
+                    newStatus: undefined,
+                    urId: parseInt($(this).attr('data-id')),
+                    urOpen: false
+                };
                 logDebug('Clicked UR: ' + _selUr.urId);
             }
         }
@@ -1570,9 +1573,9 @@
 
     function getUrId() {
         return new Promise((resolve) => {
-            let newUrId = parseInt($(".update-requests .selected").data("id"));
+            let newUrId = parseInt($('.update-requests .selected').data('id'));
             if (newUrId && newUrId !== undefined && newUrId !== null && newUrId > 0)
-                resolve(parseInt($(".update-requests .selected").data("id")));
+                resolve(parseInt($('.update-requests .selected').data('id')));
             resolve(undefined);
         });
     }
@@ -1604,11 +1607,11 @@
                 })(1);
             }
             if (maskUrPanel && ($(`#urPanelLightbox-${phase}`).length === 0)) {
-                $($('.mapUpdateRequest.panel.show').children()[0]).css('position', 'relative');
+                $($('#panel-container .mapUpdateRequest.panel.show').children()[0]).css('position', 'relative');
                 let $urPanelDisabled = $('<div>', {id:`urPanelLightbox-${phase}`, style:`position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.75); color:white; z-index:${zIndex};`});
                 $urPanelDisabled.html('<div style="text-align:center; padding-top:200px; width:100%; font-weight:800;">' + message + '</div>');
                 (function retry(tries) {
-                    let $urPanel = $('.mapUpdateRequest.panel.show');
+                    let $urPanel = $('#panel-container .mapUpdateRequest.panel.show');
                     if ((tries > 99) && ($urPanel.length === 0))
                         return logError('Timed out trying to add mask to UR panel.');
                     else if ($urPanel.length === 0)
@@ -1940,10 +1943,10 @@
             mutations.forEach((mutation) => {
                 if ($(mutation.target).is('#panel-container') && (mutation.type === 'childList') && (mutation.addedNodes.length > 0) && (mutation.addedNodes[0].className.indexOf('show') > -1) && (newUrId > 0))
                     return handleUpdateRequestContainer(newUrId, 'UR panel mutation');
-                else if ($(mutation.target).is('#panel-container') && (mutation.type === 'childList') && (mutation.removedNodes.length > 0) && (mutation.removedNodes[0].className.indexOf('show') > -1) && (newUrId > 0) && (newUrId === _selUr.urId))
+                else if ($(mutation.target).is('#panel-container') && (mutation.type === 'childList') && (mutation.removedNodes.length > 0) && (mutation.removedNodes[0].className.indexOf('show') > -1))
                     return handleAfterCloseUpdateContainer();
                 else if ($(mutation.target).hasClass('comment-list') && (mutation.type === 'childList') && (mutation.addedNodes.length > 0) && (newUrId > 0) && (newUrId === _selUr.urId))
-                    return handleAfterCommentMutation(newUrId);
+                    handleAfterCommentMutation(newUrId);
                 else if ((mutation.type === 'attributes') && (mutation.attributeName === 'data-state')) {
                     logDebug('Handling UR status change mutation.');
                     if (mutation.target.attributes['data-state'].nodeValue === 'open')
@@ -1963,24 +1966,27 @@
                 if (mutation.type === 'childList') {
                     for (let idx = 0; idx < mutation.addedNodes.length; idx++) {
                         let addedNode = mutation.addedNodes[idx];
-                        if (addedNode.classList && addedNode.classList.contains('map-marker') && (addedNode.classList.contains('user-generated') || addedNode.classList.contains('map-marker'))) {
-                            let urId = parseInt(addedNode.getAttribute('data-id'));
-                            if (urId > 0 && urMapMarkerIds.indexOf(urId) === -1)
-                                urMapMarkerIds.push(urId);
+                        if (mutation.addedNodes[idx].classList && addedNode.classList.contains('map-marker') &&
+                            (mutation.addedNodes[idx].classList.contains('user-generated') || mutation.addedNodes[idx].classList.contains('map-marker'))) {
+                            if ((parseInt(mutation.addedNodes[idx].attributes['data-id'].value) > 0) && (urMapMarkerIds.indexOf(parseInt(mutation.addedNodes[idx].attributes['data-id'].value)) === -1))
+                                urMapMarkerIds.push(parseInt(mutation.addedNodes[idx].attributes['data-id'].value));
                         }
                     }
                 }
                 else if (mutation.type === 'attributes' && mutation.target.classList && (mutation.target.classList.contains('user-generated') || mutation.target.classList.contains('has-comments'))) {
                     if ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList.contains('selected')) {
-                        if (parseInt(mutation.target.attributes['data-id'].nodeValue) > 0) {
+                        if (parseInt(mutation.target.attributes['data-id'].value) > 0) {
                             if (!_selUr.handling) {
-                                let newUrId = parseInt(mutation.target.attributes['data-id'].nodeValue);
-                                if (!(_selUr.urId > 0) || (_selUr.urId !== newUrId)) {
-                                    _selUr = {};
-                                    _selUr.urId = newUrId;
+                                if (!(_selUr.urId > 0) || (_selUr.urId !== parseInt(mutation.target.attributes['data-id'].value))) {
+                                    _selUr = {
+                                        doubleClick: false,
+                                        handling: false,
+                                        newStatus: undefined,
+                                        urId: parseInt(mutation.target.attributes['data-id'].value),
+                                        urOpen: false
+                                    };
                                     logDebug('Caught selected UR by backdoor. Firing the minions. urId: ' + _selUr.urId);
                                 }
-                                return handleUpdateRequestContainer(_selUr.urId, 'clicked marker');
                             }
                         }
                     }
@@ -2025,10 +2031,10 @@
                 urMarkerObserver.isObserving = false;
             }
             logDebug('Disabling event listeners for UR markers.');
-            let $div = W.map.updateRequestLayer.div;
-            $($div).off('click', '.map-marker.user-generated', handleUrMarkerClick);
-            $($div).off('mouseover', '.map-marker.user-generated', markerMouseOver);
-            $($div).off('mouseout', '.map-marker.user-generated', markerMouseOut);
+            $(W.map.updateRequestLayer.div)
+                .off('click', '.map-marker.user-generated', handleUrMarkerClick)
+                .off('mouseover', '.map-marker.user-generated', markerMouseOver)
+                .off('mouseout', '.map-marker.user-generated', markerMouseOut);
             logDebug('Unregistering map.events event hook.');
             W.map.events.unregister('zoomend', null, invokeZoomMoveEnd);
             W.map.events.unregister('moveend', null, invokeZoomMoveEnd);
@@ -2149,7 +2155,7 @@
             $('<div>', {id:'_commentList', class:'URCE-divCC'})
         );
         $('a[id^="zoomOutLink"]').on('click', function() {
-            if ($(".problem-edit .top-section .close-panel").length > 0 )
+            if ($('#panel-container .mapUpdateRequest .top-section .close-panel').length > 0 )
                 autoCloseUrPanel();
             W.map.setCenter(W.map.getCenter(), parseInt(this.getAttribute('zoomTo')));
         });
@@ -2297,6 +2303,9 @@
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbdisableDoneNextButtons', urceprefs:'urce', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.DisableDoneNextButtonsTitle')}).prop('checked', _settings.disableDoneNextButtons),
                     $('<label>', {for:'_cbdisableDoneNextButtons', title:I18n.t('urce.prefs.DisableDoneNextButtonsTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DisableDoneNextButtons')),
+                    $('<br>'),
+                    $('<input>', {type:'checkbox', id:'_cbreplaceNextWithDoneButton', urceprefs:'urce', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.ReplaceNextWithDoneButtonTitle')}).prop('checked', _settings.replaceNextWithDoneButton),
+                    $('<label>', {for:'_cbreplaceNextWithDoneButton', title:I18n.t('urce.prefs.ReplaceNextWithDoneButtonTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.ReplaceNextWithDoneButton')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbdoubleClickLinkNiComments', urceprefs:'urce', title:I18n.t('urce.prefs.DoubleClickLinkNiCommentsTitle')}).change(function() {
                         _settings.doubleClickLinkNiComments = isChecked(this);
@@ -2792,6 +2801,10 @@
                 otherSettingName = 'hideLastCommentNotByReporter';
             if (settingName === 'hideLastCommentNotByReporter')
                 otherSettingName = 'hideLastCommentByReporter';
+            if (settingName === 'replaceNextWithDoneButton')
+                otherSettingName = 'disableDoneNextButtons';
+            if (settingName === 'disableDoneNextButtons')
+                otherSettingName = 'replaceNextWithDoneButton';
             if (otherSettingName !== null) {
                 if (this.checked && isChecked('#_cb' + otherSettingName)) {
                     _settings[otherSettingName] = false;
@@ -3022,12 +3035,8 @@
             _initUrIdInUrlObserver.isObserving = false;
             _initUrIdInUrlObserver.disconnect();
         }
-        logDebug('Closing UR Panel.');
         maskBoxes(null, true, 'init', (urId > 0));
-        _selUr.noRefreshMarkersOnClose = true;
-        autoCloseUrPanel();
         await initBackgroundTasks();
-        _selUr.noRefreshMarkersOnClose = false;
         logDebug('UR ' + urId + ' marker in URL. Re-opening.');
         openUrPanel(urId);
     }
@@ -3160,7 +3169,7 @@
                 errorText = errorText || 'No translations available.';
             if (errorText || !data || (data.values.length < 1)) {
                 translations = {
-                    "en":{
+                    "en": {
                         "commentsTab": {
                             "ZoomOutLink1": "Zoom out 0 & close UR",
                             "ZoomOutLink1Title": "Zooms all the way out and closes the UR panel.",
@@ -3195,10 +3204,13 @@
                         },
                         "mouseOver": {
                             "CenterInCurrentTab": "Center in current tab",
+                            "FirstComment": "First comment",
+                            "LastComment": "Last comment",
                             "MarkedAs": "Marked as",
                             "NoneByMe": "none by me",
                             "OpenInNewLivemapTab": "Open in new Livemap tab",
                             "OpenInNewTab": "Open in new tab",
+                            "ReporterHasCommented": "Reporter has commented",
                             "ViaLivemap": "via Livemap"
                         },
                         "prefs": {
@@ -3238,6 +3250,8 @@
                             "AutoZoomOutAfterCommentTitle": "Automatically zoom the map back to the previous zoom after clicking clicking send on a UR comment.",
                             "DisableDoneNextButtons": "Disable done / next buttons",
                             "DisableDoneNextButtonsTitle": "Disable the done / next buttons at the bottom of the UR panel.",
+                            "ReplaceNextWithDoneButton": "Replace Next UR button with Done button",
+                            "ReplaceNextWithDoneButtonTitle": "Replace the Next Update Request button with a Done button.",
                             "DoubleClickLinkNiComments": "Double click link - NI comments",
                             "DoubleClickLinkNiCommentsTitle": "Add an image (extra link) to the 'not identified' comments. When double clicked it will automatically set and send the UR comment of the one you double clicked, and then launch all of the other options that are enabled.",
                             "DoubleClickLinkOpenComments": "Double click link - Open comments",
@@ -3400,7 +3414,6 @@
                             "UpdateRequired": "You are using an older version of URC-E, which has caused an error. Please update to at least version",
                             "WaitingOnInit": "Waiting for URC-E to fully initialize"
                         }
-
                     }
                 };
             }
