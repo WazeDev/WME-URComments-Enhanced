@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   daniel@dbsooner.com
-// @version     2019.01.26.03
+// @version     2019.01.29.01
 // @description Handle WME update requests more quickly and efficiently.
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -11,6 +11,13 @@
 // @icon        data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC0AAAAwCAYAAACFUvPfAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNS1jMDIxIDc5LjE1NTc3MiwgMjAxNC8wMS8xMy0xOTo0NDowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTQgKFdpbmRvd3MpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjQyQjZDNjdEODYzODExRTRBRDY0Q0I2QjA1MjU4N0EyIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOjQyQjZDNjdFODYzODExRTRBRDY0Q0I2QjA1MjU4N0EyIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6NDJCNkM2N0I4NjM4MTFFNEFENjRDQjZCMDUyNTg3QTIiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6NDJCNkM2N0M4NjM4MTFFNEFENjRDQjZCMDUyNTg3QTIiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz6++Bk8AAANOElEQVR42tRZCWxU1xW9M39mPB5v431fMLYJdmpjthQUVsdlS9IQQkpIIDRhl5pKQUpbKkAEpakQIhVVRUytQIGwihCaBkgItQELQosxdrDZ7Njjbbx7vM0+f3ruZDz1NmTGhEj59tOb//979553313fl9jtdvqpXbLHRVgikTz0NbdJkyYJERERUp1OJ1Wr1WJLS4tYXFxswzu7s408+XFJ2g1oSUZGhtzf318piqLKx8dHZbPZFFKpVMC9TRAEs8lk0uNe39vbaywvL7eMBP5HAz179myZxWLxxfNg3IZHRkbG5OTkpEPSkQAs1Wq1nQUFBVXt7e2twNSGMdx3yuVyQ2FhofVHBw01kCsUigA8i1m9evXc3Nzc5TExMRMhUfnAOZC6VaPRlJ8+ffrzM2fOXMW9BvgazWZzD9TG8qOBZgnr9fqg5OTklPfff39bUlLSfL3ZKvmmqZ2q2rqoy2h2jAtSKmhsaBD9LDqUVAqZ/fbt29c2b978IfS9HCqjUalUXf0Sfyygp0+f7kB8584d6bhx4/xTU1PT9uzZk69WB2derdHSxQf1ZLTaRpyrlAmUkxpH05OiqbGxoWrjxo07Wltbb0KFNNevX+/FENEBmqUyWvCTJ0+WDPEKrh4S8oFXiDp+/HhedHT0M6fKvqWbDa0e0Z0YG05LMpPp/v37xWvXrn0XqlRWX1+vraysNEkfZu38zE1zXHPmzOH53ARuAQEBUuieBM2OJoaFhSl27NixAPr7TGFVo8eA+eKxPAc7Nen111/PgX5HxMXF+TIsmSe+1bkbEuintKamRoBeyqxWq6Knp0eA2xJAUAJ3Zce9+PTTT9tkMpkF7opgQEEwwjU6g4kKKhu83sWCynrKjg2jhQsXPrd///4L2Dkm0iv9PntiSUIF5JmZmSpMCsI2hwNMNBYSC4+QgLUkoE909vF4HoP3kVhY+Pz589Mh/czi+layiqLXoK2inXhuVFRUUlZWViIE45eSkiI8LCKyZAUAZbfki8sfxhA4bdq0+GXLluUmJCRMBqCxkHQY9E2BdxwY2iDtqtra2hsHDhy4jIVOYTqV8BIDr3ERakd/r0Xn9nf/9aBNx4YpmTlzZtrNmzcvBwUFuQXNIZaDgRJS84eDV8+bN2/cqlWr1rF+AqTMbDFRU72WdI29ZNZbSaGSKdQx/jFRcdExERGTZ6Snp/8GYbmGiXVBPQZeyyakOvrtX/7X7e/+S2f4ziXCPoIhaam73MMBGJcvBgXBP4bv3LnztSlTpmwAWOW9svtU/kkd1V/rINE23ONIBQnFTQuh1OciZXHJsSn8TBwy7NitB67g7O53/yX8386sHOqhgnbZSCrBEoaOqpVKZXReXt5W6OfC5uZGuvjnW9RU2v1QPbRZ7aS50kbVl5spY2kHLdg4i0L9lNRtMrvGDNx+d7/7rxCVj6Nva2vTArARPts21BClHR0dPqy7MKgIAOYItrD8ZgUdWXmFtCVdZIfYPGsILufqsBsipYYHjTpQpYWrCXjEixcv3oKX6oNXGgRasmDBAhkyMD+MCd21a9dKAF5QUVxB598uJZvR5nB9njZHcOm20oOva2lKfAT5yASvAXN0nIy5zc3NJRUVFd/CvvpY26QDsjABhqMEw0AYXQZ0eG1TUwOd+30pr9QrwA7Q+JfapVT0j1sE46BF4xO9Bv1sehIDF8+ePfsR7KmF01UOG/06LUGIFIKDg33hwtRvvPHGagzyOf9uMVlNVrdEx+ZEUdZLSZSYlkBymYK6ejrp/rVqupFfTT3NBodNNd1pp6IjJTRzxSRHcsR5hyfXL9LiaWJcOOcvJ/Pz8wvgSjud+bXLe0iR3yogIb+JEyeOiY+Pn1VRUkHaMt3I5Y5CSs/unkTjJ4wf9FwdGEJT54VQ1px0Or21kKqLWhGdZHRpXwn5h6goZ9F4ig5UEecgBsvIwghVKSHhRPjsYIIgv3jrrbfeMxqNWrhQA0DbXaChGhKkjwpI2W/JkiXsh4XS4xq3SdSczRnDAA+8fBS+9OKOuZS/4jPS1fUhlRTo0z8VUGeHjua+Ng3pp47+U9viGv8Egkp0oB+NCQlEehrI6mhEarpvw4YNfzMYDM3IEntPnjxpG1QjsmogPCtgnX6JiYnZJrPRISW7OBy0b4Ccsudkfu/2KuQ+NGXtGPrij9+QiD8b/vyDVWSDfVQ0dTrGBPjI6YUnk+mJyGDOF+wACCj1Xx47duwQ9Pge7ruReJmcdePgwjY8PFzKtRoinxKpZFJjbSNXESOCCc8IIgQdj/QyeUI8AkupA3DChCiaujCTyps7KF7tT2mQ7oSYMJJJyFp840beoUOHjiBM17OHAG8DUgTzgCJ3eDXOKSUsU4ZtUSDHUHc0drlVjYAYpcfWLyBL6KczY/kkkkgl9CQqE27skZAb30Cuve/ChQuFiA9aCM9YVFRke1gl7gKN1UkQtlnaUq7bLMglyA3omGzPA0VjdZODDjJwOrXlIl3PKiOFv5ySc8IoKT2BkMt8AL4VXMjCyPq+D+ywcw+AtbNKoFnkKplctItDPIZArx6cRWOSx3oMuvhgFfXTsejtVH2tyZHspuZGENwru68upAt9UDeLp4DJWXUQJyFI6kVMtvX19XWExquHBQsL/PX9As8T+Suffk0PLjcOCjZkl3CFR5Fjwnh3O2BDlv4kyJvA5QDNFYczizK3t7fXxMbHkVQhcUhpYCvaW0H7Vp+iqsoHDwX87xNF9MWOkmHzuTHdmLg4gg5XMz/m6+RPXkkamZOIbeItMty7d++WXCan1LnRHOaHtbpbzVT4QZljxTbRRof/8E/au+oEHd3+LxewygtNI87llga6TP/u3bulzI/5Mn+vz/JQMNpQdXCmrj948GBRbm7uqqmvjfOpOKsZcdK317T0l5c/JptJpM7671LV+jJCFvixw0O01ejcV++vphFU0XT48OEi2I+e8yrm77WkCwsLRURDM3S6j8t0RKPC1CfSaOysGLd61VrZSR11XYOetWl01Frd6XYO00sbP47gKQpRkmmZH/Nl/l6DZhMBWOT+FnY7nbt37z4Bwfcs3jaLfIOUXmd4IzWmw/SYLtNnPsyP+XrjOQaBhqO3wmfqwUBXVVVVjVj/kTooxL48fzYJPsKIRuVp4/lMh+kxXabPfJgf8x0taEcph2TbzPEev1v27t174dKlS6fGpqTSm0fnU0C4alQS5nk8n+mA3idMl+kzH+bntFAaLWiWNm+VHv6zHX3D1q1bD3/11VcnksYki7898yvKfGkMOHgGlsdlvphMPI/nMx3QO8R0nfT1Tn5en8e5zvIGFrZc6fDBDIhHwJfGvvLKK7NXrFjxa+QoIVptA109WUqlJ2uot1M/jKBcIaOpq9Jo+tIsio6O5RjQgWToo6NHj15C1G2AHrfA+PggxAgDdOUZ3pwlDgU9CDhcUgDcUxisPDIkJCQBCflzTz311BzUkUG1dTX01+c/Iat5sLd6YefPadaiGQy2+/r16wV79uz5rLOzUwNazdDhNtDqGQr4hwDtAg7GCpVK5YeQq4bUQyCpSDCOfeedd55HHTm/8MwV+nTzVdekJ+cn0Zu7XubsrWLNmjUfYpfq0Jqw8HaEah0KjT5OOYcC/qFAu87xAF6u0+mU2FJ/gOZTnkg8jz9w4MCm5OTkjL+/fYxun9eQOiqAfvf5ShQOEt26deve1Wg0d0FbC3VoR+tBns7StTgNzz7SIedoDJFGOGfmbbYhxzZBWj0A3c6SQ2vYtm1bPpKrruXvLSJ1tD+9ujeHfJV+Yl5e3n4EjkoGDJVoY8A8f0ColgykP6qvDCPp9NKlS6UlJSUyqIYMDAU+u8MYmfNLlD+kHQbgcYsXL56xadOm9XpDr9RPFUAFBQVfbtmy5Qho1rFb4zVjjhH31sDAQCvcHJ+7WLu7u22IitaBn94eRT1cugxg/CXKl8/vMEbOF/d8tIBxfIIaivvI7du3/zInJ2d2XV1dzcqVKz+EZDlb4tPzHrw3YryZQXNihN0y8yIw1xAREWE8d+5cv7o8EmhpSkqKHGWPH0Cr+XiMz4TZk3Apxh6tHziYx+J3KNYSCA+xaOfOnVeqq6ubQUuH941o7NYYlJULC4w14Z0ehtyLe37XY8SFOtD6HWa7d1newEVwkcuqwODQs5T5k4EvepY+PxMgMTkWwc9l4Gtfv379ebwX0QS89+HzE/Qc7fhs28qVCcYL/LUAcy0Od65QCJj7g3xmtrPBREVFOXJrMOdi1wYAnLbKISHWbWbOC+vg+XzPjZUV4/mrq5V7bpC2o7jghnszABv4EJH9NPhY+w9fHhl0dna2FQQNXE1gK01wdQpIhMexWjgAcyXt7LmxivEnGTvXmUyDF8D3zm13nCszcNZrVhN4HRaC2Z37G5X36P/YjtJLCA0NlfIRA38UQi+BtCT8Ycj5hVUy/NhAcIFgb8H3SqVSZCH4+fmJ7DmgguLjiIhDvwmyG+SyTALmHvtYLNIOcHaei5S0H5X9UYPL/wQYAOwQASZqvrLnAAAAAElFTkSuQmCC
 // @contributionURL https://github.com/WazeDev/Thank-The-Authors
 // ==/UserScript==
+
+/* global GM_info */
+/* global W */
+/* global I18n */
+/* global $ */
+/* global WazeWrap */
+/* global OL */
 
 /*
  * Original concept and code for URComments (URC) was written by rickzabel and licensed under MIT/BSD/X11.
@@ -27,12 +34,42 @@
  *
  */
 
-/* global GM_info */
-/* global W */
-/* global I18n */
-/* global $ */
-/* global WazeWrap */
-/* global OL */
+/*
+ * urceData object stored on W.model.mapUpdateRequests.objects[ID].attributes.urceData:
+ *
+ * commentCount: int
+ * commentUserIds: array
+ * commentsByMe: boolean
+ * customType: int
+ * driveDaysOld: int
+ * fisrtCommentBy: int
+ * firstCommentDaysOld: int
+ * fullText: string
+ * hideUr: boolean
+ * keywordIncluding: boolean
+ * keywordNotIncluding: boolean
+ * lastCommentBy: int
+ * lastCommentDaysOld: int
+ * needsClosed: boolean
+ * needsReminder: boolean
+ * resolveDaysAgo: int
+ * reporterHasCommented: boolean
+ * tagType: int or string
+ * waiting: boolean
+ *
+ */
+
+/*
+ * _selUr object:
+ *
+ * doubleClick: boolean
+ * handling: boolean
+ * newStatus: string
+ * noRefreshMarkersOnClose: boolean
+ * urId: int
+ * urOpen: boolean
+ *
+ */
 
 (function() {
     'use strict';
@@ -41,7 +78,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'Added functionality for comment tags for certain regions.', 'Added UR marker mouse over tooltip (UR popup)', 'Bugfixes', 'UR in URL / PL fixed!', 'Filtering fixed!', 'Mouseover resolved days ago fixed.', 'Added tooltips to rest all checkboxes in settings.', 'Switched MOs to be on full time for WME special feature.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'Speed and memory improvements.', 'Added more information to mouse over popup and UR panel.', 'Prevent popup when click-dragging.', 'Bugfixes.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -83,6 +120,7 @@
     let _alertBoxInUse = false;
     let _unstackedMasterId = null;
     let _mousedOverMarkerId = null;
+    let _mouseIsDown = false;
     let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId, _popupTimeout, _urceTabLightboxTo, _urPanelLightboxTo, _initUrIdInUrlObserver, _initUrIdInUrlTo;
 
     function log(message) { console.log('URC-E:', message); }
@@ -97,7 +135,7 @@
             property = property.substr(1);
         }
         return function (a, b) {
-            if (sortOrder == -1)
+            if (sortOrder === -1)
                 return b[property].localeCompare(a[property]);
             else
                 return a[property].localeCompare(b[property]);
@@ -236,7 +274,7 @@
             wmeUserId: undefined,
             lastVersion: undefined
         };
-         _settings = loadedSettings ? loadedSettings : defaultSettings;
+        _settings = loadedSettings ? loadedSettings : defaultSettings;
         for (let prop in defaultSettings) {
             if (!_settings.hasOwnProperty(prop))
                 _settings[prop] = defaultSettings[prop];
@@ -246,7 +284,7 @@
         // Remove old settings
         let deleted = false;
         ['autoCloseCommentWindow', 'hideClosedUrs', 'showOthersUrsPastReminderClose', 'onlyShowMyUrs', 'hideTaggedUrs', 'hideUrsWoComments', 'hideUrsWoCommentsOrDescriptions', 'hideUrsWoCommentsWithDescriptions', 'hideUrsWithUserReplies',
-         'disableAboveZoomLevel', 'hideByAgeOfLastCommentLessThanDaysAgo', 'hideByAgeOfLastCommentMoreThanDaysAgo', 'hideByAgeOfFirstCommentMoreThanDaysAgo' ].forEach(oldSetting => {
+         'disableAboveZoomLevel', 'hideByAgeOfLastCommentLessThanDaysAgo', 'hideByAgeOfLastCommentMoreThanDaysAgo', 'hideByAgeOfFirstCommentMoreThanDaysAgo' ].forEach((oldSetting) => {
             if (_settings.hasOwnProperty(oldSetting)) {
                 delete(_settings[oldSetting]);
                 deleted = true;
@@ -255,7 +293,7 @@
         // Fix bad settings
         let changed = false;
         ['reminderDays', 'closeDays', 'hideByAgeOfLastCommentMoreThanDaysOld', 'hideByAgeOfLastCommentLessThanDaysOld', 'hideByAgeOfFirstCommentMoreThanDaysOld', 'hideByAgeOfFirstCommentLessThanDaysOld', 'hideByCommentCountMoreThanNumber',
-         'hideByCommentCountLessThanNumber', 'hideByAgeOfSubmissionMoreThanDaysOld', 'hideByAgeOfSubmissionLessThanDaysOld' ].forEach(setting => {
+         'hideByCommentCountLessThanNumber', 'hideByAgeOfSubmissionMoreThanDaysOld', 'hideByAgeOfSubmissionLessThanDaysOld' ].forEach((setting) => {
             if (_settings[setting] === undefined || _settings[setting] === null || ((_settings[setting].length === 0) && (_settings[setting] !== ''))) {
                 _settings[setting] = '';
                 changed = true;
@@ -310,13 +348,13 @@
         else
             $('#urceAlertCrossBtn').css('visibility', 'hidden');
         $('#urceAlertTickBtn').off('click');
-        $('#urceAlertTickBtn').on('click', function() {
+        $('#urceAlertTickBtn').on('click', () => {
             if (alertBoxTickAction !== null)
                 alertBoxTickAction();
             closeAlertBox();
         });
         $('#urceAlertCrossBtn').off('click');
-        $('#urceAlertCrossBtn').on('click', function() {
+        $('#urceAlertCrossBtn').on('click', () => {
             if (alertBoxCrossAction !== null)
                 alertBoxCrossAction();
             closeAlertBox();
@@ -370,12 +408,13 @@
                 let urSessionsObj;
                 try {
                     urSessionsObj = await W.model.updateRequestSessions.getAsync(urIds);
+                    urSessionsObj.sort((a, b) => { return a.id - b.id; });
                 }
                 catch(error) {
-                    let msg = 'Error retreiving urSessions async for urIds: ' + urIds.join(', ') + ' on try ' + tries + '.';
+                    let debugMsg = 'Error retreiving urSessions async for urIds: ' + urIds.join(', ') + ' on try ' + tries + '.'
                     if (tries < 50)
-                        msg += ' Retrying.';
-                    logDebug(msg);
+                        debugMsg += ' Retrying.';
+                    logDebug(debugMsg);
                 }
                 if (tries > 49 && !urSessionsObj)
                     reject('50 tries at getting urSessions async have elapsed. Stopping loop.');
@@ -393,12 +432,13 @@
                 let mapUrsObj;
                 try {
                     mapUrsObj = await W.model.mapUpdateRequests.getByIds(urIds);
+                    mapUrsObj.sort((a, b) => { return a.id - b.id; });
                 }
                 catch(error) {
-                    let msg = 'Error retrieving mapUpdateRequests async for urIds: ' + urIds.join(', ') + ' on try ' + tries + '.';
+                    let debugMsg = 'Error retrieving mapUpdateRequests async for urIds: ' + urIds.join(', ') + ' on try ' + tries + '.';
                     if (tries < 50)
-                        msg += ' Retrying.';
-                    logDebug(msg);
+                        debugMsg += ' Retrying.';
+                    logDebug(debugMsg);
                 }
                 if (tries > 49 && !mapUrsObj)
                     reject('50 tries at getting mapUpdateRequests async have elapsed. Stopping loop.');
@@ -420,7 +460,7 @@
             if (_settings.autoSaveAfterSolvedOrNiComment && (_selUr.newStatus === 'solved' || _selUr.newStatus === 'notidentified'))
                 clickSaveButton();
             else
-                await handleUrLayer('sendComment');
+                await handleUrLayer('sendComment', null, [urId]);
         }
     }
 
@@ -433,7 +473,7 @@
             if (_settings.autoSwitchToUrCommentsTab)
                 autoSwitchToPrevTab();
             if (!_selUr.noRefreshMarkersOnClose)
-                await handleUrLayer('close');
+                await handleUrLayer('close', null, [_selUr.urId]);
         }
         _selUr = {};
     }
@@ -443,43 +483,40 @@
             autoZoomOut();
         if (_settings.autoSwitchToUrCommentsTab)
             autoSwitchToPrevTab();
-        await handleUrLayer('save');
+        await handleUrLayer('save', null, null);
     }
 
-    async function handleUpdateRequestContainer(urId) {
-        let urSessionObj, mapUrsObj;
+    async function handleUpdateRequestContainer(urId, caller) {
         _selUr.handling = true;
-        logDebug('Handling update request container mutation. urId: ' + urId);
-        try {
-            urSessionObj = await getUrSessionsAsync([urId]);
+        if (_popupTimeout !== undefined)
+            hidePopup();
+        logDebug('Handling update request container after ' + caller + ' for urId: ' + urId);
+        await updateUrceData([urId]);
+        $('#panel-container .top-section .header .main-title').append(' (' + urId + ') ');
+        $('#panel-container .top-section .header').append(
+            $('<div>', {class:'reported'}).text(I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[urId].attributes.urceData.driveDaysOld))
+        );
+        if (W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount > 0) {
+            for (let idx = 0; idx < W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount; idx++) {
+                $($('#panel-container .top-section .body .conversation-view .comment .comment-title .date')[idx]).append(
+                    $('<div>', {style:"float:right; margin:5px 5px 0 0;"}).text(I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[urId].comments[0].createdOn)))
+                )
+            }
         }
-        catch(error) {
-            return logError(error);
-        }
-        try {
-            mapUrsObj = await getMapUrsAsync([urId]);
-        }
-        catch(error) {
-            return logDebug(error);
-        }
-        let mapCountry = W.model.countries.top.abbr;
-        let mapState = W.model.states.top.name;
         if (_settings.autoSwitchCommentList) {
-            if ((_autoSwitchCountries[mapCountry] > -1) && (!_autoSwitchStates[mapCountry] || !_autoSwitchStates[mapCountry][mapState]) && (_autoSwitchCountries[mapCountry] !== _settings.commentList))
-                await changeCommentList(_autoSwitchCountries[mapCountry], true, false);
-            else if (_autoSwitchStates[mapCountry] && (_autoSwitchStates[mapCountry][mapState] > -1) && (_autoSwitchStates[mapCountry][mapState] !== _settings.commentList))
-                await changeCommentList(_autoSwitchStates[mapCountry][mapState], true, false);
+            if ((_autoSwitchCountries[W.model.countries.top.abbr] > -1) && (!_autoSwitchStates[W.model.countries.top.abbr] || !_autoSwitchStates[W.model.countries.top.abbr][W.model.states.top.name]) && (_autoSwitchCountries[W.model.countries.top.abbr] !== _settings.commentList))
+                await changeCommentList(_autoSwitchCountries[W.model.countries.top.abbr], true, false);
+            else if (_autoSwitchStates[W.model.countries.top.abbr] && (_autoSwitchStates[W.model.countries.top.abbr][W.model.states.top.name] > -1) && (_autoSwitchStates[W.model.countries.top.abbr][W.model.states.top.name] !== _settings.commentList))
+                await changeCommentList(_autoSwitchStates[W.model.countries.top.abbr][W.model.states.top.name], true, false);
             else if (_currentCommentList !== _settings.commentList)
                 await changeCommentList(_settings.commentList, true, false);
         }
-        let urData = urSessionObj[0];
-        let mUrObj = mapUrsObj[0];
-        _selUr.urOpen = mUrObj.attributes.open;
+        _selUr.urOpen = W.model.mapUpdateRequests.objects[urId].attributes.open;
         if (_settings.autoSwitchToUrCommentsTab)
             autoSwitchToUrceTab();
         if ($('#panel-container .problem-edit .conversation').hasClass('collapsed')) {
             logDebug('Expanding conversation list.');
-           $('#panel-container .problem-edit .conversation').removeClass('collapsed');
+            $('#panel-container .problem-edit .conversation').removeClass('collapsed');
         }
         if (_settings.disableDoneNextButtons) {
             logDebug('Removing the done / next buttons.');
@@ -487,13 +524,13 @@
         }
         logDebug('Setting event hook for center on UR crosshairs in UR panel title bar.');
         $('#panel-container > div > div > div.top-section > div.header > div.title > div > a.focus').off('click', handleUrPanelCrosshairsClick);
-        $('#panel-container > div > div > div.top-section > div.header > div.title > div > a.focus').on('click', {mUrObj:mUrObj}, handleUrPanelCrosshairsClick);
+        $('#panel-container > div > div > div.top-section > div.header > div.title > div > a.focus').on('click', {mUrObj:W.model.mapUpdateRequests.objects[urId]}, handleUrPanelCrosshairsClick);
         logDebug('Waiting 250ms before scrolling to bottom of the conversation list to give it time to load.');
         await setTimeout(scrollToBottom, 250);
-        if (urData.comments.length === 0) {
+        if (W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount === 0) {
             if (_settings.autoZoomInOnNewUr)
                 autoZoomIn(urId);
-            let commentNum = Object.values(_defaultComments).find(defaultComment => { return defaultComment.urNum === mUrObj.attributes.type }).commentNum;
+            let commentNum = Object.values(_defaultComments).find((defaultComment) => { return defaultComment.urNum === W.model.mapUpdateRequests.objects[urId].attributes.type }).commentNum;
             if (_selUr.urOpen && _settings.autoSetNewUrComment && commentNum) {
                 if (_settings.autoClickOpenSolvedNi)
                     autoClickOpenSolvedNi(commentNum);
@@ -506,11 +543,12 @@
                 }
             }
         }
-        else if (urData.comments.length === 1) {
+        else if (W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount === 1) {
             if (_settings.autoCenterOnUr) autoCenterOnUr(urId);
-            let lastCommentBy = urData.comments[(urData.comments.length - 1)].userID;
-            let commentDaysOld = urData.comments[(urData.comments.length - 1)].createdOn === null ? -1 : uroDateToDays(urData.comments[(urData.comments.length - 1)].createdOn);
-            if (_selUr.urOpen && _settings.autoSetReminderUrComment && _defaultComments.dr.commentNum && (urData.comments.length > 0) && (_settings.reminderDays !== 0) && (commentDaysOld > (_settings.reminderDays - 1)) && (lastCommentBy > 1)) {
+            if (_selUr.urOpen && _settings.autoSetReminderUrComment && _defaultComments.dr.commentNum &&
+                (W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount > 0) && (_settings.reminderDays !== 0) &&
+                (W.model.mapUpdateRequests.objects[urId].attributes.urceData.lastCommentDaysOld > (_settings.reminderDays - 1)) &&
+                (W.model.mapUpdateRequests.objects[urId].attributes.urceData.lastCommentBy > 0)) {
                 if (_settings.autoZoomInOnNewUr)
                     autoZoomIn(urId);
                 if (_settings.autoClickOpenSolvedNi)
@@ -616,7 +654,7 @@
             logDebug('Clicking Not Identified');
             $('input[value="not-identified"]').trigger('click');
         }
-        else if (_commentList[commentNum].urstatus === 'solved' && _selUr.newStatusn !== 'solved') {
+        else if (_commentList[commentNum].urstatus === 'solved' && _selUr.newStatus !== 'solved') {
             logDebug('Clicking Solved.');
             $('input[value="solved"]').trigger('click');
         }
@@ -777,28 +815,15 @@
 
     function getUsernameAndRank(userId) {
         let username, rank;
-        let userObj = W.model.users.objects[userId];
-        if (userObj !== null) {
-            username = (userObj.userName === undefined) ? userId : userObj.userName;
-            rank = userObj.rank + 1;
+        if (W.model.users.objects[userId] !== null &&  W.model.users.objects[userId] !== undefined) {
+            username = (W.model.users.objects[userId].userName === undefined) ? userId :  W.model.users.objects[userId].userName;
+            rank = W.model.users.objects[userId].rank + 1;
         }
         else {
             username = userId;
             rank = '?';
         }
         return {username:username, rank:rank};
-    }
-
-    function urHasMyComments(urObj) {
-        if (!_wmeUserId)
-            return false;
-        if (urObj.comments.length === 0)
-            return false;
-        for (let idx=0; idx < urObj.comments.length; idx++) {
-            if (urObj.comments[idx].userID == _wmeUserId)
-                return true;
-        }
-        return false;
     }
 
     function parsePxString(pxString) {
@@ -817,7 +842,7 @@
         if (_markerStackArray.length === 0)
             return false;
         for (let idx = 0; idx < _markerStackArray.length; idx++) {
-            if (_markerStackArray[idx].urId == urId)
+            if (_markerStackArray[idx].urId === urId)
                 return true;
         }
         return false;
@@ -838,7 +863,7 @@
             for (let marker in markerCollection) {
                 if (markerCollection.hasOwnProperty(marker)) {
                     let testMarkerObj = markerCollection[marker];
-                    if (testMarkerObj.model.attributes.geometry.urceRealX != null) {
+                    if (testMarkerObj.model.attributes.geometry.urceRealX !== undefined) {
                         testMarkerObj.model.attributes.geometry.x = testMarkerObj.model.attributes.geometry.urceRealX;
                         testMarkerObj.model.attributes.geometry.y = testMarkerObj.model.attributes.geometry.urceRealY;
                         delete(testMarkerObj.model.attributes.geometry.urceRealX);
@@ -847,7 +872,7 @@
                 }
             }
             for (let idx=0; idx < _markerStackArray.length; idx++) {
-                if (markerCollection[_markerStackArray[idx].urId] != null) {
+                if (markerCollection[_markerStackArray[idx].urId] !== undefined) {
                     markerCollection[_markerStackArray[idx].urId].icon.imageDiv.style.left = _markerStackArray[idx].x + 'px';
                     markerCollection[_markerStackArray[idx].urId].icon.imageDiv.style.top = _markerStackArray[idx].y + 'px';
                 }
@@ -859,50 +884,41 @@
 
     function checkMarkerStacking(urId, unstackedX, unstackedY) {
         urId = parseInt(urId);
-        if (isIdAlreadyUnstacked(urId) === true)
+        if (!_settings.unstackMarkers || (isIdAlreadyUnstacked(urId) === true))
             return;
         logDebug('Checking for marker stack, urId: ' + urId);
         let stackList = [];
-        let unstackZoomLevel = 3;
-        let unstackSensitivity = 15;
-        let threshSquared = unstackSensitivity * unstackSensitivity;
         let markerCollection = W.map.updateRequestLayer.markers;
-        let marker;
         let offset = 1000000000;
-        let inhibitUnstacking = (W.map.getZoom() < unstackZoomLevel);
         stackList.push(urId);
         if (markerCollection !== null) {
-            for (marker in markerCollection) {
+            for (let marker in markerCollection) {
                 if (markerCollection.hasOwnProperty(marker)) {
-                    let testMarkerObj = markerCollection[marker];
-                    let includeInStack = (testMarkerObj.icon.imageDiv.style.visibility != 'hidden');
-                    let suppressClosed = (testMarkerObj.icon.imageDiv.classList.contains('recently-closed') && (W.map.updateRequestLayer.showHidden === false));
-                    if (testMarkerObj.model.attributes.geometry.urceRealX === undefined) {
-                        testMarkerObj.model.attributes.geometry.urceRealX = (testMarkerObj.model.attributes.geometry.realX) ? testMarkerObj.model.attributes.geometry.realX : testMarkerObj.model.attributes.geometry.x;
-                        testMarkerObj.model.attributes.geometry.x = (testMarkerObj.model.attributes.geometry.realX) ? (testMarkerObj.model.attributes.geometry.realX + offset) : (testMarkerObj.model.attributes.geometry.x + offset);
-                        testMarkerObj.model.attributes.geometry.urceRealY = (testMarkerObj.model.attributes.geometry.realY) ? testMarkerObj.model.attributes.geometry.realY : testMarkerObj.model.attributes.geometry.y;
-                        testMarkerObj.model.attributes.geometry.y = (testMarkerObj.model.attributes.geometry.realY) ? (testMarkerObj.model.attributes.geometry.realY + offset) : (testMarkerObj.model.attributes.geometry.y + offset);
+                    if (markerCollection[marker].model.attributes.geometry.urceRealX === undefined) {
+                        markerCollection[marker].model.attributes.geometry.urceRealX = (markerCollection[marker].model.attributes.geometry.realX) ? markerCollection[marker].model.attributes.geometry.realX : markerCollection[marker].model.attributes.geometry.x;
+                        markerCollection[marker].model.attributes.geometry.x = (markerCollection[marker].model.attributes.geometry.realX) ? (markerCollection[marker].model.attributes.geometry.realX + offset) : (markerCollection[marker].model.attributes.geometry.x + offset);
+                        markerCollection[marker].model.attributes.geometry.urceRealY = (markerCollection[marker].model.attributes.geometry.realY) ? markerCollection[marker].model.attributes.geometry.realY : markerCollection[marker].model.attributes.geometry.y;
+                        markerCollection[marker].model.attributes.geometry.y = (markerCollection[marker].model.attributes.geometry.realY) ? (markerCollection[marker].model.attributes.geometry.realY + offset) : (markerCollection[marker].model.attributes.geometry.y + offset);
                         offset += 1000;
                     }
-                    if (includeInStack && !suppressClosed) {
-                        if (testMarkerObj.id != urId) {
-                            let xDiff = unstackedX - parsePxString(markerCollection[testMarkerObj.id].icon.imageDiv.style.left);
-                            let yDiff = unstackedY - parsePxString(markerCollection[testMarkerObj.id].icon.imageDiv.style.top);
+                    if (!(markerCollection[marker].icon.imageDiv.classList.contains('recently-closed') && (W.map.updateRequestLayer.showHidden === false)) && (markerCollection[marker].icon.imageDiv.style.visibility !== 'hidden')) {
+                        if (parseInt(markerCollection[marker].id) !== urId) {
+                            let xDiff = unstackedX - parsePxString(markerCollection[markerCollection[marker].id].icon.imageDiv.style.left);
+                            let yDiff = unstackedY - parsePxString(markerCollection[markerCollection[marker].id].icon.imageDiv.style.top);
                             let distSquared = ((xDiff * xDiff) + (yDiff * yDiff));
-                            if (distSquared < threshSquared)
-                                stackList.push(parseInt(testMarkerObj.id));
+                            if (distSquared < (15 * 15)) // unstackSensitivity * unstackSensitivity
+                                stackList.push(parseInt(markerCollection[marker].id));
                         }
                     }
                 }
             }
         }
-        inhibitUnstacking = (inhibitUnstacking || (stackList.length == 1));
         if (stackList.length > 0) {
-            if (inhibitUnstacking)
+            if ((W.map.mapState.mapLocation.zoom < 3) || (stackList.length === 1))
                 logDebug('Single marker highlighted. Adjusting geometry properties to prevent recentering.');
             else
                 logDebug('Markers are stacked!');
-            if (_unstackedMasterId != urId) {
+            if (_unstackedMasterId !== urId) {
                 logDebug('Unstacked ID mismatch, relocating markers.');
                 restackMarkers();
                 _unstackedMasterId = urId;
@@ -913,7 +929,7 @@
                     let x = parsePxString(markerCollection[thisUrId].icon.imageDiv.style.left);
                     let y = parsePxString(markerCollection[thisUrId].icon.imageDiv.style.top);
                     _markerStackArray.push(new stackListObj(thisUrId, x, y));
-                    if (!inhibitUnstacking) {
+                    if (!((W.map.mapState.mapLocation.zoom < 3) || (stackList.length === 1))) {
                         markerCollection[thisUrId].icon.imageDiv.style.left = unstackedX + 'px';
                         markerCollection[thisUrId].icon.imageDiv.style.top = unstackedY + 'px';
                         unstackedX += 10;
@@ -926,12 +942,13 @@
             restackMarkers();
     }
 
-    function markerMouseOver() {
+    async function markerMouseOver() {
+        if (_mouseIsDown) return;
         let popupX, popupY;
         let markerType = getMarkerType(this);
         if (markerType === 'ur') {
-            let markerId = this.attributes['data-id'].value;
-            if (_mousedOverMarkerId !== markerId) {
+            let markerId = parseInt(this.attributes['data-id'].value);
+            if ((_mousedOverMarkerId !== markerId) || ($('#urceDiv').css('visibility') === 'hidden')) {
                 _mousedOverMarkerId = markerId;
                 let targetTab = '_urceTab_' + Math.round(Math.random() * 1000000);
                 let popupXOffset = parsePxString($('#sidebar').css('width'));
@@ -940,63 +957,76 @@
                 logDebug('Hover over ' + markerType + ' ID ' + markerId);
                 checkMarkerStacking(_mousedOverMarkerId, unstackedX, unstackedY);
                 if (!_settings.disableUrMarkerPopup) {
+                    if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData === undefined)
+                        await updateUrceData([_mousedOverMarkerId]);
                     logDebug('Building popup for UR ' + _mousedOverMarkerId);
-                    let mUrObj = W.model.mapUpdateRequests.objects[_mousedOverMarkerId];
-                    let urObj = W.model.updateRequestSessions.objects[_mousedOverMarkerId];
                     popupX = unstackedX - parsePxString(W.map.segmentLayer.div.style.left) + popupXOffset + 6;
                     popupY = unstackedY - parsePxString(W.map.segmentLayer.div.style.top) + 6;
-                    let popupContent = '<b>' + I18n.t('problems.panel.titles.map_update_request') + ' (' + _mousedOverMarkerId + '): ' + I18n.t('update_requests.types.' + mUrObj.attributes.type) + '</b><br>';
-                    popupContent += clickify(mUrObj.attributes.description, '<br>');
-                    let daysOld = ((mUrObj.attributes.driveDate === null) || (mUrObj.attributes.driveDate === 0)) ? -1 : uroDateToDays(mUrObj.attributes.driveDate);
-                    let submittedTs = (mUrObj.attributes.driveDate > -1) ? new Date(mUrObj.attributes.driveDate).toLocaleDateString('en-us') + ' ' + new Date(mUrObj.attributes.driveDate).toLocaleTimeString('en-us') : -1;
-                    if (daysOld > -1) {
-                        popupContent += '<i>' + I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(daysOld) + ' ';
-                        if (submittedTs !== -1)
-                            popupContent += '(' + submittedTs + ') ';
-                        if (mUrObj.attributes.guestUserName != null) {
+                    let popupContent = '<b>' + I18n.t('problems.panel.titles.map_update_request') + ' (' + _mousedOverMarkerId + '): ' + I18n.t('update_requests.types.' + W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.type) + '</b><br>';
+                    if (!W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.description)
+                        popupContent += '<i>' + I18n.t('urce.mouseOver.NoDescription') + '</i>';
+                    else
+                        popupContent += clickify(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.description, '');
+                    if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.driveDaysOld > -1) {
+                        popupContent += '<br><i>' + I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.driveDaysOld) + ' ';
+                        if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.driveDate > -1)
+                            popupContent += '(' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.driveDate).toLocaleDateString('en-us') + ' ' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.driveDate).toLocaleTimeString('en-us') + ') ';
+                        if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.guestUserName && (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.guestUserName !== null)) {
                             popupContent += I18n.t('urce.mouseOver.ViaLivemap');
-                            if (mUrObj.attributes.guestUserName !== '')
-                                popupContent += ' by '+mUrObj.attributes.guestUserName.replace(/<\/?[^>]+(>|$)/g, "");
+                            if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.guestUserName !== '')
+                                popupContent += ' by '+ W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.guestUserName.replace(/<\/?[^>]+(>|$)/g, "");
                         }
                         popupContent += '</i>';
                     }
-                    if (mUrObj.attributes.resolvedOn !== null) {
-                        let daysResolved  = (mUrObj.attributes.resolvedOn === 0) ? -1 : uroDateToDays(mUrObj.attributes.resolvedOn);
-                        let resolvedTs = (mUrObj.attributes.resolvedOn > -1) ? new Date(mUrObj.attributes.resolvedOn).toLocaleDateString('en-us') + ' ' + new Date(mUrObj.attributes.resolvedOn).toLocaleTimeString('en-us') : -1;
-                        if (daysResolved > -1) {
-                            popupContent += '<br><i>' + I18n.t('urce.urStatus.Closed') + ' ' + parseDaysAgo(daysResolved) + ' ';
-                            if (resolvedTs > -1)
-                                popupContent += '(' + resolvedTs + ')</i>';
-                            popupContent += '<br><i>' + I18n.t('urce.mouseOver.MarkedAs') + ' ';
-                            if (mUrObj.attributes.resolution === 0)
-                                popupContent += I18n.t('venues.update_requests.panel.solved');
-                            else if (mUrObj.attributes.resolution == 1)
-                                popupContent += I18n.t('urce.urStatus.NotIdentified');
-                            else
-                                popupContent += I18n.t('segment.direction.0');
-                            if (mUrObj.attributes.resolvedBy !== null) {
-                                popupContent += ' ' + I18n.t('element_history.changed_by') + ' ';
-                                let usernameAndRank = getUsernameAndRank(mUrObj.attributes.resolvedBy);
-                                popupContent += '<a href="' + W.Config.user_profile.url + usernameAndRank.username + '">' + usernameAndRank.username + '</a> (' + usernameAndRank.rank + ')';
-                            }
-                            popupContent += '</i>';
+                    if ((W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedOn !== null) && (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.resolveDaysAgo > -1)) {
+                        popupContent += '<br><i>' + I18n.t('urce.urStatus.Closed') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.resolveDaysAgo) + ' ';
+                        popupContent += '(' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedOn).toLocaleDateString('en-us') + ' ' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedOn).toLocaleTimeString('en-us') + ')</i>';
+                        popupContent += '<br><i>' + I18n.t('urce.mouseOver.MarkedAs') + ' ';
+                        if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolution === 0)
+                            popupContent += I18n.t('venues.update_requests.panel.solved');
+                        else if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolution === 1)
+                            popupContent += I18n.t('urce.urStatus.NotIdentified');
+                        else
+                            popupContent += I18n.t('segment.direction.0');
+                        if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedBy !== null) {
+                            popupContent += ' ' + I18n.t('element_history.changed_by') + ' ';
+                            popupContent += '<a href="' + W.Config.user_profile.url + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedBy).username + '">';
+                            popupContent += getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedBy).username + '</a>';
+                            popupContent += ' (' + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedBy).rank + ')';
                         }
+                        popupContent += '</i>';
                     }
-                    if (urObj != null) {
-                        let hasMyComments = urHasMyComments(urObj);
-                        let urCommentCount = urObj.comments.length;
-                        popupContent += '<br>' + urCommentCount + ' ' + I18n.t('urce.tabs.Comments');
-                        if (!hasMyComments && (urCommentCount > 0))
-                            popupContent += ' (' + I18n.t('urce.mouseOver.NoneByMe') + ')';
-                        if (urCommentCount > 0) {
-                            let commentDaysOld = (urObj.comments[(urCommentCount - 1)].createdOn === null) ? -1 : uroDateToDays(urObj.comments[urCommentCount-1].createdOn);
-                            if (commentDaysOld > -1)
-                                popupContent += ', ' + I18n.t('element_history.actions.default.UPDATE') + ' ' + parseDaysAgo(commentDaysOld);
+                    popupContent += '<br><br>' + W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount + ' ' + I18n.t('urce.tabs.Comments');
+                    if (!W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentsByMe && (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount > 0))
+                        popupContent += ' (' + I18n.t('urce.mouseOver.NoneByMe') + ')';
+                    if ((W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount > 0) && (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentDaysOld > -1))
+                        popupContent += ', ' + I18n.t('element_history.actions.default.UPDATE') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentDaysOld);
+                    if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount > 0) {
+                        popupContent += '<br>' + I18n.t('urce.mouseOver.FirstComment') + ': ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentDaysOld) + ' ' + I18n.t('element_history.changed_by') + ' ';
+                        if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy < 1)
+                            popupContent += I18n.t('conversation.reporter');
+                        else {
+                            popupContent += '<a href="' + W.Config.user_profile.url + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy).username + '">';
+                            popupContent += getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy).username + '</a>';
+                            popupContent += ' (' + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy).rank + ')';
                         }
+                        if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount > 1) {
+                            popupContent += '<br>' + I18n.t('urce.mouseOver.LastComment') + ': ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentDaysOld) + ' ' + I18n.t('element_history.changed_by') + ' ';
+                            if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy < 1)
+                                popupContent += I18n.t('conversation.reporter');
+                            else {
+                                popupContent += '<a href="' + W.Config.user_profile.url + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentBy).username + '">';
+                                popupContent += getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentBy).username + '</a>';
+                                popupContent += ' (' + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentBy).rank + ')';
+                            }
+                        }
+                        popupContent += '<br>' + I18n.t('urce.mouseOver.ReporterHasCommented') + ': <i>';
+                        popupContent += (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.reporterHasCommented) ? I18n.t('urce.common.Yes') : I18n.t('urce.common.No');
+                        popupContent += '</i>';
                     }
                     let urPos = new OL.LonLat();
-                    urPos.lon = (mUrObj.geometry.urceRealX === undefined) ? mUrObj.geometry.x : mUrObj.geometry.urceRealX;
-                    urPos.lat = (mUrObj.geometry.urceRealY === undefined) ? mUrObj.geometry.y : mUrObj.geometry.urceRealY;
+                    urPos.lon = (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealX === undefined) ? W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.x : W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealX;
+                    urPos.lat = (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealY === undefined) ? W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.y : W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealY;
                     urPos.transform(new OL.Projection("EPSG:900913"), new OL.Projection("EPSG:4326"));
                     let urLink = $(document)[0].location.href;
                     let urLayers = '';
@@ -1017,67 +1047,62 @@
     }
 
     function markerMouseOut(event) {
-        let newUrId = ((event.toElement) && ($(event.toElement).attr('data-id') > -1)) ? $(event.toElement).attr('data-id') : null;
-        if (newUrId > 0 && isIdAlreadyUnstacked(newUrId))
+        let newUrId = ((event.toElement) && (parseInt($(event.toElement).attr('data-id')) > -1)) ? parseInt($(event.toElement).attr('data-id')) : null;
+        if (!newUrId)
+            _mousedOverMarkerId = null;
+        if ((newUrId > 0 && isIdAlreadyUnstacked(newUrId)) || (event.toElement && ((event.toElement.id === 'urceDiv') || (event.toElement.id.indexOf('urceCounts') > -1) || (event.toElement.parentNode.id.indexOf('urce') > -1))))
             return;
-        if ((event.toElement) && ((event.toElement.id === 'urceDiv') || (event.toElement.id.indexOf('urceCounts') > -1) || (event.toElement.parentNode.id.indexOf('urce') > -1)))
-            return;
-        _mousedOverMarkerId = null;
-        hidePopup();
         restackMarkers();
     }
 
     function handlePopup(popupObj) {
-        $('#urceDiv').css({'height':'auto', 'width':'auto'}).html(popupObj.popupContent);
-        $('#urceDiv').on('mouseleave', hidePopup).on('mouseenter', function() {
+        $('#urceDiv').css({'height':'auto', 'width':'auto'}).html(popupObj.popupContent).on('mouseleave', hidePopup).on('mouseenter', () => {
             if (_popupTimeout !== undefined)
                 window.clearTimeout(_popupTimeout);
         });
         $('#_urceOpenInNewTab').on('mouseup', saveSettingsToStorage);
         $('#_urceRecenterSession').on('click', recenterSessionOnUr);
-        let windowObj = $(window)[0];
-        let popupTo = (_settings.urMarkerPopupTimeout * 1000);
         let rw = parseInt($('#urceDiv')[0].clientWidth);
-        if (rw > (windowObj.innerWidth * 0.45))
-            $('#urceDiv').css({'width':`${(windowObj.innerWidth * 0.45)}px`});
+        if (rw > ($(window)[0].innerWidth * 0.45))
+            $('#urceDiv').css({'width':`${($(window)[0].innerWidth * 0.45)}px`});
         let rh = parseInt($('#urceDiv')[0].clientHeight);
-        if ((popupObj.popupX + rw) > windowObj.innerWidth)
+        if ((popupObj.popupX + rw) > $(window)[0].innerWidth)
             popupObj.popupX = ((popupObj.popupX - (rw + 20)) < 0) ? 0 : (popupObj.popupX - (rw + 20));
-        if ((popupObj.popupY + rh) > windowObj.innerHeight)
-            popupObj.popupY -= (((popupObj.popupY + rh) - windowObj.innerHeight) + 30);
+        if ((popupObj.popupY + rh) > $(window)[0].innerHeight)
+            popupObj.popupY -= (((popupObj.popupY + rh) - $(window)[0].innerHeight) + 30);
         if (popupObj.popupY < 0)
             popupObj.popupY = 0;
         $('#urceDiv').css({'top':`${popupObj.popupY}px`, 'left':`${popupObj.popupX}px`, 'visibility':'visible'});
         if (_popupTimeout !== undefined)
             window.clearTimeout(_popupTimeout)
-        _popupTimeout = window.setTimeout(hidePopup, popupTo);
+        _popupTimeout = window.setTimeout(hidePopup, (_settings.urMarkerPopupTimeout * 1000));
     }
 
-    function hidePopup() {
+    function hidePopup(event) {
+        let newUrId = (event && event.toElement && (parseInt($(event.toElement).attr('data-id')) > -1)) ? parseInt($(event.toElement).attr('data-id')) : null;
         if (_popupTimeout !== undefined)
             window.clearTimeout(_popupTimeout);
-        let $urceDiv = $('#urceDiv');
-        if ($urceDiv.css('visibility') !== 'hidden')
-            $urceDiv.css({'visibility':'hidden'});
-        $urceDiv.off('mouseenter').off('mouseleave');
-        _mousedOverMarkerId = null;
-        restackMarkers();
+        if ($('#urceDiv').css('visibility') !== 'hidden')
+            $('#urceDiv').css({'visibility':'hidden'});
+        $('#urceDiv').off('mouseenter').off('mouseleave');
+        if ((newUrId > 0 && isIdAlreadyUnstacked(newUrId)) || (event && event.toElement && ((event.toElement.id === 'urceDiv') || (event.toElement.id.indexOf('urceCounts') > -1) || (event.toElement.parentNode.id.indexOf('urce') > -1))))
+            return;
+        if (_mousedOverMarkerId === null)
+            restackMarkers();
     }
 
     function openUrPanel(urId) {
         let t = {showNext: false, nextButtonString: I18n.t('problems.panel.done')};
-        let urObj = W.model.mapUpdateRequests.objects[urId];
-        if (urId != _selUr.urId) {
+        if (urId !== _selUr.urId) {
             _selUr = {};
             _selUr.urId = urId;
         }
-        W.reqres.request('problems:browse', _.extend(t, {problem: urObj}));
+        W.reqres.request('problems:browse', _.extend(t, {problem: W.model.mapUpdateRequests.objects[urId]}));
     }
 
     function recenterSessionOnUr(event) {
-        let urId = $(event.target).attr('data-id');
-        openUrPanel(urId);
-        W.map.moveTo(W.map.updateRequestLayer.markers[urId].lonlat, 5);
+        openUrPanel(parseInt($(event.target).attr('data-id')));
+        W.map.moveTo(W.map.updateRequestLayer.markers[parseInt($(event.target).attr('data-id'))].lonlat, 5);
         hidePopup();
         return false;
     }
@@ -1125,8 +1150,8 @@
     }
 
     function customMarkersEnabledCheck() {
-        if (_settings.customMarkersRoadworks || _settings.customMarkersConstruction || _settings.customMarkersClosures || _settings.customMarkersEvents ||
-            _settings.customMarkersNotes || _settings.customMarkersWslm || _settings.customMarkersBog || _settings.customMarkersDifficult || _settings.customMarkersNativeSl)
+        if (_settings.customMarkersRoadworks || _settings.customMarkersConstruction || _settings.customMarkersClosures || _settings.customMarkersEvents || _settings.customMarkersNotes ||
+            _settings.customMarkersWslm || _settings.customMarkersBog || _settings.customMarkersDifficult || _settings.customMarkersNativeSl || _settings.customMarkersCustom)
             return true;
         else
             return false;
@@ -1141,10 +1166,9 @@
         }
         else
             logDebug('Updating custom marker for UR: ' + urId);
-        let customMarker = getCustomMarkerIdx(customType);
-        let customVariant = (!urOpen) ? 2 : 0;
+        let variant = (!urOpen) ? 2 : 0;
         $(`#urceCustomMarker_${urId}`).empty().append(
-            $('<img>', {src:uroAltMarkers[customMarker][customVariant]})
+            $('<img>', {src:uroAltMarkers[getCustomMarkerIdx(customType)][variant]})
         );
     }
 
@@ -1172,7 +1196,7 @@
         return -1;
     }
 
-    function converTagToCustomType(tag) {
+    function convertTagToCustomType(tag) {
         if (tag === 'ROADWORKS')
             return 0;
         if (tag === 'CONSTRUCTION')
@@ -1192,331 +1216,281 @@
         return -1;
     }
 
-    function updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj) {
-        let wmeUsername = W.model.loginManager.user.userName;
-        let tagCustomRegex = null;
-        let tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim;
-        let tagUsernameRegex = new RegExp(' ' + wmeUsername + ' ', 'gim');
-        if (_settings.customMarkersCustomText.length > 0)
-            tagCustomRegex = new RegExp(_settings.customMarkersCustomText.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'), 'gim');
-        const customMarkersEnabled = customMarkersEnabledCheck();
+    function updateUrMapMarkers(urIds, filter) {
         for (let idx = 0; idx < urIds.length; idx++) {
-            let urId = urIds[idx];
-            let $node = $(`[data-id="${urId}"]`);
-            if (_settings.enableUrPillCounts || customMarkersEnabled) {
-                let urData = urSessionsObj[idx];
-                let mUrObj = mapUrsObj[idx];
-                let urDesc = mUrObj.attributes.description;
-                let urOpen = mUrObj.attributes.open;
-                let urCommentCount = urData.comments.length;
-                let commentDaysOld, lastCommentBy, fullText, tagType, urCountBackground, tagOffset, customType;
-                let tagContent = '';
-                let commentUserIds = [];
-                if (urCommentCount > 0) {
-                    commentDaysOld = uroDateToDays(urData.comments[(urCommentCount-1)].createdOn);
-                    lastCommentBy = urData.comments[(urCommentCount-1)].userID;
-                    fullText = urDesc ? urDesc + ' ' : '';
-                    for (let idx = 0; idx < urCommentCount; idx++) {
-                        fullText += urData.comments[idx].text + ' ';
-                        commentUserIds.push(urData.comments[idx].userID);
-                    }
-                }
-                else {
-                    fullText = urDesc ? urDesc : '';
-                    commentDaysOld = uroDateToDays(mUrObj.attributes.driveDate);
-                }
-                fullText = fullText.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, ' ');
-                tagType = (fullText.search(tagRegex) > -1) ? fullText.replace(tagRegex, '$1') : null;
-                if (tagType)
-                    customType = converTagToCustomType(tagType);
-                else {
-                    if ((tagCustomRegex !== null) && (fullText.search(tagCustomRegex) > -1)) {
-                        customType = 99;
-                        tagType = _settings.customMarkersCustomText.trim();
-                    }
-                    if (!tagType)
-                        customType = (mUrObj.attributes.type === 23) ? 98 : -1;
-                }
-                if (!tagType || _settings.replaceTagNameWithEditorName)
-                    tagType = fullText.search(tagUsernameRegex) > -1 ? wmeUsername : tagType;
-                let curEditorHasCommented = (commentUserIds.indexOf(_wmeUserId) > -1);
-                if (_settings.enableUrPillCounts) {
-                    urCountBackground = '#FFFF99';
-                    if (_wmeUserId === lastCommentBy)
-                        urCountBackground = '#FFFFFF';
-                    if (curEditorHasCommented && (lastCommentBy < 1))
-                        urCountBackground = '#79B5C7';
-                    if ((_wmeUserId !== lastCommentBy) && (lastCommentBy < 1) && (commentDaysOld < _settings.closeDays))
-                        urCountBackground = '#FFCC99';
-                    if ((_wmeUserId !== lastCommentBy) && (lastCommentBy > 1) && (commentDaysOld > (_settings.closeDays - 1)))
-                        urCountBackground = '#FF8B8B';
-                    if (tagType)
-                        urCountBackground = '#CCCCCC';
-                    if ((commentDaysOld === null) || (commentDaysOld === '') || (commentDaysOld === undefined))
-                        commentDaysOld = (urCommentCount === '0') ? '0' : '?';
-                    if (tagType && _settings.doNotShowTagNameOnPill) {
-                        if (urCommentCount > 0)
-                            tagContent += urCommentCount + 'c ';
-                        tagContent += commentDaysOld + 'd';
-                        tagOffset = (tagContent.length < 3) ? 0 : Math.round(tagContent.length * 2.28);
-                    }
-                    else if (tagType) {
-                        tagContent += tagType;
-                        if (urCommentCount > 0)
-                            tagContent += ' ' + urCommentCount + 'c';
-                        tagOffset = (tagContent.length < 10) ? Math.round(tagContent.length * 2.86) : Math.round(tagContent.length * 3.33);
-                    }
-                    else {
-                        if (urCommentCount > 0)
-                            tagContent = urCommentCount + 'c ';
-                        tagContent += commentDaysOld + 'd';
-                        tagOffset = (tagContent.length < 3) ? 0 : Math.round(tagContent.length * 2.28);
-                    }
-                    tagOffset = '-' + tagOffset + 'px';
-                    if ($(`#urceCounters-${urId}`).length > 0) {
-                        logDebug('Updating marker counters on UR marker for UR: ' + urId);
-                        $(`#urceCounters-${urId}`).remove();
-                    }
-                    else
-                        logDebug('Adding marker counters on UR marker for UR: ' + urId);
-                    $($node).append(
-                        $('<div>', {id:`urceCounters-${urId}`, 'data-id':`${urId}`}).css('clear', 'both').css('margin-bottom', '10px').append(
-                            $('<div>', {id:`urceCounters-${urId}-text`, 'data-id':`${urId}`}).html(tagContent).css({'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}).addClass('urceCounts')
-                        )
-                    );
-                }
-                else {
-                    if ($(`#urceCounters-${urId}`).length > 0) {
-                        logDebug('Removing marker counters on UR marker for UR: ' + urId);
-                        $(`#urceCounters-${urId}`).remove();
-                    }
-                }
-                if (customMarkersEnabled) {
-                    if (customType > -1)
-                        addCustomMarker(urId, urOpen, customType, $node);
-                    else
-                        removeCustomMarker(urId);
-                }
-                else
-                    removeCustomMarker(urId);
+            if ((filter && _settings.enableUrceUrFiltering && W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.hideUr) &&
+                !((W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType && _settings.doNotFilterTaggedUrs) || ((urIds[idx] === _selUr.urId) && _settings.doNotHideSelectedUr))) {
+                logDebug('Hiding UR marker for UR: ' + urIds[idx]);
+                $(`.map-marker[data-id="${urIds[idx]}"]`).css('visibility', 'hidden');
             }
             else {
-                if ($(`#urceCounters-${urId}`).length > 0) {
-                    logDebug('Removing marker counters on UR marker for UR: ' + urId);
-                    $(`#urceCounters-${urId}`).remove();
+                if ($(`.map-marker[data-id="${urIds[idx]}"]`).css('visibility') === 'hidden') {
+                    logDebug('Unhiding UR marker for UR: ' + urIds[idx]);
+                    $(`.map-marker[data-id="${urIds[idx]}"]`).css('visibility', 'visible');
                 }
-                removeCustomMarker(urId);
+                if (_settings.enableUrPillCounts || customMarkersEnabledCheck()) {
+                    if (_settings.enableUrPillCounts) {
+                        let tagContent = '';
+                        let tagOffset;
+                        let urCountBackground = '#FFFF99';
+                        if (_wmeUserId === W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy)
+                            urCountBackground = '#FFFFFF';
+                        if ((W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentUserIds.indexOf(_wmeUserId) > -1) &&
+                            (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy < 1))
+                            urCountBackground = '#79B5C7';
+                        if ((_wmeUserId !== W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy) &&
+                            (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount > 0) &&
+                            (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy < 1) &&
+                            (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld < _settings.closeDays))
+                            urCountBackground = '#FFCC99';
+                        if ((_wmeUserId !== W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy) &&
+                            (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount > 0) &&
+                            (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentBy > 1) &&
+                            (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld > (_settings.closeDays - 1)))
+                            urCountBackground = '#FF8B8B';
+                        if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType)
+                            urCountBackground = '#CCCCCC';
+                        if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType && _settings.doNotShowTagNameOnPill) {
+                            if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount > 0)
+                                tagContent += W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount + 'c ';
+                            tagContent += (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld !== undefined) ? W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld : W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.driveDaysOld;
+                            tagContent += 'd';
+                            tagOffset = (tagContent.length < 3) ? 0 : Math.round(tagContent.length * 2.28);
+                        }
+                        else if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType) {
+                            tagContent += W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType;
+                            if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount > 0)
+                                tagContent += ' ' + W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount + 'c';
+                            tagOffset = (tagContent.length < 10) ? Math.round(tagContent.length * 2.86) : Math.round(tagContent.length * 3.33);
+                        }
+                        else {
+                            if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount > 0)
+                                tagContent += W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount + 'c ';
+                            tagContent += (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld !== undefined) ? W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld : W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.driveDaysOld;
+                            tagContent += 'd';
+                            tagOffset = (tagContent.length < 3) ? 0 : Math.round(tagContent.length * 2.28);
+                        }
+                        tagOffset = '-' + tagOffset + 'px';
+                        if ($(`#urceCounters-${urIds[idx]}`).length > 0) {
+                            logDebug('Updating marker counters on UR marker for UR: ' + urIds[idx]);
+                            $(`#urceCounters-${urIds[idx]}`).remove();
+                        }
+                        else
+                            logDebug('Adding marker counters on UR marker for UR: ' + urIds[idx]);
+                        $(`.map-marker[data-id="${urIds[idx]}"]`).append(
+                            $('<div>', {id:`urceCounters-${urIds[idx]}`, 'data-id':`${urIds[idx]}`}).css('clear', 'both').css('margin-bottom', '10px').append(
+                                $('<div>', {id:`urceCounters-${urIds[idx]}-text`, 'data-id':`${urIds[idx]}`}).html(tagContent).css({'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}).addClass('urceCounts')
+                            )
+                        );
+                    }
+                    else {
+                        if ($(`#urceCounters-${urIds[idx]}`).length > 0) {
+                            logDebug('Removing marker counters on UR marker for UR: ' + urIds[idx]);
+                            $(`#urceCounters-${urIds[idx]}`).remove();
+                        }
+                    }
+                    if (customMarkersEnabledCheck()) {
+                        if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.customType > -1)
+                            addCustomMarker(urIds[idx], W.model.mapUpdateRequests.objects[urIds[idx]].attributes.open, W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.customType, $(`.map-marker[data-id="${urIds[idx]}"]`));
+                        else
+                            removeCustomMarker(urIds[idx]);
+                    }
+                    else
+                        removeCustomMarker(urIds[idx]);
+                }
+                else {
+                    if ($(`#urceCounters-${urIds[idx]}`).length > 0) {
+                        logDebug('Removing marker counters on UR marker for UR: ' + urIds[idx]);
+                        $(`#urceCounters-${urIds[idx]}`).remove();
+                    }
+                    removeCustomMarker(urIds[idx]);
+                }
             }
         }
     }
 
-    async function filterUrMapMarkers(urIds, urSessionsObj, mapUrsObj, filter) {
-        let wmeUsername = W.model.loginManager.user.userName;
-        let keywordIncludingRegex = null;
-        let keywordNotIncludingRegex = null;
-        let tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim;
-        let usernameRegex = new RegExp(' ' + wmeUsername + ' ', 'gi');
-        if (_settings.hideByKeywordIncludingKeyword.length > 0) {
-            let includingKeyword = ' ' + _settings.hideByKeywordIncludingKeyword.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') + ' ';
-            keywordIncludingRegex = _settings.hideByKeywordCaseInsensitive ? new RegExp(includingKeyword, 'gim') : new RegExp(includingKeyword, 'gm');
-        }
-        if (_settings.hideByKeywordNotIncludingKeyword.length > 0) {
-            let notIncludingKeyword = ' ' + _settings.hideByKeywordNotIncludingKeyword.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') + ' ';
-            keywordNotIncludingRegex = _settings.hideByKeywordCaseInsensitive ? new RegExp(notIncludingKeyword, 'gim') : new RegExp(notIncludingKeyword, 'gm');
-        }
-        let doNotHideSelectedUr = _settings.doNotHideSelectedUr;
-        for (let idx = 0; idx < urIds.length; idx++) {
-            let urId = parseInt(urIds[idx]);
-            let $node = $(`[data-id="${urId}"]`);
-            if (_settings.enableUrceUrFiltering || _settings.autoSendReminders) {
-                let preventHiding = ((urId === _selUr.urId) && doNotHideSelectedUr);
-                let urData = urSessionsObj[idx];
-                let mUrObj = mapUrsObj[idx];
-                let urDesc = mUrObj.attributes.description;
-                let urOpen = mUrObj.attributes.open;
-                let urType = mUrObj.attributes.type;
-                let urDriveDate = (mUrObj.attributes.driveDate) ? mUrObj.attributes.driveDate : -1;
-                let urReminderSent = mUrObj.attributes.reminderSent;
-                let urCommentCount = urData.comments.length;
-                let commentDaysOld, lastCommentBy, fullText, tagType, customType;
-                let commentUserIds = [];
-                let hideUr = false;
-                let needsReminder = false;
-                let needsClosed = false;
-                let urWaiting = false;
-                let keywordIncluding = false;
-                let keywordNotIncluding = false;
-                if (urCommentCount > 0) {
-                    commentDaysOld = uroDateToDays(urData.comments[(urCommentCount - 1)].createdOn);
-                    lastCommentBy = urData.comments[(urCommentCount - 1)].userID;
-                    fullText = urDesc ? urDesc + ' ' : '';
-                    for (let idx = 0; idx < urCommentCount; idx++) {
-                        fullText += urData.comments[idx].text + ' ';
-                        commentUserIds.push(urData.comments[idx].userID);
+    function updateUrceData(urIds) {
+        return new Promise(async (resolve) => {
+            logDebug('Updating urceData for urIds: ' + urIds.join(', '));
+            let urSessionsObj, mapUrsObj;
+            let urceData = {};
+            let tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim;
+            let tagUsernameRegex = new RegExp(' ' + W.model.loginManager.user.userName + ' ', 'gi');
+            let includingKeyword = (_settings.hideByKeywordIncludingKeyword.length > 0) ? ' ' + _settings.hideByKeywordIncludingKeyword.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') + ' ' : null;
+            let keywordIncludingRegex = (_settings.hideByKeywordIncludingKeyword.length > 0) ? (_settings.hideByKeywordCaseInsensitive) ? new RegExp(includingKeyword, 'gim') : new RegExp(includingKeyword, 'gm') : null;
+            let notIncludingKeyword = (_settings.hideByKeywordNotIncludingKeyword.length > 0) ? ' ' + _settings.hideByKeywordNotIncludingKeyword.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') + ' ' : null;
+            let keywordNotIncludingRegex = (_settings.hideByKeywordNotIncludingKeyword.length > 0) ? (_settings.hideByKeywordCaseInsensitive) ? new RegExp(notIncludingKeyword, 'gim') : new RegExp(notIncludingKeyword, 'gm') : null;
+            try {
+                urSessionsObj = await getUrSessionsAsync(urIds);
+            }
+            catch(error) {
+                return logError(error);
+            }
+            try {
+                mapUrsObj = await getMapUrsAsync(urIds);
+            }
+            catch(error) {
+                return logDebug(error);
+            }
+            for (let idx = 0; idx < urIds.length; idx++) {
+                urceData = {commentCount:urSessionsObj[idx].comments.length,
+                            commentUserIds:[],
+                            driveDaysOld:(mapUrsObj[idx].attributes.driveDate) ? uroDateToDays(mapUrsObj[idx].attributes.driveDate) : -1,
+                            commentsByMe:false,
+                            hideUr:false,
+                            needsClosed:false,
+                            needsReminder:false,
+                            keywordIncluding:false,
+                            keywordNotIncluding:false,
+                            reporterHasCommented:false,
+                            resolveDaysAgo:(mapUrsObj[idx].attributes.resolvedOn !== null) ? uroDateToDays(mapUrsObj[idx].attributes.resolvedOn) : undefined,
+                            waiting:false
+                           };
+                if (urceData.commentCount > 0) {
+                    urceData.firstCommentDaysOld = uroDateToDays(urSessionsObj[idx].comments[0].createdOn);
+                    urceData.firstCommentBy = parseInt(urSessionsObj[idx].comments[0].userID);
+                    urceData.lastCommentDaysOld = uroDateToDays(urSessionsObj[idx].comments[(urceData.commentCount - 1)].createdOn)
+                    urceData.lastCommentBy = parseInt(urSessionsObj[idx].comments[(urceData.commentCount - 1)].userID);
+                    urceData.fullText = (mapUrsObj[idx].attributes.description) ? mapUrsObj[idx].attributes.description + ' ' : '';
+                    for (let commentIdx = 0; commentIdx < urceData.commentCount; commentIdx++) {
+                        urceData.fullText += urSessionsObj[idx].comments[commentIdx].text + ' ';
+                        urceData.commentUserIds.push(urSessionsObj[idx].comments[commentIdx].userID);
                     }
-                    if (urOpen && urCommentCount === 1) {
-                        if ((_settings.reminderDays !== 0) && (commentDaysOld > (_settings.reminderDays - 1))) {
-                            if ((lastCommentBy > 1) && (_wmeUserId === lastCommentBy) && !urReminderSent && _settings.autoSendReminders) {
+                    if (urceData.commentUserIds.indexOf(_wmeUserId) > -1)
+                        urceData.commentsByMe = true;
+                    if (urceData.commentUserIds.indexOf(-1) > -1)
+                        urceData.reporterHasCommented = true;
+                    if (mapUrsObj[idx].attributes.open && urceData.commentCount === 1) {
+                        if ((_settings.reminderDays !== 0) && (urceData.lastCommentDaysOld > (_settings.reminderDays - 1))) {
+                            if ((urceData.lastCommentBy > 1) && (_wmeUserId === urceData.lastCommentBy) && !mapUrsObj[idx].attributes.reminderSent && _settings.autoSendReminders) {
                                 try {
-                                    await autoPostReminderComment(urId, formatText(_commentList[_defaultComments.dr.commentNum].comment));
+                                    await autoPostReminderComment(urIds[idx], formatText(_commentList[_defaultComments.dr.commentNum].comment));
                                     if (_settings.unfollowAfterSend)
-                                        unfollowUrAfterSend(urId);
-                                    urWaiting = true;
+                                        unfollowUrAfterSend(urIds[idx]);
+                                    urceData.waiting = true;
                                 } catch(error) {
-                                    needsReminder = true;
-                                    logWarning(error); // Don't return here as we should go ahead and process the filtering.
+                                    urceData.needsReminder = true;
+                                    logWarning(error); // Don't return here as we should go ahead and process the urceData.
                                 }
                             } else
-                                needsReminder = true;
+                                urceData.needsReminder = true;
                         }
-                        else if (((_settings.reminderDays === 0) || (_settings.reminderDays === '')) && (commentDaysOld > (_settings.closeDays - 1)))
-                            needsClosed = true;
+                        else if (((_settings.reminderDays === 0) || (_settings.reminderDays === '')) && (urceData.lastCommentDaysOld > (_settings.closeDays - 1)))
+                            urceData.needsClosed = true;
                         else
-                            urWaiting = true;
+                            urceData.waiting = true;
                     }
-                    if (urOpen && urCommentCount > 1) {
-                        if (lastCommentBy > 1) {
-                            if ((_settings.closeDays > 0) && (commentDaysOld > (_settings.closeDays - 1))) {
-                                if (_wmeUserId === lastCommentBy)
-                                    needsClosed = true;
-                                else if (commentDaysOld < (_settings.reminderDays + _settings.closeDays))
-                                    urWaiting = true;
-                                else if (commentDaysOld > (_settings.reminderDays + _settings.closeDays - 1))
-                                    needsClosed = true;
+                    if (mapUrsObj[idx].attributes.open && urceData.commentCount > 1) {
+                        if (urceData.lastCommentBy > 1) {
+                            if ((_settings.closeDays > 0) && (urceData.lastCommentDaysOld > (_settings.closeDays - 1))) {
+                                if (_wmeUserId === urceData.lastCommentBy)
+                                    urceData.needsClosed = true;
+                                else if (urceData.lastCommentDaysOld < (_settings.reminderDays + _settings.closeDays))
+                                    urceData.waiting = true;
+                                else if (urceData.lastCommentDaysOld > (_settings.reminderDays + _settings.closeDays - 1))
+                                    urceData.needsClosed = true;
                             }
                             else
-                                urWaiting = true;
+                                urceData.waiting = true;
                         }
                     }
-                } else {
-                    fullText = urDesc ? urDesc : '';
-                    commentDaysOld = uroDateToDays(urDriveDate);
-                }
-                fullText = fullText.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, ' ');
-                tagType = (fullText.search(tagRegex) > -1) ? fullText.replace(tagRegex, '$1') : null;
-                if (tagType)
-                    customType = converTagToCustomType(tagType);
-                else if (urType === 23)
-                    customType = 98;
+                } else
+                    urceData.fullText = (mapUrsObj[idx].attributes.description) ? mapUrsObj[idx].attributes.description : '';
+                urceData.fullText = urceData.fullText.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, ' ');
+                urceData.tagType = (urceData.fullText.search(tagRegex) > -1) ? urceData.fullText.replace(tagRegex, '$1') : undefined;
+                if (urceData.tagType)
+                    urceData.customType = convertTagToCustomType(urceData.tagType);
+                else if (mapUrsObj[idx].attributes.type === 23)
+                    urceData.customType = 98;
                 else
-                    customType = -1;
-                if ((keywordIncludingRegex !== null) && (fullText.search(keywordIncludingRegex) > -1))
-                    keywordIncluding = true;
-                if ((keywordNotIncludingRegex !== null) && (fullText.search(keywordNotIncludingRegex) === -1))
-                    keywordNotIncluding = true;
-                if (!tagType && (mUrObj.attributes.type === 23))
-                    customType = 98;
-                else if (!tagType)
-                    customType = -1;
-                if (!tagType)
-                    tagType = fullText.search(usernameRegex) > -1 ? wmeUsername : null;
-                if (tagType && _settings.doNotFilterTaggedUrs)
-                    preventHiding = true;
-                if ((!preventHiding && filter && _settings.enableUrceUrFiltering) &&
-                    ((_settings.hideOutsideEditableArea && !mUrObj.canEdit()) ||
-                     (_settings.hideWaiting && urWaiting) ||
-                     (_settings.needsClosed && needsClosed) ||
-                     (_settings.hideUrsReminderNeeded && needsReminder) ||
-                     (_settings.hideByStatusOpen && urOpen) ||
-                     (_settings.hideByStatusClosed && !urOpen) ||
-                     (_settings.hideByStatusNotIdentified && (mUrObj.attributes.resolution === 1)) ||
-                     (_settings.hideByStatusSolved && (mUrObj.attributes.resolution === 0)) ||
-                     // Types
-                     (_settings.hideByTypeBlockedRoad && (urType === 19)) ||
-                     (_settings.hideByTypeGeneralError && (urType === 10)) ||
-                     (_settings.hideByTypeIncorrectAddress && (urType === 7)) ||
-                     (_settings.hideByTypeIncorrectJunction && (urType === 12)) ||
-                     (_settings.hideByTypeIncorrectRoute && (urType === 8)) ||
-                     (_settings.hideByTypeIncorrectStreetPrefixOrSuffix && (urType === 22)) ||
-                     (_settings.hideByTypeIncorrectTurn && (urType === 6)) ||
-                     (_settings.hideByTypeMissingBridgeOverpass && (urType === 13)) ||
-                     (_settings.hideByTypeMissingExit && (urType === 15)) ||
-                     (_settings.hideByTypeMissingLandmark && (urType === 18)) ||
-                     (_settings.hideByTypeMissingOrInvalidSpeedLimit && (urType === 23)) ||
-                     (_settings.hideByTypeMissingRoad && (urType === 16)) ||
-                     (_settings.hideByTypeMissingRoundabout && (urType === 9)) ||
-                     (_settings.hideByTypeMissingStreetName && (urType === 21)) ||
-                     (_settings.hideByTypeTurnNotAllowed && (urType === 11)) ||
-                     (_settings.hideByTypeUndefined && (!urType || (urType > 23) || (urType < 6) || (urType === 17) || (urType === 20))) ||
-                     (_settings.hideByTypeWazeAutomatic && urDesc.indexOf('Waze Automatic:') > -1) ||
-                     (_settings.hideByTypeWrongDrivingDirection && (urType === 14)) ||
-                     //Tags
-                     (_settings.hideByTaggedBog && (customType === 6)) ||
-                     (_settings.hideByTaggedClosure && (customType === 2)) ||
-                     (_settings.hideByTaggedConstruction && (customType === 1)) ||
-                     (_settings.hideByTaggedDifficult && (customType === 7)) ||
-                     (_settings.hideByTaggedEvent && (customType === 3)) ||
-                     (_settings.hideByTaggedNote && (customType === 4)) ||
-                     (_settings.hideByTaggedRoadworks && (customType === 0)) ||
-                     (_settings.hideByTaggedWslm && (customType === 5)) ||
-                     // Age of submission
-                     (_settings.hideByAgeOfSubmissionLessThan && (uroDateToDays(urDriveDate) < _settings.hideByAgeOfSubmissionLessThanDaysOld)) ||
-                     (_settings.hideByAgeOfSubmissionMoreThan && (uroDateToDays(urDriveDate) > _settings.hideByAgeOfSubmissionMoreThanDaysOld)) ||
-                     // Following, description, comments
-                     (_settings.hideFollowing && urData.isFollowing) ||
-                     (_settings.hideNotFollowing && !urData.isFollowing) ||
-                     (_settings.hideDescription && urDesc && (urDesc.length > 0) && (urDesc !== '')) ||
-                     (_settings.hideWithoutDescription && (!urDesc || (urDesc.length === 0) || (urDesc === ''))) ||
-                     (_settings.hideWithCommentsFromMe && (commentUserIds.indexOf(_wmeUserId) > -1)) ||
-                     (_settings.hideWithoutCommentsFromMe && (commentUserIds.indexOf(_wmeUserId) === -1)) ||
-                     (_settings.hideLastCommentByMe && (lastCommentBy === _wmeUserId)) ||
-                     (_settings.hideLastCommentNotByMe && (lastCommentBy !== _wmeUserId)) ||
-                     (_settings.hideLastCommentByReporter && (lastCommentBy === -1)) ||
-                     (_settings.hideLastCommentNotByReporter && (lastCommentBy > 0)) ||
-                     (_settings.hideByCommentCountLessThan && (urCommentCount < _settings.hideByCommentCountLessThanNumber)) ||
-                     (_settings.hideByCommentCountMoreThan && (urCommentCount > _settings.hideByCommentCountMoreThanNumber)) ||
-                     (_settings.hideByAgeOfFirstCommentLessThan && (urData.comments.length > 0) && (uroDateToDays(urData.comments[0].createdOn) < _settings.hideByAgeOfFirstCommentLessThanDaysOld)) ||
-                     (_settings.hideByAgeOfFirstCommentMoreThan && (urData.comments.length > 0) && (uroDateToDays(urData.comments[0].createdOn) > _settings.hideByAgeOfFirstCommentMoreThanDaysOld)) ||
-                     (_settings.hideByAgeOfLastCommentLessThan && (urCommentCount > 0) && (commentDaysOld < _settings.hideByAgeOfLastCommentLessThanDaysOld)) ||
-                     (_settings.hideByAgeOfLastCommentMoreThan && (urCommentCount > 0) && (commentDaysOld > _settings.hideByAgeOfLastCommentMoreThanDaysOld)) ||
-                     (_settings.hideByKeywordIncluding && keywordIncluding) ||
-                     (_settings.hideByKeywordNotIncluding && keywordNotIncluding)
-                    )
-                   ) hideUr = true;
-                if (hideUr && _settings.enableUrceUrFiltering) {
-                    logDebug('Hiding UR marker for UR: ' + urId);
-                    $($node).hide();
-                }
-                else {
-                    logDebug('Unhiding UR marker for UR: ' + urId);
-                    $($node).show();
-                }
+                    urceData.customType = -1;
+                if ((keywordIncludingRegex !== null) && (urceData.fullText.search(keywordIncludingRegex) > -1))
+                    urceData.keywordIncluding = true;
+                if ((keywordNotIncludingRegex !== null) && (urceData.fullText.search(keywordNotIncludingRegex) === -1))
+                    urceData.keywordNotIncluding = true;
+                if (!urceData.tagType && (mapUrsObj[idx].attributes.type === 23))
+                    urceData.customType = 98;
+                else if (!urceData.tagType)
+                    urceData.customType = -1;
+                if (!urceData.tagType || _settings.replaceTagNameWithEditorName)
+                    urceData.tagType = urceData.fullText.search(tagUsernameRegex) > -1 ? W.model.loginManager.user.userName : (urceData.tagType) ? urceData.tagType : undefined;
+                if ((_settings.hideOutsideEditableArea && !mapUrsObj[idx].canEdit()) ||
+                    (_settings.hideWaiting && urceData.waiting) ||
+                    (_settings.needsClosed && urceData.needsClosed) ||
+                    (_settings.hideUrsReminderNeeded && urceData.needsReminder) ||
+                    (_settings.hideByStatusOpen && mapUrsObj[idx].attributes.open) ||
+                    (_settings.hideByStatusClosed && !mapUrsObj[idx].attributes.open) ||
+                    (_settings.hideByStatusNotIdentified && (mapUrsObj[idx].attributes.resolution === 1)) ||
+                    (_settings.hideByStatusSolved && (mapUrsObj[idx].attributes.resolution === 0)) ||
+                    // Types
+                    (_settings.hideByTypeBlockedRoad && (mapUrsObj[idx].attributes.type === 19)) ||
+                    (_settings.hideByTypeGeneralError && (mapUrsObj[idx].attributes.type === 10)) ||
+                    (_settings.hideByTypeIncorrectAddress && (mapUrsObj[idx].attributes.type === 7)) ||
+                    (_settings.hideByTypeIncorrectJunction && (mapUrsObj[idx].attributes.type === 12)) ||
+                    (_settings.hideByTypeIncorrectRoute && (mapUrsObj[idx].attributes.type === 8)) ||
+                    (_settings.hideByTypeIncorrectStreetPrefixOrSuffix && (mapUrsObj[idx].attributes.type === 22)) ||
+                    (_settings.hideByTypeIncorrectTurn && (mapUrsObj[idx].attributes.type === 6)) ||
+                    (_settings.hideByTypeMissingBridgeOverpass && (mapUrsObj[idx].attributes.type === 13)) ||
+                    (_settings.hideByTypeMissingExit && (mapUrsObj[idx].attributes.type === 15)) ||
+                    (_settings.hideByTypeMissingLandmark && (mapUrsObj[idx].attributes.type === 18)) ||
+                    (_settings.hideByTypeMissingOrInvalidSpeedLimit && (mapUrsObj[idx].attributes.type === 23)) ||
+                    (_settings.hideByTypeMissingRoad && (mapUrsObj[idx].attributes.type === 16)) ||
+                    (_settings.hideByTypeMissingRoundabout && (mapUrsObj[idx].attributes.type === 9)) ||
+                    (_settings.hideByTypeMissingStreetName && (mapUrsObj[idx].attributes.type === 21)) ||
+                    (_settings.hideByTypeTurnNotAllowed && (mapUrsObj[idx].attributes.type === 11)) ||
+                    (_settings.hideByTypeUndefined && (!mapUrsObj[idx].attributes.type || (mapUrsObj[idx].attributes.type > 23) || (mapUrsObj[idx].attributes.type < 6) || (mapUrsObj[idx].attributes.type === 17) || (mapUrsObj[idx].attributes.type === 20))) ||
+                    (_settings.hideByTypeWazeAutomatic && mapUrsObj[idx].attributes.description.indexOf('Waze Automatic:') > -1) ||
+                    (_settings.hideByTypeWrongDrivingDirection && (mapUrsObj[idx].attributes.type === 14)) ||
+                    //Tags
+                    (_settings.hideByTaggedBog && (urceData.customType === 6)) ||
+                    (_settings.hideByTaggedClosure && (urceData.customType === 2)) ||
+                    (_settings.hideByTaggedConstruction && (urceData.customType === 1)) ||
+                    (_settings.hideByTaggedDifficult && (urceData.customType === 7)) ||
+                    (_settings.hideByTaggedEvent && (urceData.customType === 3)) ||
+                    (_settings.hideByTaggedNote && (urceData.customType === 4)) ||
+                    (_settings.hideByTaggedRoadworks && (urceData.customType === 0)) ||
+                    (_settings.hideByTaggedWslm && (urceData.customType === 5)) ||
+                    // Age of submission
+                    (_settings.hideByAgeOfSubmissionLessThan && (urceData.driveDaysOld < _settings.hideByAgeOfSubmissionLessThanDaysOld)) ||
+                    (_settings.hideByAgeOfSubmissionMoreThan && (urceData.driveDaysOld > _settings.hideByAgeOfSubmissionMoreThanDaysOld)) ||
+                    // Following, description, comments
+                    (_settings.hideFollowing && urSessionsObj[idx].isFollowing) ||
+                    (_settings.hideNotFollowing && !urSessionsObj[idx].isFollowing) ||
+                    (_settings.hideDescription && mapUrsObj[idx].attributes.description && (mapUrsObj[idx].attributes.description.length > 0) && (mapUrsObj[idx].attributes.description !== '')) ||
+                    (_settings.hideWithoutDescription && (!mapUrsObj[idx].attributes.description || (mapUrsObj[idx].attributes.description.length === 0) || (mapUrsObj[idx].attributes.description === ''))) ||
+                    (_settings.hideWithCommentsFromMe && (urceData.commentsByMe)) ||
+                    (_settings.hideWithoutCommentsFromMe && (!urceData.commentsByMe)) ||
+                    (_settings.hideLastCommentByMe && (urceData.lastCommentBy === _wmeUserId)) ||
+                    (_settings.hideLastCommentNotByMe && (urceData.lastCommentBy !== _wmeUserId)) ||
+                    (_settings.hideLastCommentByReporter && (urceData.lastCommentBy === -1)) ||
+                    (_settings.hideLastCommentNotByReporter && (urceData.lastCommentBy > 0)) ||
+                    (_settings.hideByCommentCountLessThan && (urceData.commentCount < _settings.hideByCommentCountLessThanNumber)) ||
+                    (_settings.hideByCommentCountMoreThan && (urceData.commentCount > _settings.hideByCommentCountMoreThanNumber)) ||
+                    (_settings.hideByAgeOfFirstCommentLessThan && (urceData.commentCount > 0) && (urceData.firstCommentDaysOld < _settings.hideByAgeOfFirstCommentLessThanDaysOld)) ||
+                    (_settings.hideByAgeOfFirstCommentMoreThan && (urceData.commentCount > 0) && (urceData.firstCommentDaysOld > _settings.hideByAgeOfFirstCommentMoreThanDaysOld)) ||
+                    (_settings.hideByAgeOfLastCommentLessThan && (urceData.commentCount > 0) && (urceData.lastCommentDaysOld < _settings.hideByAgeOfLastCommentLessThanDaysOld)) ||
+                    (_settings.hideByAgeOfLastCommentMoreThan && (urceData.commentCount > 0) && (urceData.lastcommentDaysOld > _settings.hideByAgeOfLastCommentMoreThanDaysOld)) ||
+                    (_settings.hideByKeywordIncluding && urceData.keywordIncluding) ||
+                    (_settings.hideByKeywordNotIncluding && urceData.keywordNotIncluding)
+                   ) urceData.hideUr = true;
+                W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData = urceData;
             }
-            else {
-                logDebug('Unhiding UR marker for UR: ' + urId);
-                $($node).show();
-            }
-        }
+            resolve();
+        });
     }
 
     async function handleUrMapMarkers(urIds, filter) {
-        let urSessionsObj, mapUrsObj;
         urIds = urIds.sort();
-        try {
-            urSessionsObj = await getUrSessionsAsync(urIds);
-            urSessionsObj.sort(function (a, b) {
-                return a.id - b.id;
-            });
-        }
-        catch(error) {
-            return logDebug(error);
-        }
-        try {
-            mapUrsObj = await getMapUrsAsync(urIds);
-        }
-        catch(error) {
-            return logDebug(error);
-        }
-        filterUrMapMarkers(urIds, urSessionsObj, mapUrsObj, filter);
-        updateUrMapMarkers(urIds, urSessionsObj, mapUrsObj);
+        await updateUrceData(urIds);
+        updateUrMapMarkers(urIds, filter);
     }
 
-    async function handleUrLayer(phase, filter) {
+    function handleUrLayer(phase, filter, urMapMarkerIds) {
         return new Promise(async (resolve) => {
             if (!_filtersApplying) {
                 _filtersApplying = true;
                 let zoomLevel = getZoomLevel();
-                if (filter === undefined)
+                if (filter === undefined || filter === null)
                     filter = !(((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))));
                 if (phase === 'init')
                     logDebug('Checking for UR markers already present before URC-E completed initialization.');
@@ -1528,12 +1502,15 @@
                     logDebug('Updating UR markers after a setting toggle.');
                 if (phase === 'sendComment')
                     logDebug('Updating UR markers after sending a comment.');
-                if (phase === 'zoomed')
-                    logDebug('Updating UR markers after zooming.');
-                let urMapMarkerIds = [];
-                for (let urId in W.map.updateRequestLayer.markers) {
-                    if (urMapMarkerIds.indexOf(urId) === -1)
-                        urMapMarkerIds.push(urId);
+                if (phase === 'zoomMove')
+                    logDebug('Updating UR markers after zooming or moving.');
+                if (!urMapMarkerIds) {
+                    urMapMarkerIds = [];
+                    for (let urId in W.map.updateRequestLayer.markers) {
+                        urId = parseInt(urId);
+                        if (urMapMarkerIds.indexOf(urId) === -1)
+                            urMapMarkerIds.push(urId);
+                    }
                 }
                 if (urMapMarkerIds.length > 0) {
                     try {
@@ -1552,8 +1529,16 @@
         });
     }
 
-    async function invokeZoomEnd() {
-        logDebug('Invoking function on zoomEnd event.');
+    function mouseDown() {
+        _mouseIsDown = true;
+    }
+
+    function mouseUp() {
+        _mouseIsDown = false;
+    }
+
+    async function invokeZoomMoveEnd() {
+        logDebug('Invoking function on zoomEnd or moveEnd event.');
         let zoomLevel = getZoomLevel();
         let filter = null;
         if (_settings.disableFilteringAboveZoom || _settings.disableFilteringBelowZoom) {
@@ -1567,15 +1552,14 @@
                 filter = false;
         }
         if (filter !== null)
-            await handleUrLayer('zoomed', filter);
+            await handleUrLayer('zoomMove', filter, null);
     }
 
     function handleUrMarkerClick() {
         if ($(this).hasClass('user-generated') || $(this).hasClass('has-comments')) {
-            let clickedUrId = parseInt($(this).attr('data-id'));
-            if (!(_selUr.urId > 0) || (_selUr.urId !== clickedUrId)) {
+            if (!(_selUr.urId > 0) || (_selUr.urId !== parseInt($(this).attr('data-id')))) {
                 _selUr = {};
-                _selUr.urId = clickedUrId;
+                _selUr.urId = parseInt($(this).attr('data-id'));
                 logDebug('Clicked UR: ' + _selUr.urId);
             }
         }
@@ -1584,12 +1568,9 @@
     function getUrId() {
         return new Promise((resolve) => {
             let newUrId = parseInt($(".update-requests .selected").data("id"));
-            if (!(_selUr.urId > 0) || (_selUr.UrId !== newUrId)) {
-                logDebug('Had to get the urId ' + newUrId + ' from the back yard for the UR panel mutation.');
-                _selUr = {};
-                _selUr.urId = newUrId;
-            }
-            resolve();
+            if (newUrId && newUrId !== undefined && newUrId !== null && newUrId > 0)
+                resolve(parseInt($(".update-requests .selected").data("id")));
+            resolve(undefined);
         });
     }
 
@@ -1604,14 +1585,14 @@
             $(`#urPanelLightbox-${phase}`).remove();
         }
         else if (!unmask) {
-            if ($(`#urceTabLightbox-${phase}`).length == 0) {
+            if ($(`#urceTabLightbox-${phase}`).length === 0) {
                 $('#sidepanel-urc-e').css('position', 'relative');
                 let sidepanelHeight = $('aside#sidebar').height();
                 let $urceTabDisabled = $('<div>', {id:`urceTabLightbox-${phase}`, style:`position:relative; top:0; left:0; width:100%; height:${sidepanelHeight}px; background:rgba(0,0,0,.75); color:white; z-index:${zIndex};`});
                 $urceTabDisabled.html('<div style="text-align:center; padding-top:200px; width:100%; font-weight:800;">' + message + '</div>');
                 (function retry(tries) {
                     let $urceSidePanel = $('#sidepanel-urc-e');
-                    if ((tries > 99) && ($urceSidePanel.length == 0))
+                    if ((tries > 99) && ($urceSidePanel.length === 0))
                         return logError('Timed out trying to add mask to URCE side panel.');
                     else if ($urceSidePanel.length === 0)
                         window.setTimeout(retry, 100, ++tries);
@@ -1619,13 +1600,13 @@
                         $urceSidePanel.prepend($urceTabDisabled);
                 })(1);
             }
-            if (maskUrPanel && ($(`#urPanelLightbox-${phase}`).length == 0)) {
+            if (maskUrPanel && ($(`#urPanelLightbox-${phase}`).length === 0)) {
                 $($('.mapUpdateRequest.panel.show').children()[0]).css('position', 'relative');
                 let $urPanelDisabled = $('<div>', {id:`urPanelLightbox-${phase}`, style:`position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.75); color:white; z-index:${zIndex};`});
                 $urPanelDisabled.html('<div style="text-align:center; padding-top:200px; width:100%; font-weight:800;">' + message + '</div>');
                 (function retry(tries) {
                     let $urPanel = $('.mapUpdateRequest.panel.show');
-                    if ((tries > 99) && ($urPanel.length == 0))
+                    if ((tries > 99) && ($urPanel.length === 0))
                         return logError('Timed out trying to add mask to UR panel.');
                     else if ($urPanel.length === 0)
                         window.setTimeout(retry, 100, ++tries);
@@ -1642,7 +1623,7 @@
                 $('fieldset[id^="urceComments-for-"], legend[id^="urceComments-for-"], div[id^="urceComments-for-"]').removeClass('urStyle');
                 $('fieldset[id^="urce-prefs-fieldset"], legend[id^="urce-prefs-legend"]').removeClass('urStyle');
             }
-            else if (settingVal == 'urStyle') {
+            else if (settingVal === 'urStyle') {
                 $('fieldset[id^="urceComments-for-"], legend[id^="urceComments-for-"], div[id^="urceComments-for-"]').addClass('urStyle');
                 $('fieldset[id^="urce-prefs-fieldset"], legend[id^="urce-prefs-legend"]').addClass('urStyle');
             }
@@ -1670,7 +1651,7 @@
 
     function getCommentListInfo(commentListIdx) {
         commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
-        return _commentLists.find(cList => { return cList.idx === commentListIdx });
+        return _commentLists.find((cList) => { return cList.idx === commentListIdx });
     }
 
     function checkForStaticListArray(oldVarName) {
@@ -1697,8 +1678,8 @@
                 return reject(error);
             }
             let oldUrcArr = window['Urcomments' + oldVarName + 'Array2'];
-            let defaultReminderIdx = window['Urcomments' + oldVarName + 'ReminderPosistion'];
-            let closedNiIdx = window['Urcomments' + oldVarName + 'CloseNotIdentifiedPosistion'];
+            let defaultReminderIdx = parseInt(window['Urcomments' + oldVarName + 'ReminderPosistion']);
+            let closedNiIdx = parseInt(window['Urcomments' + oldVarName + 'CloseNotIdentifiedPosistion']);
             let data = [];
             let entryIdx;
             logDebug('Converting static comment list to URC-E format for comment list: ' + oldVarName);
@@ -1712,21 +1693,18 @@
             else
                 entryIdx = 3;
             for (let oldUrcArrIdx = 0; oldUrcArrIdx < oldUrcArr.length; oldUrcArrIdx = oldUrcArrIdx + 3) {
-                let temp;
-                let title = oldUrcArr[oldUrcArrIdx];
-                let comment = oldUrcArr[oldUrcArrIdx+1];
-                let urstatus = oldUrcArr[oldUrcArrIdx+2] != '' ? oldUrcArr[oldUrcArrIdx+2].toLowerCase() : '';
-                if (title.search(/<br>/gi) > -1) {
-                    urstatus = 'GROUP TITLE';
-                    title = $("<div>").html(title).text();
+                if (oldUrcArr[oldUrcArrIdx].search(/<br>/gi) > -1) {
+                    oldUrcArr[oldUrcArrIdx+2] = 'GROUP TITLE';
+                    oldUrcArr[oldUrcArrIdx] = $("<div>").html(oldUrcArr[oldUrcArrIdx]).text();
                 }
-                temp = title+'|'+comment+'|'+urstatus;
-                temp += (oldUrcArrIdx == defaultReminderIdx) ? '|default_is_true' : '|';
-                temp += (oldUrcArrIdx == closedNiIdx) ? '|default_is_true' : '|';
+                let temp = oldUrcArr[oldUrcArrIdx]+'|'+oldUrcArr[oldUrcArrIdx+1] + '|';
+                temp += (oldUrcArr[oldUrcArrIdx+2] !== '') ? oldUrcArr[oldUrcArrIdx+2].toLowerCase() : '';
+                temp += (oldUrcArrIdx === defaultReminderIdx) ? '|default_is_true' : '|';
+                temp += (oldUrcArrIdx === closedNiIdx) ? '|default_is_true' : '|';
                 for (let i=6; i<24; i++) {
                     if (i === 17 || i === 20)
                         continue;
-                    temp += (window['Urcomments' + oldVarName + 'def_names'][i].toLowerCase() == title.toLowerCase()) ? '|default_is_true' : '|';
+                    temp += (window['Urcomments' + oldVarName + 'def_names'][i].toLowerCase() === oldUrcArr[oldUrcArrIdx].toLowerCase()) ? '|default_is_true' : '|';
                 }
                 data[entryIdx] = [ temp ];
                 entryIdx++;
@@ -1741,70 +1719,63 @@
             if (data) {
                 const EXPECTED_FIELD_NAMES = ['TITLE', 'COMMENT', 'URSTATUS', 'DR', 'DC', 'IT', 'IA', 'IR', 'MRA', 'GE', 'TNA', 'IJ', 'MBO', 'WDD', 'ME', 'MR', 'ML', 'BR', 'MSN', 'ISPS', 'SL'];
                 let ssFieldNames, groupDivId;
-                let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
+                let checkFieldNames = (fldName) => ssFieldNames.indexOf(fldName) > -1;
                 let commentId = 0
                 let blankGroup = 0;
-                let doubleClickLinkNiComments = _settings.doubleClickLinkNiComments;
-                let doubleClickLinkOpenComments = _settings.doubleClickLinkOpenComments;
-                let doubleClickLinkSolvedComments = _settings.doubleClickLinkSolvedComments;
                 for (let entryIdx = 0; entryIdx < data.length; entryIdx++) {
-                    let cellValue = data[entryIdx][0];
                     if (entryIdx === 0) {
-                        if (cellValue !== 'URCE')
+                        if (data[entryIdx][0] !== 'URCE')
                             return reject('Incorrect format in spreadsheet data received.');
                     }
                     else if (entryIdx === 1) {
-                        if (SCRIPT_VERSION < cellValue)
-                            return reject('updateRequired|' + cellValue);
+                        if (SCRIPT_VERSION < data[entryIdx][0])
+                            return reject('updateRequired|' + data[entryIdx][0]);
                     }
                     else if (entryIdx === 2) {
-                        ssFieldNames = cellValue.split('|').map(fldName => fldName.trim());
+                        ssFieldNames = data[entryIdx][0].split('|').map((fldName) => fldName.trim());
                         if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length)
                             return reject('Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment definition data. Spreadsheet returned ' + ssFieldNames.length + '.');
-                        else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName)))
+                        else if (!EXPECTED_FIELD_NAMES.every((fldName) => checkFieldNames(fldName)))
                             return reject('Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', '));
                     }
                     else {
-                        let splitRow = cellValue.split('|');
-                        let rObj = {};
-                        for (let i=0; i<splitRow.length; i++) {
-                            let rObjKey = ssFieldNames[i].trim().toLowerCase();
-                            rObj[rObjKey] = rObjKey === 'comment' ? splitRow[i] : rObjKey === 'title' ? splitRow[i].trim() : splitRow[i].trim().toLowerCase();
-                        }
-                        splitRow = rObj;
-                        if (splitRow.title === 'URCE_REMOVED_SO_SKIP')
+                        let rowObj = {};
+                        data[entryIdx][0].split('|').forEach((entry, i) => {
+                            i = i || 0;
+                            rowObj[ssFieldNames[i].trim().toLowerCase()] = (ssFieldNames[i].trim().toLowerCase() === 'comment') ? entry : (ssFieldNames[i].trim().toLowerCase() === 'title') ? entry.trim() : entry.trim().toLowerCase();
+                            i++;
+                        });
+                        if (rowObj.title === 'URCE_REMOVED_SO_SKIP')
                             logDebug('SKIPPING a removed comment.'); // Nothing to do here. Move along. This is a comment that has been set to 'REMOVED' in the spreadsheet.
-                        else if (splitRow.title === 'URCE_ERROR')
+                        else if (rowObj.title === 'URCE_ERROR')
                             return reject('There is an unknown error in the spreadsheet output. Please contact the list owner: ' + getCommentListInfo(_settings.commentList).listOwner); // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
-                        else if (splitRow.urstatus === 'group title') { // Group title row. Nothing to set in the arrays, but build html.
+                        else if (rowObj.urstatus === 'group title') { // Group title row. Nothing to set in the arrays, but build html.
                             groupDivId = 'urceComments-for-';
-                            if (splitRow.title != '') {
-                                groupDivId += splitRow.title.replace(/[^\w]+/gi, '').toLowerCase();
-                                if (splitRow.title === splitRow.title.toUpperCase()) {
-                                    if (splitRow.title.length > 25) {
-                                        splitRow.titleMouseOver = splitRow.title;
-                                        splitRow.title = splitRow.title.substring(0, 25) + '...';
+                            if (rowObj.title !== '') {
+                                groupDivId += rowObj.title.replace(/[^\w]+/gi, '').toLowerCase();
+                                if (rowObj.title === rowObj.title.toUpperCase()) {
+                                    if (rowObj.title.length > 25) {
+                                        rowObj.titleMouseOver = rowObj.title;
+                                        rowObj.title = rowObj.title.substring(0, 25) + '...';
                                     }
                                 }
-                                else if (splitRow.title.length > 30) {
-                                    splitRow.titleMouseOver = splitRow.title;
-                                    splitRow.title = splitRow.title.substring(0, 30) + '...';
+                                else if (rowObj.title.length > 30) {
+                                    rowObj.titleMouseOver = rowObj.title;
+                                    rowObj.title = rowObj.title.substring(0, 30) + '...';
                                 }
                             }
                             else
                                 groupDivId += 'blankGroup' + (++blankGroup);
-                            let collapsed = '';
-                            if (_settings.commentListCollapses.hasOwnProperty(_settings.commentList)) {
-                                let cListCollapses = _settings.commentListCollapses[_settings.commentList];
-                                collapsed = (cListCollapses.hasOwnProperty(groupDivId+'_body')) ? (cListCollapses[groupDivId+'_body'] === true) ? 'collapse' : '' : '';
-                            }
+                            let collapsed = (_settings.commentListCollapses.hasOwnProperty(_settings.commentList) &&
+                                             _settings.commentListCollapses[_settings.commentList].hasOwnProperty(groupDivId+'_body') &&
+                                             (_settings.commentListCollapses[_settings.commentList][groupDivId+'_body'] === true)) ? 'collapse' : '';
                             let chevron = (collapsed === 'collapse') ? 'fa-chevron-right' : 'fa-chevron-down';
                             let urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '';
                             $('#_commentList').append(
                                 $('<fieldset>', {id:groupDivId, class:`URCE-field ${urStyle}`}).append(
                                     $('<legend>', {id:groupDivId+'_legend', class:`URCE-legend ${urStyle}`}).append(
                                         $('<i>', {class:`fa fa-fw ${chevron} URCE-chevron`}),
-                                        $('<span>', {class:'URCE-span', title:splitRow.titleMouseOver}).text(splitRow.title)
+                                        $('<span>', {class:'URCE-span', title:rowObj.titleMouseOver}).text(rowObj.title)
                                     ).click(function() {
                                         $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
                                         $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
@@ -1817,13 +1788,13 @@
                             )
                         }
                         else { // SHOULD be a normal comments row, push values to arrays and build html.
-                            if ((splitRow.urstatus !== 'solved') && (splitRow.urstatus !== 'notidentified') && (splitRow.urstatus !== 'open') && (splitRow.urstatus !== 'blank line'))
-                                return reject('Your current selected list does not have a status set for ' + splitRow.title + '. Please contact list owner: ' + getCommentListInfo(_settings.commentList).listOwner);
+                            if ((rowObj.urstatus !== 'solved') && (rowObj.urstatus !== 'notidentified') && (rowObj.urstatus !== 'open') && (rowObj.urstatus !== 'blank line'))
+                                return reject('Your current selected list does not have a status set for ' + rowObj.title + '. Please contact list owner: ' + getCommentListInfo(_settings.commentList).listOwner);
                             else {
-                                _commentList[commentId] = { 'title':splitRow.title, 'comment':splitRow.comment, 'urstatus':splitRow.urstatus };
-                                if (Object.values(splitRow).indexOf('default_is_true') > -1) {
+                                _commentList[commentId] = { 'title':rowObj.title, 'comment':rowObj.comment, 'urstatus':rowObj.urstatus };
+                                if (Object.values(rowObj).indexOf('default_is_true') > -1) {
                                     let drIdx = ssFieldNames.indexOf('DR');
-                                    let splitRowDefaultCommentsBoolean = Object.values(splitRow).slice(drIdx);
+                                    let splitRowDefaultCommentsBoolean = Object.values(rowObj).slice(drIdx);
                                     for (let boolIdx = 0; boolIdx < splitRowDefaultCommentsBoolean.length; boolIdx++) {
                                         if (splitRowDefaultCommentsBoolean[boolIdx].toLowerCase() === 'default_is_true')
                                             _defaultComments[ssFieldNames[(boolIdx+drIdx)].toLowerCase()].commentNum = commentId;
@@ -1832,31 +1803,33 @@
                                 let linkClass;
                                 let divDoubleClickId;
                                 let divDoubleClickStyle = 'display:initial;';
-                                if (splitRow.urstatus === 'solved') {
+                                if (rowObj.urstatus === 'solved') {
                                     linkClass = 'URCE-solvedLink';
                                     divDoubleClickId = 'URCE-divDoubleClickSolved';
-                                    if (!doubleClickLinkSolvedComments)
+                                    if (!_settings.doubleClickLinkSolvedComments)
                                         divDoubleClickStyle = 'display:none;';
                                 }
-                                else if (splitRow.urstatus === 'notidentified') {
+                                else if (rowObj.urstatus === 'notidentified') {
                                     linkClass = 'URCE-niLink';
                                     divDoubleClickId = 'URCE-divDoubleClickNi';
-                                    if (!doubleClickLinkNiComments)
+                                    if (!_settings.doubleClickLinkNiComments)
                                         divDoubleClickStyle = 'display:none;';
                                 }
                                 else {
-                                    linkClass = (splitRow.urstatus === 'blank line') ? 'URCE-blankLine' : 'URCE-openLink';
-                                    divDoubleClickId = splitRow.title != '' ? 'URCE-divDoubleClickOpen' : 'URCE-divDoubleClickOpen-Hidden';
-                                    if (!doubleClickLinkOpenComments || (splitRow.urstatus === 'blank line'))
+                                    linkClass = (rowObj.urstatus === 'blank line') ? 'URCE-blankLine' : 'URCE-openLink';
+                                    divDoubleClickId = (rowObj.title !== '') ? 'URCE-divDoubleClickOpen' : 'URCE-divDoubleClickOpen-Hidden';
+                                    if (!_settings.doubleClickLinkOpenComments || (rowObj.urstatus === 'blank line'))
                                         divDoubleClickStyle = 'display:none;';
                                 }
                                 $(`#${groupDivId}_body`).append(
                                     $('<div>', {class:`URCE-divComment hover expand ${linkClass}`, style:'position:relative;'}).append(
-                                        $('<a>', {class:'URCE-Comments ' + linkClass + ' URCE-Comments', id:'urce-cid-'+commentId, title:formatText(splitRow.comment)}).text(splitRow.title).click(function() {
-                                            handleClickedComment(parseInt(this.id.replace(/urce-cid-/, '')), false);
-                                        })
+                                        $('<div>', {style:'width:225px; display:inline-flex;'}).append(
+                                            $('<a>', {class:'URCE-Comments ' + linkClass + ' URCE-Comments', id:'urce-cid-'+commentId, title:formatText(rowObj.comment)}).text(rowObj.title).click(function() {
+                                                handleClickedComment(parseInt(this.id.replace(/urce-cid-/, '')), false);
+                                            })
+                                        )
                                     ).append(
-                                        $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + ':\n' + formatText(splitRow.comment)}).append(
+                                        $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + ':\n' + formatText(rowObj.comment)}).append(
                                             $('<img>', {src:DOUBLE_CLICK_ICON, class:'URCE-doubleClickIcon', id:'urce-img-cid-'+commentId}).dblclick(function() {
                                                 handleClickedComment(parseInt(this.id.replace(/urce-img-cid-/, '')), true);
                                             })
@@ -1880,8 +1853,7 @@
         let commentListInfo = getCommentListInfo(commentListIdx);
         logDebug('Beginning comment list async for comment list: ' + commentListInfo.name);
         return new Promise(async (resolve, reject) => {
-            let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/' + commentListInfo.gSheetRange + '?key=' + URCE_API_KEY;
-            let data = await $.getJSON(gapiUrl).fail((response) => {
+            let data = await $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/${commentListInfo.gSheetRange}?key=${URCE_API_KEY}`).fail((response) => {
                 reject('Spreadsheet call failed. Code: ' + response.status + ' - Text: ' + response.statusText);
             });
             if (data.values.length > 0)
@@ -1924,10 +1896,9 @@
     function handleError(error, staticList, phase, maskUrPanel) {
         let errorText, outputText;
         if (error.indexOf('|') > -1) {
-            let actualError = error.split('|')[0];
-            if (actualError === 'updateRequired')
+            if (error.split('|')[0] === 'updateRequired')
                 errorText = I18n.t('urce.prompts.UpdateRequired') + ': ' + error.split('|')[1];
-            else if (actualError === 'timedOutWaitingStatic')
+            else if (error.split('|')[0] === 'timedOutWaitingStatic')
                 errorText = I18n.t('urce.prompts.TimedOutWaitingStatic');
             outputText = errorText;
         }
@@ -1955,21 +1926,21 @@
     }
 
     function initMutationObservers(status) {
-        let saveButtonObserver = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
+        let saveButtonObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
                 if ($(mutation.target).hasClass('waze-icon-save') && mutation.type === 'attributes' && mutation.attributeName === 'class' && mutation.target.classList.contains('ItemDisabled') && (mutation.oldValue.toString().indexOf('ItemDisabled') === -1))
                     return handleAfterSave();
             });
         });
-        let urPanelContainerObserver = new MutationObserver(async function(mutations) {
-            let urId = _selUr.urId || await getUrId();
-            mutations.forEach(function(mutation) {
-                if ($(mutation.target).is('#panel-container') && (mutation.type === 'childList') && (mutation.addedNodes.length > 0) && (mutation.addedNodes[0].className.indexOf('show') > -1) && (urId > 0))
-                    return handleUpdateRequestContainer(urId);
-                else if ($(mutation.target).is('#panel-container') && (mutation.type === 'childList') && (mutation.removedNodes.length > 0) && (mutation.removedNodes[0].className.indexOf('show') > -1) && (urId > 0))
+        let urPanelContainerObserver = new MutationObserver(async (mutations) => {
+            let newUrId = await getUrId();
+            mutations.forEach((mutation) => {
+                if ($(mutation.target).is('#panel-container') && (mutation.type === 'childList') && (mutation.addedNodes.length > 0) && (mutation.addedNodes[0].className.indexOf('show') > -1) && (newUrId > 0) && (newUrId !== _selUr.urId))
+                    return handleUpdateRequestContainer(newUrId, 'UR panel mutation');
+                else if ($(mutation.target).is('#panel-container') && (mutation.type === 'childList') && (mutation.removedNodes.length > 0) && (mutation.removedNodes[0].className.indexOf('show') > -1) && (newUrId > 0) && (newUrId === _selUr.urId))
                     return handleAfterCloseUpdateContainer();
-                else if ($(mutation.target).hasClass('comment-list') && (mutation.type === 'childList') && (mutation.addedNodes.length > 0) && (urId > 0) && (_selUr.urId === urId))
-                    return handleAfterCommentMutation(urId);
+                else if ($(mutation.target).hasClass('comment-list') && (mutation.type === 'childList') && (mutation.addedNodes.length > 0) && (newUrId > 0) && (newUrId === _selUr.urId))
+                    return handleAfterCommentMutation(newUrId);
                 else if ((mutation.type === 'attributes') && (mutation.attributeName === 'data-state')) {
                     logDebug('Handling UR status change mutation.');
                     if (mutation.target.attributes['data-state'].nodeValue === 'open')
@@ -1983,14 +1954,14 @@
                 }
             });
         });
-        let urMarkerObserver = new MutationObserver(function(mutations) {
+        let urMarkerObserver = new MutationObserver((mutations) => {
             let urMapMarkerIds = [];
             mutations.forEach((mutation) => {
                 if (mutation.type === 'childList') {
                     for (let idx = 0; idx < mutation.addedNodes.length; idx++) {
                         let addedNode = mutation.addedNodes[idx];
                         if (addedNode.classList && addedNode.classList.contains('map-marker') && (addedNode.classList.contains('user-generated') || addedNode.classList.contains('map-marker'))) {
-                            let urId = addedNode.getAttribute('data-id');
+                            let urId = parseInt(addedNode.getAttribute('data-id'));
                             if (urId > 0 && urMapMarkerIds.indexOf(urId) === -1)
                                 urMapMarkerIds.push(urId);
                         }
@@ -1998,21 +1969,22 @@
                 }
                 else if (mutation.type === 'attributes' && mutation.target.classList && (mutation.target.classList.contains('user-generated') || mutation.target.classList.contains('has-comments'))) {
                     if ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList.contains('selected')) {
-                        if (mutation.target.attributes['data-id'].nodeValue > 0) {
+                        if (parseInt(mutation.target.attributes['data-id'].nodeValue) > 0) {
                             if (!_selUr.handling) {
                                 let newUrId = parseInt(mutation.target.attributes['data-id'].nodeValue);
                                 if (!(_selUr.urId > 0) || (_selUr.urId !== newUrId)) {
+                                    _selUr = {};
                                     _selUr.urId = newUrId;
                                     logDebug('Caught selected UR by backdoor. Firing the minions. urId: ' + _selUr.urId);
                                 }
-                                return handleUpdateRequestContainer(_selUr.urId);
+                                return handleUpdateRequestContainer(_selUr.urId, 'clicked marker');
                             }
                         }
                     }
                 }
             });
             let zoomLevel = getZoomLevel();
-            let filter = ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))) ? false : true;
+            let filter = !(((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))));
             if (urMapMarkerIds.length > 0)
                 handleUrMapMarkers(urMapMarkerIds, filter);
         });
@@ -2031,7 +2003,10 @@
                 urMarkerObserver.isObserving = true;
             }
             logDebug('Registering map.events event hooks.');
-            W.map.events.register('zoomend', null, invokeZoomEnd);
+            W.map.events.register('zoomend', null, invokeZoomMoveEnd);
+            W.map.events.register('moveend', null, invokeZoomMoveEnd);
+            W.map.events.registerPriority('mousedown', null, mouseDown);
+            W.map.events.register('mouseup', null, mouseUp);
         } else if ((status === 'disable') && (saveButtonObserver.isObserving || urPanelContainerObserver.isObserving || urMarkerObserver.isObserving)) {
             logDebug('Disabling MOs.');
             if (saveButtonObserver.isObserving) {
@@ -2052,62 +2027,15 @@
             $($div).off('mouseover', '.map-marker.user-generated', markerMouseOver);
             $($div).off('mouseout', '.map-marker.user-generated', markerMouseOut);
             logDebug('Unregistering map.events event hook.');
-            W.map.events.unregister('zoomend', null, invokeZoomEnd);
+            W.map.events.unregister('zoomend', null, invokeZoomMoveEnd);
+            W.map.events.unregister('moveend', null, invokeZoomMoveEnd);
+            W.map.events.unregister('mousedown', null, mouseDown);
+            W.map.events.unregister('mouseup', null, mouseUp);
         }
     }
 
     async function initBackgroundTasks() {
         logDebug('Initializing background tasks.');
-
-        // Disabled checking for layer status for background tasks because the sidepanel feed doesn't
-        // observe the layer status. So a marker could be on the map, even with the layer disabled.
-        // - dB 2019.01.26
-
-/*        let parentLayerEnabled = isChecked('#layer-switcher-group_issues');
-        let mapIssuesEnabled = isChecked('#layer-switcher-group_map_issues');
-        let openUrsEnabled = isChecked('#layer-switcher-item_update_requests');
-        let closedUrsEnabled = isChecked('#layer-switcher-item_closed_update_requests');
-        logDebug('Setting event hooks on layer toggles.');
-        $('#layer-switcher-group_issues').change(function() {
-            if (!isChecked(this))
-                initMutationObservers('disable');
-            else {
-                mapIssuesEnabled = isChecked('#layer-switcher-group_map_issues');
-                openUrsEnabled = isChecked('#layer-switcher-item_update_requests');
-                closedUrsEnabled = isChecked('#layer-switcher-item_closed_update_requests');
-                if (mapIssuesEnabled && (openUrsEnabled || closedUrsEnabled))
-                    initMutationObservers('enable');
-                else
-                    initMutationObservers('disable');
-            }
-        });
-        $('#layer-switcher-group_map_issues').change(function() {
-            if (!isChecked(this))
-                initMutationObservers('disable');
-            else {
-                openUrsEnabled = isChecked('#layer-switcher-item_update_requests');
-                closedUrsEnabled = isChecked('#layer-switcher-item_closed_update_requests');
-                if (openUrsEnabled || closedUrsEnabled)
-                    initMutationObservers('enable');
-                else
-                    initMutationObservers('disable');
-            }
-        });
-        $('#layer-switcher-item_update_requests').change(function() {
-            closedUrsEnabled = isChecked('#layer-switcher-item_closed_update_requests');
-            if (!isChecked(this) && !closedUrsEnabled)
-                initMutationObservers('disable');
-            else
-                initMutationObservers('enable');
-        });
-        $('#layer-switcher-item_closed_update_requests').change(function() {
-            openUrsEnabled = isChecked('#layer-switcher-item_update_requests');
-            if (!isChecked(this) && !openUrsEnabled)
-                initMutationObservers('disable');
-            else
-                initMutationObservers('enable');
-        });
-        if (parentLayerEnabled && mapIssuesEnabled && (openUrsEnabled || closedUrsEnabled)) { */
         logDebug('Setting event listeners for UR markers.');
         $(W.map.updateRequestLayer.div)
             .off('click', '.map-marker.user-generated', handleUrMarkerClick)
@@ -2117,98 +2045,97 @@
             .off('mouseout', '.map-marker.user-generated', markerMouseOut)
             .on('mouseout', '.map-marker.user-generated', markerMouseOut);
         try {
-            await handleUrLayer('init');
+            await handleUrLayer('init', null, null);
         }
         catch(error) {
             logWarning(error); // Don't need to return here, go ahead and setup the MOs.
         }
         initMutationObservers('enable');
-//        }
         return new Promise((resolve) => { resolve(); });
     }
 
     function injectCss() {
         logDebug('Injecting CSS.');
-        let css = [
-            // Comments tab
-            '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:11px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-commentListName { padding-left:12px; font-size:10px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:11px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-icon { cursor:default; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment { padding:0px 4px 0px 4px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:before, #sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:after { content:""; position:absolute; bottom:-2px; width:0px; height:2px; transition:all 0.2s ease-in-out; transition-duration:0.5s; opacity:0; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:before { left:calc(50%); background-color:#000000; margin-right:5px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:after { right:calc(50%); background-color:#000000; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:before { left:calc(50%); background-color:#008F00; margin-right:5px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:after { right:calc(50%); background-color:#008F00;}',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:before { left:calc(50%); background-color:#E68A00; margin-right:5px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:after { right:calc(50%); background-color:#E68A00; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover { cursor:pointer; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.URCE-blankLine:hover { cursor:default; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:hover:after { width:100%; opacity:1; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:hover:before { width:100%; opacity:1; margin-right:5px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover.expand:after { width:50%; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover.expand:before { width:50%; margin-right:5px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-solvedLink { color:#008F00; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-niLink { color:#E68A00; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-openLink { color:#000000; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-top:4px; height:16px; float:right; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:8px; padding-top:2px; padding-left:25px; }',
-            '#sidepanel-urc-e #panel-urce-comments .URCE-group_body.urStyle { padding-left:23px !important; }',
-            // Settings tab
-            '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-daysInput { width:38px; height:20px; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-textInput { width:175px; height:20px; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-span { text-transform:uppercase; cursor:pointer; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:10px;}',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-subHeading { font-weight:600; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 8px !important; line-height:10px; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst.urceDisabled, .URCE-controls.URCE-textFirst.urceDisabled { color:#808080; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline { display:inline; padding-left:4px; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline.urceDisabled { display:inline; padding-left:4px; cursor:default; color:#808080; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"] { margin:0 5px 0 5px; vertical-align:middle; cursor:pointer; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"][disabled] { margin:0 5px 0 5px; vertical-align:middle; cursor:default; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls select { height:22px; vertical-align:middle; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; }',
-            '#sidepanel-urc-e #panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080; }',
-            // Common
-            '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:12px; margin-right: 4px; }',
-            '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; }',
-            '#sidepanel-urc-e .URCE-field.urStyle { border:unset !important; padding:unset !important; border-radius:unset !important; }',
-            '#sidepanel-urc-e .URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }',
-            '#sidepanel-urc-e .URCE-legend.urStyle { border-bottom-style:unset !important; margin-bottom:2px !important; width:100% !important; background-color:#F6F7F7 !important; line-height:20px !important; padding:0 2px 0 2px !important; border-top:1px solid #C0C0C0 !important; border-bottom:1px solid #C0C0C0 !important; }',
-            '#sidepanel-urc-e .URCE-divCC { /* padding-top:2px !important; */ }',
-            '#sidepanel-urc-e .URCE-label { white-space:pre-line; margin:0 0 0 0; }',
-            '#sidepanel-urc-e .URCE-span { font-size:12px; font-weight:600; }',
-            '#sidepanel-urc-e .URCE-spanTitle { font-size:12px; font-weight:600; }',
-            '#sidepanel-urc-e .URCE-spanVersion { font-size:8px; margin-left:10px; color:#aaa; }',
-            '#sidepanel-urc-e .URCE-divTabs { padding:8px; padding-top:2px; }',
-            // Main Tabs
-            '.URCE-tabIcon { padding-bottom:6px; width:18px; }',
-            // Alert Box
-            '#urceAlertBox { position:fixed; visibility:hidden; top:50%; left:50%; z-index:10000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px; box-shadow:5px 5px 10px silver; padding:4px; -webkit-transform:translate(-50%, -50%); transform:translate(-50%, -50%); }',
-            '.URCE-alertBox-header { padding:4px; background-color:LightBlue; font-weight:bold; font-size:14px; }',
-            '.URCE-alertBox-content { padding:4px; background-color:White; overflow:auto; max-height:500px; }',
-            '.URCE-alertBox-controls { text-align:center; padding:4px; }',
-            '.URCE-alertBox-controls-span-urceAlertTickBtn, .URCE-alertBox-controls-span-urceAlertCrossBtn { cursor:pointer; font-size:14px; border:thin outset black; padding:2px 10px 2px 10px; }',
-            '.URCE-alertBox-controls-span-urceAlertTickBtnCaption, .URCE-alertBox-controls-span-urceAlertCrossBtnCaption { font-weight:bold; }',
-            // urceDiv
-            '#urceDiv { position:absolute; visibility:hidden; top:0; left:0; z-index:15000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px; box-shadow:5px 5px 10px silver; padding:4px; }'
-        ].join(' ');
-        $('<style = type="text/css">' + css + '</style>').appendTo('head');
+        $('<style = type="text/css">' +
+          // Comments tab
+          '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:11px; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-commentListName { padding-left:12px; font-size:10px; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:11px; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-icon { cursor:default; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divComment { padding:0px 4px 0px 4px; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:before, #sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:after { content:""; position:absolute; bottom:-2px; width:0px; height:2px; transition:all 0.2s ease-in-out; transition-duration:0.5s; opacity:0; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:before { left:calc(50%); background-color:#000000; margin-right:5px; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:after { right:calc(50%); background-color:#000000; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:before { left:calc(50%); background-color:#008F00; margin-right:5px; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:after { right:calc(50%); background-color:#008F00;}' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:before { left:calc(50%); background-color:#E68A00; margin-right:5px; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:after { right:calc(50%); background-color:#E68A00; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover { cursor:pointer; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.URCE-blankLine:hover { cursor:default; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:hover:after { width:100%; opacity:1; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:hover:before { width:100%; opacity:1; margin-right:5px; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover.expand:after { width:50%; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover.expand:before { width:50%; margin-right:5px; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-solvedLink { color:#008F00; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-niLink { color:#E68A00; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-openLink { color:#000000; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-top:4px; height:16px; float:right; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:8px; padding-top:2px; padding-left:25px; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-group_body.urStyle { padding-left:23px !important; }' +
+          // Settings tab
+          '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-daysInput { width:38px; height:20px; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-textInput { width:175px; height:20px; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-span { text-transform:uppercase; cursor:pointer; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:10px;}' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-subHeading { font-weight:600; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 8px !important; line-height:10px; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst.urceDisabled, .URCE-controls.URCE-textFirst.urceDisabled { color:#808080; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline { display:inline; padding-left:4px; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline.urceDisabled { display:inline; padding-left:4px; cursor:default; color:#808080; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"] { margin:0 5px 0 5px; vertical-align:middle; cursor:pointer; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"][disabled] { margin:0 5px 0 5px; vertical-align:middle; cursor:default; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls select { height:22px; vertical-align:middle; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080; }' +
+          // Common
+          '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:12px; margin-right: 4px; }' +
+          '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; }' +
+          '#sidepanel-urc-e .URCE-field.urStyle { border:unset !important; padding:unset !important; border-radius:unset !important; }' +
+          '#sidepanel-urc-e .URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }' +
+          '#sidepanel-urc-e .URCE-legend.urStyle { border-bottom-style:unset !important; margin-bottom:2px !important; width:100% !important; background-color:#F6F7F7 !important; line-height:20px !important; padding:0 2px 0 2px !important; border-top:1px solid #C0C0C0 !important; border-bottom:1px solid #C0C0C0 !important; }' +
+          '#sidepanel-urc-e .URCE-divCC { /* padding-top:2px !important; */ }' +
+          '#sidepanel-urc-e .URCE-label { white-space:pre-line; margin:0 0 0 0; }' +
+          '#sidepanel-urc-e .URCE-span { font-size:12px; font-weight:600; }' +
+          '#sidepanel-urc-e .URCE-spanTitle { font-size:12px; font-weight:600; }' +
+          '#sidepanel-urc-e .URCE-spanVersion { font-size:10px; margin-left:10px; color:#000000; }' +
+          '#sidepanel-urc-e .URCE-divTabs { padding:8px; padding-top:2px; }' +
+          // Main Tabs
+          '.URCE-tabIcon { padding-bottom:6px; width:18px; }' +
+          // Alert Box
+          '#urceAlertBox { position:fixed; visibility:hidden; top:50%; left:50%; z-index:10000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px; box-shadow:5px 5px 10px silver; padding:4px; -webkit-transform:translate(-50%, -50%); transform:translate(-50%, -50%); }' +
+          '.URCE-alertBox-header { padding:4px; background-color:LightBlue; font-weight:bold; font-size:14px; }' +
+          '.URCE-alertBox-content { padding:4px; background-color:White; overflow:auto; max-height:500px; }' +
+          '.URCE-alertBox-controls { text-align:center; padding:4px; }' +
+          '.URCE-alertBox-controls-span-urceAlertTickBtn, .URCE-alertBox-controls-span-urceAlertCrossBtn { cursor:pointer; font-size:14px; border:thin outset black; padding:2px 10px 2px 10px; }' +
+          '.URCE-alertBox-controls-span-urceAlertTickBtnCaption, .URCE-alertBox-controls-span-urceAlertCrossBtnCaption { font-weight:bold; }' +
+          // urceDiv
+          '#urceDiv { position:absolute; visibility:hidden; top:0; left:0; z-index:15000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px; box-shadow:5px 5px 10px silver; padding:4px; }' +
+          '#urceDiv hr { border-top:1px solid #000000; }' +
+          '</style>'
+         ).appendTo('head');
     }
 
     function initCommentsTab() {
         logDebug('Initializing Comments tab.');
-        let styleZoomOutLinks = (_settings.hideZoomOutLinks) ? 'display: none;' : '';
         $('#panel-urce-comments').append(
-            $('<div>', {id:'_divZoomOutLinks', class:'URCE-divCCLinks', style:styleZoomOutLinks}).append(
+            $('<div>', {id:'_divZoomOutLinks', class:'URCE-divCCLinks', style:(_settings.hideZoomOutLinks) ? 'display: none;' : ''}).append(
                 $('<div>', {id:'urceIcon', class:'URCE-divIcon'}).append(
                     $('<img>', {src:GM_info.script.icon, class:'URCE-icon'})
                 ),
@@ -2247,9 +2174,9 @@
                 }),
                 $('<div>', {class:'URCE-controls URCE-divCC'}).append(
                     // Comment list
-                    $('<div>').text(I18n.t('urce.prefs.DefaultList') + ': ').append(function() {
+                    $('<div>').text(I18n.t('urce.prefs.DefaultList') + ': ').append(() => {
                         let $selList = $('<select>', {id:'_selCommentList', title:I18n.t('urce.prefs.DefaultListTitle'), urceprefs:'commentList'});
-                        _commentLists.forEach(cList => {
+                        _commentLists.forEach((cList) => {
                             if (cList.status !== 'disabled') {
                                 if (cList.idx === _settings.commentList)
                                     $selList.append($('<option>', {value:cList.idx, selected:true}).text(cList.name));
@@ -2262,7 +2189,7 @@
                         });
                     }),
                     // Comment list style
-                    $('<div>').text(I18n.t('urce.common.Style') + ': ').append(function() {
+                    $('<div>').text(I18n.t('urce.common.Style') + ': ').append(() => {
                         let $selList = $('<select>', {id:'_selCommentListStyle', title:I18n.t('urce.prefs.CommentListStyleTitle'), urceprefs:'commentList'});
                         let defaultSelected = false, urStyleSelected = false;
                         if (_settings.commentListStyle === 'default')
@@ -2895,7 +2822,7 @@
             _settings[settingName] = this.checked;
             saveSettingsToStorage();
             if ((urcePrefs.indexOf('marker') > -1) || (urcePrefs.indexOf('filtering') > -1))
-                handleUrLayer('settingsToggle');
+                handleUrLayer('settingsToggle', null, null);
         });
         $('.urceSettingsNumberBox').on('change', function() {
             let settingName = $(this)[0].id.substr(4);
@@ -2907,7 +2834,7 @@
                     this.value = val;
                 _settings[settingName] = val;
                 saveSettingsToStorage();
-                handleUrLayer('settingsToggle');
+                handleUrLayer('settingsToggle', null, null);
             }
         });
         $('.urceSettingsTextBox').on('change', function() {
@@ -2921,7 +2848,7 @@
                 if (settingName === 'tagEmail')
                     changeCommentList(_settings.commentList, false, true);
                 else
-                    handleUrLayer('settingsToggle');
+                    handleUrLayer('settingsToggle', null, null);
             }
         });
     }
@@ -2971,8 +2898,8 @@
             $('<div>', {class:'tab-content URCE-divTabs'}).append(
                 $('<div>', {class:'tab-pane active', id:'panel-urce-comments'}),
                 $('<div>', {class:'tab-pane', id:'panel-urce-settings'})
-                )
-            ).html();
+            )
+        ).html();
         new WazeWrap.Interface.Tab('URC-E', $content, initTab, null);
         $('div#sidepanel-urc-e').width('290px');
         showScriptInfoAlert();
@@ -2983,9 +2910,8 @@
         logDebug('Initializing available comment lists.');
         return new Promise(async (resolve) => {
             let errorText, data;
-            let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/CommentLists!A3:G?key=' + URCE_API_KEY;
             try {
-                data = await $.getJSON(gapiUrl).fail((response) => {
+                data = await $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/CommentLists!A3:G?key=${URCE_API_KEY}`).fail((response) => {
                     errorText = 'Spreadsheet call failed. Code: ' + response.status + ' - Text: ' + response.responseText;
                 });
             }
@@ -2996,7 +2922,7 @@
             if (data && data.values.length > 0) {
                 const EXPECTED_FIELD_NAMES = ['idx', 'name', 'status', 'type', 'oldVarName', 'Prefix', 'listOwner'];
                 let ssFieldNames;
-                let checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
+                let checkFieldNames = (fldName) => ssFieldNames.indexOf(fldName) > -1;
                 for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
                     if (entryIdx === 0) {
                         if (SCRIPT_VERSION < data.values[entryIdx][0]) {
@@ -3005,10 +2931,10 @@
                         }
                     }
                     else if (entryIdx === 1) {
-                        ssFieldNames = data.values[entryIdx].map(fldName => fldName.trim());
+                        ssFieldNames = data.values[entryIdx].map((fldName) => fldName.trim());
                         if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length)
                             errorText = 'Expected ' + EXPECTED_FIELD_NAMES.length + ' columns in comment lists data. Spreadsheet returned ' + ssFieldNames.length + '.';
-                        else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName)))
+                        else if (!EXPECTED_FIELD_NAMES.every((fldName) => checkFieldNames(fldName)))
                             errorText = 'Script expected to see the following column names in the comment definition spreadsheet:\n' + EXPECTED_FIELD_NAMES.join(', ') + '\nHowever, the spreadsheet returned these:\n' + ssFieldNames.join(', ');
                         if (errorText)
                             break;
@@ -3042,13 +2968,12 @@
         });
     }
 
-    async function initAutoSwitchArrays() {
+    function initAutoSwitchArrays() {
         logDebug('Initializing auto switch arrays.');
         return new Promise(async (resolve) => {
             let errorText, data;
-            let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/CommentLists_AutoSwitch!A3:ZZ?majorDimension=COLUMNS&key=' + URCE_API_KEY;
             try {
-                data = await $.getJSON(gapiUrl).fail((response) => {
+                data = await $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/CommentLists_AutoSwitch!A3:ZZ?majorDimension=COLUMNS&key=${URCE_API_KEY}`).fail((response) => {
                     errorText = 'Spreadsheet call failed. Code: ' + response.status + ' - Text: ' + response.responseText;
                 });
             } catch(error) {
@@ -3108,7 +3033,7 @@
         if (tries > 150)
             return logWarning('UR ' + urId + ' found in URL, but UR panel failed to open.');
         else if ($('#panel-container').children().length === 0) {
-            if ($(`div[data-id="${urId}"]`).length > 0)
+            if ($(`.map-marker[data-id="${urId}"]`).length > 0)
                 openUrPanel(urId);
             else
                 _initUrIdInUrlTo = window.setTimeout(initCheckForUrPanel, 100, urId, ++tries);
@@ -3132,14 +3057,14 @@
                 handleError(buildCommentListResult.error, buildCommentListResult.static, buildCommentListResult.phase, (urIdInUrl > 0));
             else if (!urIdInUrl)
                 await initBackgroundTasks();
-            window.addEventListener("beforeunload", function() {
+            window.addEventListener("beforeunload", () => {
                 saveSettingsToStorage();
             }, false);
             logDebug('Fully initialized in ' + Math.round(performance.now() - LOAD_BEGIN_TIME) + ' ms.');
             if (urIdInUrl > 0) {
                 if ($('#panel-container').children().length === 0) {
                     logDebug('urId ' + urIdInUrl + ' found in URL, but the UR Panel has not shown up yet. Waiting.');
-                    _initUrIdInUrlObserver = new MutationObserver(function(mutations) {
+                    _initUrIdInUrlObserver = new MutationObserver((mutations) => {
                         mutations.forEach((mutation) => {
                             if (mutation.type === 'attributes' && $(mutation.target.parentNode).is('#panel-container') && $(mutation.target).hasClass('show'))
                                 initFinish(urIdInUrl);
@@ -3152,8 +3077,12 @@
                 else
                     initFinish(urIdInUrl);
             }
-            else
+            else {
+                if (W.model.mapUpdateRequests.objects[$($('.map-marker.user-generated')[($('.map-marker.user-generated').length-1)]).attr('data-id')].attributes.urceData === undefined)
+                    // Catch the ur markers that may have shown up in between loading stages.
+                    await handleUrLayer('init', null, null);
                 maskBoxes(null, true, 'init', (urIdInUrl > 0));
+            }
         }
         else
             handleError(errorText, false, 'init', (urIdInUrl > 0))
@@ -3178,9 +3107,8 @@
         logDebug('Loading translations.');
         return new Promise(async (resolve) => {
             let errorText, data;
-            let gapiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + URCE_SPREADSHEET_ID + '/values/Script_Translations!A3:AA?key=' + URCE_API_KEY;
             try {
-                data = await $.getJSON(gapiUrl).fail((response) => {
+                data = await $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/Script_Translations!A3:AA?key=${URCE_API_KEY}`).fail((response) => {
                     errorText = 'Spreadsheet call failed. Code: ' + response.status + ' - Text: ' + response.responseText;
                 });
             }
@@ -3488,7 +3416,7 @@
             I18n.translations[I18n.currentLocale()].urce = translations.en;
             for (let i = 0; i < Object.keys(translations).length; i++) {
                 let locale = Object.keys(translations)[i];
-                if (I18n.currentLocale() == locale)
+                if (I18n.currentLocale() === locale)
                     return resolve(I18n.translations[locale].urce = translations[locale]);
             }
             resolve();
@@ -3502,11 +3430,11 @@
             return '';
         desc = desc.replace(/<\/?[^>]+(>|$)/g, "");
         if (desc !== "null") {
-            if (desc.indexOf('http') != -1) {
+            if (desc.indexOf('http') > -1) {
                 let links = desc.split("http");
                 desc = '';
                 for (let i=0; i<links.length; i++) {
-                    if (links[i][2] == '/') {
+                    if (links[i][2] === '/') {
                         links[i] = "http" + links[i];
                         let linkEndPos = links[i].length + 1;
                         for (let j=0; j<terminators.length; j++) {
