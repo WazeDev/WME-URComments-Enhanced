@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.01.30.01
+// @version     2019.01.31.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -44,9 +44,9 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'Final beta release before public release.', 'Added setting to replace Next UR with Done.', 'Minor tweaks.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'First public release of URC-E!' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
-    const DEBUG = true;
+    const DEBUG = false;
     const LOAD_BEGIN_TIME = performance.now();
     const STATIC_ONLY_USERS = [ 'itzwolf' ];
     const URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c';
@@ -490,10 +490,14 @@
             );
         if (W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount > 0) {
             for (let idx = 0; idx < W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount; idx++) {
-                if ($($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .text')[idx]).children().length === 1)
-                    $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .text')[idx]).prepend(
-                        $('<div>', {class:"date", style:"float:right; margin-top:-6px; font-weight:normal;"}).text(I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[urId].comments[idx].createdOn)))
+                if ($($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).has('#urceDaysAgo').length === 0) {
+                    $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).children().filter('span.date').css('float', 'right');
+                    $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).append(
+                        $('<div>', {class:"date", style:"display:flex; justify-content:flex-end;"}).append(
+                            $('<div>').text('(' + parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[urId].comments[idx].createdOn)) + ')')
+                        )
                     );
+                }
             }
         }
         if (_settings.autoSwitchCommentList) {
@@ -929,7 +933,7 @@
             restackMarkers();
     }
 
-    async function markerMouseOver() {
+    async function markerMouseOver(event) {
         if (_mouseIsDown) return;
         let popupX, popupY;
         let markerType = getMarkerType(this);
@@ -938,6 +942,8 @@
             if ((_mousedOverMarkerId !== markerId) || ($('#urceDiv').css('visibility') === 'hidden')) {
                 _mousedOverMarkerId = markerId;
                 let targetTab = '_urceTab_' + Math.round(Math.random() * 1000000);
+                let mouseX = event.pageX - $('#map')[0].getBoundingClientRect().left;
+                let mouseY = event.pageY - $('#map')[0].getBoundingClientRect().top;
                 let popupXOffset = parsePxString($('#sidebar').css('width'));
                 let unstackedX = parsePxString(W.map.updateRequestLayer.markers[_mousedOverMarkerId].icon.imageDiv.style.left);
                 let unstackedY = parsePxString(W.map.updateRequestLayer.markers[_mousedOverMarkerId].icon.imageDiv.style.top);
@@ -1039,10 +1045,12 @@
             _mousedOverMarkerId = null;
         if ((newUrId > 0 && isIdAlreadyUnstacked(newUrId)) || (event.toElement && ((event.toElement.id === 'urceDiv') || (event.toElement.id.indexOf('urceCounts') > -1) || (event.toElement.parentNode.id.indexOf('urce') > -1))))
             return;
+        hidePopup();
         restackMarkers();
     }
 
     function handlePopup(popupObj) {
+        logDebug('Displaying popup at: ' + popupObj.popupX + ',' + popupObj.popupY);
         $('#urceDiv').css({'height':'auto', 'width':'auto'}).html(popupObj.popupContent).on('mouseleave', hidePopup).on('mouseenter', () => {
             if (_popupTimeout !== undefined)
                 window.clearTimeout(_popupTimeout);
@@ -1050,19 +1058,22 @@
         $('#_urceOpenInNewTab').on('mouseup', saveSettingsToStorage);
         $('#_urceRecenterSession').on('click', recenterSessionOnUr);
         let rw = parseInt($('#urceDiv')[0].clientWidth);
-        if (rw > ($(window)[0].innerWidth * 0.45))
-            $('#urceDiv').css({'width':`${($(window)[0].innerWidth * 0.45)}px`});
+        if (rw > ($(window)[0].innerWidth * 0.45)) {
+            rw = ($(window)[0].innerWidth * 0.45);
+            $('#urceDiv').css({'width':`${rw}px`});
+        }
         let rh = parseInt($('#urceDiv')[0].clientHeight);
         if ((popupObj.popupX + rw) > $(window)[0].innerWidth)
-            popupObj.popupX = ((popupObj.popupX - (rw + 20)) < 0) ? 0 : (popupObj.popupX - (rw + 20));
+            popupObj.popupX -= (rw + 20);
         if ((popupObj.popupY + rh) > $(window)[0].innerHeight)
             popupObj.popupY -= (((popupObj.popupY + rh) - $(window)[0].innerHeight) + 30);
-        if (popupObj.popupY < 0)
-            popupObj.popupY = 0;
+        popupObj.popupX = (popupObj.popupX < 0) ? 0 : popupObj.popupX;
+        popupObj.popupY = (popupObj.popupY < 0) ? 0 : popupObj.popupY;
         $('#urceDiv').css({'top':`${popupObj.popupY}px`, 'left':`${popupObj.popupX}px`, 'visibility':'visible'});
         if (_popupTimeout !== undefined)
             window.clearTimeout(_popupTimeout)
-        _popupTimeout = window.setTimeout(hidePopup, (_settings.urMarkerPopupTimeout * 1000));
+        if (_settings.urMarkerPopupTimeout > 0)
+            _popupTimeout = window.setTimeout(hidePopup, (_settings.urMarkerPopupTimeout * 1000));
     }
 
     function hidePopup(event) {
@@ -1760,14 +1771,14 @@
                             if (rowObj.title !== '') {
                                 groupDivId += rowObj.title.replace(/[^\w]+/gi, '').toLowerCase();
                                 if (rowObj.title === rowObj.title.toUpperCase()) {
-                                    if (rowObj.title.length > 25) {
+                                    if (rowObj.title.length > 30) {
                                         rowObj.titleMouseOver = rowObj.title;
-                                        rowObj.title = rowObj.title.substring(0, 25) + '...';
+                                        rowObj.title = rowObj.title.substring(0, 30) + '...';
                                     }
                                 }
-                                else if (rowObj.title.length > 30) {
+                                else if (rowObj.title.length > 35) {
                                     rowObj.titleMouseOver = rowObj.title;
-                                    rowObj.title = rowObj.title.substring(0, 30) + '...';
+                                    rowObj.title = rowObj.title.substring(0, 35) + '...';
                                 }
                             }
                             else
@@ -2067,9 +2078,9 @@
         logDebug('Injecting CSS.');
         $('<style = type="text/css">' +
           // Comments tab
-          '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:11px; }' +
-          '#sidepanel-urc-e #panel-urce-comments .URCE-commentListName { padding-left:12px; font-size:10px; }' +
-          '#sidepanel-urc-e #panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:11px; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:12px; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-commentListName { padding-left:12px; font-size:11px; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:12px; }' +
           '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }' +
           '#sidepanel-urc-e #panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }' +
           '#sidepanel-urc-e #panel-urce-comments .URCE-icon { cursor:default; }' +
@@ -2093,7 +2104,7 @@
           '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-top:4px; height:16px; float:right; }' +
           '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }' +
           '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:8px; padding-top:2px; padding-left:25px; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:11px; text-align:right; }' +
           '#sidepanel-urc-e #panel-urce-comments .URCE-group_body.urStyle { padding-left:23px !important; }' +
           // Settings tab
           '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }' +
@@ -2101,18 +2112,18 @@
           '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-daysInput { width:38px; height:20px; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-textInput { width:175px; height:20px; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-span { text-transform:uppercase; cursor:pointer; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:10px;}' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:11px;}' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-subHeading { font-weight:600; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 8px !important; line-height:10px; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 8px !important; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst.urceDisabled, .URCE-controls.URCE-textFirst.urceDisabled { color:#808080; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline { display:inline; padding-left:4px; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline.urceDisabled { display:inline; padding-left:4px; cursor:default; color:#808080; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"] { margin:0 5px 0 5px; vertical-align:middle; cursor:pointer; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"][disabled] { margin:0 5px 0 5px; vertical-align:middle; cursor:default; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline { display:inline; padding-left:3px; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline.urceDisabled { display:inline; padding-left:2px; cursor:default; color:#808080; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; position:absolute }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"][disabled] { margin:2px; vertical-align:middle; cursor:default; position:absolute; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls select { height:22px; vertical-align:middle; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; padding-left:16px; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080;  display:inline-block; position:relative; padding-left:16px; }' +
           // Common
           '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:12px; margin-right: 4px; }' +
           '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; }' +
@@ -2121,9 +2132,9 @@
           '#sidepanel-urc-e .URCE-legend.urStyle { border-bottom-style:unset !important; margin-bottom:2px !important; width:100% !important; background-color:#F6F7F7 !important; line-height:20px !important; padding:0 2px 0 2px !important; border-top:1px solid #C0C0C0 !important; border-bottom:1px solid #C0C0C0 !important; }' +
           '#sidepanel-urc-e .URCE-divCC { /* padding-top:2px !important; */ }' +
           '#sidepanel-urc-e .URCE-label { white-space:pre-line; margin:0 0 0 0; }' +
-          '#sidepanel-urc-e .URCE-span { font-size:12px; font-weight:600; }' +
-          '#sidepanel-urc-e .URCE-spanTitle { font-size:12px; font-weight:600; }' +
-          '#sidepanel-urc-e .URCE-spanVersion { font-size:10px; margin-left:10px; color:#000000; }' +
+          '#sidepanel-urc-e .URCE-span { font-size:13px; font-weight:600; }' +
+          '#sidepanel-urc-e .URCE-spanTitle { font-size:13px; font-weight:600; }' +
+          '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:11px; color:#000000; }' +
           '#sidepanel-urc-e .URCE-divTabs { padding:8px; padding-top:2px; }' +
           // Main Tabs
           '.URCE-tabIcon { padding-bottom:6px; width:18px; }' +
@@ -2137,6 +2148,8 @@
           // urceDiv
           '#urceDiv { position:absolute; visibility:hidden; top:0; left:0; z-index:15000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px; box-shadow:5px 5px 10px silver; padding:4px; }' +
           '#urceDiv hr { border-top:1px solid #000000; }' +
+          // UR Panel Manipulation
+          '#panel-container .mapUpdateRequest.panel { width:290px; }' +
           '</style>'
          ).appendTo('head');
     }
@@ -2169,13 +2182,7 @@
             $('<fieldset>', {id:'urce-prefs-fieldset-commentList', class:`URCE-field${urStyle}`}).append(
                 $('<legend>', {id:'urce-prefs-legend-commentList', class:`URCE-legend${urStyle}`}).append(
                     $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
-                    $('<span>', {class:'URCE-span'}).text(I18n.t('urce.common.CommentList')).append(
-                        $('<a>', {class:'URCE-Controls URCE-spreadsheetLink', id:'urce-spreadsheet-link', title:I18n.t('urce.prefs.SpreadsheetLinkTitle'), href:'http://bit.ly/urc-e_ss'}).text(I18n.t('urce.prefs.SpreadsheetLink')).click(function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            window.open(this.href, '_blank');
-                        })
-                    )
+                    $('<span>', {class:'URCE-span'}).text(I18n.t('urce.common.CommentList'))
                 ).click(function() {
                     $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
                     $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
@@ -2224,7 +2231,14 @@
                         )
                     ),
                     $('<input>', {type:'checkbox', id:'_cbautoSwitchCommentList', urceprefs:'commentList', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.AutoSwitchCommentListTitle')}).prop('checked', _settings.autoSwitchCommentList),
-                    $('<label>', {for:'_cbautoSwitchCommentList', title:I18n.t('urce.prefs.AutoSwitchCommentListTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSwitchCommentList'))
+                    $('<label>', {for:'_cbautoSwitchCommentList', title:I18n.t('urce.prefs.AutoSwitchCommentListTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSwitchCommentList')),
+                    $('<div>', {class:'URCE-spreadsheetLink'}).append(
+                        $('<a>', {class:'URCE-Controls URCE-spreadsheetLink', id:'urce-spreadsheet-link', title:I18n.t('urce.prefs.SpreadsheetLinkTitle'), href:'http://bit.ly/urc-e_ss'}).text(I18n.t('urce.prefs.SpreadsheetLink')).click(function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.open(this.href, '_blank');
+                        })
+                    )
                 )
             ),
             // URC-E Preferences
@@ -2917,7 +2931,7 @@
             )
         ).html();
         new WazeWrap.Interface.Tab('URC-E', $content, initTab, null);
-        $('div#sidepanel-urc-e').width('290px');
+        $('div#sidepanel-urc-e').width('300px');
         showScriptInfoAlert();
         return new Promise((resolve) => { resolve(); });
     }
