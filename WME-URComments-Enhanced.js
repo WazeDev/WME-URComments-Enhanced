@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.01.31.01
+// @version     2019.01.31.02
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -93,7 +93,7 @@
     let _unstackedMasterId = null;
     let _mousedOverMarkerId = null;
     let _mouseIsDown = false;
-    let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId, _popupTimeout, _urceTabLightboxTo, _urPanelLightboxTo, _initUrIdInUrlObserver, _initUrIdInUrlTo;
+    let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId, _popupTimeout, _urceTabLightboxTo, _urPanelLightboxTo, _initUrIdInUrlObserver, _initUrIdInUrlTo, _popupDelayTimout;
 
     function log(message) { console.log('URC-E:', message); }
     function logError(message) { console.error('URC-E:', message); }
@@ -145,6 +145,7 @@
             // UR Marker Prefs
             enableUrPillCounts: false,
             disableUrMarkerPopup: false,
+            urMarkerPopupDelay: 2,
             urMarkerPopupTimeout: 3,
             doNotShowTagNameOnPill: false,
             replaceTagNameWithEditorName: false,
@@ -937,6 +938,7 @@
         if (_mouseIsDown) return;
         let popupX, popupY;
         let markerType = getMarkerType(this);
+        let popupDelayTime = (Date.now() + (_settings.urMarkerPopupDelay * 100));
         if (markerType === 'ur') {
             let markerId = parseInt(this.attributes['data-id'].value);
             if ((_mousedOverMarkerId !== markerId) || ($('#urceDiv').css('visibility') === 'hidden')) {
@@ -1033,7 +1035,14 @@
                         lmLink += '?zoom=17&lat=' + urPos.lat + '&lon=' + urPos.lon + '&layers=BTTTT';
                         popupContent += '<li><a href="' + lmLink + '" target="' + targetTab + '_lmTab">' + I18n.t('urce.mouseOver.OpenInNewLivemapTab') + '</a>';
                     }
-                    handlePopup({popupContent:popupContent, popupX:popupX, popupY:popupY});
+                    let popupDelay = (Date.now() > popupDelayTime) ? -1 : (popupDelayTime - Date.now());
+                    if (popupDelay < 0)
+                        handlePopup({popupContent:popupContent, popupX:popupX, popupY:popupY, urId:_mousedOverMarkerId});
+                    else {
+                        if (_popupDelayTimout !== undefined)
+                            window.clearTimeout(_popupDelayTimout);
+                        _popupDelayTimout = window.setTimeout(handlePopup, popupDelay, {popupContent:popupContent, popupX:popupX, popupY:popupY, urId:_mousedOverMarkerId});
+                    }
                 }
             }
         }
@@ -1050,11 +1059,15 @@
     }
 
     function handlePopup(popupObj) {
+        if (_mousedOverMarkerId !== popupObj.urId)
+            return;
         logDebug('Displaying popup at: ' + popupObj.popupX + ',' + popupObj.popupY);
         $('#urceDiv').css({'height':'auto', 'width':'auto'}).html(popupObj.popupContent).on('mouseleave', hidePopup).on('mouseenter', () => {
             if (_popupTimeout !== undefined)
                 window.clearTimeout(_popupTimeout);
-        });
+            if (_popupDelayTimout !== undefined)
+                window.clearTimeout(_popupDelayTimout);
+        }).on('dblclick', hidePopup);
         $('#_urceOpenInNewTab').on('mouseup', saveSettingsToStorage);
         $('#_urceRecenterSession').on('click', recenterSessionOnUr);
         let rw = parseInt($('#urceDiv')[0].clientWidth);
@@ -1070,8 +1083,10 @@
         popupObj.popupX = (popupObj.popupX < 0) ? 0 : popupObj.popupX;
         popupObj.popupY = (popupObj.popupY < 0) ? 0 : popupObj.popupY;
         $('#urceDiv').css({'top':`${popupObj.popupY}px`, 'left':`${popupObj.popupX}px`, 'visibility':'visible'});
+        if (_popupDelayTimout !== undefined)
+            window.clearTimeout(_popupDelayTimout);
         if (_popupTimeout !== undefined)
-            window.clearTimeout(_popupTimeout)
+            window.clearTimeout(_popupTimeout);
         if (_settings.urMarkerPopupTimeout > 0)
             _popupTimeout = window.setTimeout(hidePopup, (_settings.urMarkerPopupTimeout * 1000));
     }
@@ -2391,6 +2406,14 @@
                     $('<label>', {for:'_cbdisableUrMarkerPopup', urceprefs:'marker-nodisable', title:I18n.t('urce.prefs.DisableUrMarkerPopupTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.DisableUrMarkerPopup')),
                     $('<br>'),
                     $('<div>', {class:'URCE-textFirst', urceprefs:'marker-nodisable'}).append(
+                        $('<div>', {title:I18n.t('urce.prefs.UrMarkerPopupDelayTitle')}).text(I18n.t('urce.prefs.UrMarkerPopupDelay') + ': ').append(
+                            $('<div>', {style:'display:inline;'}).append(
+                                $('<div>', {class:'URCE-divDaysInline'}).append(
+                                    $('<input>', {type:'number', id:'_numurMarkerPopupDelay', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'marker-nodisable', min:'1', max:'99', step:'1', value:_settings.urMarkerPopupDelay, title:I18n.t('urce.prefs.UrMarkerPopupDelayTitle')}),
+                                    '* 100ms'
+                                )
+                            )
+                        ),
                         $('<div>', {title:I18n.t('urce.prefs.UrMarkerPopupTimeoutTitle')}).text(I18n.t('urce.prefs.UrMarkerPopupTimeout') + ': ').append(
                             $('<div>', {style:'display:inline;'}).append(
                                 $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3086,7 +3109,7 @@
             window.addEventListener("beforeunload", () => {
                 saveSettingsToStorage();
             }, false);
-            logDebug('Fully initialized in ' + Math.round(performance.now() - LOAD_BEGIN_TIME) + ' ms.');
+            log('Fully initialized in ' + Math.round(performance.now() - LOAD_BEGIN_TIME) + ' ms.');
             if (urIdInUrl > 0) {
                 if ($('#panel-container').children().length === 0) {
                     logDebug('urId ' + urIdInUrl + ' found in URL, but the UR Panel has not shown up yet. Waiting.');
@@ -3281,6 +3304,8 @@
                             "EnableUrPillCountsTitle": "Enable or disable the pill with UR counts on the map marker.",
                             "DisableUrMarkerPopup": "Disable UR marker popup",
                             "DisableUrMarkerPopupTitle": "Do not show the UR popup tooltip when you mouse over a UR marker.",
+                            "UrMarkerPopupDelay": "UR marker popup delay",
+                            "UrMarkerPopupDelayTitle":"The number of milliseconds (* 100) to delay before the UR marker tooltip will be displayed.",
                             "UrMarkerPopupTimeout": "UR marker popup timeout",
                             "UrMarkerPopupTimeoutTitle": "Specify the number of seconds to leave the UR marker tooltip displayed, unless you are moused over the tooltip itself.",
                             "DoNotShowTagNameOnPill": "Don't show tag name on pill",
