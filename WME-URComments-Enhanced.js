@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.01.31.02
+// @version     2019.01.31.03
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1067,7 +1067,7 @@
                 window.clearTimeout(_popupTimeout);
             if (_popupDelayTimout !== undefined)
                 window.clearTimeout(_popupDelayTimout);
-        }).on('dblclick', hidePopup);
+        }).on('dblclick', {doubleClick:true}, hidePopup);
         $('#_urceOpenInNewTab').on('mouseup', saveSettingsToStorage);
         $('#_urceRecenterSession').on('click', recenterSessionOnUr);
         let rw = parseInt($('#urceDiv')[0].clientWidth);
@@ -1097,9 +1097,10 @@
             window.clearTimeout(_popupTimeout);
         if ($('#urceDiv').css('visibility') !== 'hidden')
             $('#urceDiv').css({'visibility':'hidden'});
-        $('#urceDiv').off('mouseenter').off('mouseleave');
+        $('#urceDiv').off('mouseenter').off('mouseleave').off('dblclick');
         if ((newUrId > 0 && isIdAlreadyUnstacked(newUrId)) || (event && event.toElement && ((event.toElement.id === 'urceDiv') || (event.toElement.id.indexOf('urceCounts') > -1) || (event.toElement.parentNode.id.indexOf('urce') > -1))))
-            return;
+            if (!event.data.doubleClick)
+                return;
         if (_mousedOverMarkerId === null)
             restackMarkers();
     }
