@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.01.31.04
+// @version     2019.02.01.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -44,9 +44,9 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'First public release of URC-E!', "Bugfix: Circumvent WME map marker bug." ];
+    const SCRIPT_VERSION_CHANGES = [ 'First public release of URC-E!', 'Bugfix: Circumvent WME map marker bug.', 'Change for comment list replacement text.', 'Set debug to disabled by default.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
-    const DEBUG = true;
+    const DEBUG = false;
     const LOAD_BEGIN_TIME = performance.now();
     const STATIC_ONLY_USERS = [ 'itzwolf' ];
     const URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c';
@@ -698,6 +698,14 @@
             else
                 text = text.replace('$CLOSED_NOR_EMAIL_TAG$', '');
         }
+        if (text.indexOf('$URD$') > 0) {
+            if ($('#update-request-panel .solution p').length > 0)
+                text = text.replace('$URD$', $('#update-request.panel .solution p').text()).replace(/\n+/gmi, '');
+            else if ($('.description .content').length > 0)
+                text = text.replace('$URD$', $('.description .content').text()).replace(/\n+/gmi, '').replace('$USERNAME$', W.model.loginManager.user.userName);
+            else
+                text = text.replace(' "$URD$"', '');
+        }
         if (text.indexOf('$URD') > 0) {
             if ($('#update-request-panel .solution p').length > 0)
                 text = text.replace('$URD', $('#update-request.panel .solution p').text()).replace(/\n+/gmi, '');
@@ -706,12 +714,36 @@
             else
                 text = text.replace(' "$URD"', '');
         }
+        if (text.indexOf('$SELSEGS$') > 0) {
+            let selFeatures = W.selectionManager.getSelectedFeatures();
+            let streetName;
+            if (selFeatures.length > 0 && selFeatures.length < 3) {
+                for (let idx = 0; idx < selFeatures.length; idx++) {
+                    if (selFeatures[idx].model.type === 'segment') {
+                        if (selFeatures.length === 1)
+                            streetName = W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
+                        else {
+                            if (idx === 0)
+                                streetName = 'the intersection of ' + W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name + ' and ';
+                            else
+                                streetName += W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
+                        }
+                    }
+                }
+                if (streetName && streetName.length > 0)
+                    text = text.replace('$SELSEGS$', streetName);
+                else
+                    text = text.replace('$SELSEGS$', '');
+            }
+            else
+                text = text.replace('$SELSEGS$', '');
+        }
         if (text.indexOf('$SELSEGS') > 0) {
             let selFeatures = W.selectionManager.getSelectedFeatures();
             let streetName;
             if (selFeatures.length > 0 && selFeatures.length < 3) {
                 for (let idx = 0; idx < selFeatures.length; idx++) {
-                    if (selFeatures[idx].model.CLASS_NAME === 'W.Feature.Vector.Segment') {
+                    if (selFeatures[idx].model.type === 'segment') {
                         if (selFeatures.length === 1)
                             streetName = W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
                         else {
@@ -727,6 +759,8 @@
                 else
                     text = text.replace('$SELSEGS', '');
             }
+            else
+                text = text.replace('$SELSEGS', '');
         }
         return text.replace(/\\[r|n]+/gmi, '\n');
     }
