@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.01.31.03
+// @version     2019.01.31.04
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -44,9 +44,9 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'First public release of URC-E!' ];
+    const SCRIPT_VERSION_CHANGES = [ 'First public release of URC-E!', "Bugfix: Circumvent WME map marker bug." ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
-    const DEBUG = false;
+    const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
     const STATIC_ONLY_USERS = [ 'itzwolf' ];
     const URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c';
@@ -432,10 +432,11 @@
             autoCloseUrPanel();
         else {
             await updateUrceData([urId]);
-            if ($($('#panel-container .top-section .body .conversation-view .comment .comment-content .text')[(W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount-1)]).children().length === 1) {
-                $($('#panel-container .top-section .body .conversation-view .comment .comment-content .text')[(W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount-1)]).prepend(
-                    $('<div>', {class:"date", style:"float:right; margin-top:-6px; font-weight:normal;"}).text(
-                        I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[urId].comments[(W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount-1)].createdOn))
+            if ($($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[(W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount-1)]).has('#urceDaysAgo').length === 0) {
+                $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[(W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount-1)]).children().filter('span.date').css('float', 'right');
+                $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[(W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount-1)]).append(
+                    $('<div>', {class:"date", style:"display:flex; justify-content:flex-end;"}).append(
+                        $('<div>').text('(' + parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[urId].comments[(W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount-1)].createdOn)) + ')')
                     )
                 );
             }
@@ -1240,12 +1241,12 @@
             if ((filter && _settings.enableUrceUrFiltering && W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.hideUr) &&
                 !(((W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs) || ((urIds[idx] === _selUr.urId) && _settings.doNotHideSelectedUr))) {
                 logDebug('Hiding UR marker for UR: ' + urIds[idx]);
-                $(`.map-marker[data-id="${urIds[idx]}"]`).css('visibility', 'hidden');
+                $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).css('visibility', 'hidden');
             }
             else {
-                if ($(`.map-marker[data-id="${urIds[idx]}"]`).css('visibility') === 'hidden') {
+                if ($(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).css('visibility') === 'hidden') {
                     logDebug('Unhiding UR marker for UR: ' + urIds[idx]);
-                    $(`.map-marker[data-id="${urIds[idx]}"]`).css('visibility', 'visible');
+                    $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).css('visibility', 'visible');
                 }
                 if (_settings.enableUrPillCounts || customMarkersEnabledCheck()) {
                     if (_settings.enableUrPillCounts) {
@@ -1296,7 +1297,7 @@
                         }
                         else
                             logDebug('Adding marker counters on UR marker for UR: ' + urIds[idx]);
-                        $(`.map-marker[data-id="${urIds[idx]}"]`).append(
+                        $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).append(
                             $('<div>', {id:`urceCounters-${urIds[idx]}`, 'data-id':`${urIds[idx]}`}).css('clear', 'both').css('margin-bottom', '10px').append(
                                 $('<div>', {id:`urceCounters-${urIds[idx]}-text`, 'data-id':`${urIds[idx]}`}).html(tagContent).css({'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}).addClass('urceCounts')
                             )
@@ -1310,7 +1311,7 @@
                     }
                     if (customMarkersEnabledCheck()) {
                         if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.customType > -1)
-                            addCustomMarker(urIds[idx], W.model.mapUpdateRequests.objects[urIds[idx]].attributes.open, W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.customType, $(`.map-marker[data-id="${urIds[idx]}"]`));
+                            addCustomMarker(urIds[idx], W.model.mapUpdateRequests.objects[urIds[idx]].attributes.open, W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.customType, $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`));
                         else
                             removeCustomMarker(urIds[idx]);
                     }
@@ -2059,9 +2060,9 @@
             }
             logDebug('Disabling event listeners for UR markers.');
             $(W.map.updateRequestLayer.div)
-                .off('click', '.map-marker.user-generated', handleUrMarkerClick)
-                .off('mouseover', '.map-marker.user-generated', markerMouseOver)
-                .off('mouseout', '.map-marker.user-generated', markerMouseOut);
+                .off('click', '.map-problem.user-generated', handleUrMarkerClick)
+                .off('mouseover', '.map-problem.user-generated', markerMouseOver)
+                .off('mouseout', '.map-problem.user-generated', markerMouseOut);
             logDebug('Unregistering map.events event hook.');
             W.map.events.unregister('zoomend', null, invokeZoomMoveEnd);
             W.map.events.unregister('moveend', null, invokeZoomMoveEnd);
@@ -2074,12 +2075,12 @@
         logDebug('Initializing background tasks.');
         logDebug('Setting event listeners for UR markers.');
         $(W.map.updateRequestLayer.div)
-            .off('click', '.map-marker.user-generated', handleUrMarkerClick)
-            .on('click', '.map-marker.user-generated', handleUrMarkerClick)
-            .off('mouseover', '.map-marker.user-generated', markerMouseOver)
-            .on('mouseover', '.map-marker.user-generated', markerMouseOver)
-            .off('mouseout', '.map-marker.user-generated', markerMouseOut)
-            .on('mouseout', '.map-marker.user-generated', markerMouseOut);
+            .off('click', '.map-problem.user-generated', handleUrMarkerClick)
+            .on('click', '.map-problem.user-generated', handleUrMarkerClick)
+            .off('mouseover', '.map-problem.user-generated', markerMouseOver)
+            .on('mouseover', '.map-problem.user-generated', markerMouseOver)
+            .off('mouseout', '.map-problem.user-generated', markerMouseOut)
+            .on('mouseout', '.map-problem.user-generated', markerMouseOut);
         try {
             await handleUrLayer('init', null, null);
         }
@@ -2131,7 +2132,7 @@
           '#sidepanel-urc-e #panel-urce-settings .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:11px;}' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-subHeading { font-weight:600; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 8px !important; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 16px !important; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst.urceDisabled, .URCE-controls.URCE-textFirst.urceDisabled { color:#808080; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline { display:inline; padding-left:3px; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline.urceDisabled { display:inline; padding-left:2px; cursor:default; color:#808080; }' +
@@ -2239,10 +2240,10 @@
                         })
                         return $selList;
                     }),
-                    $('<div>', {title:I18n.t('urce.prefs.TagEmailTitle').replace(/\\[r|n]+/gmi, '\n')}).text(I18n.t('urce.prefs.TagEmail') + ': ').append(
+                    $('<div>', {title:I18n.t('urce.prefs.TagEmailTitle')}).text(I18n.t('urce.prefs.TagEmail') + ': ').append(
                         $('<div>', {style:'display:inline;'}).append(
                             $('<div>', {class:'URCE-divDaysInline'}).append(
-                                $('<input>', {type:'text', id:'_texttagEmail', class:'URCE-textInput urceSettingsTextBox', urceprefs:'commentList', value:_settings.tagEmail, title:I18n.t('urce.prefs.TagEmailTitle').replace(/\\[r|n]+/gmi, '\n')})
+                                $('<input>', {type:'text', id:'_texttagEmail', class:'URCE-textInput urceSettingsTextBox', urceprefs:'commentList', value:_settings.tagEmail, title:I18n.t('urce.prefs.TagEmailTitle')})
                             )
                         )
                     ),
@@ -3083,7 +3084,7 @@
         if (tries > 150)
             return logWarning('UR ' + urId + ' found in URL, but UR panel failed to open.');
         else if ($('#panel-container').children().length === 0) {
-            if ($(`.map-marker[data-id="${urId}"]`).length > 0)
+            if ($(`.map-problem.user-generated[data-id="${urId}"]`).length > 0)
                 openUrPanel(urId);
             else
                 _initUrIdInUrlTo = window.setTimeout(initCheckForUrPanel, 100, urId, ++tries);
@@ -3128,7 +3129,7 @@
                     initFinish(urIdInUrl);
             }
             else {
-                if (W.model.mapUpdateRequests.objects[$($('.map-marker.user-generated')[($('.map-marker.user-generated').length-1)]).attr('data-id')].attributes.urceData === undefined)
+                if (W.model.mapUpdateRequests.objects[$($('.map-problem.user-generated')[($('.map-problem.user-generated').length-1)]).attr('data-id')].attributes.urceData === undefined)
                     // Catch the ur markers that may have shown up in between loading stages.
                     await handleUrLayer('init', null, null);
                 maskBoxes(null, true, 'init', (urIdInUrl > 0));
@@ -3197,7 +3198,7 @@
                                 let translationDef1 = translationDefinition[1];
                                 if (typeof translations[translationLocale][translationDef0] === 'undefined')
                                     translations[translationLocale][translationDef0] = {};
-                                translations[translationLocale][translationDef0][translationDef1] = data.values[entryIdx][valIdx].replace('$SCRIPT_AUTHOR$', SCRIPT_AUTHOR);
+                                translations[translationLocale][translationDef0][translationDef1] = data.values[entryIdx][valIdx].replace('$SCRIPT_AUTHOR$', SCRIPT_AUTHOR).replace(/\\[r|n]+/gmi, '\n');
                             }
                         }
                     }
