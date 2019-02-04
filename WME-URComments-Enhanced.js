@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name        WME URComments-Enhanced
+// @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.02.01.01
+// @version     2019.02.04.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -40,13 +40,16 @@
 (function() {
     'use strict';
 
+    const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_AUTHOR = GM_info.script.author;
+    const SCRIPT_GF_URL = 'https://greasyfork.org/en/scripts/375430-wme-urcomments-enhanced';
+    const SCRIPT_FORUM_URL = 'https://www.waze.com/forum/viewtopic.php?f=819&t=275608';
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'First public release of URC-E!', 'Bugfix: Circumvent WME map marker bug.', 'Change for comment list replacement text.', 'Set debug to disabled by default.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'NEW: WazeWrap update notification integration.', 'BUGFIX: ZoomIn on new.', 'BUGFIX: WME bug workaround.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
-    const DEBUG = false;
+    const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
     const STATIC_ONLY_USERS = [ 'itzwolf' ];
     const URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c';
@@ -346,7 +349,7 @@
     function showScriptInfoAlert() {
         if (ALERT_UPDATE && SCRIPT_VERSION !== _settings.lastVersion) {
             let releaseNotes = '';
-            releaseNotes += '<p>' + GM_info.script.name + '<br>v' + SCRIPT_VERSION + '<br><br>What\'s New:</p>';
+            releaseNotes += '<p>What\'s New:</p>';
             if (SCRIPT_VERSION_CHANGES.length > 0) {
                 releaseNotes += '<ul>';
                 for (let idx=0; idx < SCRIPT_VERSION_CHANGES.length; idx++) {
@@ -356,7 +359,7 @@
             }
             else
                 releaseNotes += '<ul><li>Nothing major.</ul>';
-            showAlertBox('fa-info-circle', 'URC-E Release Notes', releaseNotes, false, "OK", "", null, null);
+            WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, releaseNotes, SCRIPT_GF_URL, SCRIPT_FORUM_URL);
         }
     }
 
@@ -671,7 +674,7 @@
 
     function autoCenterOnUr(urId) {
         logDebug('Checking zoom level and centering on UR if zoom level is less than 3.');
-        let _restoreZoom = getZoomLevel();
+        _restoreZoom = getZoomLevel();
         if (_restoreZoom < 3) {
             logDebug('Centering on UR because zoom level is ' + _restoreZoom + '.');
             W.map.setCenter([getXY(urId, null).x, getXY(urId, null).y], _restoreZoom);
@@ -1134,7 +1137,7 @@
             $('#urceDiv').css({'visibility':'hidden'});
         $('#urceDiv').off('mouseenter').off('mouseleave').off('dblclick');
         if ((newUrId > 0 && isIdAlreadyUnstacked(newUrId)) || (event && event.toElement && ((event.toElement.id === 'urceDiv') || (event.toElement.id.indexOf('urceCounts') > -1) || (event.toElement.parentNode.id.indexOf('urce') > -1))))
-            if (!event.data.doubleClick)
+            if (event.data && !event.data.doubleClick)
                 return;
         if (_mousedOverMarkerId === null)
             restackMarkers();
@@ -2028,8 +2031,7 @@
                 if (mutation.type === 'childList') {
                     for (let idx = 0; idx < mutation.addedNodes.length; idx++) {
                         let addedNode = mutation.addedNodes[idx];
-                        if (mutation.addedNodes[idx].classList && addedNode.classList.contains('map-marker') &&
-                            (mutation.addedNodes[idx].classList.contains('user-generated') || mutation.addedNodes[idx].classList.contains('map-marker'))) {
+                        if (mutation.addedNodes[idx].classList && addedNode.classList.contains('map-probnlem') && mutation.addedNodes[idx].classList.contains('user-generated')) {
                             if ((parseInt(mutation.addedNodes[idx].attributes['data-id'].value) > 0) && (urMapMarkerIds.indexOf(parseInt(mutation.addedNodes[idx].attributes['data-id'].value)) === -1))
                                 urMapMarkerIds.push(parseInt(mutation.addedNodes[idx].attributes['data-id'].value));
                         }
