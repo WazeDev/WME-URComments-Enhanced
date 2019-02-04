@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.02.04.01
+// @version     2019.02.04.02
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'NEW: WazeWrap update notification integration.', 'BUGFIX: ZoomIn on new.', 'BUGFIX: WME bug workaround.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'NEW: WazeWrap update integration.', 'BUGFIX: Not able to change lists in some situations.', 'BUGFIX: ZoomIn on new.', 'BUGFIX: WME bug workaround.', 'BUGFIX: AutoCenter on commented.', 'BUGFIX: Last Comment By in popup.', 'Other slight changes to prevent future bugs.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -89,13 +89,14 @@
         'isps': { 'commentNum':null, 'urNum':22 }, // Incorrect street prefix or suffix
         'sl': { 'commentNum':null, 'urNum':23 } // Speed Limit
     };
+    let _alertBoxInUse = false;
+    let _currentCommentList = null;
     let _filtersAppliedOnZoom = false;
     let _filtersApplying = false;
-    let _currentCommentList = null;
-    let _alertBoxInUse = false;
-    let _unstackedMasterId = null;
+    let _markerCountOnInit = -1;
     let _mousedOverMarkerId = null;
     let _mouseIsDown = false;
+    let _unstackedMasterId = null;
     let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId, _popupTimeout, _urceTabLightboxTo, _urPanelLightboxTo, _initUrIdInUrlObserver, _initUrIdInUrlTo, _popupDelayTimout;
 
     function log(message) { console.log('URC-E:', message); }
@@ -260,8 +261,8 @@
             _settings.wmeUserId = _wmeUserId;
         // Remove old settings
         let deleted = false;
-        ['autoCloseCommentWindow', 'hideClosedUrs', 'showOthersUrsPastReminderClose', 'onlyShowMyUrs', 'hideTaggedUrs', 'hideUrsWoComments', 'hideUrsWoCommentsOrDescriptions', 'hideUrsWoCommentsWithDescriptions', 'hideUrsWithUserReplies',
-         'disableAboveZoomLevel', 'hideByAgeOfLastCommentLessThanDaysAgo', 'hideByAgeOfLastCommentMoreThanDaysAgo', 'hideByAgeOfFirstCommentMoreThanDaysAgo' ].forEach((oldSetting) => {
+        ['autoCloseCommentWindow', 'hideClosedUrs', 'showOthersUrsPastReminderClose', 'onlyShowMyUrs', 'hideTaggedUrs', 'hideUrsWoComments', 'hideUrsWoCommentsOrDescriptions', 'hideUrsWoCommentsWithDescriptions',
+         'hideUrsWithUserReplies', 'disableAboveZoomLevel', 'hideByAgeOfLastCommentLessThanDaysAgo', 'hideByAgeOfLastCommentMoreThanDaysAgo', 'hideByAgeOfFirstCommentMoreThanDaysAgo' ].forEach((oldSetting) => {
             if (_settings.hasOwnProperty(oldSetting)) {
                 delete(_settings[oldSetting]);
                 deleted = true;
@@ -269,8 +270,8 @@
         });
         // Fix bad settings
         let changed = false;
-        ['reminderDays', 'closeDays', 'hideByAgeOfLastCommentMoreThanDaysOld', 'hideByAgeOfLastCommentLessThanDaysOld', 'hideByAgeOfFirstCommentMoreThanDaysOld', 'hideByAgeOfFirstCommentLessThanDaysOld', 'hideByCommentCountMoreThanNumber',
-         'hideByCommentCountLessThanNumber', 'hideByAgeOfSubmissionMoreThanDaysOld', 'hideByAgeOfSubmissionLessThanDaysOld' ].forEach((setting) => {
+        ['reminderDays', 'closeDays', 'hideByAgeOfLastCommentMoreThanDaysOld', 'hideByAgeOfLastCommentLessThanDaysOld', 'hideByAgeOfFirstCommentMoreThanDaysOld', 'hideByAgeOfFirstCommentLessThanDaysOld',
+         'hideByCommentCountMoreThanNumber', 'hideByCommentCountLessThanNumber', 'hideByAgeOfSubmissionMoreThanDaysOld', 'hideByAgeOfSubmissionLessThanDaysOld' ].forEach((setting) => {
             if (_settings[setting] === undefined || _settings[setting] === null || ((_settings[setting].length === 0) && (_settings[setting] !== ''))) {
                 _settings[setting] = '';
                 changed = true;
@@ -324,14 +325,12 @@
         }
         else
             $('#urceAlertCrossBtn').css('visibility', 'hidden');
-        $('#urceAlertTickBtn').off('click');
-        $('#urceAlertTickBtn').on('click', () => {
+        $('#urceAlertTickBtn').off('click').on('click', () => {
             if (alertBoxTickAction !== null)
                 alertBoxTickAction();
             closeAlertBox();
         });
-        $('#urceAlertCrossBtn').off('click');
-        $('#urceAlertCrossBtn').on('click', () => {
+        $('#urceAlertCrossBtn').off('click').on('click', () => {
             if (alertBoxCrossAction !== null)
                 alertBoxCrossAction();
             closeAlertBox();
@@ -435,9 +434,9 @@
             autoCloseUrPanel();
         else {
             await updateUrceData([urId]);
-            if ($($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[(W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount-1)]).has('#urceDaysAgo').length === 0) {
-                $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[(W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount-1)]).children().filter('span.date').css('float', 'right');
-                $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[(W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount-1)]).append(
+            if ($($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title').last()).has('#urceDaysAgo').length === 0) {
+                $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title').last()).children().filter('span.date').css('float', 'right');
+                $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title').last()).append(
                     $('<div>', {class:"date", style:"display:flex; justify-content:flex-end;"}).append(
                         $('<div>').text('(' + parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[urId].comments[(W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount-1)].createdOn)) + ')')
                     )
@@ -456,7 +455,7 @@
         if (_settings.autoSaveAfterSolvedOrNiComment && ((_selUr.newStatus === 'solved') || (_selUr.newStatus === 'notidentified')))
             clickSaveButton();
         else {
-            if (_settings.autoZoomOutAfterComemnt)
+            if (_settings.autoZoomOutAfterComment)
                 autoZoomOut();
             if (_settings.autoSwitchToUrCommentsTab)
                 autoSwitchToPrevTab();
@@ -472,7 +471,7 @@
     }
 
     async function handleAfterSave() {
-        if (_settings.autoZoomOutAfterComemnt)
+        if (_settings.autoZoomOutAfterComment)
             autoZoomOut();
         if (_settings.autoSwitchToUrCommentsTab)
             autoSwitchToPrevTab();
@@ -506,9 +505,13 @@
             }
         }
         if (_settings.autoSwitchCommentList) {
-            if ((_autoSwitchCountries[W.model.countries.top.abbr] > -1) && (!_autoSwitchStates[W.model.countries.top.abbr] || !_autoSwitchStates[W.model.countries.top.abbr][W.model.states.top.name]) && (_autoSwitchCountries[W.model.countries.top.abbr] !== _settings.commentList))
+            if ((_autoSwitchCountries[W.model.countries.top.abbr] > -1) &&
+                (!_autoSwitchStates[W.model.countries.top.abbr] || !_autoSwitchStates[W.model.countries.top.abbr][W.model.states.top.name]) &&
+                (_autoSwitchCountries[W.model.countries.top.abbr] !== _settings.commentList))
                 await changeCommentList(_autoSwitchCountries[W.model.countries.top.abbr], true, false);
-            else if (_autoSwitchStates[W.model.countries.top.abbr] && (_autoSwitchStates[W.model.countries.top.abbr][W.model.states.top.name] > -1) && (_autoSwitchStates[W.model.countries.top.abbr][W.model.states.top.name] !== _settings.commentList))
+            else if (_autoSwitchStates[W.model.countries.top.abbr] &&
+                     (_autoSwitchStates[W.model.countries.top.abbr][W.model.states.top.name] > -1) &&
+                     (_autoSwitchStates[W.model.countries.top.abbr][W.model.states.top.name] !== _settings.commentList))
                 await changeCommentList(_autoSwitchStates[W.model.countries.top.abbr][W.model.states.top.name], true, false);
             else if (_currentCommentList !== _settings.commentList)
                 await changeCommentList(_settings.commentList, true, false);
@@ -525,8 +528,7 @@
             $('#panel-container .mapUpdateRequest .actions .content .navigation').css({'display':'none'});
         }
         logDebug('Setting event hook for center on UR crosshairs in UR panel title bar.');
-        $('#panel-container .mapUpdateRequest .top-section .header .title .focus').off('click', handleUrPanelCrosshairsClick);
-        $('#panel-container .mapUpdateRequest .top-section .header .title .focus').on('click', {mUrObj:W.model.mapUpdateRequests.objects[urId]}, handleUrPanelCrosshairsClick);
+        $('#panel-container .mapUpdateRequest .top-section .header .title .focus').off('click', handleUrPanelCrosshairsClick).on('click', {mUrObj:W.model.mapUpdateRequests.objects[urId]}, handleUrPanelCrosshairsClick);
         $('#panel-container .mapUpdateRequest .top-section').scrollTop($('#panel-container .mapUpdateRequest .top-section')[0].scrollHeight);
         if (W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount === 0) {
             if (_settings.autoZoomInOnNewUr)
@@ -578,8 +580,7 @@
             return;
         }
         if (doubleClick) {
-            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').off('blur', autoClickSendButton);
-            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').on('blur', autoClickSendButton);
+            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').off('blur', autoClickSendButton).on('blur', autoClickSendButton);
         }
         if (_settings.autoClickOpenSolvedNi && _selUr.urOpen)
             autoClickOpenSolvedNi(commentNum);
@@ -673,9 +674,9 @@
     }
 
     function autoCenterOnUr(urId) {
-        logDebug('Checking zoom level and centering on UR if zoom level is less than 3.');
-        _restoreZoom = getZoomLevel();
-        if (_restoreZoom < 3) {
+        logDebug('Checking zoom level and centering on UR if zoom level is less than 4.');
+        _restoreZoom = _restoreZoom || getZoomLevel();
+        if (_restoreZoom < 4) {
             logDebug('Centering on UR because zoom level is ' + _restoreZoom + '.');
             W.map.setCenter([getXY(urId, null).x, getXY(urId, null).y], _restoreZoom);
         }
@@ -683,8 +684,10 @@
 
     function autoZoomOut() {
         if (_restoreZoom && !$(W.map.div).hasClass('problem-selected')) {
-            logDebug('Zooming out to ' + _restoreZoom + '.');
-            W.map.setCenter(W.map.getCenter(), _restoreZoom);
+            if (_restoreZoom !== getZoomLevel()) {
+                logDebug('Zooming to ' + _restoreZoom + '.');
+                W.map.setCenter(W.map.getCenter(), _restoreZoom);
+            }
             _restoreZoom = null;
         }
     }
@@ -814,31 +817,27 @@
     function getXY(urId, mUrObj) {
         let x, y;
         if (!urId && mUrObj) {
-            if (mUrObj.attributes.geometry.urceRealX !== undefined)
-                x = mUrObj.attributes.geometry.urceRealX;
-            else if (mUrObj.attributes.geometry.realX !== undefined)
-                x = mUrObj.attributes.geometry.realX;
-            else
-                x = mUrObj.attributes.geometry.x;
-            if (mUrObj.attributes.geometry.urceRealY !== undefined)
-                y = mUrObj.attributes.geometry.urceRealY;
-            else if (mUrObj.attributes.geometry.realY !== undefined)
-                y = mUrObj.attributes.geometry.realY;
-            else
-                y = mUrObj.attributes.geometry.y;
+            x = (mUrObj.attributes.geometry.urceRealX !== undefined) ?
+                mUrObj.attributes.geometry.urceRealX :
+                (mUrObj.attributes.geometry.realX !== undefined) ?
+                    mUrObj.attributes.geometry.realX :
+                    mUrObj.attributes.geometry.x;
+            y = (mUrObj.attributes.geometry.urceRealY !== undefined) ?
+                mUrObj.attributes.geometry.urceRealY :
+                (mUrObj.attributes.geometry.realY !== undefined) ?
+                    mUrObj.attributes.geometry.realY :
+                    mUrObj.attributes.geometry.y;
         } else {
-            if (W.model.mapUpdateRequests.objects[urId].attributes.geometry.urceRealX !== undefined)
-                x = W.model.mapUpdateRequests.objects[urId].attributes.geometry.urceRealX;
-            else if (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX !== undefined)
-                x = W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX;
-            else
-                x = W.model.mapUpdateRequests.objects[urId].attributes.geometry.x;
-            if (W.model.mapUpdateRequests.objects[urId].attributes.geometry.urceRealY !== undefined)
-                y = W.model.mapUpdateRequests.objects[urId].attributes.geometry.urceRealY;
-            else if (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realY !== undefined)
-                y = W.model.mapUpdateRequests.objects[urId].attributes.geometry.realY;
-            else
-                y = W.model.mapUpdateRequests.objects[urId].attributes.geometry.y;
+            x = (W.model.mapUpdateRequests.objects[urId].attributes.geometry.urceRealX !== undefined) ?
+                W.model.mapUpdateRequests.objects[urId].attributes.geometry.urceRealX :
+                (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX !== undefined) ?
+                    W.model.mapUpdateRequests.objects[urId].attributes.geometry.realX :
+                    W.model.mapUpdateRequests.objects[urId].attributes.geometry.x;
+            y = (W.model.mapUpdateRequests.objects[urId].attributes.geometry.urceRealY !== undefined) ?
+                W.model.mapUpdateRequests.objects[urId].attributes.geometry.urceRealY :
+                (W.model.mapUpdateRequests.objects[urId].attributes.geometry.realY !== undefined) ?
+                    W.model.mapUpdateRequests.objects[urId].attributes.geometry.realY :
+                    W.model.mapUpdateRequests.objects[urId].attributes.geometry.y;
         }
         return {x:x, y:y};
     }
@@ -925,10 +924,18 @@
             for (let marker in markerCollection) {
                 if (markerCollection.hasOwnProperty(marker)) {
                     if (markerCollection[marker].model.attributes.geometry.urceRealX === undefined) {
-                        markerCollection[marker].model.attributes.geometry.urceRealX = (markerCollection[marker].model.attributes.geometry.realX) ? markerCollection[marker].model.attributes.geometry.realX : markerCollection[marker].model.attributes.geometry.x;
-                        markerCollection[marker].model.attributes.geometry.x = (markerCollection[marker].model.attributes.geometry.realX) ? (markerCollection[marker].model.attributes.geometry.realX + offset) : (markerCollection[marker].model.attributes.geometry.x + offset);
-                        markerCollection[marker].model.attributes.geometry.urceRealY = (markerCollection[marker].model.attributes.geometry.realY) ? markerCollection[marker].model.attributes.geometry.realY : markerCollection[marker].model.attributes.geometry.y;
-                        markerCollection[marker].model.attributes.geometry.y = (markerCollection[marker].model.attributes.geometry.realY) ? (markerCollection[marker].model.attributes.geometry.realY + offset) : (markerCollection[marker].model.attributes.geometry.y + offset);
+                        markerCollection[marker].model.attributes.geometry.urceRealX = (markerCollection[marker].model.attributes.geometry.realX) ?
+                            markerCollection[marker].model.attributes.geometry.realX :
+                            markerCollection[marker].model.attributes.geometry.x;
+                        markerCollection[marker].model.attributes.geometry.x = (markerCollection[marker].model.attributes.geometry.realX) ?
+                            (markerCollection[marker].model.attributes.geometry.realX + offset) :
+                            (markerCollection[marker].model.attributes.geometry.x + offset);
+                        markerCollection[marker].model.attributes.geometry.urceRealY = (markerCollection[marker].model.attributes.geometry.realY) ?
+                            markerCollection[marker].model.attributes.geometry.realY :
+                            markerCollection[marker].model.attributes.geometry.y;
+                        markerCollection[marker].model.attributes.geometry.y = (markerCollection[marker].model.attributes.geometry.realY) ?
+                            (markerCollection[marker].model.attributes.geometry.realY + offset) :
+                            (markerCollection[marker].model.attributes.geometry.y + offset);
                         offset += 1000;
                     }
                     if (!(markerCollection[marker].icon.imageDiv.classList.contains('recently-closed') && (W.map.updateRequestLayer.showHidden === false)) && (markerCollection[marker].icon.imageDiv.style.visibility !== 'hidden')) {
@@ -979,7 +986,7 @@
         let popupDelayTime = (Date.now() + (_settings.urMarkerPopupDelay * 100));
         if (markerType === 'ur') {
             let markerId = parseInt(this.attributes['data-id'].value);
-            if ((_mousedOverMarkerId !== markerId) || ($('#urceDiv').css('visibility') === 'hidden')) {
+            if ((markerId > 0) && ((_mousedOverMarkerId !== markerId) || ($('#urceDiv').css('visibility') === 'hidden'))) {
                 _mousedOverMarkerId = markerId;
                 let targetTab = '_urceTab_' + Math.round(Math.random() * 1000000);
                 let mouseX = event.pageX - $('#map')[0].getBoundingClientRect().left;
@@ -995,7 +1002,8 @@
                     logDebug('Building popup for UR ' + _mousedOverMarkerId);
                     popupX = unstackedX - parsePxString(W.map.segmentLayer.div.style.left) + popupXOffset + 6;
                     popupY = unstackedY - parsePxString(W.map.segmentLayer.div.style.top) + 6;
-                    let popupContent = '<b>' + I18n.t('problems.panel.titles.map_update_request') + ' (' + _mousedOverMarkerId + '): ' + I18n.t('update_requests.types.' + W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.type) + '</b><br>';
+                    let popupContent = '<b>' + I18n.t('problems.panel.titles.map_update_request') + ' (' + _mousedOverMarkerId + '): ' +
+                        I18n.t('update_requests.types.' + W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.type) + '</b><br>';
                     if (!W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.description)
                         popupContent += '<i>' + I18n.t('urce.mouseOver.NoDescription') + '</i>';
                     else
@@ -1003,7 +1011,8 @@
                     if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.driveDaysOld > -1) {
                         popupContent += '<br><i>' + I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.driveDaysOld) + ' ';
                         if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.driveDate > -1)
-                            popupContent += '(' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.driveDate).toLocaleDateString('en-us') + ' ' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.driveDate).toLocaleTimeString('en-us') + ') ';
+                            popupContent += '(' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.driveDate).toLocaleDateString('en-us') +
+                                ' ' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.driveDate).toLocaleTimeString('en-us') + ') ';
                         if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.guestUserName && (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.guestUserName !== null)) {
                             popupContent += I18n.t('urce.mouseOver.ViaLivemap');
                             if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.guestUserName !== '')
@@ -1013,7 +1022,8 @@
                     }
                     if ((W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedOn !== null) && (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.resolveDaysAgo > -1)) {
                         popupContent += '<br><i>' + I18n.t('urce.urStatus.Closed') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.resolveDaysAgo) + ' ';
-                        popupContent += '(' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedOn).toLocaleDateString('en-us') + ' ' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedOn).toLocaleTimeString('en-us') + ')</i>';
+                        popupContent += '(' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedOn).toLocaleDateString('en-us') +
+                            ' ' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedOn).toLocaleTimeString('en-us') + ')</i>';
                         popupContent += '<br><i>' + I18n.t('urce.mouseOver.MarkedAs') + ' ';
                         if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolution === 0)
                             popupContent += I18n.t('venues.update_requests.panel.solved');
@@ -1035,7 +1045,8 @@
                     if ((W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount > 0) && (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentDaysOld > -1))
                         popupContent += ', ' + I18n.t('element_history.actions.default.UPDATE') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentDaysOld);
                     if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount > 0) {
-                        popupContent += '<br>' + I18n.t('urce.mouseOver.FirstComment') + ': ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentDaysOld) + ' ' + I18n.t('element_history.changed_by') + ' ';
+                        popupContent += '<br>' + I18n.t('urce.mouseOver.FirstComment') + ': ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentDaysOld) +
+                            ' '+ I18n.t('element_history.changed_by') + ' ';
                         if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy === -1)
                             popupContent += I18n.t('conversation.reporter');
                         else {
@@ -1044,8 +1055,9 @@
                             popupContent += ' (' + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy).rank + ')';
                         }
                         if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount > 1) {
-                            popupContent += '<br>' + I18n.t('urce.mouseOver.LastComment') + ': ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentDaysOld) + ' ' + I18n.t('element_history.changed_by') + ' ';
-                            if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy === -1)
+                            popupContent += '<br>' + I18n.t('urce.mouseOver.LastComment') + ': ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentDaysOld) +
+                                ' ' + I18n.t('element_history.changed_by') + ' ';
+                            if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentBy === -1)
                                 popupContent += I18n.t('conversation.reporter');
                             else {
                                 popupContent += '<a href="' + W.Config.user_profile.url + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentBy).username + '">';
@@ -1058,8 +1070,16 @@
                         popupContent += '</i>';
                     }
                     let urPos = new OL.LonLat();
-                    urPos.lon = (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealX === undefined) ? W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.x : W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealX;
-                    urPos.lat = (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealY === undefined) ? W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.y : W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealY;
+                    urPos.lon = (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealX !== undefined) ?
+                        W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealX :
+                        (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.realX !== undefined) ?
+                            W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.realX :
+                            W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.x;
+                    urPos.lat = (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealY !== undefined) ?
+                        W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealY :
+                        (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.realY !== undefined) ?
+                            W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.realY :
+                            W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.y;
                     urPos.transform(new OL.Projection("EPSG:900913"), new OL.Projection("EPSG:4326"));
                     let urLink = $(document)[0].location.href;
                     let urLayers = '';
@@ -1275,8 +1295,10 @@
 
     function updateUrMapMarkers(urIds, filter) {
         for (let idx = 0; idx < urIds.length; idx++) {
-            if ((filter && _settings.enableUrceUrFiltering && W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.hideUr) &&
-                !(((W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs) || ((urIds[idx] === _selUr.urId) && _settings.doNotHideSelectedUr))) {
+            if (filter && _settings.enableUrceUrFiltering && W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.hideUr &&
+                (!((_selUr.urId === urIds[idx]) && _settings.doNotHideSelectedUr)) &&
+                (!((W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs))
+               ) {
                 logDebug('Hiding UR marker for UR: ' + urIds[idx]);
                 $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).css('visibility', 'hidden');
             }
@@ -1310,7 +1332,9 @@
                         if ((W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType !== -1) && _settings.doNotShowTagNameOnPill) {
                             if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount > 0)
                                 tagContent += W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount + 'c ';
-                            tagContent += (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld !== -1) ? W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld : W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.driveDaysOld;
+                            tagContent += (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld !== -1) ?
+                                W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld :
+                                W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.driveDaysOld;
                             tagContent += 'd';
                             tagOffset = (tagContent.length < 3) ? 0 : Math.round(tagContent.length * 2.28);
                         }
@@ -1323,7 +1347,9 @@
                         else {
                             if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount > 0)
                                 tagContent += W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.commentCount + 'c ';
-                            tagContent += (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld !== -1) ? W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld : W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.driveDaysOld;
+                            tagContent += (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld !== -1) ?
+                                W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.lastCommentDaysOld :
+                                W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.driveDaysOld;
                             tagContent += 'd';
                             tagOffset = (tagContent.length < 3) ? 0 : Math.round(tagContent.length * 2.28);
                         }
@@ -1336,7 +1362,9 @@
                             logDebug('Adding marker counters on UR marker for UR: ' + urIds[idx]);
                         $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).append(
                             $('<div>', {id:`urceCounters-${urIds[idx]}`, 'data-id':`${urIds[idx]}`}).css('clear', 'both').css('margin-bottom', '10px').append(
-                                $('<div>', {id:`urceCounters-${urIds[idx]}-text`, 'data-id':`${urIds[idx]}`}).html(tagContent).css({'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}).addClass('urceCounts')
+                                $('<div>', {id:`urceCounters-${urIds[idx]}-text`, 'data-id':`${urIds[idx]}`}).html(tagContent).css(
+                                    {'color':'black', 'background-color':urCountBackground, 'position':'absolute', 'top':'30px', 'right':tagOffset, 'display':'block', 'width':'auto', 'white-space':'nowrap', 'padding-left':'5px', 'padding-right':'5px', 'border':'1px solid', 'border-radius':'25px'}
+                                ).addClass('urceCounts')
                             )
                         );
                     }
@@ -1557,9 +1585,14 @@
                 _filtersApplying = true;
                 let zoomLevel = getZoomLevel();
                 if (filter === undefined || filter === null)
-                    filter = !(((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))));
+                    filter = true;
+                    if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) ||
+                        (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel)))
+                        filter = false;
                 if (phase === 'init')
                     logDebug('Checking for UR markers already present before URC-E completed initialization.');
+                if (phase === 'init_end')
+                    logDebug('Updating UR markers that appeared after initialization completed.');
                 if (phase === 'save')
                     logDebug('Updating UR markers after save.');
                 if (phase === 'close')
@@ -1572,14 +1605,15 @@
                     logDebug('Updating UR markers after zooming or moving.');
                 if (!urMapMarkerIds) {
                     urMapMarkerIds = [];
-                    for (let urId in W.map.updateRequestLayer.markers) {
-                        urId = parseInt(urId);
-                        if (urMapMarkerIds.indexOf(urId) === -1)
-                            urMapMarkerIds.push(urId);
-                    }
+                    W.model.mapUpdateRequests.getObjectArray().forEach((urObj) => {
+                        if (urMapMarkerIds.indexOf(urObj.attributes.id) === -1)
+                            urMapMarkerIds.push(urObj.attributes.id);
+                    });
                 }
                 if (urMapMarkerIds.length > 0) {
                     try {
+                        if (phase === 'init')
+                            _markerCountOnInit = urMapMarkerIds.length;
                         await handleUrMapMarkers(urMapMarkerIds, filter);
                         _filtersApplying = false;
                         _filtersAppliedOnZoom = filter;
@@ -1708,7 +1742,9 @@
         commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
         if (refresh || (!autoSwitch && ((commentListIdx !== _settings.commentList) || (commentListIdx !== _currentCommentList))) || (autoSwitch && (commentListIdx !== _currentCommentList))) {
             let debugMsg = (autoSwitch) ? 'Automatically switching comment lists' : (refresh) ? 'Refreshing comment list' : 'Switching comment lists';
-            logDebug(debugMsg + ' from ' + getCommentListInfo(_currentCommentList).name + ' to ' + getCommentListInfo(commentListIdx).name + '.');
+            if (_currentCommentList !== null)
+                debugMsg += ' from ' + getCommentListInfo(_currentCommentList).name;
+            logDebug(debugMsg + ' to ' + getCommentListInfo(commentListIdx).name + '.');
             if (!autoSwitch && !refresh)
                 _settings.commentList = commentListIdx;
             let buildCommentListResult = await buildCommentList(commentListIdx, 'changeList');
@@ -2031,7 +2067,7 @@
                 if (mutation.type === 'childList') {
                     for (let idx = 0; idx < mutation.addedNodes.length; idx++) {
                         let addedNode = mutation.addedNodes[idx];
-                        if (mutation.addedNodes[idx].classList && addedNode.classList.contains('map-probnlem') && mutation.addedNodes[idx].classList.contains('user-generated')) {
+                        if (mutation.addedNodes[idx].classList && addedNode.classList.contains('map-problem') && mutation.addedNodes[idx].classList.contains('user-generated')) {
                             if ((parseInt(mutation.addedNodes[idx].attributes['data-id'].value) > 0) && (urMapMarkerIds.indexOf(parseInt(mutation.addedNodes[idx].attributes['data-id'].value)) === -1))
                                 urMapMarkerIds.push(parseInt(mutation.addedNodes[idx].attributes['data-id'].value));
                         }
@@ -2057,7 +2093,10 @@
                 }
             });
             let zoomLevel = getZoomLevel();
-            let filter = !(((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))));
+            let filter = true;
+            if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) ||
+                (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel)))
+                filter = false;
             if (urMapMarkerIds.length > 0)
                 handleUrMapMarkers(urMapMarkerIds, filter);
         });
@@ -3112,6 +3151,9 @@
         }
         maskBoxes(null, true, 'init', (urId > 0));
         await initBackgroundTasks();
+        if (W.model.mapUpdateRequests.getObjectArray().length > _markerCountOnInit)
+            await handleUrLayer('init_end', null, null);
+        _markerCountOnInit = -1;
         logDebug('UR ' + urId + ' marker in URL. Re-opening.');
         openUrPanel(urId);
     }
@@ -3153,8 +3195,9 @@
                     logDebug('urId ' + urIdInUrl + ' found in URL, but the UR Panel has not shown up yet. Waiting.');
                     _initUrIdInUrlObserver = new MutationObserver((mutations) => {
                         mutations.forEach((mutation) => {
-                            if (mutation.type === 'attributes' && $(mutation.target.parentNode).is('#panel-container') && $(mutation.target).hasClass('show'))
-                                initFinish(urIdInUrl);
+                            if (mutation.type === 'attributes' && $(mutation.target.parentNode).is('#panel-container') && $(mutation.target).hasClass('show')) {
+                                return initFinish(urIdInUrl);
+                            }
                         });
                     });
                     _initUrIdInUrlObserver.observe(document.getElementById('panel-container'), { childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true });
@@ -3165,9 +3208,9 @@
                     initFinish(urIdInUrl);
             }
             else {
-                if (W.model.mapUpdateRequests.objects[$($('.map-problem.user-generated')[($('.map-problem.user-generated').length-1)]).attr('data-id')].attributes.urceData === undefined)
-                    // Catch the ur markers that may have shown up in between loading stages.
-                    await handleUrLayer('init', null, null);
+                if (W.model.mapUpdateRequests.getObjectArray().length > _markerCountOnInit)
+                    await handleUrLayer('init_end', null, null);
+                _markerCountOnInit = -1;
                 maskBoxes(null, true, 'init', (urIdInUrl > 0));
             }
         }
@@ -3302,7 +3345,7 @@
                             "AutoSwitchCommentListTitle": "Automatically switch to the comment list designated for the area the UR is in, if there is a list associated with the area.\nOpening a UR in an area that does not have a list associated will use the \"Comment List\" you have selected above.",
                             "UrcePrefs": "URC-E Preferences",
                             "AutoCenterOnUr": "Auto center on UR",
-                            "AutoCenterOnUrTitle": "Auto center the map to the selected UR at the current map zoom level when the UR has comments and the zoom level is less than 3.",
+                            "AutoCenterOnUrTitle": "Auto center the map to the selected UR at the current map zoom level when the UR has comments and the zoom level is less than 4.",
                             "AutoClickOpenSolvedNi": "Auto click open, solved or not identified",
                             "AutoClickOpenSolvedNiTitle": "Suppress the message about recent pending questions to the reporter and then, depending on the choice set for that comment, automatically select Open, Solved or Not Identified.",
                             "AutoCloseUrPanel": "Auto close UR panel",
