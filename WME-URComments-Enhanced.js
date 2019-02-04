@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.02.04.02
+// @version     2019.02.04.03
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -101,7 +101,7 @@
 
     function log(message) { console.log('URC-E:', message); }
     function logError(message) { console.error('URC-E:', message); }
-    function logDebug(message) { if (DEBUG) console.debug('URC-E:', message); }
+    function logDebug(message) { if (DEBUG) log('URC-E:', message); }
     function logWarning(message) { console.warn('URC-E:', message); }
 
     function dynamicSort(property) {
