@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.02.06.01
+// @version     2019.02.07.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'CHANGE: Auto Close UR Panel now closes the UR panel on any comment send.', 'BUGFIX: Parsing of old static list failed for some users.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'NEW: Ability to append a comment (Append mode).', 'NEW: Switch comment lists from the comment list tab. Note: This does not change your default list and is not saved.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -101,7 +101,7 @@
 
     function log(message) { console.log('URC-E:', message); }
     function logError(message) { console.error('URC-E:', message); }
-    function logDebug(message) { if (DEBUG) log('URC-E:', message); }
+    function logDebug(message) { if (DEBUG) console.log('URC-E:', message); }
     function logWarning(message) { console.warn('URC-E:', message); }
 
     function dynamicSort(property) {
@@ -249,6 +249,7 @@
             // Common Prefs
             reminderDays: 0,
             closeDays: 7,
+            enableAppendMode: false,
             wmeUserId: undefined,
             lastVersion: undefined
         };
@@ -538,7 +539,7 @@
                 if (_settings.autoClickOpenSolvedNi)
                     autoClickOpenSolvedNi(commentNum);
                 try {
-                    await postUrComment(_commentList[commentNum].comment);
+                    await postUrComment(_commentList[commentNum].comment, false);
                 }
                 catch(error) {
                     logError(error);
@@ -557,11 +558,13 @@
                 if (_settings.autoClickOpenSolvedNi)
                     autoClickOpenSolvedNi(_defaultComments.dr.commentNum);
                 try {
-                    await postUrComment(_commentList[_defaultComments.dr.commentNum].comment);
+                    await postUrComment(_commentList[_defaultComments.dr.commentNum].comment, false);
                 }
                 catch(error) {
-                    logError(error);
-                    showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
+                    if (error.type === 'tooLong')
+                        logError(error.text);
+                    else
+                        showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
                 }
             }
         }
@@ -585,11 +588,13 @@
         if (_settings.autoClickOpenSolvedNi && _selUr.urOpen)
             autoClickOpenSolvedNi(commentNum);
         try {
-            await postUrComment(_commentList[commentNum].comment);
+            await postUrComment(_commentList[commentNum].comment, doubleClick);
         }
         catch(error) {
-            logError(error);
-            showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
+            if (error.type === 'tooLong')
+                logError(error.text);
+            else
+                showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
         }
     }
 
@@ -787,16 +792,26 @@
         });
     }
 
-    function postUrComment(comment) {
+    function postUrComment(comment, doubleClick) {
         return new Promise((resolve, reject) => {
             (function retry(comment, tries) {
+                let commentOutput;
                 logDebug('Attemping to insert comment into comment box. Tries: ' + tries);
                 if (tries > 100)
                     reject('Timed out waiting for the comment text box to become available.');
                 else if (!$('.new-comment-text')[0])
                     setTimeout(retry, 100, comment, ++tries);
                 else {
-                    $('.new-comment-text').val(formatText(comment)).change().keyup();
+                    if (_settings.enableAppendMode && $('.new-comment-text').val() !== '' && !doubleClick) {
+                        commentOutput = $('.new-comment-text').val() + formatText('\n\n' + comment);
+                        if (commentOutput.length > 20) {
+                            showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentTooLong'), false, 'OK', '', null, null);
+                            return reject({type:'tooLong', text:I18n.t('urce.prompts.CommentTooLong')});
+                        }
+                    }
+                    else
+                        commentOutput = formatText(comment);
+                    $('.new-comment-text').val(commentOutput).change().keyup();
                     $('.new-comment-text').blur();
                     resolve();
                 }
@@ -1979,7 +1994,27 @@
             maskBoxes(I18n.t('urce.prompts.SwitchingCommentLists') + '.<br>' + I18n.t('urce.common.PleaseWait') + '.', false, phase, (_selUr.urId > 0));
         $('#_commentList').empty();
         $('#_commentList').append(
-            $('<div>', {class:'URCE-commentListName'}).text(I18n.t('urce.common.CommentList') + ': ' + commentListInfo.name)
+            $('<div>', {class:'URCE-commentListName'}).text(I18n.t('urce.common.CommentList') + ': ').append(() => {
+                let $selList = $('<select>', {id:'_selcurrentCommentList', title:I18n.t('urce.common.CurrentCommentListTitle')});
+                _commentLists.forEach((cList) => {
+                    if (cList.status !== 'disabled') {
+                        if (cList.idx === commentListIdx)
+                            $selList.append($('<option>', {value:cList.idx, selected:true}).text(cList.name));
+                        else
+                            $selList.append($('<option>', {value:cList.idx}).text(cList.name));
+                    }
+                });
+                return $selList.val(commentListIdx).change(function() {
+                    changeCommentList(parseInt($(this).val()), false, true);
+                });
+            }),
+            $('<div>', {class:'URCE-commentListName URCE-controls URCE-divCC'}).append(
+                $('<input>', {type:'checkbox', id:'_cbenableAppendMode', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.EnableAppendModeTitle')}).prop('checked', _settings.enableAppendMode).change(function() {
+                    _settings[$(this)[0].id.substr(3)] = this.checked;
+                    saveSettingsToStorage();
+                }),
+                $('<label>', {for:'_cbenableAppendMode', title:I18n.t('urce.prefs.EnableAppendModeTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableAppendMode'))
+            )
         );
         _commentList = [];
         try {
@@ -2196,8 +2231,9 @@
           '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-top:4px; height:16px; float:right; }' +
           '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }' +
           '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:11px; text-align:right; }' +
           '#sidepanel-urc-e #panel-urce-comments .URCE-group_body.urStyle { padding-left:23px !important; }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; position:absolute }' +
+          '#sidepanel-urc-e #panel-urce-comments .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; padding-left:16px; }' +
           // Settings tab
           '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }' +
@@ -2216,6 +2252,7 @@
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls select { height:22px; vertical-align:middle; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; padding-left:16px; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080;  display:inline-block; position:relative; padding-left:16px; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:11px; text-align:right; }' +
           // Common
           '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:12px; margin-right: 4px; }' +
           '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; }' +
@@ -3299,6 +3336,7 @@
                         "common": {
                             "All": "All",
                             "CommentList": "Comment List",
+                            "CurrentCommentListTitle":"You can change the currently loaded comment list using this drop down.\nChanging this drop down will not be saved as a setting and will not change your default list (located on the settings tab).\nThis is only to allow you to quickly switch between lists.",
                             "Custom": "Custom",
                             "Description": "Description",
                             "DoubleClickTitle": "Double click here to send this comment",
@@ -3500,7 +3538,9 @@
                             "DisableFilteringAboveZoomLevel": "Disable filtering above zoom level",
                             "DisableFilteringAboveZoomLevelTitle": "Disabled UR filtering when zoomed out above the specified zoom level. Set to '0' to enable all filtering.",
                             "DisableFilteringBelowZoomLevel": "Disable filtering below zoom level",
-                            "DisableFilteringBelowZoomLevelTitle": "Disable UR filtering when zoomed in below the specified zoom level. Set to '10' to enable all filtering."
+                            "DisableFilteringBelowZoomLevelTitle": "Disable UR filtering when zoomed in below the specified zoom level. Set to '10' to enable all filtering.",
+                            "EnableAppendMode":"Enable append comment mode",
+                            "EnableAppendModeTitle":"Enabling append comment mode will allow you to append a comment to the existing text in the new-comment box.\nThe comment is appended with a blank line between the existing text and the new text.\nThe status of the UR is set to the status of the new comment you clicked to append.\nIf the comment would end up being longer than 2000 characters, append mode will give a warning and not alter the text in the comment box, but the status would have been changed."
                         },
                         "tabs": {
                             "Comments": "Comments",
@@ -3525,6 +3565,7 @@
                             "WazeAutomatic": "Waze automatic"
                         },
                         "prompts": {
+                            "CommentTooLong":"Appending another comment to the current text will cause the comment to be longer than 2000 characters, which is too long. URC-E did not append the selected comment and left the new-comment box with the same text it had.",
                             "NoCommentBox": "URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.",
                             "CommentInsertTimedOut": "URC-E timed out waiting for the comment text box to become available.",
                             "ReminderMessageAuto": "URC-E: Automatically sending reminder message to UR:",
