@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.02.07.02
+// @version     2019.02.08.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'NEW: Ability to append a comment (Append mode).', 'NEW: Switch comment lists from the comment list tab. Note: This does not change your default list and is not saved.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'NEW: Ability to append a comment (Append mode).', 'NEW: Switch comment lists from the comment list tab. Note: This does not change your default list and is not saved.', 'BUGFIX: Selecting a MP caused URC-E to inadvertently process.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -1762,7 +1762,7 @@
             logDebug(debugMsg + ' to ' + getCommentListInfo(commentListIdx).name + '.');
             if (!autoSwitch && !refresh)
                 _settings.commentList = commentListIdx;
-            let buildCommentListResult = await buildCommentList(commentListIdx, 'changeList');
+            let buildCommentListResult = await buildCommentList(commentListIdx, 'changeList', autoSwitch);
             if (buildCommentListResult.error)
                 handleError(buildCommentListResult.error, (getCommentListInfo(commentListIdx).type === 'static'), 'changeList', (_selUr.urId > 0));
             if (!autoSwitch && !refresh)
@@ -1985,7 +1985,7 @@
         });
     }
 
-    async function buildCommentList(commentListIdx, phase) {
+    async function buildCommentList(commentListIdx, phase, autoSwitch) {
         commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
         let commentListInfo = getCommentListInfo(commentListIdx);
         logDebug('Building comment list for: ' + commentListInfo.name);
@@ -1999,7 +1999,9 @@
                 _commentLists.forEach((cList) => {
                     if (cList.status !== 'disabled') {
                         if (cList.idx === commentListIdx)
-                            $selList.append($('<option>', {value:cList.idx, selected:true}).text(cList.name));
+                            $selList.append($('<option>', {value:cList.idx, selected:true}).text(() => {
+                                return (!autoSwitch) ? cList.name : cList.name + ' (' + I18n.t('urce.common.AutoSwitched') + ')';
+                            }));
                         else
                             $selList.append($('<option>', {value:cList.idx}).text(cList.name));
                     }
@@ -2079,11 +2081,11 @@
             mutations.forEach((mutation) => {
                 if ($(mutation.target).is('#panel-container') && (mutation.type === 'childList') && (mutation.addedNodes.length > 0) && (mutation.addedNodes[0].className.indexOf('show') > -1) && (newUrId > 0))
                     return handleUpdateRequestContainer(newUrId, 'UR panel mutation');
-                else if ($(mutation.target).is('#panel-container') && (mutation.type === 'childList') && (mutation.removedNodes.length > 0) && (mutation.removedNodes[0].className.indexOf('show') > -1))
+                else if (_selUr.handling && $(mutation.target).is('#panel-container') && (mutation.type === 'childList') && (mutation.removedNodes.length > 0) && (mutation.removedNodes[0].className.indexOf('show') > -1))
                     return handleAfterCloseUpdateContainer();
-                else if ($(mutation.target).hasClass('comment-list') && (mutation.type === 'childList') && (mutation.addedNodes.length > 0) && (newUrId > 0) && (newUrId === _selUr.urId))
+                else if (_selUr.handling && $(mutation.target).hasClass('comment-list') && (mutation.type === 'childList') && (mutation.addedNodes.length > 0) && (newUrId > 0) && (newUrId === _selUr.urId))
                     handleAfterCommentMutation(newUrId);
-                else if ((mutation.type === 'attributes') && (mutation.attributeName === 'data-state')) {
+                else if (_selUr.handling && (mutation.type === 'attributes') && (mutation.attributeName === 'data-state')) {
                     logDebug('Handling UR status change mutation.');
                     if (mutation.target.attributes['data-state'].nodeValue === 'open')
                         _selUr.newStatus = 'open';
@@ -3218,7 +3220,7 @@
         let errorText = loadTranslationsError.error || initCommentListsError.error || initAutoSwitchArraysError.error || undefined;
         if (!errorText) {
             maskBoxes(I18n.t('urce.prompts.WaitingOnInit') + '.<br>' + I18n.t('urce.common.PleaseWait') + '.', false, 'init', ($('#panel-container').children().length > 0));
-            let buildCommentListResult = await buildCommentList(undefined, 'init');
+            let buildCommentListResult = await buildCommentList(undefined, 'init', false);
             if (buildCommentListResult.error)
                 handleError(buildCommentListResult.error, buildCommentListResult.static, buildCommentListResult.phase, (urIdInUrl > 0));
             else if (!urIdInUrl)
@@ -3335,6 +3337,7 @@
                         },
                         "common": {
                             "All": "All",
+                            "AutoSwitched":"auto switched",
                             "CommentList": "Comment List",
                             "CurrentCommentListTitle":"You can change the currently loaded comment list using this drop down.\nChanging this drop down will not be saved as a setting and will not change your default list (located on the settings tab).\nThis is only to allow you to quickly switch between lists.",
                             "Custom": "Custom",
