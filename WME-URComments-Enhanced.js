@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.02.15.01
+// @version     2019.02.15.02
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -3637,7 +3637,7 @@
                             "WazeAutomatic": "Waze automatic"
                         },
                         "prompts": {
-                            "CommentTooLong":"Appending another comment to the current text will cause the comment to be longer than 2000 characters, which is too long. URC-E did not append the selected comment and left the new-comment box with the same text it had.",
+                            "CommentTooLong": "Appending another comment to the current text will cause the comment to be longer than 2000 characters, which is too long. URC-E did not append the selected comment and left the new-comment box with the same text it had.",
                             "NoCommentBox": "URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.",
                             "CommentInsertTimedOut": "URC-E timed out waiting for the comment text box to become available.",
                             "ReminderMessageAuto": "URC-E: Automatically sending reminder message to UR:",
@@ -3646,6 +3646,12 @@
                             "TimedOutWaitingStatic": "Timed out waiting for the static list to become available. Is it enabled?",
                             "UpdateRequired": "You are using an older version of URC-E, which has caused an error. Please update to at least version",
                             "WaitingOnInit": "Waiting for URC-E to fully initialize"
+                        },
+                        "time": {
+                            "Afternoon": "afternoon",
+                            "Evening": "evening",
+                            "Morning": "morning",
+                            "Night": "night"
                         }
                     }
                 };
