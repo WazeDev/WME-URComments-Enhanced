@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.02.18.01
+// @version     2019.02.18.02
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'NEW: Added text replacement options in comment lists for drive date and time.', 'ENHANCED: Auto set new UR comment split into two settings (with and without description).', 'ENHANCED: Title differentiation for beta script.', 'BUGFIX: Entering event mode and back to default caused duplication of tab icon and random marker issues.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'NEW: Added shortcuts for text insertion to UR Panel.', 'NEW: Added "expand all" and "collapse all" links to settings and comment list.', 'ENHANCED: With new shortcuts, reliance on panel swap for segment name insertion is removed.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -576,6 +576,15 @@
             if (_settings.autoCenterOnUr)
                 autoCenterOnUr(urId);
         }
+        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend(
+            $('<div>', {style:'text-align:center; padding-bottom:8px;'}).append(
+                $('<i>', {class:'fa fa-road', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertSelSegsTitle')}).off().on('click', {shortcut:'selSegs'}, handleClickedShortcut),
+                $('<i>', {class:'fa fa-clock-o', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertTimeTitle')}).off().on('click', {shortcut:'time'}, handleClickedShortcut),
+                $('<i>', {class:'fa fa-sun-o', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDayOfWeekTitle')}).off().on('click', {shortcut:'dayOfWeek'}, handleClickedShortcut),
+                $('<i>', {class:'fa fa-calendar', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDateTitle')}).off().on('click', {shortcut:'date'}, handleClickedShortcut),
+                $('<i>', {class:'fa fa-paragraph', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDescriptionTitle')}).off().on('click', {shortcut:'description'}, handleClickedShortcut)
+            )
+        );
     }
 
     async function handleClickedComment(commentNum, doubleClick) {
@@ -599,6 +608,10 @@
                 logError(error.text);
             else
                 showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
+            return;
+        }
+        if ((_commentList[commentNum].comment.indexOf('$SELSEGS$') > -1) || (_commentList[commentNum].comment.indexOf('$SELSEGS') > -1)) {
+            showAlertBox('fa-road', I18n.t('urce.prompts.SelSegsFoundHeader'), I18n.t('urce.prompts.SelSegsFound'), false, 'OK', '', null, null);
         }
     }
 
@@ -756,13 +769,13 @@
                 }
             }
         }
-        if (text.indexOf('$CLOSED_NOR_EMAIL_TAG$') > 0) {
+        if (text.indexOf('$CLOSED_NOR_EMAIL_TAG$') > -1) {
             if ((_settings.tagEmail.length > 0) && (W.model.loginManager.user.userName.length > 0))
                 text = text.replace('$CLOSED_NOR_EMAIL_TAG$', 'Since this report is closed, please send further correspondence to ' + _settings.tagEmail + ' and include ' + W.model.loginManager.user.userName + ' in the subject line.');
             else
                 text = text.replace('$CLOSED_NOR_EMAIL_TAG$', '');
         }
-        if (text.indexOf('$URD$') > 0) {
+        if (text.indexOf('$URD$') > -1) {
             if ($('#update-request-panel .solution p').length > 0)
                 text = text.replace('$URD$', $('#update-request.panel .solution p').text()).replace(/\n+/gmi, '');
             else if ($('.description .content').length > 0)
@@ -770,7 +783,7 @@
             else
                 text = text.replace(' "$URD$"', '');
         }
-        if (text.indexOf('$URD') > 0) {
+        else if (text.indexOf('$URD') > -1) {
             if ($('#update-request-panel .solution p').length > 0)
                 text = text.replace('$URD', $('#update-request.panel .solution p').text()).replace(/\n+/gmi, '');
             else if ($('.description .content').length > 0)
@@ -778,55 +791,61 @@
             else
                 text = text.replace(' "$URD"', '');
         }
-        if (text.indexOf('$SELSEGS$') > 0) {
-            let selFeatures = W.selectionManager.getSelectedFeatures();
-            let streetName;
-            if (selFeatures.length > 0 && selFeatures.length < 3) {
-                for (let idx = 0; idx < selFeatures.length; idx++) {
-                    if (selFeatures[idx].model.type === 'segment') {
-                        if (selFeatures.length === 1)
-                            streetName = W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
-                        else {
-                            if (idx === 0)
-                                streetName = 'the intersection of ' + W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name + ' and ';
-                            else
-                                streetName += W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
-                        }
-                    }
-                }
-                if (streetName && streetName.length > 0)
-                    text = text.replace('$SELSEGS$', streetName);
-                else
-                    text = text.replace('$SELSEGS$', '');
-            }
-            else
-                text = text.replace('$SELSEGS$', '');
-        }
-        if (text.indexOf('$SELSEGS') > 0) {
-            let selFeatures = W.selectionManager.getSelectedFeatures();
-            let streetName;
-            if (selFeatures.length > 0 && selFeatures.length < 3) {
-                for (let idx = 0; idx < selFeatures.length; idx++) {
-                    if (selFeatures[idx].model.type === 'segment') {
-                        if (selFeatures.length === 1)
-                            streetName = W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
-                        else {
-                            if (idx === 0)
-                                streetName = 'the intersection of ' + W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name + ' and ';
-                            else
-                                streetName += W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
-                        }
-                    }
-                }
-                if (streetName && streetName.length > 0)
-                    text = text.replace('$SELSEGS', streetName);
-                else
-                    text = text.replace('$SELSEGS', '');
-            }
-            else
-                text = text.replace('$SELSEGS', '');
-        }
         return text.replace(/\\[r|n]+/gmi, '\n');
+    }
+
+    function handleClickedShortcut(event) {
+        let cursorPos = $('.new-comment-text')[0].selectionStart;
+        let currVal = $('.new-comment-text').val();
+        let replaceText;
+        if (event.data.shortcut === 'selSegs') {
+            if (currVal.indexOf('$SELSEGS$') > -1)
+                replaceText = '$SELSEGS$';
+            else if (currVal.indexOf('$SELSEGS') > -1)
+                replaceText = '$SELSEGS';
+            else
+                replaceText = '_INSERT_';
+        }
+        else if (event.data.shortcut === 'time')
+            replaceText = '$DRIVEDATE_TIME$';
+        else if (event.data.shortcut === 'day')
+            replaceText = '$DRIVEDATE_DAY_OF_WEEK$';
+        else if (event.data.shortcut === 'date')
+            replaceText = '$DRIVEDATE_DATE$';
+        else if (event.data.shortcut === 'description')
+            replaceText = '$URD$';
+        else
+            return;
+        if ((replaceText === '$SELSEGS$') || (replaceText === '$SELSEGS') || (replaceText === '_INSERT_')) {
+            let selFeatures = W.selectionManager.getSelectedFeatures();
+            let streetName;
+            if (selFeatures.length > 0 && selFeatures.length < 3) {
+                for (let idx = 0; idx < selFeatures.length; idx++) {
+                    if (selFeatures[idx].model.type === 'segment') {
+                        if (selFeatures.length === 1)
+                            streetName = W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
+                        else {
+                            if (idx === 0)
+                                streetName = 'the intersection of ' + W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name + ' and ';
+                            else
+                                streetName += W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
+                        }
+                    }
+                }
+                if (streetName && streetName.length > 0) {
+                    if (replaceText === '_INSERT_')
+                        $('.new-comment-text').val([currVal.slice(0, cursorPos).trim(), streetName, currVal.slice(cursorPos).trim()].join(' ').trim()).change().keyup();
+                    else
+                        $('.new-comment-text').val(currVal.replace(replaceText, streetName)).change().keyup();
+                }
+                else
+                    showAlertBox('fa-road', I18n.t('urce.prompts.SelSegsInsertErrorHeader'), I18n.t('urce.prompts.SelSegsInsertError'), false, 'OK', '', null, null);
+            }
+            else
+                showAlertBox('fa-road', I18n.t('urce.prompts.SelSegsInsertErrorHeader'), I18n.t('urce.prompts.SelSegsInsertError'), false, 'OK', '', null, null);
+        }
+        else
+            $('.new-comment-text').val([currVal.slice(0, cursorPos).trim(), formatText(replaceText), currVal.slice(cursorPos).trim()].join(' ').trim()).change().keyup();
     }
 
     function autoPostReminderComment(urId, comment) {
@@ -865,7 +884,8 @@
                     else
                         commentOutput = formatText(comment);
                     $('.new-comment-text').val(commentOutput).change().keyup();
-                    $('.new-comment-text').blur();
+                    if ((commentOutput.indexOf('$SELSEGS$') === -1) && (commentOutput.indexOf('$SELSEGS') === -1))
+                        $('.new-comment-text').blur();
                     resolve();
                 }
             })(comment, 1);
@@ -2075,7 +2095,24 @@
                     saveSettingsToStorage();
                 }),
                 $('<label>', {for:'_cbenableAppendMode', title:I18n.t('urce.prefs.EnableAppendModeTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableAppendMode'))
-            )
+            ),
+            $('<div>', {id:'expandCollapseAll', class:'URCE-expandCollapseAll'}).append(
+                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Expand All').off().on('click', function() {
+                    let $legends = $('legend[id^="urceComments-for"');
+                    for (let idx = 0; idx < $legends.length; idx++) {
+                        if ($legends[idx].nextSibling.className.indexOf('collapse') > -1)
+                            $($legends[idx]).click();
+                    }
+                }),
+                $('<div>', {style:'display:inline;'}).text(' : '),
+                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Collapse All').off().on('click', function() {
+                    let $legends = $('legend[id^="urceComments-for"');
+                    for (let idx = 0; idx < $legends.length; idx++) {
+                        if ($legends[idx].nextSibling.className.indexOf('collapse') === -1)
+                            $($legends[idx]).click();
+                    }
+                })
+            ),
         );
         _commentList = [];
         try {
@@ -2319,7 +2356,9 @@
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080;  display:inline-block; position:relative; padding-left:16px; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:11px; text-align:right; }' +
           // Common
-          '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:12px; margin-right: 4px; }' +
+          '#sidepanel-urc-e .URCE-expandCollapseAll { font-size:10px; margin-bottom:-8px; text-align:right; }' +
+          '#sidepanel-urc-e .URCE-expandCollapseAllItem { display:inline; cursor:pointer; }' +
+          '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:12px; margin-right:4px; }' +
           '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; }' +
           '#sidepanel-urc-e .URCE-field.urStyle { border:unset !important; padding:unset !important; border-radius:unset !important; }' +
           '#sidepanel-urc-e .URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }' +
@@ -2372,6 +2411,23 @@
         logDebug('Initializing Settings tab.');
         let urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '';
         $('#panel-urce-settings').append(
+            $('<div>', {id:'expandCollapseAll', class:'URCE-expandCollapseAll'}).append(
+                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Expand All').off().on('click', function() {
+                    let $legends = $('legend[id^="urce-prefs-legend"');
+                    for (let idx = 0; idx < $legends.length; idx++) {
+                        if ($legends[idx].nextSibling.className.indexOf('collapse') > -1)
+                            $($legends[idx]).click();
+                    }
+                }),
+                $('<div>', {style:'display:inline;'}).text(' : '),
+                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Collapse All').off().on('click', function() {
+                    let $legends = $('legend[id^="urce-prefs-legend"');
+                    for (let idx = 0; idx < $legends.length; idx++) {
+                        if ($legends[idx].nextSibling.className.indexOf('collapse') === -1)
+                            $($legends[idx]).click();
+                    }
+                })
+            ),
             // Comment List
             $('<fieldset>', {id:'urce-prefs-fieldset-commentList', class:`URCE-field${urStyle}`}).append(
                 $('<legend>', {id:'urce-prefs-legend-commentList', class:`URCE-legend${urStyle}`}).append(
@@ -3631,6 +3687,13 @@
                             "Roadworks": "[ROADWORKS]",
                             "Wslm": "[WSLM]"
                         },
+                        "urPanel": {
+                            "InsertDateTitle": "Click this icon to insert the drive date into the new comment box at the cursor position.",
+                            "InsertDayOfWeekTitle": "Click this icon to insert the drive date day of the week into the new comment box at the cursor position.",
+                            "InsertDescriptionTitle": "Click this icon to insert the UR description into the new comment box at the cursor position.",
+                            "InsertSelSegsTitle": "Click this icon to either replace '$SELSEGS$' (or '$SELSEGS)' with the name of the currently selected segment(s), or\nit will insert the name of the currently selected segment(s) into the comment box at the cursor position.",
+                            "InsertTimeTitle": "Click this icon to insert the drive date time of day into the new comment box at the cursor position."
+                        },
                         "urStatus": {
                             "Closed": "Closed",
                             "NotIdentified": "Not identified"
@@ -3644,6 +3707,10 @@
                             "NoCommentBox": "URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.",
                             "CommentInsertTimedOut": "URC-E timed out waiting for the comment text box to become available.",
                             "ReminderMessageAuto": "URC-E: Automatically sending reminder message to UR:",
+                            "SelSegsFound": "The selected comment contains '$SELSEGS$'.<br><br>In order to replace this text with the road name(s), please select one or two segments and click the <i class=\"fa fa-road\" aria-hidden=\"true\"></i> button in the UR panel.",
+                            "SelSegsFoundHeader": "$SELSEGS$ Found in Comment",
+                            "SelSegsInsertError": "In order to use the <i class=\"fa fa-road\" aria-hidden=\"true\"></i> button in the UR Panel, you must first select one or two segments.",
+                            "SelSegsInsertErrorHeader": "Error Inserting Segment Names",
                             "CustomListUsed": "URC-E has loaded your \"Custom\" comment list. However, only the comments themselves have been loaded. The settings text and tooltips were not loaded. Further, this functionality is deprecated and may be discontinued at any time. An alternative solution may or may not be offered at that time.",
                             "SwitchingCommentLists": "Switching comment lists",
                             "TimedOutWaitingStatic": "Timed out waiting for the static list to become available. Is it enabled?",
