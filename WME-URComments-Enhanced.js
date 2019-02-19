@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.02.18.02
+// @version     2019.02.19.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'NEW: Added shortcuts for text insertion to UR Panel.', 'NEW: Added "expand all" and "collapse all" links to settings and comment list.', 'ENHANCED: With new shortcuts, reliance on panel swap for segment name insertion is removed.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'NEW: Added shortcuts for text insertion to UR Panel.', 'NEW: Added "expand all" and "collapse all" links to settings and comment list.', 'ENHANCED: With new shortcuts, reliance on panel swap for segment name insertion is removed.', 'ENHANCED: Better whitespace handling for shortcut insertion.', 'BUGFIX: Day of week and description insertion.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -576,15 +576,17 @@
             if (_settings.autoCenterOnUr)
                 autoCenterOnUr(urId);
         }
-        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend(
-            $('<div>', {style:'text-align:center; padding-bottom:8px;'}).append(
-                $('<i>', {class:'fa fa-road', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertSelSegsTitle')}).off().on('click', {shortcut:'selSegs'}, handleClickedShortcut),
-                $('<i>', {class:'fa fa-clock-o', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertTimeTitle')}).off().on('click', {shortcut:'time'}, handleClickedShortcut),
-                $('<i>', {class:'fa fa-sun-o', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDayOfWeekTitle')}).off().on('click', {shortcut:'dayOfWeek'}, handleClickedShortcut),
-                $('<i>', {class:'fa fa-calendar', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDateTitle')}).off().on('click', {shortcut:'date'}, handleClickedShortcut),
-                $('<i>', {class:'fa fa-paragraph', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDescriptionTitle')}).off().on('click', {shortcut:'description'}, handleClickedShortcut)
-            )
-        );
+        if ($('#urceShortcuts').length === 0) {
+            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend(
+                $('<div>', {id:'urceShortcuts', style:'text-align:center; padding-bottom:8px;'}).append(
+                    $('<i>', {class:'fa fa-road', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertSelSegsTitle')}).off().on('click', {shortcut:'selSegs'}, handleClickedShortcut),
+                    $('<i>', {class:'fa fa-clock-o', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertTimeTitle')}).off().on('click', {shortcut:'time'}, handleClickedShortcut),
+                    $('<i>', {class:'fa fa-sun-o', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDayOfWeekTitle')}).off().on('click', {shortcut:'dayOfWeek'}, handleClickedShortcut),
+                    $('<i>', {class:'fa fa-calendar', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDateTitle')}).off().on('click', {shortcut:'date'}, handleClickedShortcut),
+                    $('<i>', {class:'fa fa-paragraph', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDescriptionTitle')}).off().on('click', {shortcut:'description'}, handleClickedShortcut)
+                )
+            );
+        }
     }
 
     async function handleClickedComment(commentNum, doubleClick) {
@@ -719,8 +721,8 @@
         return W.map.mapState.mapLocation.zoom;
     }
 
-    function formatText(text) {
-        if (_selUr.urId > -1) {
+    function formatText(text, replaceVars) {
+        if (replaceVars && (_selUr.urId > -1)) {
             if (text.search(/(\$DRIVEDATE_DAY_OF_WEEK\$|\$DRIVEDATE_DATE\$|\$DRIVEDATE_DAYS_AGO\$|\$DRIVEDATE_TIME\$|\$DRIVEDATE_TIME_CASUAL\$)/gm) > -1) {
                 if (W.model.mapUpdateRequests.objects[_selUr.urId]) {
                     if (text.indexOf('$DRIVEDATE_DAY_OF_WEEK$') > -1) {
@@ -769,27 +771,27 @@
                 }
             }
         }
-        if (text.indexOf('$CLOSED_NOR_EMAIL_TAG$') > -1) {
+        if (replaceVars && text.indexOf('$CLOSED_NOR_EMAIL_TAG$') > -1) {
             if ((_settings.tagEmail.length > 0) && (W.model.loginManager.user.userName.length > 0))
                 text = text.replace('$CLOSED_NOR_EMAIL_TAG$', 'Since this report is closed, please send further correspondence to ' + _settings.tagEmail + ' and include ' + W.model.loginManager.user.userName + ' in the subject line.');
             else
                 text = text.replace('$CLOSED_NOR_EMAIL_TAG$', '');
         }
-        if (text.indexOf('$URD$') > -1) {
+        if (replaceVars && (text.indexOf('$URD$') > -1)) {
             if ($('#update-request-panel .solution p').length > 0)
                 text = text.replace('$URD$', $('#update-request.panel .solution p').text()).replace(/\n+/gmi, '');
             else if ($('.description .content').length > 0)
                 text = text.replace('$URD$', $('.description .content').text()).replace(/\n+/gmi, '').replace('$USERNAME$', W.model.loginManager.user.userName);
             else
-                text = text.replace(' "$URD$"', '');
+                text = text.replace('$URD$', '');
         }
-        else if (text.indexOf('$URD') > -1) {
+        else if (replaceVars && (text.indexOf('$URD') > -1)) {
             if ($('#update-request-panel .solution p').length > 0)
-                text = text.replace('$URD', $('#update-request.panel .solution p').text()).replace(/\n+/gmi, '');
+                text = text.replace(/("?\$URD"?)+/gmi, $('#update-request.panel .solution p').text()).replace(/\n+/gmi, '');
             else if ($('.description .content').length > 0)
-                text = text.replace('$URD', $('.description .content').text()).replace(/\n+/gmi, '').replace('$USERNAME', W.model.loginManager.user.userName);
+                text = text.replace(/("?\$URD"?)+/gmi, $('.description .content').text()).replace(/\n+/gmi, '').replace('$USERNAME', W.model.loginManager.user.userName);
             else
-                text = text.replace(' "$URD"', '');
+                text = text.replace(/("?\$URD"?)+/gmi, '');
         }
         return text.replace(/\\[r|n]+/gmi, '\n');
     }
@@ -797,6 +799,8 @@
     function handleClickedShortcut(event) {
         let cursorPos = $('.new-comment-text')[0].selectionStart;
         let currVal = $('.new-comment-text').val();
+        let newVal = currVal.slice(0, cursorPos);
+        let outputText;
         let replaceText;
         if (event.data.shortcut === 'selSegs') {
             if (currVal.indexOf('$SELSEGS$') > -1)
@@ -808,7 +812,7 @@
         }
         else if (event.data.shortcut === 'time')
             replaceText = '$DRIVEDATE_TIME$';
-        else if (event.data.shortcut === 'day')
+        else if (event.data.shortcut === 'dayOfWeek')
             replaceText = '$DRIVEDATE_DAY_OF_WEEK$';
         else if (event.data.shortcut === 'date')
             replaceText = '$DRIVEDATE_DATE$';
@@ -834,7 +838,7 @@
                 }
                 if (streetName && streetName.length > 0) {
                     if (replaceText === '_INSERT_')
-                        $('.new-comment-text').val([currVal.slice(0, cursorPos).trim(), streetName, currVal.slice(cursorPos).trim()].join(' ').trim()).change().keyup();
+                        outputText = streetName;
                     else
                         $('.new-comment-text').val(currVal.replace(replaceText, streetName)).change().keyup();
                 }
@@ -845,7 +849,18 @@
                 showAlertBox('fa-road', I18n.t('urce.prompts.SelSegsInsertErrorHeader'), I18n.t('urce.prompts.SelSegsInsertError'), false, 'OK', '', null, null);
         }
         else
-            $('.new-comment-text').val([currVal.slice(0, cursorPos).trim(), formatText(replaceText), currVal.slice(cursorPos).trim()].join(' ').trim()).change().keyup();
+            outputText = formatText(replaceText, true);
+        if (outputText) {
+            if ((newVal.length > 0) && (newVal.slice(newVal.length-1).search(/\s/) === -1))
+                newVal += ' ';
+            newVal += outputText;
+            if (currVal.slice(cursorPos).length > 0) {
+                if ((currVal.substr(cursorPos, 1).search(/\s/) === -1))
+                    newVal += ' ';
+                newVal += currVal.slice(cursorPos);
+            }
+            $('.new-comment-text').val(newVal).change().keyup();
+        }
     }
 
     function autoPostReminderComment(urId, comment) {
@@ -875,14 +890,14 @@
                     setTimeout(retry, 100, comment, ++tries);
                 else {
                     if (_settings.enableAppendMode && $('.new-comment-text').val() !== '' && !doubleClick) {
-                        commentOutput = $('.new-comment-text').val() + formatText('\n\n' + comment);
+                        commentOutput = $('.new-comment-text').val() + formatText('\n\n' + comment, true);
                         if (commentOutput.length > 2000) {
                             showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentTooLong'), false, 'OK', '', null, null);
                             return reject({type:'tooLong', text:I18n.t('urce.prompts.CommentTooLong')});
                         }
                     }
                     else
-                        commentOutput = formatText(comment);
+                        commentOutput = formatText(comment, true);
                     $('.new-comment-text').val(commentOutput).change().keyup();
                     if ((commentOutput.indexOf('$SELSEGS$') === -1) && (commentOutput.indexOf('$SELSEGS') === -1))
                         $('.new-comment-text').blur();
@@ -1067,7 +1082,7 @@
             restackMarkers();
     }
 
-    async function markerMouseOver(event) {
+    async function markerMouseOver() {
         if (_mouseIsDown) return;
         let popupX, popupY;
         let markerType = getMarkerType(this);
@@ -1077,8 +1092,6 @@
             if ((markerId > 0) && ((_mousedOverMarkerId !== markerId) || ($('#urceDiv').css('visibility') === 'hidden'))) {
                 _mousedOverMarkerId = markerId;
                 let targetTab = '_urceTab_' + Math.round(Math.random() * 1000000);
-                let mouseX = event.pageX - $('#map')[0].getBoundingClientRect().left;
-                let mouseY = event.pageY - $('#map')[0].getBoundingClientRect().top;
                 let popupXOffset = parsePxString($('#sidebar').css('width'));
                 let unstackedX = parsePxString(W.map.updateRequestLayer.markers[_mousedOverMarkerId].icon.imageDiv.style.left);
                 let unstackedY = parsePxString(W.map.updateRequestLayer.markers[_mousedOverMarkerId].icon.imageDiv.style.top);
@@ -1546,7 +1559,7 @@
                         if ((_settings.reminderDays !== 0) && (urceData.lastCommentDaysOld > (_settings.reminderDays - 1))) {
                             if ((urceData.lastCommentBy > 1) && (_wmeUserId === urceData.lastCommentBy) && !mapUrsObj[idx].attributes.reminderSent && _settings.autoSendReminders) {
                                 try {
-                                    await autoPostReminderComment(urIds[idx], formatText(_commentList[_defaultComments.dr.commentNum].comment));
+                                    await autoPostReminderComment(urIds[idx], formatText(_commentList[_defaultComments.dr.commentNum].comment, true));
                                     if (_settings.unfollowAfterSend)
                                         unfollowUrAfterSend(urIds[idx]);
                                     urceData.waiting = true;
@@ -2025,12 +2038,12 @@
                                 $(`#${groupDivId}_body`).append(
                                     $('<div>', {class:`URCE-divComment hover expand ${linkClass}`, style:'position:relative;'}).append(
                                         $('<div>', {style:'width:225px; display:inline-flex;'}).append(
-                                            $('<a>', {class:'URCE-Comments ' + linkClass + ' URCE-Comments', id:'urce-cid-'+commentId, title:formatText(rowObj.comment)}).text(rowObj.title).click(function() {
+                                            $('<a>', {class:'URCE-Comments ' + linkClass + ' URCE-Comments', id:'urce-cid-'+commentId, title:formatText(rowObj.comment, false)}).text(rowObj.title).click(function() {
                                                 handleClickedComment(parseInt(this.id.replace(/urce-cid-/, '')), false);
                                             })
                                         )
                                     ).append(
-                                        $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + ':\n' + formatText(rowObj.comment)}).append(
+                                        $('<div>', {class:'URCE-divDoubleClick', id:divDoubleClickId, style:divDoubleClickStyle, title:I18n.t('urce.common.DoubleClickTitle') + ':\n' + formatText(rowObj.comment, false)}).append(
                                             $('<img>', {src:DOUBLE_CLICK_ICON, class:'URCE-doubleClickIcon', id:'urce-img-cid-'+commentId}).dblclick(function() {
                                                 handleClickedComment(parseInt(this.id.replace(/urce-img-cid-/, '')), true);
                                             })
@@ -2097,7 +2110,7 @@
                 $('<label>', {for:'_cbenableAppendMode', title:I18n.t('urce.prefs.EnableAppendModeTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableAppendMode'))
             ),
             $('<div>', {id:'expandCollapseAll', class:'URCE-expandCollapseAll'}).append(
-                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Expand All').off().on('click', function() {
+                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Expand All').off().on('click', () => {
                     let $legends = $('legend[id^="urceComments-for"');
                     for (let idx = 0; idx < $legends.length; idx++) {
                         if ($legends[idx].nextSibling.className.indexOf('collapse') > -1)
@@ -2105,7 +2118,7 @@
                     }
                 }),
                 $('<div>', {style:'display:inline;'}).text(' : '),
-                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Collapse All').off().on('click', function() {
+                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Collapse All').off().on('click', () => {
                     let $legends = $('legend[id^="urceComments-for"');
                     for (let idx = 0; idx < $legends.length; idx++) {
                         if ($legends[idx].nextSibling.className.indexOf('collapse') === -1)
@@ -2412,7 +2425,7 @@
         let urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '';
         $('#panel-urce-settings').append(
             $('<div>', {id:'expandCollapseAll', class:'URCE-expandCollapseAll'}).append(
-                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Expand All').off().on('click', function() {
+                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Expand All').off().on('click', () => {
                     let $legends = $('legend[id^="urce-prefs-legend"');
                     for (let idx = 0; idx < $legends.length; idx++) {
                         if ($legends[idx].nextSibling.className.indexOf('collapse') > -1)
@@ -2420,7 +2433,7 @@
                     }
                 }),
                 $('<div>', {style:'display:inline;'}).text(' : '),
-                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Collapse All').off().on('click', function() {
+                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Collapse All').off().on('click', () => {
                     let $legends = $('legend[id^="urce-prefs-legend"');
                     for (let idx = 0; idx < $legends.length; idx++) {
                         if ($legends[idx].nextSibling.className.indexOf('collapse') === -1)
@@ -3031,11 +3044,11 @@
                     $($(this).siblings()[0]).toggleClass('collapse');
                 }),
                 $('<div>', {class:'URCE-controls URCE-textFirst'}).append(
-                    $('<div>', {title:formatText(I18n.t('urce.prefs.ReminderDaysTitle')), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.ReminderDays') + ': ').append(
-                        $('<input>', {type:'number', id:'_numreminderDays', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'common', min:'0', max:'9999', step:'1', value:_settings.reminderDays, title:formatText(I18n.t('urce.prefs.ReminderDaysTitle'))})
+                    $('<div>', {title:formatText(I18n.t('urce.prefs.ReminderDaysTitle'), false), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.ReminderDays') + ': ').append(
+                        $('<input>', {type:'number', id:'_numreminderDays', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'common', min:'0', max:'9999', step:'1', value:_settings.reminderDays, title:formatText(I18n.t('urce.prefs.ReminderDaysTitle'), false)})
                     ),
-                    $('<div>', {title:formatText(I18n.t('urce.prefs.CloseDaysTitle')), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.CloseDays') + ': ').append(
-                        $('<input>', {type:'number', id:'_numcloseDays', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'common', min:'1', max:'9999', step:'1', value:_settings.closeDays, title:formatText(I18n.t('urce.prefs.CloseDaysTitle'))})
+                    $('<div>', {title:formatText(I18n.t('urce.prefs.CloseDaysTitle'), false), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.CloseDays') + ': ').append(
+                        $('<input>', {type:'number', id:'_numcloseDays', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'common', min:'1', max:'9999', step:'1', value:_settings.closeDays, title:formatText(I18n.t('urce.prefs.CloseDaysTitle'), false)})
                     )
                 )
             )
