@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.02.19.02
+// @version     2019.02.20.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -788,11 +788,11 @@
         }
         else if (replaceVars && (text.indexOf('$URD') > -1)) {
             if ($('#update-request-panel .solution p').length > 0)
-                text = text.replace(/("?\$URD"?)+/gmi, $('#update-request.panel .solution p').text()).replace(/\n+/gmi, '');
+                text = text.replace(/(\$URD)+/gmi, $('#update-request.panel .solution p').text()).replace(/\n+/gmi, '');
             else if ($('.description .content').length > 0)
-                text = text.replace(/("?\$URD"?)+/gmi, $('.description .content').text()).replace(/\n+/gmi, '').replace('$USERNAME', W.model.loginManager.user.userName);
+                text = text.replace(/(\$URD)+/gmi, $('.description .content').text()).replace(/\n+/gmi, '').replace('$USERNAME', W.model.loginManager.user.userName);
             else
-                text = text.replace(/("?\$URD"?)+/gmi, '');
+                text = text.replace(/(\$URD)+/gmi, '');
         }
         return text.replace(/\\[r|n]+/gmi, '\n');
     }
