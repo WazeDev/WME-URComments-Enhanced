@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.02.20.01
+// @version     2019.02.21.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'NEW: Added shortcuts for text insertion to UR Panel.', 'NEW: Added "expand all" and "collapse all" links to settings and comment list.', 'NEW: Need translation banner for languages (locales) without a translation.', 'NEW: Switched to using WazeWrap for WME event hooks.', 'ENHANCED: With new shortcuts, reliance on panel swap for segment name insertion is removed.', 'ENHANCED: Better whitespace handling for shortcut insertion.', 'BUGFIX: Day of week and description insertion.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'NEW: Added shortcuts for text insertion to UR Panel.', 'NEW: Added "expand all" and "collapse all" links to settings and comment list.', 'NEW: Need translation banner for languages (locales) without a translation.', 'NEW: Switched to using WazeWrap for WME event hooks.', 'ENHANCED: With new shortcuts, dependency on panel swap for segment name insertion is removed.', 'BUGFIX: Auto set comment issue when UR created with LiveMap.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -538,8 +538,8 @@
                 autoZoomIn(urId);
             let commentNum = Object.values(_defaultComments).find((defaultComment) => { return defaultComment.urNum === W.model.mapUpdateRequests.objects[urId].attributes.type }).commentNum;
             if (_selUr.urOpen && commentNum) {
-                if ((_settings.autoSetNewUrComment && (W.model.mapUpdateRequests.objects[urId].attributes.description === null)) ||
-                    (_settings.autoSetNewUrCommentWithDescription && (W.model.mapUpdateRequests.objects[urId].attributes.description !== null))) {
+                if ((_settings.autoSetNewUrComment && !W.model.mapUpdateRequests.objects[urId].attributes.description) ||
+                    (_settings.autoSetNewUrCommentWithDescription && W.model.mapUpdateRequests.objects[urId].attributes.description)) {
                     if (_settings.autoClickOpenSolvedNi)
                         autoClickOpenSolvedNi(commentNum);
                     try {
@@ -580,11 +580,19 @@
         if ($('#urceShortcuts').length === 0) {
             $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend(
                 $('<div>', {id:'urceShortcuts', style:'text-align:center; padding-bottom:8px;'}).append(
-                    $('<i>', {class:'fa fa-road', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertSelSegsTitle')}).off().on('click', {shortcut:'selSegs'}, handleClickedShortcut),
-                    $('<i>', {class:'fa fa-clock-o', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertTimeTitle')}).off().on('click', {shortcut:'time'}, handleClickedShortcut),
-                    $('<i>', {class:'fa fa-sun-o', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDayOfWeekTitle')}).off().on('click', {shortcut:'dayOfWeek'}, handleClickedShortcut),
-                    $('<i>', {class:'fa fa-calendar', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDateTitle')}).off().on('click', {shortcut:'date'}, handleClickedShortcut),
-                    $('<i>', {class:'fa fa-paragraph', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDescriptionTitle')}).off().on('click', {shortcut:'description'}, handleClickedShortcut)
+                    $('<div>').append(
+                        $('<i>', {class:'fa fa-road', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertSelSegsTitle')}).off().on('click', {shortcut:'selSegs'}, handleClickedShortcut),
+                        $('<i>', {class:'fa fa-clock-o', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertTimeTitle')}).off().on('click', {shortcut:'time'}, handleClickedShortcut),
+                        $('<i>', {class:'fa fa-sun-o', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDayOfWeekTitle')}).off().on('click', {shortcut:'dayOfWeek'}, handleClickedShortcut),
+                        $('<i>', {class:'fa fa-calendar-o', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDateTitle')}).off().on('click', {shortcut:'date'}, handleClickedShortcut),
+                        $('<i>', {class:'fa fa-paragraph', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDescriptionTitle')}).off().on('click', {shortcut:'description'}, handleClickedShortcut),
+                        $('<i>', {class:'fa fa-user-o', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertWazeUsernameTitle')}).off().on('click', {shortcut:'wazeUsername'}, handleClickedShortcut)
+                    ).append(
+                        $('<div>', {style:'padding-left:20px; display:inline-block;'}).append(
+                            $('<i>', {class:'fa fa-clock-o', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertTimeCasualTitle')}).off().on('click', {shortcut:'timeCasual'}, handleClickedShortcut),
+                            $('<i>', {class:'fa fa-calendar', 'aria-hidden':'true', style:'cursor:pointer; padding-left:4px;', title:I18n.t('urce.urPanel.InsertDateCasualTitle')}).off().on('click', {shortcut:'dateCasual'}, handleClickedShortcut)
+                        )
+                    )
                 )
             );
         }
@@ -724,7 +732,7 @@
 
     function formatText(text, replaceVars) {
         if (replaceVars && (_selUr.urId > -1)) {
-            if (text.search(/(\$DRIVEDATE_DAY_OF_WEEK\$|\$DRIVEDATE_DATE\$|\$DRIVEDATE_DAYS_AGO\$|\$DRIVEDATE_TIME\$|\$DRIVEDATE_TIME_CASUAL\$)/gm) > -1) {
+            if (text.search(/(\$DRIVEDATE_DAY_OF_WEEK\$|\$DRIVEDATE_DATE\$|\$DRIVEDATE_DATE_CASUAL\$|\$DRIVEDATE_DAYS_AGO\$|\$DRIVEDATE_TIME\$|\$DRIVEDATE_TIME_CASUAL\$)/gm) > -1) {
                 if (W.model.mapUpdateRequests.objects[_selUr.urId]) {
                     if (text.indexOf('$DRIVEDATE_DAY_OF_WEEK$') > -1) {
                         if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate > -1))
@@ -738,6 +746,12 @@
                         else
                             text = text.replace('$DRIVEDATE_DATE$', '');
                     }
+                    if (text.indexOf('$DRIVEDATE_DATE_CASUAL$') > -1) {
+                        if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate > -1))
+                            text = text.replace('$DRIVEDATE_DATE_CASUAL$', new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).toLocaleDateString(I18n.currentLocale(), {month:'long', day:'2-digit'}));
+                        else
+                            text = text.replace('$DRIVEDATE_DATE_CASUAL$', '');
+                    }
                     if (text.indexOf('$DRIVEDATE_DAYS_AGO$') > -1) {
                         if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.driveDaysOld > -1))
                             text = text.replace('$DRIVEDATE_DAYS_AGO$', parseDaysAgo(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.driveDaysOld));
@@ -746,7 +760,7 @@
                     }
                     if (text.indexOf('$DRIVEDATE_TIME$') > -1) {
                         if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate > -1))
-                            text = text.replace('$DRIVEDATE_TIME$', new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).toLocaleTimeString(I18n.currentLocale(), {hour:'2-digit', minute:'2-digit', second:'numeric', timeZoneName:'short'}));
+                            text = text.replace('$DRIVEDATE_TIME$', new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).toLocaleTimeString(I18n.currentLocale(), {hour:'2-digit', minute:'2-digit', timeZoneName:'short'}));
                         else
                             text = text.replace('$DRIVEDATE_TIME$', '');
                     }
@@ -778,21 +792,17 @@
             else
                 text = text.replace('$CLOSED_NOR_EMAIL_TAG$', '');
         }
-        if (replaceVars && (text.indexOf('$URD$') > -1)) {
-            if ($('#update-request-panel .solution p').length > 0)
-                text = text.replace('$URD$', $('#update-request.panel .solution p').text()).replace(/\n+/gmi, '');
-            else if ($('.description .content').length > 0)
-                text = text.replace('$URD$', $('.description .content').text()).replace(/\n+/gmi, '').replace('$USERNAME$', W.model.loginManager.user.userName);
+        if (replaceVars && (text.indexOf('$USERNAME') > -1)) {
+            if (W.model.loginManager.user.userName !== null)
+                text = text.replace(/(\$USERNAME\$?)+/gmi, W.model.loginManager.user.userName);
             else
-                text = text.replace('$URD$', '');
+                text = text.replace(/(\$USERNAME\$?)+/gmi, '');
         }
-        else if (replaceVars && (text.indexOf('$URD') > -1)) {
-            if ($('#update-request-panel .solution p').length > 0)
-                text = text.replace(/(\$URD)+/gmi, $('#update-request.panel .solution p').text()).replace(/\n+/gmi, '');
-            else if ($('.description .content').length > 0)
-                text = text.replace(/(\$URD)+/gmi, $('.description .content').text()).replace(/\n+/gmi, '').replace('$USERNAME', W.model.loginManager.user.userName);
+        if (replaceVars && (text.indexOf('$URD') > -1)) {
+            if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.description)
+                text = text.replace(/("?\$URD\$?"?)+/gmi, '"' + W.model.mapUpdateRequests.objects[_selUr.urId].attributes.description + '"').replace(/\n+/gmi, '');
             else
-                text = text.replace(/(\$URD)+/gmi, '');
+                text = text.replace(/("?\$URD\$?"?)+/gmi, '');
         }
         return text.replace(/\\[r|n]+/gmi, '\n');
     }
@@ -819,6 +829,12 @@
             replaceText = '$DRIVEDATE_DATE$';
         else if (event.data.shortcut === 'description')
             replaceText = '$URD$';
+        else if (event.data.shortcut === 'wazeUsername')
+            replaceText = '$USERNAME$'
+        else if (event.data.shortcut === 'timeCasual')
+            replaceText = '$DRIVEDATE_TIME_CASUAL$';
+        else if (event.data.shortcut === 'dateCasual')
+            replaceText = '$DRIVEDATE_DATE_CASUAL$';
         else
             return;
         if ((replaceText === '$SELSEGS$') || (replaceText === '$SELSEGS') || (replaceText === '_INSERT_')) {
@@ -860,7 +876,7 @@
                     newVal += ' ';
                 newVal += currVal.slice(cursorPos);
             }
-            $('.new-comment-text').val(newVal).change().keyup();
+            $('.new-comment-text').val(newVal).selectRange((cursorPos + outputText.length + 1)).change().keyup();
         }
     }
 
@@ -2111,7 +2127,7 @@
                 $('<label>', {for:'_cbenableAppendMode', title:I18n.t('urce.prefs.EnableAppendModeTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableAppendMode'))
             ),
             $('<div>', {id:'expandCollapseAll', class:'URCE-expandCollapseAll'}).append(
-                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Expand All').off().on('click', () => {
+                $('<div>', {class:'URCE-expandCollapseAllItem'}).text(I18n.t('urce.common.ExpandAll')).off().on('click', () => {
                     let $legends = $('legend[id^="urceComments-for"');
                     for (let idx = 0; idx < $legends.length; idx++) {
                         if ($legends[idx].nextSibling.className.indexOf('collapse') > -1)
@@ -2119,7 +2135,7 @@
                     }
                 }),
                 $('<div>', {style:'display:inline;'}).text(' : '),
-                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Collapse All').off().on('click', () => {
+                $('<div>', {class:'URCE-expandCollapseAllItem'}).text(I18n.t('urce.common.CollapseAll')).off().on('click', () => {
                     let $legends = $('legend[id^="urceComments-for"');
                     for (let idx = 0; idx < $legends.length; idx++) {
                         if ($legends[idx].nextSibling.className.indexOf('collapse') === -1)
@@ -2436,7 +2452,7 @@
         }
         $('#panel-urce-settings').append(
             $('<div>', {id:'expandCollapseAll', class:'URCE-expandCollapseAll'}).append(
-                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Expand All').off().on('click', () => {
+                $('<div>', {class:'URCE-expandCollapseAllItem'}).text(I18n.t('urce.common.ExpandAll')).off().on('click', () => {
                     let $legends = $('legend[id^="urce-prefs-legend"');
                     for (let idx = 0; idx < $legends.length; idx++) {
                         if ($legends[idx].nextSibling.className.indexOf('collapse') > -1)
@@ -2444,7 +2460,7 @@
                     }
                 }),
                 $('<div>', {style:'display:inline;'}).text(' : '),
-                $('<div>', {class:'URCE-expandCollapseAllItem'}).text('Collapse All').off().on('click', () => {
+                $('<div>', {class:'URCE-expandCollapseAllItem'}).text(I18n.t('urce.common.CollapseAll')).off().on('click', () => {
                     let $legends = $('legend[id^="urce-prefs-legend"');
                     for (let idx = 0; idx < $legends.length; idx++) {
                         if ($legends[idx].nextSibling.className.indexOf('collapse') === -1)
@@ -3487,14 +3503,16 @@
                         },
                         "common": {
                             "All": "All",
-                            "AutoSwitched":"auto switched",
+                            "AutoSwitched": "auto switched",
+                            "CollapseAll": "Collapse all",
                             "CommentList": "Comment List",
-                            "CurrentCommentListTitle":"You can change the currently loaded comment list using this drop down.\nChanging this drop down will not be saved as a setting and will not change your default list (located on the settings tab).\nThis is only to allow you to quickly switch between lists.",
+                            "CurrentCommentListTitle": "You can change the currently loaded comment list using this drop down.\nChanging this drop down will not be saved as a setting and will not change your default list (located on the settings tab).\nThis is only to allow you to quickly switch between lists.",
                             "Custom": "Custom",
                             "Description": "Description",
                             "DoubleClickTitle": "Double click here to send this comment",
                             "ErrorGeneric": "An error has occurred within URC-E. Please contact " + SCRIPT_AUTHOR + " via Discord or PM.",
                             "ErrorHeader": "URC-E Error",
+                            "ExpandAll": "Expand all",
                             "Following": "Following",
                             "LessThan": "Less than",
                             "List": "List",
@@ -3516,6 +3534,7 @@
                             "FirstComment": "First comment",
                             "LastComment": "Last comment",
                             "MarkedAs": "Marked as",
+                            "NoDescription": "No description",
                             "NoneByMe": "none by me",
                             "OpenInNewLivemapTab": "Open in new Livemap tab",
                             "OpenInNewTab": "Open in new tab",
@@ -3550,7 +3569,7 @@
                             "AutoSetNewUrComment": "Auto set new UR comment (without description)",
                             "AutoSetNewUrCommentTitle": "Automatically set the default UR comment for the UR type on new (do not already have comments) URs that do not have a description.",
                             "AutoSetNewUrCommentWithDescription": "Auto set new UR comment (with description)",
-                            "AutoSetNewUrCommentithDescriptionTitle": "Automatically set the default UR comment for the UR type on new (do not already have comments) URs that have a description.",
+                            "AutoSetNewUrCommentWithDescriptionTitle": "Automatically set the default UR comment for the UR type on new (do not already have comments) URs that have a description.",
                             "AutoSetReminderUrComment": "Auto set reminder UR comment",
                             "AutoSetReminderUrCommentTitle": "Automatically set the UR reminder comment for URs that are older than the 'Reminder days' setting and have only one comment.",
                             "AutoSwitchToUrCommentsTab": "Auto switch to the URC-E tab",
@@ -3579,9 +3598,9 @@
                             "DisableUrMarkerPopup": "Disable UR marker popup",
                             "DisableUrMarkerPopupTitle": "Do not show the UR popup tooltip when you mouse over a UR marker.",
                             "UrMarkerPopupDelay": "UR marker popup delay",
-                            "UrMarkerPopupDelayTitle":"The number of milliseconds (* 100) to delay before the UR marker tooltip will be displayed.",
+                            "UrMarkerPopupDelayTitle": "The number of milliseconds (* 100) to delay before the UR marker tooltip will be displayed.",
                             "UrMarkerPopupTimeout": "UR marker popup timeout",
-                            "UrMarkerPopupTimeoutTitle": "Specify the number of seconds to leave the UR marker tooltip displayed, unless you are moused over the tooltip itself.",
+                            "UrMarkerPopupTimeoutTitle": "Specify the number of seconds to leave the UR marker tooltip displayed, while hovering over the marker.\nLeaving the marker, unless to the tooltip itself, will cause the tooltip to close.\nEntering the tooltip will cancel the timer and leaving the tooltip will close the tooltip.\nDouble click to quickly close.",
                             "DoNotShowTagNameOnPill": "Don't show tag name on pill",
                             "DoNotShowTagNameOnPillTitle": "Do not show the tag name on the pill where there is a tag. Example: [NOTE]",
                             "ReplaceTagNameWithEditorName": "Replace tag name with editor name",
@@ -3689,13 +3708,13 @@
                             "ReminderDays": "Reminder days",
                             "ReminderDaysTitle": "Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment.\nThis is the number of days since the first comment.\nSet to 0 if you do not use reminders.",
                             "CloseDays": "Close days",
-                            "CloseDaysTitle": "Number of days to use when calculating UR filtering.\nThis is the number of days since the last comment.\nExample:If you close 4 days after the last comment, set to 4.\nAnything less than this time will be cosndered 'waiting' as long as there is at least one comment already.",
+                            "CloseDaysTitle": "Number of days to use when calculating UR filtering.\nThis is the number of days since the last comment.\nExample: If you close 4 days after the last comment, set to 4.\nAnything less than this time will be considered 'waiting' as long as there is at least one comment already.",
                             "DisableFilteringAboveZoomLevel": "Disable filtering above zoom level",
                             "DisableFilteringAboveZoomLevelTitle": "Disabled UR filtering when zoomed out above the specified zoom level. Set to '0' to enable all filtering.",
                             "DisableFilteringBelowZoomLevel": "Disable filtering below zoom level",
                             "DisableFilteringBelowZoomLevelTitle": "Disable UR filtering when zoomed in below the specified zoom level. Set to '10' to enable all filtering.",
-                            "EnableAppendMode":"Enable append comment mode",
-                            "EnableAppendModeTitle":"Enabling append comment mode will allow you to append a comment to the existing text in the new-comment box.\nThe comment is appended with a blank line between the existing text and the new text.\nThe status of the UR is set to the status of the new comment you clicked to append.\nIf the comment would end up being longer than 2000 characters, append mode will give a warning and not alter the text in the comment box, but the status would have been changed."
+                            "EnableAppendMode": "Enable append comment mode",
+                            "EnableAppendModeTitle": "Enabling append comment mode will allow you to append a comment to the existing text in the new-comment box.\nThe comment is appended with a blank line between the existing text and the new text.\nThe status of the UR is set to the status of the new comment you clicked to append.\nIf the comment would end up being longer than 2000 characters, append mode will give a warning and not alter the text in the comment box, but the status would have been changed."
                         },
                         "tabs": {
                             "Comments": "Comments",
@@ -3712,11 +3731,14 @@
                             "Wslm": "[WSLM]"
                         },
                         "urPanel": {
-                            "InsertDateTitle": "Click this icon to insert the drive date into the new comment box at the cursor position.",
-                            "InsertDayOfWeekTitle": "Click this icon to insert the drive date day of the week into the new comment box at the cursor position.",
-                            "InsertDescriptionTitle": "Click this icon to insert the UR description into the new comment box at the cursor position.",
-                            "InsertSelSegsTitle": "Click this icon to either replace '$SELSEGS$' (or '$SELSEGS)' with the name of the currently selected segment(s), or\nit will insert the name of the currently selected segment(s) into the comment box at the cursor position.",
-                            "InsertTimeTitle": "Click this icon to insert the drive date time of day into the new comment box at the cursor position."
+                            "InsertDateCasualTitle": "Shortcut - Drive date (casual): Click this icon to insert the drive date into the new comment box at the cursor position (full month name, 2-digit day in locale format).",
+                            "InsertDateTitle": "Shortcut - Drive date: Click this icon to insert the drive date into the new comment box at the cursor position (2-digit month, 2-digit day, 4-digit year in locale format).",
+                            "InsertDayOfWeekTitle": "Shortcut - Drive day of week: Click this icon to insert the drive date day of the week into the new comment box at the cursor position (full day of week name in locale language).",
+                            "InsertDescriptionTitle": "Shortcut - Description: Click this icon to insert the UR description into the new comment box at the cursor position.",
+                            "InsertSelSegsTitle": "Shortcut - Segment name(s): Click this icon to either replace '$SELSEGS$' (or '$SELSEGS)' with the name of the currently selected segment(s), or\nit will insert the name of the currently selected segment(s) into the comment box at the cursor position.",
+                            "InsertTimeCasualTitle": "Shortcut - Drive time of day (casual): Click this icon toinser t the drive date time of day into the new comment box at the cursor position (in locale language).\n\n04:00am-11:59am: morning\n12:00pm-03:59pm: afternoon\n04:00pm-08:59pm: evening\n09:00pm-03:59am: night",
+                            "InsertTimeTitle": "Shortcut - Drive time of day: Click this icon to insert the drive date time of day into the new comment box at the cursor position (2-digit hour, 2-digit minute in locale format).",
+                            "InsertWazeUsernameTitle": "Shortcut - Waze username: Click this icon to insert your Waze username into the new comment box at the cursor position."
                         },
                         "urStatus": {
                             "Closed": "Closed",
@@ -3771,6 +3793,27 @@
             if (I18n.currentLocale() !== 'en-US')
                 _needTranslation = true;
             resolve();
+        });
+    }
+
+    // jQuery function to set cursor position in input
+    $.fn.selectRange = function(start, end) {
+        if (end === undefined)
+            end = start;
+        return this.each(function() {
+            if('selectionStart' in this) {
+                this.selectionStart = start;
+                this.selectionEnd = end;
+            }
+            else if(this.setSelectionRange)
+                this.setSelectionRange(start, end);
+            else if(this.createTextRange) {
+                var range = this.createTextRange();
+                range.collapse(true);
+                range.moveEnd('character', end);
+                range.moveStart('character', start);
+                range.select();
+            }
         });
     }
 
