@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.02.25.01
+// @version     2019.02.26.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'NEW: Warning for more than 499 URs on screen when UR overflow is not enabled.', 'NEW: UR overflow handling (aka "backfill").', 'NEW: Auto refresh setting on zoom / pan.', 'CHANGE: Auto center on UR now automatically centers at current zoom level for all levels.', 'ENHANCEMENT: Changed to using Waze event trigger for marker filtering / manipulation.', 'BUGFIX: Filtering intermittent during zooms and other functions.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'NEW: Warning for more than 499 URs on screen when UR overflow is not enabled.', 'NEW: UR overflow handling (aka "backfill").', 'NEW: Auto refresh setting on zoom / pan.', 'CHANGE: Auto center on UR now automatically centers at current zoom level for all levels.', 'REVERT: Changed back to mutation handling for marker filtering / manipulation.', 'BUGFIX: Filtering intermittent during zooms and other functions.', 'REVERT: Changed back to mutation handling for marker filtering / manipulation.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -366,123 +366,6 @@
         }
     }
 
-    function handleUrOverflow() {
-        let subSize = 0.1;
-        let viewPortWidth = W.map.getExtent().getWidth();
-        let viewPortHeight = W.map.getExtent().getHeight();
-        let viewPortCenter = W.map.getCenter();
-        let viewPortLatLon = new OL.LonLat();
-        let viewPortUpper = new OL.LonLat();
-        viewPortLatLon.lon = viewPortCenter.lon - (viewPortWidth / 2);
-        viewPortLatLon.lat = viewPortCenter.lat - (viewPortHeight / 2);
-        viewPortUpper.lon = viewPortCenter.lon + (viewPortWidth / 2);
-        viewPortUpper.lat = viewPortCenter.lat + (viewPortHeight / 2);
-        viewPortLatLon = viewPortLatLon.transform(new OL.Projection('EPSG:900913'),new OL.Projection('EPSG:4326'));
-        viewPortUpper = viewPortUpper.transform(new OL.Projection('EPSG:900913'),new OL.Projection('EPSG:4326'));
-        viewPortLatLon.lon -= (subSize / 2);
-        viewPortLatLon.lat -= (subSize / 2);
-        viewPortUpper.lon += (subSize / 2);
-        viewPortUpper.lat += (subSize / 2);
-        viewPortLatLon.lon = + viewPortLatLon.lon.toFixed(1);
-        viewPortLatLon.lat = + viewPortLatLon.lat.toFixed(1);
-        viewPortUpper.lon = + viewPortUpper.lon.toFixed(1);
-        viewPortUpper.lat = + viewPortUpper.lat.toFixed(1);
-
-        let overflowQueue = [];
-        for (let overflowLat = viewPortLatLon.lat; overflowLat <= viewPortUpper.lat; overflowLat += subSize) {
-            for (let overflowLon = viewPortLatLon.lon; overflowLon <= viewPortUpper.lon; overflowLon += subSize) {
-                overflowQueue.push({lon:overflowLon, lat:overflowLat, blockSize:subSize});
-            }
-        }
-        if (overflowQueue.length > 0) {
-            let nextOverflowQueueObj = overflowQueue.shift();
-            let lon = parseFloat(nextOverflowQueueObj.lon);
-            let lat = parseFloat(nextOverflowQueueObj.lat);
-            let blockSize = parseFloat(nextOverflowQueueObj.blockSize);
-            let overflowReq = new XMLHttpRequest();
-            overflowReq.onreadystatechange = async function () {
-                if (overflowReq.readyState === 4) {
-                    if (overflowReq.status === 200) {
-                        let respObj = JSON.parse(overflowReq.responseText);
-                        logDebug(respObj.mapUpdateRequests.objects.length + ' URs loaded for overflow processing.');
-                        if (respObj.mapUpdateRequests.objects.length > 499) {
-                            logWarning('WARNING: Server returned 500 objects in overflow request, this could mean the request was filtered by the server.');
-                            showUrLimitMsg('overflow');
-                        }
-                        let overflowRet = {};
-                        for (let idx=0; idx < respObj.mapUpdateRequests.objects.length; idx++) {
-                            let urId = respObj.mapUpdateRequests.objects[idx].id;
-                            if (W.model.mapUpdateRequests.objects[urId] === undefined) {
-                                let newUr = require('Waze/Feature/Vector/UpdateRequest');
-                                let tUr = new newUr(respObj.mapUpdateRequests.objects[idx]);
-                                let tPoint = new OL.Geometry.Point();
-                                tPoint.x = respObj.mapUpdateRequests.objects[idx].geometry.coordinates[0];
-                                tPoint.y = respObj.mapUpdateRequests.objects[idx].geometry.coordinates[1];
-                                tPoint.transform(new OL.Projection("EPSG:4326"),new OL.Projection("EPSG:900913"));
-                                tUr.geometry = tPoint;
-                                let tReqBounds = new OL.Geometry.Polygon();
-                                let tBounds = new OL.Bounds();
-                                tBounds.left = tPoint.x;
-                                tBounds.right = tPoint.x;
-                                tBounds.top = tPoint.y;
-                                tBounds.bottom = tPoint.y;
-                                tReqBounds.bounds = tBounds;
-                                tUr.requestBounds = tReqBounds;
-                                W.model.mapUpdateRequests.put(tUr);
-                                overflowRet[urId] = tUr;
-                            }
-                        }
-                        if (Object.keys(overflowRet).length > 0) {
-                            logDebug(Object.keys(overflowRet).length + ' URs added from overflow.');
-                            await handleUrLayer('overflow', null, Object.keys(overflowRet).sort(), Object.values(overflowRet).sort((a, b) => { return a.attributes.id - b.attributes.id; }));
-                        }
-                        else
-                            logDebug('All URs submitted for overflow processing already exist on map.');
-                    }
-                }
-            };
-            let tUrl = 'https://' + document.location.host;
-            tUrl += W.Config.api_base;
-            tUrl += '/Features?language=en&mapUpdateRequestFilter=0';
-            tUrl += '&bbox='+(lon)+','+(lat)+','+(lon + blockSize)+','+(lat + blockSize);
-            overflowReq.open('GET',tUrl,true);
-            overflowReq.send();
-        }
-    }
-
-    function showUrLimitMsg(phase) {
-        if (phase === 'remove') {
-            if (_urLimitTimeout !== undefined)
-                window.clearTimeout(_urLimitTimeout);
-            if ($('#urLimit').length > 0)
-                $('#urLimit').remove();
-            if ($('#urceBanner').length > 0)
-                $('#urceBanner').remove();
-            return;
-        }
-		let dateNow = new Date().getTime();
-        let msg = (phase === 'overflow') ? I18n.t('urce.prompts.UrOverflowErrorWithOverflowEnabled') : I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled');
-        var width = msg.length * 10;
-        if ($('#urceBanner').length === 0)
-            $("#map").append($('<div>', {id:'urceBanner', style:'width:100%; font-size:15px; font-weight:bold; margin-left:auto; margin-right:auto; position:absolute; top:0px; left:10px; z-index: 20000; display:none;'}));
-        $('#urceBanner').empty().append(
-            $('<div>', {id:'urceBannerMsg', style:`width:${width}px; text-align:center; font-size:15px; font-weight:600; margin-left:auto; margin-right:auto; color:black; background-color:red;`}).text(msg)
-        );
-        $('#urceBanner').show();
-        if ($('#urLimit').length === 0) {
-            $('#panel-urce-comments').prepend(
-                $('<div>', {id:'urLimit', class:'URCE-divWarningBox'}).html(msg)
-            )
-        }
-        if (_urLimitTimeout !== undefined)
-            window.clearTimeout(_urLimitTimeout);
-        _urLimitTimeout = window.setTimeout(() => {
-            $('#urceBannerMsg').remove();
-            if ($('#urceBanner').children().length === 0)
-                $('#urceBanner').remove();
-        }, 8000);
-    };
-
     function isChecked(obj) {
         return $(obj).is(':checked');
     }
@@ -554,7 +437,7 @@
         if (_settings.autoCloseUrPanel || _selUr.doubleClick)
             autoCloseUrPanel();
         else {
-            await updateUrceData([urId], null);
+            await updateUrceData([urId]);
             if ($($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title').last()).has('#urceDaysAgo').length === 0) {
                 $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title').last()).children().filter('span.date').css('float', 'right');
                 $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title').last()).append(
@@ -566,7 +449,7 @@
             if (_settings.autoSaveAfterSolvedOrNiComment && (_selUr.newStatus === 'solved' || _selUr.newStatus === 'notidentified'))
                 clickSaveButton();
             else
-                await handleUrLayer('sendComment', null, [urId], null);
+                await handleUrLayer('sendComment', null, [urId]);
         }
     }
 
@@ -580,7 +463,7 @@
                 autoZoomOut();
             if (_settings.autoSwitchToUrCommentsTab)
                 autoSwitchToPrevTab();
-            await handleUrLayer('close', null, [_selUr.urId], null);
+            await handleUrLayer('close', null, [_selUr.urId]);
         }
         _selUr = {
             doubleClick: false,
@@ -596,7 +479,7 @@
             autoZoomOut();
         if (_settings.autoSwitchToUrCommentsTab)
             autoSwitchToPrevTab();
-        await handleUrLayer('save', null, null, null);
+        await handleUrLayer('save', null, null);
     }
 
     async function handleUpdateRequestContainer(urId, caller) {
@@ -606,7 +489,7 @@
         if (_popupTimeout !== undefined)
             hidePopup();
         logDebug('Handling update request container after ' + caller + ' for urId: ' + urId);
-        await updateUrceData([urId], null);
+        await updateUrceData([urId]);
         if ($('#panel-container .top-section .header .main-title').html().indexOf(urId) === -1)
             $('#panel-container .top-section .header .main-title').append(' (' + urId + ') ');
         if ($('#panel-container .top-section .header .reported').length === 1)
@@ -1173,7 +1056,7 @@
                             (markerCollection[marker].model.attributes.geometry.y + offset);
                         offset += 1000;
                     }
-                    if (!(markerCollection[marker].icon.imageDiv.classList.contains('recently-closed') && (W.map.updateRequestLayer.showHidden === false)) && ((markerCollection[marker].icon.imageDiv.style.display !== 'none') || (markerCollection[marker].icon.imageDiv.style.visibility !== 'hidden')) ) {
+                    if (!(markerCollection[marker].icon.imageDiv.classList.contains('recently-closed') && (W.map.updateRequestLayer.showHidden === false)) && (markerCollection[marker].icon.imageDiv.style.visibility !== 'hidden')) {
                         if (parseInt(markerCollection[marker].id) !== urId) {
                             let xDiff = unstackedX - parsePxString(markerCollection[markerCollection[marker].id].icon.imageDiv.style.left);
                             let yDiff = unstackedY - parsePxString(markerCollection[markerCollection[marker].id].icon.imageDiv.style.top);
@@ -1231,7 +1114,7 @@
                 checkMarkerStacking(markerId, unstackedX, unstackedY);
                 if (!_settings.disableUrMarkerPopup) {
                     if (W.model.mapUpdateRequests.objects[markerId].attributes.urceData === undefined)
-                        await updateUrceData([markerId], null);
+                        await updateUrceData([markerId]);
                     logDebug('Building popup for UR ' + markerId);
                     popupX = unstackedX - parsePxString(W.map.segmentLayer.div.style.left) + popupXOffset + 6;
                     popupY = unstackedY - parsePxString(W.map.segmentLayer.div.style.top) + 6;
@@ -1302,18 +1185,18 @@
                         popupContent += (W.model.mapUpdateRequests.objects[markerId].attributes.urceData.reporterHasCommented) ? I18n.t('urce.common.Yes') : I18n.t('urce.common.No');
                         popupContent += '</i>';
                     }
-                    let urPos = new OL.LonLat();
-                    urPos.lon = (W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealX !== undefined) ?
-                        W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealX :
-                        (W.model.mapUpdateRequests.objects[markerId].attributes.geometry.realX !== undefined) ?
-                            W.model.mapUpdateRequests.objects[markerId].attributes.geometry.realX :
-                            W.model.mapUpdateRequests.objects[markerId].attributes.geometry.x;
-                    urPos.lat = (W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealY !== undefined) ?
-                        W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealY :
-                        (W.model.mapUpdateRequests.objects[markerId].attributes.geometry.realY !== undefined) ?
-                            W.model.mapUpdateRequests.objects[markerId].attributes.geometry.realY :
-                            W.model.mapUpdateRequests.objects[markerId].attributes.geometry.y;
-                    urPos.transform(new OL.Projection("EPSG:900913"), new OL.Projection("EPSG:4326"));
+                    let urPos = WazeWrap.Geometry.ConvertTo4326(((W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealX !== undefined) ?
+                                                                   W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealX :
+                                                                   (W.model.mapUpdateRequests.objects[markerId].attributes.geometry.realX !== undefined) ?
+                                                                      W.model.mapUpdateRequests.objects[markerId].attributes.geometry.realX :
+                                                                      W.model.mapUpdateRequests.objects[markerId].attributes.geometry.x
+                                                               ),
+                                                               (W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealY !== undefined) ?
+                                                                  W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealY :
+                                                                  (W.model.mapUpdateRequests.objects[markerId].attributes.geometry.realY !== undefined) ?
+                                                                     W.model.mapUpdateRequests.objects[markerId].attributes.geometry.realY :
+                                                                     W.model.mapUpdateRequests.objects[markerId].attributes.geometry.y
+                                                              );
                     let urLink = $(document)[0].location.href;
                     let urLayers = '';
                     urLink = urLink.substr(0, urLink.indexOf('?zoom'));
@@ -1536,7 +1419,7 @@
                 $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).hide();
             }
             else {
-                if ($(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).css('display') === 'none') {
+                 if ($(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).css('display') === 'none') {
                     logDebug('Unhiding UR marker for UR: ' + urIds[idx]);
                     $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).show();
                 }
@@ -1627,7 +1510,7 @@
         }
     }
 
-    function updateUrceData(urIds, mapUrsObjArr) {
+    function updateUrceData(urIds) {
         return new Promise(async (resolve) => {
             logDebug('Updating urceData for urIds: ' + urIds.join(', ') + ' (Total Count: ' + urIds.length + ')');
             let urSessionsObj, mapUrsObj;
@@ -1638,24 +1521,19 @@
             let keywordIncludingRegex = (_settings.hideByKeywordIncludingKeyword.length > 0) ? (_settings.hideByKeywordCaseInsensitive) ? new RegExp(includingKeyword, 'gim') : new RegExp(includingKeyword, 'gm') : null;
             let notIncludingKeyword = (_settings.hideByKeywordNotIncludingKeyword.length > 0) ? ' ' + _settings.hideByKeywordNotIncludingKeyword.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') + ' ' : null;
             let keywordNotIncludingRegex = (_settings.hideByKeywordNotIncludingKeyword.length > 0) ? (_settings.hideByKeywordCaseInsensitive) ? new RegExp(notIncludingKeyword, 'gim') : new RegExp(notIncludingKeyword, 'gm') : null;
-            if (!urSessionsObj) {
-                try {
-                    urSessionsObj = await getUrSessionsAsync(urIds);
-                }
-                catch(error) {
-                    return logError(error);
-                }
+            try {
+                urSessionsObj = await getUrSessionsAsync(urIds);
             }
-            if (!mapUrsObjArr) {
-                try {
-                    mapUrsObj = await getMapUrsAsync(urIds);
-                }
-                catch(error) {
-                    return logDebug(error);
-                }
+            catch(error) {
+                return logError(error);
             }
-            else
-                mapUrsObj = mapUrsObjArr;
+            try {
+                mapUrsObj = await getMapUrsAsync(urIds);
+            }
+            catch(error) {
+                return logDebug(error);
+            }
+
             for (let idx = 0; idx < urIds.length; idx++) {
                 urceData = {
                     commentCount: urSessionsObj[idx].comments.length,
@@ -1811,15 +1689,15 @@
         });
     }
 
-    function handleUrLayer(phase, filter, urMapMarkerIdsArr, mapUrsObjArr) {
+    function handleUrLayer(phase, filter, urMapMarkerIdsArr) {
         return new Promise(async (resolve) => {
             if (!_filtersApplying || phase === 'overflow') {
-                _filtersApplying = true;
+                if (phase !== 'overflow')
+                    _filtersApplying = true;
                 let zoomLevel = getZoomLevel();
                 if (filter === undefined || filter === null) {
                     filter = true;
-                    if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) ||
-                        (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel)))
+                    if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel)))
                         filter = false;
                 }
                 if (phase === 'init')
@@ -1833,31 +1711,28 @@
                 else if (phase === 'sendComment')
                     logDebug('Updating UR markers after sending a comment.');
                 else if (phase === 'overflow')
-                    logDebug('Updating UR markers for a overflow command.');
+                    logDebug('Updating UR markers from being added through UR overflow handling.');
                 else
-                    logDebug('Updating UR markers after a ' + phase + ' event.');
+                    logDebug('Updating UR markers that appeared after a ' + phase + ' event.');
                 if (!urMapMarkerIdsArr) {
-                    if (mapUrsObjArr)
-                        urMapMarkerIdsArr = Object.keys(mapUrsObjArr);
-                    else {
-                        urMapMarkerIdsArr = [];
-                        W.model.mapUpdateRequests.getObjectArray().forEach((urObj) => {
-                            if (urMapMarkerIdsArr.indexOf(urObj.attributes.id) === -1)
-                                urMapMarkerIdsArr.push(urObj.attributes.id);
-                        });
-                    }
+                    urMapMarkerIdsArr = [];
+                    W.model.mapUpdateRequests.getObjectArray().forEach((urObj) => {
+                        if (urMapMarkerIdsArr.indexOf(urObj.attributes.id) === -1)
+                            urMapMarkerIdsArr.push(urObj.attributes.id);
+                    });
                 }
                 if (urMapMarkerIdsArr.length > 0) {
+                    urMapMarkerIdsArr.sort();
+                    if (phase === 'init')
+                        _markerCountOnInit = urMapMarkerIdsArr.length;
                     try {
-                        if (phase === 'init')
-                            _markerCountOnInit = urMapMarkerIdsArr.length;
-                        await updateUrceData(urMapMarkerIdsArr, mapUrsObjArr);
+                        await updateUrceData(urMapMarkerIdsArr);
                     }
                     catch(error) {
                         logWarning(error);
                     }
                     updateUrMapMarkers(urMapMarkerIdsArr, filter);
-                    if (phase !== 'overflow' && _settings.enableUrOverflowHandling && (urMapMarkerIdsArr.length > 499))
+                    if (_settings.enableUrOverflowHandling && (phase !== 'overflow')  && (urMapMarkerIdsArr.length > 499))
                         handleUrOverflow();
                     else if (urMapMarkerIdsArr.length > 499)
                         showUrLimitMsg('handleUrLayer');
@@ -1873,8 +1748,104 @@
         });
     }
 
-    async function invokeMapUrsAdded() {
-        await handleUrLayer('mapUrsAdded', null, Object.keys(this.objects).sort(), Object.values(this.objects).sort((a, b) => { return a.attributes.id - b.attributes.id; }));
+    function handleUrOverflow() {
+        let subSize = 0.1;
+        let viewPortLatLon = WazeWrap.Geometry.ConvertTo4326((W.map.getCenter().lon - (W.map.getExtent().getWidth() / 2)), (W.map.getCenter().lat - (W.map.getExtent().getHeight() / 2)));
+        let viewPortUpper = WazeWrap.Geometry.ConvertTo4326((W.map.getCenter().lon + (W.map.getExtent().getWidth() / 2)), (W.map.getCenter().lat + (W.map.getExtent().getHeight() / 2)));
+        viewPortLatLon.lon -= (subSize / 2);
+        viewPortLatLon.lat -= (subSize / 2);
+        viewPortUpper.lon += (subSize / 2);
+        viewPortUpper.lat += (subSize / 2);
+        viewPortLatLon.lon = +viewPortLatLon.lon.toFixed(1);
+        viewPortLatLon.lat = +viewPortLatLon.lat.toFixed(1);
+        viewPortUpper.lon = +viewPortUpper.lon.toFixed(1);
+        viewPortUpper.lat = +viewPortUpper.lat.toFixed(1);
+        let overflowQueue = [];
+        for (let overflowLat = viewPortLatLon.lat; overflowLat <= viewPortUpper.lat; overflowLat += subSize) {
+            for (let overflowLon = viewPortLatLon.lon; overflowLon <= viewPortUpper.lon; overflowLon += subSize) {
+                overflowQueue.push({lon:overflowLon, lat:overflowLat, blockSize:subSize});
+            }
+        }
+        if (overflowQueue.length > 0) {
+            let nextOverflowQueueObj = overflowQueue.shift();
+            let lon = parseFloat(nextOverflowQueueObj.lon);
+            let lat = parseFloat(nextOverflowQueueObj.lat);
+            let blockSize = parseFloat(nextOverflowQueueObj.blockSize);
+            let overflowReq = new XMLHttpRequest();
+            overflowReq.onreadystatechange = async function () {
+                if (overflowReq.readyState === 4) {
+                    if (overflowReq.status === 200) {
+                        let respObj = JSON.parse(overflowReq.responseText);
+                        logDebug(respObj.mapUpdateRequests.objects.length + ' URs loaded for overflow processing.');
+                        if (respObj.mapUpdateRequests.objects.length > 499) {
+                            logWarning('WARNING: Server returned 500 objects in overflow request, this could mean the request was filtered by the server.');
+                            showUrLimitMsg('overflow');
+                        }
+                        let overflowToPut = [];
+                        for (let idx=0; idx < respObj.mapUpdateRequests.objects.length; idx++) {
+                            let urId = respObj.mapUpdateRequests.objects[idx].id;
+                            if (W.model.mapUpdateRequests.objects[urId] === undefined) {
+                                let newUr = require('Waze/Feature/Vector/UpdateRequest');
+                                let toPutUr = new newUr(respObj.mapUpdateRequests.objects[idx]);
+                                let toPutPoint = new OL.Geometry.Point();
+                                toPutPoint.x = respObj.mapUpdateRequests.objects[idx].geometry.coordinates[0];
+                                toPutPoint.y = respObj.mapUpdateRequests.objects[idx].geometry.coordinates[1];
+                                toPutPoint.transform(new OL.Projection("EPSG:4326"),new OL.Projection("EPSG:900913"));
+                                newUr.geometry = toPutPoint;
+                                let toPutReqBounds = new OL.Geometry.Polygon();
+                                let toPutBounds = new OL.Bounds(respObj.mapUpdateRequests.objects[idx].geometry.coordinates[0],
+                                                                respObj.mapUpdateRequests.objects[idx].geometry.coordinates[1],
+                                                                respObj.mapUpdateRequests.objects[idx].geometry.coordinates[0],
+                                                                respObj.mapUpdateRequests.objects[idx].geometry.coordinates[1]);
+                                toPutReqBounds.bounds = toPutBounds;
+                                toPutUr.requestBounds = toPutReqBounds;
+                                overflowToPut.push(toPutUr);
+                            }
+                        }
+                        if (overflowToPut.length > 0) {
+                            W.model.mapUpdateRequests.put(overflowToPut);
+                            logDebug(overflowToPut.length + ' URs added from overflow: ' + overflowToPut.map((obj) => { return obj.attributes.id; }).join(', '));
+                            await handleUrLayer('overflow', null, overflowToPut.map((obj) => { return obj.attributes.id; }));
+                        }
+                        else
+                            logDebug('All URs submitted for overflow processing already exist on map.');
+                    }
+                }
+            };
+            overflowReq.open('GET', `https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=0&bbox=${lon},${lat},${(lon + blockSize)},${(lat + blockSize)}`, true);
+            overflowReq.send();
+        }
+    }
+
+    function showUrLimitMsg(phase) {
+        if (phase === 'remove') {
+            if (_urLimitTimeout !== undefined)
+                window.clearTimeout(_urLimitTimeout);
+            if ($('#urLimit').length > 0)
+                $('#urLimit').remove();
+            if ($('#urceBanner').length > 0)
+                $('#urceBanner').remove();
+            return;
+        }
+        let msg = (phase === 'overflow') ? I18n.t('urce.prompts.UrOverflowErrorWithOverflowEnabled') : I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled');
+        if ($('#urceBanner').length === 0)
+            $("#map").append($('<div>', {id:'urceBanner', style:'width:100%; font-size:15px; font-weight:bold; margin-left:auto; margin-right:auto; position:absolute; top:0px; left:10px; z-index: 20000; display:none;'}));
+        $('#urceBanner').empty().append(
+            $('<div>', {id:'urceBannerMsg', style:`width:${(msg.length * 10)}px; text-align:center; font-size:15px; font-weight:600; margin-left:auto; margin-right:auto; color:black; background-color:red;`}).text(msg)
+        );
+        $('#urceBanner').show();
+        if ($('#urLimit').length === 0) {
+            $('#panel-urce-comments').prepend(
+                $('<div>', {id:'urLimit', class:'URCE-divWarningBox'}).html(msg)
+            )
+        }
+        if (_urLimitTimeout !== undefined)
+            window.clearTimeout(_urLimitTimeout);
+        _urLimitTimeout = window.setTimeout(() => {
+            $('#urceBannerMsg').remove();
+            if ($('#urceBanner').children().length === 0)
+                $('#urceBanner').remove();
+        }, 8000);
     }
 
     function mouseDown() {
@@ -1919,11 +1890,11 @@
         else if (W.model.mapUpdateRequests.getObjectArray().length < 500)
             showUrLimitMsg('remove');
         if (filter !== null)
-            await handleUrLayer('zoomEnd', filter, null, null);
+            await handleUrLayer('zoomEnd', filter, null);
     }
 
-    async function invokeModeChange() {
-        await handleUrLayer('modeChange', null, null, null);
+    function invokeModeChange() {
+        handleUrLayer('modeChange', null, null);
     }
 
     function handleUrMarkerClick() {
@@ -2371,7 +2342,46 @@
                 }
             });
         });
-        if ((status === 'enable') && (!saveButtonObserver.isObserving || !urPanelContainerObserver.isObserving)) {
+        let urMarkerObserver = new MutationObserver((mutations) => {
+            let urMapMarkerIdsArr = [];
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    for (let idx = 0; idx < mutation.addedNodes.length; idx++) {
+                        let addedNode = mutation.addedNodes[idx];
+                        if (mutation.addedNodes[idx].classList && addedNode.classList.contains('map-problem') && mutation.addedNodes[idx].classList.contains('user-generated')) {
+                            if ((parseInt(mutation.addedNodes[idx].attributes['data-id'].value) > 0) && (urMapMarkerIdsArr.indexOf(parseInt(mutation.addedNodes[idx].attributes['data-id'].value)) === -1))
+                                urMapMarkerIdsArr.push(parseInt(mutation.addedNodes[idx].attributes['data-id'].value));
+                        }
+                    }
+                }
+                else if (mutation.type === 'attributes' && mutation.target.classList && (mutation.target.classList.contains('user-generated') || mutation.target.classList.contains('has-comments'))) {
+                    if ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList.contains('selected')) {
+                        if (parseInt(mutation.target.attributes['data-id'].value) > 0) {
+                            if (!_selUr.handling) {
+                                if (!(_selUr.urId > 0) || (_selUr.urId !== parseInt(mutation.target.attributes['data-id'].value))) {
+                                    _selUr = {
+                                        doubleClick: false,
+                                        handling: false,
+                                        newStatus: undefined,
+                                        urId: parseInt(mutation.target.attributes['data-id'].value),
+                                        urOpen: false
+                                    };
+                                    logDebug('Caught selected UR by backdoor. Firing the minions. urId: ' + _selUr.urId);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            let zoomLevel = getZoomLevel();
+            let filter = true;
+            if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) ||
+                (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel)))
+                filter = false;
+            if (urMapMarkerIdsArr.length > 0)
+                handleUrLayer('markersAdded', filter, urMapMarkerIdsArr);
+        });
+        if ((status === 'enable') && (!saveButtonObserver.isObserving || !urPanelContainerObserver.isObserving || !urMarkerObserver.isObserving)) {
             logDebug('Enabling MOs.');
             if (!saveButtonObserver.isObserving) {
                 saveButtonObserver.observe(document.getElementById('toolbar'), { childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true });
@@ -2381,8 +2391,11 @@
                 urPanelContainerObserver.observe(document.getElementById('panel-container'), { childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true });
                 urPanelContainerObserver.isObserving = true;
             }
+            if (!urMarkerObserver.isObserving) {
+                urMarkerObserver.observe(W.map.updateRequestLayer.div, { childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true });
+                urMarkerObserver.isObserving = true;
+            }
             logDebug('Registering map.events event hooks.');
-            W.model.mapUpdateRequests.on('objectsadded', invokeMapUrsAdded);
             WazeWrap.Events.register('zoomend', null, invokeZoomEnd);
             WazeWrap.Events.register('moveend', null, invokeMoveEnd);
             //WazeWrap.Events.register('mousedown', null, mouseDown);
@@ -2390,7 +2403,7 @@
             WazeWrap.Events.register('mouseup', null, mouseUp);
             WazeWrap.Events.register('change:mode', invokeModeChange);
             WazeWrap.Events.register('change:isImperial', invokeModeChange);
-        } else if ((status === 'disable') && (saveButtonObserver.isObserving || urPanelContainerObserver.isObserving)) {
+        } else if ((status === 'disable') && (saveButtonObserver.isObserving || urPanelContainerObserver.isObserving || urMarkerObserver.isObserving)) {
             logDebug('Disabling MOs.');
             if (saveButtonObserver.isObserving) {
                 saveButtonObserver.disconnect();
@@ -2400,13 +2413,16 @@
                 urPanelContainerObserver.disconnect();
                 urPanelContainerObserver.isObserving = false;
             }
+            if (urMarkerObserver.isObserving) {
+                urMarkerObserver.disconnect();
+                urMarkerObserver.isObserving = false;
+            }
             logDebug('Disabling event listeners for UR markers.');
             $(W.map.updateRequestLayer.div)
                 .off('click', '.map-problem.user-generated', handleUrMarkerClick)
                 .off('mouseover', '.map-problem.user-generated', markerMouseOver)
                 .off('mouseout', '.map-problem.user-generated', markerMouseOut);
             logDebug('Unregistering map.events event hook.');
-            W.model.mapUpdateRequests.off('objectsadded', invokeMapUrsAdded);
             WazeWrap.Events.unregister('zoomend', null, invokeZoomEnd);
             WazeWrap.Events.unregister('moveend', null, invokeMoveEnd);
             //WazeWrap.Events.unregister('mousedown', null, mouseDown);
@@ -2428,7 +2444,7 @@
             .off('mouseout', '.map-problem.user-generated', markerMouseOut)
             .on('mouseout', '.map-problem.user-generated', markerMouseOut);
         try {
-            await handleUrLayer('init', null, null, null);
+            await handleUrLayer('init', null, null);
         }
         catch(error) {
             logWarning(error); // Don't need to return here, go ahead and setup the MOs.
@@ -2766,7 +2782,7 @@
                     $('<label>', {for:'_cbhideZoomOutLinks', title:I18n.t('urce.prefs.HideZoomOutLinksTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideZoomOutLinks')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbunfollowUrAfterSend', urceprefs:'urce', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.UnfollowUrAfterSendTitle')}).prop('checked', _settings.unfollowUrAfterSend),
-                    $('<label>', {for:'_cbunfollowUrAfterSend', title:I18n.t('urce.prefs.UnfollowUrAfterSendTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.UnfollowUrAfterSend')),
+                     $('<label>', {for:'_cbunfollowUrAfterSend', title:I18n.t('urce.prefs.UnfollowUrAfterSendTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.UnfollowUrAfterSend')),
                     $('<div>', {class:'URCE-controls URCE-textFirst'}).append(
                         $('<div>', {title:formatText(I18n.t('urce.prefs.ReminderDaysTitle'), false), class:'URCE-label', urceprefs:'urce'}).append(I18n.t('urce.prefs.ReminderDays') + ': ').append(
                             $('<input>', {type:'number', id:'_numreminderDays', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'urce', min:'0', max:'9999', step:'1', value:_settings.reminderDays, title:formatText(I18n.t('urce.prefs.ReminderDaysTitle'), false)})
@@ -2779,7 +2795,7 @@
                     $('<label>', {for:'_cbenableUrOverflowHandling', title:I18n.t('urce.prefs.EnableUrOverflowHandlingTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrOverflowHandling')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbenableAutoRefresh', urceprefs:'urce-marker-nodisable', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.EnableAutoRefreshTitle')}).prop('checked', _settings.enableAutoRefresh),
-                    $('<label>', {for:'_cbenableAutoRefresh', title:I18n.t('urce.prefs.EnableAutoRefreshTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableAutoRefresh')),
+                    $('<label>', {for:'_cbenableAutoRefresh', title:I18n.t('urce.prefs.EnableAutoRefreshTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableAutoRefresh'))
                 )
             ),
             // UR Marker Preferences
@@ -2902,6 +2918,7 @@
                             $('<input>', {type:'number', id:'_numdisableFilteringBelowZoomLevel', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'filtering', min:'0', max:'10', step:'1', value:_settings.disableFilteringBelowZoomLevel, title:I18n.t('urce.prefs.DisableFilteringBelowZoomLevelTitle')})
                         )
                     ),
+                    $('<br>'),
                     // -- Lifecycle
                     $('<div>').append(
                         $('<div>', {class:'URCE-subHeading'}).text(I18n.t('urce.prefs.LifeCycleStatus') + ':').append('<br>')
@@ -3249,7 +3266,7 @@
             _settings[settingName] = this.checked;
             saveSettingsToStorage();
             if ((urcePrefs.indexOf('marker') > -1) || (urcePrefs.indexOf('filtering') > -1))
-                handleUrLayer('settingsToggle', null, null, null);
+                handleUrLayer('settingsToggle', null, null);
         });
         $('.urceSettingsNumberBox').off().on('change', function() {
             let settingName = $(this)[0].id.substr(4);
@@ -3261,7 +3278,7 @@
                     this.value = val;
                 _settings[settingName] = val;
                 saveSettingsToStorage();
-                handleUrLayer('settingsToggle', null, null, null);
+                handleUrLayer('settingsToggle', null, null);
             }
         });
         $('.urceSettingsTextBox').off().on('change', function() {
@@ -3275,7 +3292,7 @@
                 if (settingName === 'tagEmail')
                     changeCommentList(_settings.commentList, false, true);
                 else
-                    handleUrLayer('settingsToggle', null, null, null);
+                    handleUrLayer('settingsToggle', null, null);
             }
         });
     }
@@ -3453,7 +3470,7 @@
         maskBoxes(I18n.t('urce.prompts.WaitingOnInit') + '.<br>' + I18n.t('urce.common.PleaseWait') + '.', false, 'init', (urId > 0));
         await initBackgroundTasks();
         if (W.model.mapUpdateRequests.getObjectArray().length > _markerCountOnInit)
-            await handleUrLayer('init_end', null, null, null);
+            await handleUrLayer('init_end', null, null);
         _markerCountOnInit = -1;
         maskBoxes(null, true, 'init', (urId > 0));
         logDebug('UR ' + urId + ' marker in URL. Re-opening.');
@@ -3510,7 +3527,7 @@
             }
             else {
                 if (W.model.mapUpdateRequests.getObjectArray().length > _markerCountOnInit)
-                    await handleUrLayer('init_end', null, null, null);
+                    await handleUrLayer('init_end', null, null);
                 _markerCountOnInit = -1;
                 maskBoxes(null, true, 'init', (urIdInUrl > 0));
             }
