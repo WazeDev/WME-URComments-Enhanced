@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.02.28.01
+// @version     2019.02.28.02
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'NEW: Warning for more than 499 URs on screen when UR overflow is not enabled.', 'NEW: UR overflow handling (aka "backfill").', 'NEW: Auto refresh setting on zoom / pan.', 'CHANGE: Auto center on UR now automatically centers at current zoom level for all levels.', 'ENHANCE: Debug logging for marker manipulation now queues into single per manipulation per type log message.', 'REVERT: Changed back to mutation handling for marker filtering / manipulation.', 'BUGFIX: Filtering intermittent during zooms and other functions.', 'BUGFIX: UR overflow handling was only processing open URs and a smaller portion of the screen.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'NEW: Warning for more than 499 URs on screen when UR overflow is not enabled.', 'NEW: UR overflow handling (aka "backfill").', 'NEW: Auto refresh setting on zoom / pan.', 'CHANGE: Auto center on UR now automatically centers at current zoom level for all levels.', 'ENHANCE: Debug logging for marker manipulation now queues into single per manipulation type log message.', 'REVERT: Changed back to mutation handling for marker filtering / manipulation.', 'BUGFIX: Filtering intermittent during zooms and other functions.', 'BUGFIX: UR overflow handling was only processing open URs and a smaller portion of the screen.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -1340,7 +1340,7 @@
             $(`#urceCustomMarker_${urId}`).remove();
             return 'removed';
         }
-        return;
+        return false;
     }
 
     function customMarkersEnabledCheck() {
@@ -1783,10 +1783,6 @@
         });
     }
 
-    function sleep(ms) {
-        return new Promise((resolve) => { setTimeout(resolve, ms) });
-    }
-
     function getOverflowUrsFromUrl(url) {
         return new Promise((resolve) => {
             (async function retry(tries) {
@@ -1819,116 +1815,33 @@
         });
     }
 
-    async function handleUrOverflow() {
+    function handleUrOverflow() {
         let overflowUrsToPut = [];
         let viewPortBounds = W.map.getExtent();
         let viewPortCenter = W.map.getCenter();
-        let viewPortTopQtrLat = viewPortBounds.top - ((viewPortBounds.top - viewPortCenter.lat) / 2);
-        let viewPortBotQtrLat = viewPortCenter.lat - ((viewPortCenter.lat - viewPortBounds.bottom) / 2);
-        let viewPortLftQtrLon = viewPortBounds.left - ((viewPortBounds.left - viewPortCenter.lon) / 2);
-        let viewPortRgtQtrLon = viewPortCenter.lon - ((viewPortCenter.lon - viewPortBounds.right) / 2);
         let lonLatQuads = {
-            '11': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortRgtQtrLon, viewPortTopQtrLat),
+            '1': {
+                from: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortCenter.lat),
                 to: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.right, viewPortBounds.top)
             },
-            '12': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortTopQtrLat),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortRgtQtrLon, viewPortBounds.top)
-            },
-            '13': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortCenter.lat),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortRgtQtrLon, viewPortTopQtrLat)
-            },
-            '14': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortRgtQtrLon, viewPortCenter.lat),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.right, viewPortTopQtrLat)
-            },
-            '21': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortLftQtrLon, viewPortTopQtrLat),
+            '2': {
+                from: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.left, viewPortCenter.lat),
                 to: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortBounds.top)
             },
-            '22': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.left, viewPortTopQtrLat),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortLftQtrLon, viewPortBounds.top)
-            },
-            '23': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.left, viewPortCenter.lat),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortLftQtrLon, viewPortTopQtrLat)
-            },
-            '24': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortLftQtrLon, viewPortCenter.lat),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortTopQtrLat)
-            },
-            '31': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortLftQtrLon, viewPortBotQtrLat),
+            '3': {
+                from: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.left, viewPortBounds.bottom),
                 to: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortCenter.lat)
             },
-            '32': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.left, viewPortBotQtrLat),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortLftQtrLon, viewPortCenter.lat)
-            },
-            '33': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.left, viewPortBounds.bottom),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortLftQtrLon, viewPortBotQtrLat)
-            },
-            '34': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortLftQtrLon, viewPortBounds.bottom),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortBotQtrLat)
-            },
-            '41': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortRgtQtrLon, viewPortBotQtrLat),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.right, viewPortCenter.lat)
-            },
-            '42': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortBotQtrLat),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortRgtQtrLon, viewPortCenter.lat)
-            },
-            '43': {
+            '4': {
                 from: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortBounds.bottom),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortRgtQtrLon, viewPortBotQtrLat)
-            },
-            '44': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortRgtQtrLon, viewPortBounds.bottom),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.right, viewPortBotQtrLat)
+                to: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.right, viewPortCenter.lat)
             }
         };
-        let lonLatQuad11Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[11].from.lon},${lonLatQuads[11].from.lat},${lonLatQuads[11].to.lon},${lonLatQuads[11].to.lat}`);
-        await sleep(100);
-        let lonLatQuad12Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[12].from.lon},${lonLatQuads[12].from.lat},${lonLatQuads[12].to.lon},${lonLatQuads[12].to.lat}`);
-        await sleep(100);
-        let lonLatQuad13Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[13].from.lon},${lonLatQuads[13].from.lat},${lonLatQuads[13].to.lon},${lonLatQuads[13].to.lat}`);
-        await sleep(100);
-        let lonLatQuad14Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[14].from.lon},${lonLatQuads[14].from.lat},${lonLatQuads[14].to.lon},${lonLatQuads[14].to.lat}`);
-        await sleep(100);
-        let lonLatQuad21Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[21].from.lon},${lonLatQuads[21].from.lat},${lonLatQuads[21].to.lon},${lonLatQuads[21].to.lat}`);
-        await sleep(100);
-        let lonLatQuad22Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[22].from.lon},${lonLatQuads[22].from.lat},${lonLatQuads[22].to.lon},${lonLatQuads[22].to.lat}`);
-        await sleep(100);
-        let lonLatQuad23Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[23].from.lon},${lonLatQuads[23].from.lat},${lonLatQuads[23].to.lon},${lonLatQuads[23].to.lat}`);
-        await sleep(100);
-        let lonLatQuad24Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[24].from.lon},${lonLatQuads[24].from.lat},${lonLatQuads[24].to.lon},${lonLatQuads[24].to.lat}`);
-        await sleep(100);
-        let lonLatQuad31Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[31].from.lon},${lonLatQuads[31].from.lat},${lonLatQuads[31].to.lon},${lonLatQuads[31].to.lat}`);
-        await sleep(100);
-        let lonLatQuad32Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[32].from.lon},${lonLatQuads[32].from.lat},${lonLatQuads[32].to.lon},${lonLatQuads[32].to.lat}`);
-        await sleep(100);
-        let lonLatQuad33Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[33].from.lon},${lonLatQuads[33].from.lat},${lonLatQuads[33].to.lon},${lonLatQuads[33].to.lat}`);
-        await sleep(100);
-        let lonLatQuad34Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[34].from.lon},${lonLatQuads[34].from.lat},${lonLatQuads[34].to.lon},${lonLatQuads[34].to.lat}`);
-        await sleep(100);
-        let lonLatQuad41Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[41].from.lon},${lonLatQuads[41].from.lat},${lonLatQuads[41].to.lon},${lonLatQuads[41].to.lat}`);
-        await sleep(100);
-        let lonLatQuad42Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[42].from.lon},${lonLatQuads[42].from.lat},${lonLatQuads[42].to.lon},${lonLatQuads[42].to.lat}`);
-        await sleep(100);
-        let lonLatQuad43Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[43].from.lon},${lonLatQuads[43].from.lat},${lonLatQuads[43].to.lon},${lonLatQuads[43].to.lat}`);
-        await sleep(100);
-        let lonLatQuad44Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=1&bbox=${lonLatQuads[44].from.lon},${lonLatQuads[44].from.lat},${lonLatQuads[44].to.lon},${lonLatQuads[44].to.lat}`);
-        Promise.all([lonLatQuad11Resp, lonLatQuad12Resp, lonLatQuad13Resp, lonLatQuad14Resp,
-                     lonLatQuad21Resp, lonLatQuad22Resp, lonLatQuad23Resp, lonLatQuad24Resp,
-                     lonLatQuad31Resp, lonLatQuad32Resp, lonLatQuad33Resp, lonLatQuad34Resp,
-                     lonLatQuad41Resp, lonLatQuad42Resp, lonLatQuad43Resp, lonLatQuad44Resp
-                    ]).then(async (values) => {
+        let lonLatQuad1Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=0&bbox=${lonLatQuads[1].from.lon},${lonLatQuads[1].from.lat},${lonLatQuads[1].to.lon},${lonLatQuads[1].to.lat}`);
+        let lonLatQuad2Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=0&bbox=${lonLatQuads[2].from.lon},${lonLatQuads[2].from.lat},${lonLatQuads[2].to.lon},${lonLatQuads[2].to.lat}`);
+        let lonLatQuad3Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=0&bbox=${lonLatQuads[3].from.lon},${lonLatQuads[3].from.lat},${lonLatQuads[3].to.lon},${lonLatQuads[3].to.lat}`);
+        let lonLatQuad4Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=0&bbox=${lonLatQuads[4].from.lon},${lonLatQuads[4].from.lat},${lonLatQuads[4].to.lon},${lonLatQuads[4].to.lat}`);
+        Promise.all([lonLatQuad1Resp, lonLatQuad2Resp, lonLatQuad3Resp, lonLatQuad4Resp]).then((values) => {
             let respUrObjs = [];
             values.forEach((resp) => {
                 if (resp.error)
