@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.02.21.03
+// @version     2019.02.29.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'NEW: Added shortcuts for text insertion to UR Panel.', 'NEW: Added "expand all" and "collapse all" links to settings and comment list.', 'NEW: Need translation banner for languages (locales) without a translation.', 'NEW: Switched to using WazeWrap for WME event hooks.', 'ENHANCED: With new shortcuts, dependency on panel swap for segment name insertion is removed.', 'BUGFIX: Auto set comment issue when UR created with LiveMap.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'NEW: UR overflow handling (aka "backfill").', 'NEW: Warning for more than 499 URs on screen when UR overflow is not enabled.', 'NEW: Auto refresh setting on zoom / pan.', 'CHANGE: Auto center on UR now automatically centers at current zoom level for all levels.', 'ENHANCE: Debug logging for marker manipulation now queues into single per manipulation type log message.', 'BUGFIX: Filtering intermittent during zooms and other functions.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = false;
     const LOAD_BEGIN_TIME = performance.now();
@@ -92,13 +92,12 @@
     let _alertBoxInUse = false;
     let _currentCommentList = null;
     let _filtersAppliedOnZoom = false;
-    let _filtersApplying = false;
     let _markerCountOnInit = -1;
     let _mousedOverMarkerId = null;
     let _mouseIsDown = false;
     let _needTranslation = false;
     let _unstackedMasterId = null;
-    let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId, _popupTimeout, _urceTabLightboxTo, _urPanelLightboxTo, _initUrIdInUrlObserver, _initUrIdInUrlTo, _popupDelayTimout;
+    let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId, _popupTimeout, _urceTabLightboxTo, _urPanelLightboxTo, _initUrIdInUrlObserver, _initUrIdInUrlTo, _popupDelayTimout, _urLimitTimeout;
 
     function log(message) { console.log('URC-E:', message); }
     function logError(message) { console.error('URC-E:', message); }
@@ -123,12 +122,15 @@
         logDebug('Loading settings from storage.');
         let loadedSettings = $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
         let defaultSettings = {
+            lastVersion: undefined,
+            wmeUserId: undefined,
             //Comment List
             commentList: 0,
             commentListStyle: 'default',
             commentListCollapses: {},
             tagEmail: '',
             autoSwitchCommentList: false,
+            enableAppendMode: false,
             // URC-E Preferences
             autoCenterOnUr: false,
             autoClickOpenSolvedNi: false,
@@ -148,6 +150,10 @@
             doubleClickLinkSolvedComments: false,
             hideZoomOutLinks: false,
             unfollowUrAfterSend: false,
+            enableUrOverflowHandling: false,
+            enableAutoRefresh: false,
+            reminderDays: 0,
+            closeDays: 7,
             // UR Marker Prefs
             enableUrPillCounts: false,
             disableUrMarkerPopup: false,
@@ -247,13 +253,7 @@
             hideByKeywordIncludingKeyword: '',
             hideByKeywordNotIncluding: false,
             hideByKeywordNotIncludingKeyword: '',
-            hideByKeywordCaseInsensitive: false,
-            // Common Prefs
-            reminderDays: 0,
-            closeDays: 7,
-            enableAppendMode: false,
-            wmeUserId: undefined,
-            lastVersion: undefined
+            hideByKeywordCaseInsensitive: false
         };
         _settings = loadedSettings ? loadedSettings : defaultSettings;
         for (let prop in defaultSettings) {
@@ -707,12 +707,9 @@
     }
 
     function autoCenterOnUr(urId) {
-        logDebug('Checking zoom level and centering on UR if zoom level is less than 4.');
-        _restoreZoom = _restoreZoom || getZoomLevel();
-        if (_restoreZoom < 4) {
-            logDebug('Centering on UR because zoom level is ' + _restoreZoom + '.');
-            W.map.setCenter([getXY(urId, null).x, getXY(urId, null).y], _restoreZoom);
-        }
+        logDebug('Auto centering on UR.');
+        _restoreZoom = null;
+        W.map.setCenter([getXY(urId, null).x, getXY(urId, null).y], getZoomLevel());
     }
 
     function autoZoomOut() {
@@ -1058,7 +1055,8 @@
                             (markerCollection[marker].model.attributes.geometry.y + offset);
                         offset += 1000;
                     }
-                    if (!(markerCollection[marker].icon.imageDiv.classList.contains('recently-closed') && (W.map.updateRequestLayer.showHidden === false)) && (markerCollection[marker].icon.imageDiv.style.visibility !== 'hidden')) {
+                    if (!(markerCollection[marker].icon.imageDiv.classList.contains('recently-closed') && (W.map.updateRequestLayer.showHidden === false)) &&
+                        ((markerCollection[marker].icon.imageDiv.style.display !== 'none') || (markerCollection[marker].icon.imageDiv.style.visibility !== 'hidden'))) {
                         if (parseInt(markerCollection[marker].id) !== urId) {
                             let xDiff = unstackedX - parsePxString(markerCollection[markerCollection[marker].id].icon.imageDiv.style.left);
                             let yDiff = unstackedY - parsePxString(markerCollection[markerCollection[marker].id].icon.imageDiv.style.top);
@@ -1110,101 +1108,101 @@
                 _mousedOverMarkerId = markerId;
                 let targetTab = '_urceTab_' + Math.round(Math.random() * 1000000);
                 let popupXOffset = parsePxString($('#sidebar').css('width'));
-                let unstackedX = parsePxString(W.map.updateRequestLayer.markers[_mousedOverMarkerId].icon.imageDiv.style.left);
-                let unstackedY = parsePxString(W.map.updateRequestLayer.markers[_mousedOverMarkerId].icon.imageDiv.style.top);
+                let unstackedX = parsePxString(W.map.updateRequestLayer.markers[markerId].icon.imageDiv.style.left);
+                let unstackedY = parsePxString(W.map.updateRequestLayer.markers[markerId].icon.imageDiv.style.top);
                 logDebug('Hover over ' + markerType + ' ID ' + markerId);
-                checkMarkerStacking(_mousedOverMarkerId, unstackedX, unstackedY);
+                checkMarkerStacking(markerId, unstackedX, unstackedY);
                 if (!_settings.disableUrMarkerPopup) {
-                    if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData === undefined)
-                        await updateUrceData([_mousedOverMarkerId]);
-                    logDebug('Building popup for UR ' + _mousedOverMarkerId);
+                    if (W.model.mapUpdateRequests.objects[markerId].attributes.urceData === undefined)
+                        await updateUrceData([markerId]);
+                    logDebug('Building popup for UR ' + markerId);
                     popupX = unstackedX - parsePxString(W.map.segmentLayer.div.style.left) + popupXOffset + 6;
                     popupY = unstackedY - parsePxString(W.map.segmentLayer.div.style.top) + 6;
-                    let popupContent = '<b>' + I18n.t('problems.panel.titles.map_update_request') + ' (' + _mousedOverMarkerId + '): ' +
-                        I18n.t('update_requests.types.' + W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.type) + '</b><br>';
-                    if (!W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.description)
+                    let popupContent = '<b>' + I18n.t('problems.panel.titles.map_update_request') + ' (' + markerId + '): ' +
+                        I18n.t('update_requests.types.' + W.model.mapUpdateRequests.objects[markerId].attributes.type) + '</b><br>';
+                    if (!W.model.mapUpdateRequests.objects[markerId].attributes.description)
                         popupContent += '<i>' + I18n.t('urce.mouseOver.NoDescription') + '</i>';
                     else
-                        popupContent += clickify(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.description, '');
-                    if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.driveDaysOld > -1) {
-                        popupContent += '<br><i>' + I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.driveDaysOld) + ' ';
-                        if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.driveDate > -1)
-                            popupContent += '(' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.driveDate).toLocaleDateString('en-us') +
-                                ' ' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.driveDate).toLocaleTimeString('en-us') + ') ';
-                        if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.guestUserName && (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.guestUserName !== null)) {
+                        popupContent += clickify(W.model.mapUpdateRequests.objects[markerId].attributes.description, '');
+                    if (W.model.mapUpdateRequests.objects[markerId].attributes.urceData.driveDaysOld > -1) {
+                        popupContent += '<br><i>' + I18n.t('mte.edit.submitted') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[markerId].attributes.urceData.driveDaysOld) + ' ';
+                        if (W.model.mapUpdateRequests.objects[markerId].attributes.driveDate > -1)
+                            popupContent += '(' + new Date(W.model.mapUpdateRequests.objects[markerId].attributes.driveDate).toLocaleDateString('en-us') +
+                                ' ' + new Date(W.model.mapUpdateRequests.objects[markerId].attributes.driveDate).toLocaleTimeString('en-us') + ') ';
+                        if (W.model.mapUpdateRequests.objects[markerId].attributes.guestUserName && (W.model.mapUpdateRequests.objects[markerId].attributes.guestUserName !== null)) {
                             popupContent += I18n.t('urce.mouseOver.ViaLivemap');
-                            if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.guestUserName !== '')
-                                popupContent += ' by '+ W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.guestUserName.replace(/<\/?[^>]+(>|$)/g, "");
+                            if (W.model.mapUpdateRequests.objects[markerId].attributes.guestUserName !== '')
+                                popupContent += ' by '+ W.model.mapUpdateRequests.objects[markerId].attributes.guestUserName.replace(/<\/?[^>]+(>|$)/g, "");
                         }
                         popupContent += '</i>';
                     }
-                    if ((W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedOn !== null) && (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.resolveDaysAgo > -1)) {
-                        popupContent += '<br><i>' + I18n.t('urce.urStatus.Closed') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.resolveDaysAgo) + ' ';
-                        popupContent += '(' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedOn).toLocaleDateString('en-us') +
-                            ' ' + new Date(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedOn).toLocaleTimeString('en-us') + ')</i>';
+                    if ((W.model.mapUpdateRequests.objects[markerId].attributes.resolvedOn !== null) && (W.model.mapUpdateRequests.objects[markerId].attributes.urceData.resolveDaysAgo > -1)) {
+                        popupContent += '<br><i>' + I18n.t('urce.urStatus.Closed') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[markerId].attributes.urceData.resolveDaysAgo) + ' ';
+                        popupContent += '(' + new Date(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedOn).toLocaleDateString('en-us') +
+                            ' ' + new Date(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedOn).toLocaleTimeString('en-us') + ')</i>';
                         popupContent += '<br><i>' + I18n.t('urce.mouseOver.MarkedAs') + ' ';
-                        if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolution === 0)
+                        if (W.model.mapUpdateRequests.objects[markerId].attributes.resolution === 0)
                             popupContent += I18n.t('venues.update_requests.panel.solved');
-                        else if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolution === 1)
+                        else if (W.model.mapUpdateRequests.objects[markerId].attributes.resolution === 1)
                             popupContent += I18n.t('urce.urStatus.NotIdentified');
                         else
                             popupContent += I18n.t('segment.direction.0');
-                        if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedBy !== null) {
+                        if (W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy !== null) {
                             popupContent += ' ' + I18n.t('element_history.changed_by') + ' ';
-                            popupContent += '<a href="' + W.Config.user_profile.url + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedBy).username + '">';
-                            popupContent += getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedBy).username + '</a>';
-                            popupContent += ' (' + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.resolvedBy).rank + ')';
+                            popupContent += '<a href="' + W.Config.user_profile.url + getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).username + '">';
+                            popupContent += getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).username + '</a>';
+                            popupContent += ' (' + getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).rank + ')';
                         }
                         popupContent += '</i>';
                     }
-                    popupContent += '<br><br>' + W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount + ' ' + I18n.t('urce.tabs.Comments');
-                    if (!W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentsByMe && (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount > 0))
+                    popupContent += '<br><br>' + W.model.mapUpdateRequests.objects[markerId].attributes.urceData.commentCount + ' ' + I18n.t('urce.tabs.Comments');
+                    if (!W.model.mapUpdateRequests.objects[markerId].attributes.urceData.commentsByMe && (W.model.mapUpdateRequests.objects[markerId].attributes.urceData.commentCount > 0))
                         popupContent += ' (' + I18n.t('urce.mouseOver.NoneByMe') + ')';
-                    if ((W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount > 0) && (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentDaysOld > -1))
-                        popupContent += ', ' + I18n.t('element_history.actions.default.UPDATE') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentDaysOld);
-                    if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount > 0) {
-                        popupContent += '<br>' + I18n.t('urce.mouseOver.FirstComment') + ': ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentDaysOld) +
+                    if ((W.model.mapUpdateRequests.objects[markerId].attributes.urceData.commentCount > 0) && (W.model.mapUpdateRequests.objects[markerId].attributes.urceData.lastCommentDaysOld > -1))
+                        popupContent += ', ' + I18n.t('element_history.actions.default.UPDATE') + ' ' + parseDaysAgo(W.model.mapUpdateRequests.objects[markerId].attributes.urceData.lastCommentDaysOld);
+                    if (W.model.mapUpdateRequests.objects[markerId].attributes.urceData.commentCount > 0) {
+                        popupContent += '<br>' + I18n.t('urce.mouseOver.FirstComment') + ': ' + parseDaysAgo(W.model.mapUpdateRequests.objects[markerId].attributes.urceData.firstCommentDaysOld) +
                             ' '+ I18n.t('element_history.changed_by') + ' ';
-                        if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy === -1)
+                        if (W.model.mapUpdateRequests.objects[markerId].attributes.urceData.firstCommentBy === -1)
                             popupContent += I18n.t('conversation.reporter');
                         else {
-                            popupContent += '<a href="' + W.Config.user_profile.url + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy).username + '">';
-                            popupContent += getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy).username + '</a>';
-                            popupContent += ' (' + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.firstCommentBy).rank + ')';
+                            popupContent += '<a href="' + W.Config.user_profile.url + getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.urceData.firstCommentBy).username + '">';
+                            popupContent += getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.urceData.firstCommentBy).username + '</a>';
+                            popupContent += ' (' + getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.urceData.firstCommentBy).rank + ')';
                         }
-                        if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.commentCount > 1) {
-                            popupContent += '<br>' + I18n.t('urce.mouseOver.LastComment') + ': ' + parseDaysAgo(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentDaysOld) +
+                        if (W.model.mapUpdateRequests.objects[markerId].attributes.urceData.commentCount > 1) {
+                            popupContent += '<br>' + I18n.t('urce.mouseOver.LastComment') + ': ' + parseDaysAgo(W.model.mapUpdateRequests.objects[markerId].attributes.urceData.lastCommentDaysOld) +
                                 ' ' + I18n.t('element_history.changed_by') + ' ';
-                            if (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentBy === -1)
+                            if (W.model.mapUpdateRequests.objects[markerId].attributes.urceData.lastCommentBy === -1)
                                 popupContent += I18n.t('conversation.reporter');
                             else {
-                                popupContent += '<a href="' + W.Config.user_profile.url + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentBy).username + '">';
-                                popupContent += getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentBy).username + '</a>';
-                                popupContent += ' (' + getUsernameAndRank(W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.lastCommentBy).rank + ')';
+                                popupContent += '<a href="' + W.Config.user_profile.url + getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.urceData.lastCommentBy).username + '">';
+                                popupContent += getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.urceData.lastCommentBy).username + '</a>';
+                                popupContent += ' (' + getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.urceData.lastCommentBy).rank + ')';
                             }
                         }
                         popupContent += '<br>' + I18n.t('urce.mouseOver.ReporterHasCommented') + ': <i>';
-                        popupContent += (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.urceData.reporterHasCommented) ? I18n.t('urce.common.Yes') : I18n.t('urce.common.No');
+                        popupContent += (W.model.mapUpdateRequests.objects[markerId].attributes.urceData.reporterHasCommented) ? I18n.t('urce.common.Yes') : I18n.t('urce.common.No');
                         popupContent += '</i>';
                     }
-                    let urPos = new OL.LonLat();
-                    urPos.lon = (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealX !== undefined) ?
-                        W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealX :
-                        (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.realX !== undefined) ?
-                            W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.realX :
-                            W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.x;
-                    urPos.lat = (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealY !== undefined) ?
-                        W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.urceRealY :
-                        (W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.realY !== undefined) ?
-                            W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.realY :
-                            W.model.mapUpdateRequests.objects[_mousedOverMarkerId].attributes.geometry.y;
-                    urPos.transform(new OL.Projection("EPSG:900913"), new OL.Projection("EPSG:4326"));
+                    let urPos = WazeWrap.Geometry.ConvertTo4326(((W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealX !== undefined) ?
+                                                                   W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealX :
+                                                                   (W.model.mapUpdateRequests.objects[markerId].attributes.geometry.realX !== undefined) ?
+                                                                      W.model.mapUpdateRequests.objects[markerId].attributes.geometry.realX :
+                                                                      W.model.mapUpdateRequests.objects[markerId].attributes.geometry.x
+                                                               ),
+                                                               (W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealY !== undefined) ?
+                                                                  W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealY :
+                                                                  (W.model.mapUpdateRequests.objects[markerId].attributes.geometry.realY !== undefined) ?
+                                                                     W.model.mapUpdateRequests.objects[markerId].attributes.geometry.realY :
+                                                                     W.model.mapUpdateRequests.objects[markerId].attributes.geometry.y
+                                                              );
                     let urLink = $(document)[0].location.href;
                     let urLayers = '';
                     urLink = urLink.substr(0, urLink.indexOf('?zoom'));
-                    urLink += '?zoom=5&lat=' + urPos.lat + '&lon=' + urPos.lon + urLayers + '&mapUpdateRequest=' + _mousedOverMarkerId;
+                    urLink += '?zoom=5&lat=' + urPos.lat + '&lon=' + urPos.lon + urLayers + '&mapUpdateRequest=' + markerId;
                     popupContent +='<hr><ul><li><a href="' + urLink + '" id="_urceOpenInNewTab" target="' + targetTab + '">' + I18n.t('urce.mouseOver.OpenInNewTab') + '</a> - ';
-                    popupContent += '<a href="#" id="_urceRecenterSession" data-id="' + _mousedOverMarkerId + '">' + I18n.t('urce.mouseOver.CenterInCurrentTab') + '</a>';
+                    popupContent += '<a href="#" id="_urceRecenterSession" data-id="' + markerId + '">' + I18n.t('urce.mouseOver.CenterInCurrentTab') + '</a>';
                     let lmLink = ($('#livemap-link').length > 0) ? lmLink = $('#livemap-link')[0].href : ($('.livemap-link').length > 0) ? $('.livemap-link')[0].href : null;
                     if (lmLink !== null) {
                         lmLink = (lmLink.indexOf('?') > -1) ? lmLink.substr(0, lmLink.indexOf('?')) : lmLink;
@@ -1213,11 +1211,11 @@
                     }
                     let popupDelay = (Date.now() > popupDelayTime) ? -1 : (popupDelayTime - Date.now());
                     if (popupDelay < 0)
-                        handlePopup({popupContent:popupContent, popupX:popupX, popupY:popupY, urId:_mousedOverMarkerId});
+                        handlePopup({popupContent:popupContent, popupX:popupX, popupY:popupY, urId:markerId});
                     else {
                         if (_popupDelayTimout !== undefined)
                             window.clearTimeout(_popupDelayTimout);
-                        _popupDelayTimout = window.setTimeout(handlePopup, popupDelay, {popupContent:popupContent, popupX:popupX, popupY:popupY, urId:_mousedOverMarkerId});
+                        _popupDelayTimout = window.setTimeout(handlePopup, popupDelay, {popupContent:popupContent, popupX:popupX, popupY:popupY, urId:markerId});
                     }
                 }
             }
@@ -1332,16 +1330,17 @@
         else if (customType === 99)
             useCustomMarker = _settings.customMarkersCustom;
         if (useCustomMarker)
-            renderCustomMarker(urId, urOpen, customType, $node);
+            return renderCustomMarker(urId, urOpen, customType, $node);
         else
-            removeCustomMarker(urId);
+            return removeCustomMarker(urId);
     }
 
     function removeCustomMarker(urId) {
         if ($(`#urceCustomMarker_${urId}`).length > 0) {
-            logDebug('Removing custom marker for UR: ' + urId);
             $(`#urceCustomMarker_${urId}`).remove();
+            return 'removed';
         }
+        return false;
     }
 
     function customMarkersEnabledCheck() {
@@ -1353,18 +1352,18 @@
     }
 
     function renderCustomMarker(urId, urOpen, customType, $node) {
+        let status = 'updated';
         if ($(`#urceCustomMarker_${urId}`).length === 0) {
-            logDebug('Adding custom marker for UR: ' + urId);
             $($node).append(
                 $('<span>', {id:`urceCustomMarker_${urId}`, style:'position:absolute;pointer-events:none;top:-3px;left:-2px;'})
             );
+            status = 'added';
         }
-        else
-            logDebug('Updating custom marker for UR: ' + urId);
         let variant = (!urOpen) ? 2 : 0;
         $(`#urceCustomMarker_${urId}`).empty().append(
             $('<img>', {src:uroAltMarkers[getCustomMarkerIdx(customType)][variant]})
         );
+        return status;
     }
 
     function getCustomMarkerIdx(customType) {
@@ -1412,18 +1411,34 @@
     }
 
     function updateUrMapMarkers(urIds, filter) {
+        let markerChanges = {
+            markers: {
+                hidden: [],
+                unhidden: [],
+            },
+            pills: {
+                added: [],
+                updated: [],
+                removed: []
+            },
+            customMarkers: {
+                added: [],
+                updated: [],
+                removed: []
+            }
+        };
         for (let idx = 0; idx < urIds.length; idx++) {
             if (filter && _settings.enableUrceUrFiltering && W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.hideUr &&
                 (!((_selUr.urId === urIds[idx]) && _settings.doNotHideSelectedUr)) &&
                 (!((W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs))
                ) {
-                logDebug('Hiding UR marker for UR: ' + urIds[idx]);
-                $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).css('visibility', 'hidden');
+                markerChanges.markers.hidden.push(urIds[idx]);
+                $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).hide();
             }
             else {
-                if ($(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).css('visibility') === 'hidden') {
-                    logDebug('Unhiding UR marker for UR: ' + urIds[idx]);
-                    $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).css('visibility', 'visible');
+                if ($(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).css('display') === 'none') {
+                    markerChanges.markers.unhidden.push(urIds[idx]);
+                    $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).show();
                 }
                 if (_settings.enableUrPillCounts || customMarkersEnabledCheck()) {
                     if (_settings.enableUrPillCounts) {
@@ -1473,11 +1488,11 @@
                         }
                         tagOffset = '-' + tagOffset + 'px';
                         if ($(`#urceCounters-${urIds[idx]}`).length > 0) {
-                            logDebug('Updating marker counters on UR marker for UR: ' + urIds[idx]);
+                            markerChanges.pills.updated.push(urIds[idx]);
                             $(`#urceCounters-${urIds[idx]}`).remove();
                         }
                         else
-                            logDebug('Adding marker counters on UR marker for UR: ' + urIds[idx]);
+                            markerChanges.pills.added.push(urIds[idx]);
                         $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`).append(
                             $('<div>', {id:`urceCounters-${urIds[idx]}`, 'data-id':`${urIds[idx]}`}).css('clear', 'both').css('margin-bottom', '10px').append(
                                 $('<div>', {id:`urceCounters-${urIds[idx]}-text`, 'data-id':`${urIds[idx]}`}).html(tagContent).css(
@@ -1488,265 +1503,413 @@
                     }
                     else {
                         if ($(`#urceCounters-${urIds[idx]}`).length > 0) {
-                            logDebug('Removing marker counters on UR marker for UR: ' + urIds[idx]);
+                           markerChanges.pills.removed.push(urIds[idx]);
                             $(`#urceCounters-${urIds[idx]}`).remove();
                         }
                     }
+                    let status;
                     if (customMarkersEnabledCheck()) {
                         if (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.customType > -1)
-                            addCustomMarker(urIds[idx], W.model.mapUpdateRequests.objects[urIds[idx]].attributes.open, W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.customType, $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`));
+                            status = addCustomMarker(urIds[idx], W.model.mapUpdateRequests.objects[urIds[idx]].attributes.open, W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.customType, $(`.map-problem.user-generated[data-id="${urIds[idx]}"]`));
                         else
-                            removeCustomMarker(urIds[idx]);
+                            status = removeCustomMarker(urIds[idx]);
                     }
                     else
-                        removeCustomMarker(urIds[idx]);
+                        status = removeCustomMarker(urIds[idx]);
+                    if (status)
+                        markerChanges.customMarkers[status].push(urIds[idx]);
                 }
                 else {
                     if ($(`#urceCounters-${urIds[idx]}`).length > 0) {
-                        logDebug('Removing marker counters on UR marker for UR: ' + urIds[idx]);
+                        markerChanges.pills.removed.push(urIds[idx]);
                         $(`#urceCounters-${urIds[idx]}`).remove();
                     }
                     removeCustomMarker(urIds[idx]);
                 }
             }
         }
+        if (markerChanges.markers.hidden.length > 0)
+            logDebug('Hid UR markers for UR(s): ' + markerChanges.markers.hidden.join(', ') + ' (Total: ' + markerChanges.markers.hidden.length + ')');
+        if (markerChanges.markers.unhidden.length > 0)
+            logDebug('Unhid UR markers for UR(s): ' + markerChanges.markers.unhidden.join(', ') + ' (Total: ' + markerChanges.markers.unhidden.length + ')');
+        if (markerChanges.pills.added.length > 0)
+            logDebug('Added marker pills for UR(s): ' + markerChanges.pills.added.join(', ') + ' (Total: ' + markerChanges.pills.added.length + ')');
+        if (markerChanges.pills.updated.length > 0)
+            logDebug('Updated marker pills for UR(s): ' + markerChanges.pills.updated.join(', ') + ' (Total: ' + markerChanges.pills.updated.length + ')');
+        if (markerChanges.pills.removed.length > 0)
+            logDebug('Updated marker pills for UR(s): ' + markerChanges.pills.removed.join(', ') + ' (Total: ' + markerChanges.pills.removed.length + ')');
+        if (markerChanges.customMarkers.added.length > 0)
+            logDebug('Added custom markers for UR(s): ' + markerChanges.customMarkers.added.join(', ') + ' (Total: ' + markerChanges.customMarkers.added.length + ')');
+        if (markerChanges.customMarkers.updated.length > 0)
+            logDebug('Updated custom markers for UR(s): ' + markerChanges.customMarkers.updated.join(', ') + ' (Total: ' + markerChanges.customMarkers.updated.length + ')');
+        if (markerChanges.customMarkers.removed.length > 0)
+            logDebug('Removed custom markers for UR(s): ' + markerChanges.customMarkers.removed.join(', ') + ' (Total: ' + markerChanges.customMarkers.removed.length + ')');
     }
 
     function updateUrceData(urIds) {
+        let processUrIds = [...urIds];
         return new Promise(async (resolve) => {
-            logDebug('Updating urceData for urIds: ' + urIds.join(', '));
-            let urSessionsObj, mapUrsObj;
-            let urceData = {};
-            let tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim;
-            let tagUsernameRegex = new RegExp(' ' + W.model.loginManager.user.userName + ' ', 'gi');
-            let includingKeyword = (_settings.hideByKeywordIncludingKeyword.length > 0) ? ' ' + _settings.hideByKeywordIncludingKeyword.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') + ' ' : null;
-            let keywordIncludingRegex = (_settings.hideByKeywordIncludingKeyword.length > 0) ? (_settings.hideByKeywordCaseInsensitive) ? new RegExp(includingKeyword, 'gim') : new RegExp(includingKeyword, 'gm') : null;
-            let notIncludingKeyword = (_settings.hideByKeywordNotIncludingKeyword.length > 0) ? ' ' + _settings.hideByKeywordNotIncludingKeyword.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') + ' ' : null;
-            let keywordNotIncludingRegex = (_settings.hideByKeywordNotIncludingKeyword.length > 0) ? (_settings.hideByKeywordCaseInsensitive) ? new RegExp(notIncludingKeyword, 'gim') : new RegExp(notIncludingKeyword, 'gm') : null;
-            try {
-                urSessionsObj = await getUrSessionsAsync(urIds);
-            }
-            catch(error) {
-                return logError(error);
-            }
-            try {
-                mapUrsObj = await getMapUrsAsync(urIds);
-            }
-            catch(error) {
-                return logDebug(error);
-            }
-
-            for (let idx = 0; idx < urIds.length; idx++) {
-                urceData = {
-                    commentCount: urSessionsObj[idx].comments.length,
-                    commentsByMe: false,
-                    commentUserIds: [],
-                    customType: -1,
-                    driveDaysOld: (mapUrsObj[idx].attributes.driveDate) ? uroDateToDays(mapUrsObj[idx].attributes.driveDate) : -1,
-                    firstCommentBy: -2,
-                    firstCommentDaysOld: -1,
-                    fullText: '',
-                    hideUr: false,
-                    keywordIncluding: false,
-                    keywordNotIncluding: false,
-                    lastCommentBy: -2,
-                    lastCommentDaysOld: -1,
-                    needsClosed: false,
-                    needsReminder: false,
-                    reporterHasCommented: false,
-                    resolveDaysAgo: (mapUrsObj[idx].attributes.resolvedOn !== null) ? uroDateToDays(mapUrsObj[idx].attributes.resolvedOn) : undefined,
-                    tagType: -1,
-                    waiting: false
-                };
-                if (urceData.commentCount > 0) {
-                    urceData.firstCommentDaysOld = uroDateToDays(urSessionsObj[idx].comments[0].createdOn);
-                    urceData.firstCommentBy = parseInt(urSessionsObj[idx].comments[0].userID);
-                    urceData.lastCommentDaysOld = uroDateToDays(urSessionsObj[idx].comments[(urceData.commentCount - 1)].createdOn)
-                    urceData.lastCommentBy = parseInt(urSessionsObj[idx].comments[(urceData.commentCount - 1)].userID);
-                    urceData.fullText += (mapUrsObj[idx].attributes.description) ? mapUrsObj[idx].attributes.description + ' ' : '';
-                    for (let commentIdx = 0; commentIdx < urceData.commentCount; commentIdx++) {
-                        urceData.fullText += urSessionsObj[idx].comments[commentIdx].text + ' ';
-                        urceData.commentUserIds.push(urSessionsObj[idx].comments[commentIdx].userID);
-                    }
-                    if (urceData.commentUserIds.indexOf(_wmeUserId) > -1)
-                        urceData.commentsByMe = true;
-                    if (urceData.commentUserIds.indexOf(-1) > -1)
-                        urceData.reporterHasCommented = true;
-                    if (mapUrsObj[idx].attributes.open && urceData.commentCount === 1) {
-                        if ((_settings.reminderDays !== 0) && (urceData.lastCommentDaysOld > (_settings.reminderDays - 1))) {
-                            if ((urceData.lastCommentBy > 1) && (_wmeUserId === urceData.lastCommentBy) && !mapUrsObj[idx].attributes.reminderSent && _settings.autoSendReminders) {
-                                try {
-                                    await autoPostReminderComment(urIds[idx], formatText(_commentList[_defaultComments.dr.commentNum].comment, true));
-                                    if (_settings.unfollowAfterSend)
-                                        unfollowUrAfterSend(urIds[idx]);
-                                    urceData.waiting = true;
-                                } catch(error) {
-                                    urceData.needsReminder = true;
-                                    logWarning(error); // Don't return here as we should go ahead and process the urceData.
-                                }
-                            } else
-                                urceData.needsReminder = true;
+            while (processUrIds.length > 0) {
+                let chunk = processUrIds.splice(0, 500);
+                logDebug('Updating urceData for urIds: ' + chunk.join(', ') + ' (Total Count: ' + chunk.length + ')');
+                let urSessionsObj, mapUrsObj;
+                let urceData = {};
+                let tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim;
+                let tagUsernameRegex = new RegExp(' ' + W.model.loginManager.user.userName + ' ', 'gi');
+                let includingKeyword = (_settings.hideByKeywordIncludingKeyword.length > 0) ? ' ' + _settings.hideByKeywordIncludingKeyword.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') + ' ' : null;
+                let keywordIncludingRegex = (_settings.hideByKeywordIncludingKeyword.length > 0) ? (_settings.hideByKeywordCaseInsensitive) ? new RegExp(includingKeyword, 'gim') : new RegExp(includingKeyword, 'gm') : null;
+                let notIncludingKeyword = (_settings.hideByKeywordNotIncludingKeyword.length > 0) ? ' ' + _settings.hideByKeywordNotIncludingKeyword.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') + ' ' : null;
+                let keywordNotIncludingRegex = (_settings.hideByKeywordNotIncludingKeyword.length > 0) ? (_settings.hideByKeywordCaseInsensitive) ? new RegExp(notIncludingKeyword, 'gim') : new RegExp(notIncludingKeyword, 'gm') : null;
+                try {
+                    urSessionsObj = await getUrSessionsAsync(chunk);
+                }
+                catch(error) {
+                    return logError(error);
+                }
+                try {
+                    mapUrsObj = await getMapUrsAsync(chunk);
+                }
+                catch(error) {
+                    return logDebug(error);
+                }
+                for (let idx = 0; idx < chunk.length; idx++) {
+                    urceData = {
+                        commentCount: urSessionsObj[idx].comments.length,
+                        commentsByMe: false,
+                        commentUserIds: [],
+                        customType: -1,
+                        driveDaysOld: (mapUrsObj[idx].attributes.driveDate) ? uroDateToDays(mapUrsObj[idx].attributes.driveDate) : -1,
+                        firstCommentBy: -2,
+                        firstCommentDaysOld: -1,
+                        fullText: '',
+                        hideUr: false,
+                        keywordIncluding: false,
+                        keywordNotIncluding: false,
+                        lastCommentBy: -2,
+                        lastCommentDaysOld: -1,
+                        needsClosed: false,
+                        needsReminder: false,
+                        reporterHasCommented: false,
+                        resolveDaysAgo: (mapUrsObj[idx].attributes.resolvedOn !== null) ? uroDateToDays(mapUrsObj[idx].attributes.resolvedOn) : undefined,
+                        tagType: -1,
+                        waiting: false
+                    };
+                    if (urceData.commentCount > 0) {
+                        urceData.firstCommentDaysOld = uroDateToDays(urSessionsObj[idx].comments[0].createdOn);
+                        urceData.firstCommentBy = parseInt(urSessionsObj[idx].comments[0].userID);
+                        urceData.lastCommentDaysOld = uroDateToDays(urSessionsObj[idx].comments[(urceData.commentCount - 1)].createdOn)
+                        urceData.lastCommentBy = parseInt(urSessionsObj[idx].comments[(urceData.commentCount - 1)].userID);
+                        urceData.fullText += (mapUrsObj[idx].attributes.description) ? mapUrsObj[idx].attributes.description + ' ' : '';
+                        for (let commentIdx = 0; commentIdx < urceData.commentCount; commentIdx++) {
+                            urceData.fullText += urSessionsObj[idx].comments[commentIdx].text + ' ';
+                            urceData.commentUserIds.push(urSessionsObj[idx].comments[commentIdx].userID);
                         }
-                        else if (((_settings.reminderDays === 0) || (_settings.reminderDays === '')) && (urceData.lastCommentDaysOld > (_settings.closeDays - 1)))
-                            urceData.needsClosed = true;
-                        else
-                            urceData.waiting = true;
-                    }
-                    if (mapUrsObj[idx].attributes.open && urceData.commentCount > 1) {
-                        if (urceData.lastCommentBy > 1) {
-                            if ((_settings.closeDays > 0) && (urceData.lastCommentDaysOld > (_settings.closeDays - 1))) {
-                                if (_wmeUserId === urceData.lastCommentBy)
-                                    urceData.needsClosed = true;
-                                else if (urceData.lastCommentDaysOld < (_settings.reminderDays + _settings.closeDays))
-                                    urceData.waiting = true;
-                                else if (urceData.lastCommentDaysOld > (_settings.reminderDays + _settings.closeDays - 1))
-                                    urceData.needsClosed = true;
+                        if (urceData.commentUserIds.indexOf(_wmeUserId) > -1)
+                            urceData.commentsByMe = true;
+                        if (urceData.commentUserIds.indexOf(-1) > -1)
+                            urceData.reporterHasCommented = true;
+                        if (mapUrsObj[idx].attributes.open && urceData.commentCount === 1) {
+                            if ((_settings.reminderDays !== 0) && (urceData.lastCommentDaysOld > (_settings.reminderDays - 1))) {
+                                if ((urceData.lastCommentBy > 1) && (_wmeUserId === urceData.lastCommentBy) && !mapUrsObj[idx].attributes.reminderSent && _settings.autoSendReminders) {
+                                    try {
+                                        await autoPostReminderComment(chunk[idx], formatText(_commentList[_defaultComments.dr.commentNum].comment, true));
+                                        if (_settings.unfollowAfterSend)
+                                            unfollowUrAfterSend(chunk[idx]);
+                                        urceData.waiting = true;
+                                    } catch(error) {
+                                        urceData.needsReminder = true;
+                                        logWarning(error); // Don't return here as we should go ahead and process the urceData.
+                                    }
+                                } else
+                                    urceData.needsReminder = true;
                             }
+                            else if (((_settings.reminderDays === 0) || (_settings.reminderDays === '')) && (urceData.lastCommentDaysOld > (_settings.closeDays - 1)))
+                                urceData.needsClosed = true;
                             else
                                 urceData.waiting = true;
                         }
-                    }
-                } else
-                    urceData.fullText += (mapUrsObj[idx].attributes.description) ? mapUrsObj[idx].attributes.description : '';
-                urceData.fullText = urceData.fullText.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, ' ');
-                urceData.tagType = (urceData.fullText.search(tagRegex) > -1) ? urceData.fullText.replace(tagRegex, '$1') : -1;
-                if (urceData.tagType !== -1)
-                    urceData.customType = convertTagToCustomType(urceData.tagType);
-                else if (mapUrsObj[idx].attributes.type === 23)
-                    urceData.customType = 98;
-                else
-                    urceData.customType = -1;
-                if ((keywordIncludingRegex !== null) && (urceData.fullText.search(keywordIncludingRegex) > -1))
-                    urceData.keywordIncluding = true;
-                if ((keywordNotIncludingRegex !== null) && (urceData.fullText.search(keywordNotIncludingRegex) === -1))
-                    urceData.keywordNotIncluding = true;
-                if ((urceData.tagType === -1) && (mapUrsObj[idx].attributes.type === 23))
-                    urceData.customType = 98;
-                else if (urceData.tagType === -1)
-                    urceData.customType = -1;
-                if ((urceData.tagType === -1) || _settings.replaceTagNameWithEditorName)
-                    urceData.tagType = urceData.fullText.search(tagUsernameRegex) > -1 ? W.model.loginManager.user.userName : (urceData.tagType) ? urceData.tagType : -1;
-                if ((_settings.hideOutsideEditableArea && !mapUrsObj[idx].canEdit()) ||
-                    (_settings.hideWaiting && urceData.waiting) ||
-                    (_settings.needsClosed && urceData.needsClosed) ||
-                    (_settings.hideUrsReminderNeeded && urceData.needsReminder) ||
-                    (_settings.hideByStatusOpen && mapUrsObj[idx].attributes.open) ||
-                    (_settings.hideByStatusClosed && !mapUrsObj[idx].attributes.open) ||
-                    (_settings.hideByStatusNotIdentified && (mapUrsObj[idx].attributes.resolution === 1)) ||
-                    (_settings.hideByStatusSolved && (mapUrsObj[idx].attributes.resolution === 0)) ||
-                    // Types
-                    (_settings.hideByTypeBlockedRoad && (mapUrsObj[idx].attributes.type === 19)) ||
-                    (_settings.hideByTypeGeneralError && (mapUrsObj[idx].attributes.type === 10)) ||
-                    (_settings.hideByTypeIncorrectAddress && (mapUrsObj[idx].attributes.type === 7)) ||
-                    (_settings.hideByTypeIncorrectJunction && (mapUrsObj[idx].attributes.type === 12)) ||
-                    (_settings.hideByTypeIncorrectRoute && (mapUrsObj[idx].attributes.type === 8)) ||
-                    (_settings.hideByTypeIncorrectStreetPrefixOrSuffix && (mapUrsObj[idx].attributes.type === 22)) ||
-                    (_settings.hideByTypeIncorrectTurn && (mapUrsObj[idx].attributes.type === 6)) ||
-                    (_settings.hideByTypeMissingBridgeOverpass && (mapUrsObj[idx].attributes.type === 13)) ||
-                    (_settings.hideByTypeMissingExit && (mapUrsObj[idx].attributes.type === 15)) ||
-                    (_settings.hideByTypeMissingLandmark && (mapUrsObj[idx].attributes.type === 18)) ||
-                    (_settings.hideByTypeMissingOrInvalidSpeedLimit && (mapUrsObj[idx].attributes.type === 23)) ||
-                    (_settings.hideByTypeMissingRoad && (mapUrsObj[idx].attributes.type === 16)) ||
-                    (_settings.hideByTypeMissingRoundabout && (mapUrsObj[idx].attributes.type === 9)) ||
-                    (_settings.hideByTypeMissingStreetName && (mapUrsObj[idx].attributes.type === 21)) ||
-                    (_settings.hideByTypeTurnNotAllowed && (mapUrsObj[idx].attributes.type === 11)) ||
-                    (_settings.hideByTypeUndefined && (!mapUrsObj[idx].attributes.type || (mapUrsObj[idx].attributes.type > 23) || (mapUrsObj[idx].attributes.type < 6) || (mapUrsObj[idx].attributes.type === 17) || (mapUrsObj[idx].attributes.type === 20))) ||
-                    (_settings.hideByTypeWazeAutomatic && mapUrsObj[idx].attributes.description.indexOf('Waze Automatic:') > -1) ||
-                    (_settings.hideByTypeWrongDrivingDirection && (mapUrsObj[idx].attributes.type === 14)) ||
-                    //Tags
-                    (_settings.hideByTaggedBog && (urceData.customType === 6)) ||
-                    (_settings.hideByTaggedClosure && (urceData.customType === 2)) ||
-                    (_settings.hideByTaggedConstruction && (urceData.customType === 1)) ||
-                    (_settings.hideByTaggedDifficult && (urceData.customType === 7)) ||
-                    (_settings.hideByTaggedEvent && (urceData.customType === 3)) ||
-                    (_settings.hideByTaggedNote && (urceData.customType === 4)) ||
-                    (_settings.hideByTaggedRoadworks && (urceData.customType === 0)) ||
-                    (_settings.hideByTaggedWslm && (urceData.customType === 5)) ||
-                    // Age of submission
-                    (_settings.hideByAgeOfSubmissionLessThan && (urceData.driveDaysOld < _settings.hideByAgeOfSubmissionLessThanDaysOld)) ||
-                    (_settings.hideByAgeOfSubmissionMoreThan && (urceData.driveDaysOld > _settings.hideByAgeOfSubmissionMoreThanDaysOld)) ||
-                    // Following, description, comments
-                    (_settings.hideFollowing && urSessionsObj[idx].isFollowing) ||
-                    (_settings.hideNotFollowing && !urSessionsObj[idx].isFollowing) ||
-                    (_settings.hideDescription && mapUrsObj[idx].attributes.description && (mapUrsObj[idx].attributes.description.length > 0) && (mapUrsObj[idx].attributes.description !== '')) ||
-                    (_settings.hideWithoutDescription && (!mapUrsObj[idx].attributes.description || (mapUrsObj[idx].attributes.description.length === 0) || (mapUrsObj[idx].attributes.description === ''))) ||
-                    (_settings.hideWithCommentsFromMe && (urceData.commentsByMe)) ||
-                    (_settings.hideWithoutCommentsFromMe && (!urceData.commentsByMe)) ||
-                    (_settings.hideLastCommentByMe && (urceData.lastCommentBy === _wmeUserId)) ||
-                    (_settings.hideLastCommentNotByMe && (urceData.lastCommentBy !== _wmeUserId)) ||
-                    (_settings.hideLastCommentByReporter && (urceData.lastCommentBy === -1)) ||
-                    (_settings.hideLastCommentNotByReporter && (urceData.lastCommentBy > 0)) ||
-                    (_settings.hideByCommentCountLessThan && (urceData.commentCount < _settings.hideByCommentCountLessThanNumber)) ||
-                    (_settings.hideByCommentCountMoreThan && (urceData.commentCount > _settings.hideByCommentCountMoreThanNumber)) ||
-                    (_settings.hideByAgeOfFirstCommentLessThan && (urceData.commentCount > 0) && (urceData.firstCommentDaysOld < _settings.hideByAgeOfFirstCommentLessThanDaysOld)) ||
-                    (_settings.hideByAgeOfFirstCommentMoreThan && (urceData.commentCount > 0) && (urceData.firstCommentDaysOld > _settings.hideByAgeOfFirstCommentMoreThanDaysOld)) ||
-                    (_settings.hideByAgeOfLastCommentLessThan && (urceData.commentCount > 0) && (urceData.lastCommentDaysOld < _settings.hideByAgeOfLastCommentLessThanDaysOld)) ||
-                    (_settings.hideByAgeOfLastCommentMoreThan && (urceData.commentCount > 0) && (urceData.lastcommentDaysOld > _settings.hideByAgeOfLastCommentMoreThanDaysOld)) ||
-                    (_settings.hideByKeywordIncluding && urceData.keywordIncluding) ||
-                    (_settings.hideByKeywordNotIncluding && urceData.keywordNotIncluding)
-                   ) urceData.hideUr = true;
-                W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData = urceData;
+                        if (mapUrsObj[idx].attributes.open && urceData.commentCount > 1) {
+                            if (urceData.lastCommentBy > 1) {
+                                if ((_settings.closeDays > 0) && (urceData.lastCommentDaysOld > (_settings.closeDays - 1))) {
+                                    if (_wmeUserId === urceData.lastCommentBy)
+                                        urceData.needsClosed = true;
+                                    else if (urceData.lastCommentDaysOld < (_settings.reminderDays + _settings.closeDays))
+                                        urceData.waiting = true;
+                                    else if (urceData.lastCommentDaysOld > (_settings.reminderDays + _settings.closeDays - 1))
+                                        urceData.needsClosed = true;
+                                }
+                                else
+                                    urceData.waiting = true;
+                            }
+                        }
+                    } else
+                        urceData.fullText += (mapUrsObj[idx].attributes.description) ? mapUrsObj[idx].attributes.description : '';
+                    urceData.fullText = urceData.fullText.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, ' ');
+                    urceData.tagType = (urceData.fullText.search(tagRegex) > -1) ? urceData.fullText.replace(tagRegex, '$1') : -1;
+                    if (urceData.tagType !== -1)
+                        urceData.customType = convertTagToCustomType(urceData.tagType);
+                    else if (mapUrsObj[idx].attributes.type === 23)
+                        urceData.customType = 98;
+                    else
+                        urceData.customType = -1;
+                    if ((keywordIncludingRegex !== null) && (urceData.fullText.search(keywordIncludingRegex) > -1))
+                        urceData.keywordIncluding = true;
+                    if ((keywordNotIncludingRegex !== null) && (urceData.fullText.search(keywordNotIncludingRegex) === -1))
+                        urceData.keywordNotIncluding = true;
+                    if ((urceData.tagType === -1) && (mapUrsObj[idx].attributes.type === 23))
+                        urceData.customType = 98;
+                    else if (urceData.tagType === -1)
+                        urceData.customType = -1;
+                    if ((urceData.tagType === -1) || _settings.replaceTagNameWithEditorName)
+                        urceData.tagType = urceData.fullText.search(tagUsernameRegex) > -1 ? W.model.loginManager.user.userName : (urceData.tagType) ? urceData.tagType : -1;
+                    if ((_settings.hideOutsideEditableArea && !mapUrsObj[idx].canEdit()) ||
+                        (_settings.hideWaiting && urceData.waiting) ||
+                        (_settings.needsClosed && urceData.needsClosed) ||
+                        (_settings.hideUrsReminderNeeded && urceData.needsReminder) ||
+                        (_settings.hideByStatusOpen && mapUrsObj[idx].attributes.open) ||
+                        (_settings.hideByStatusClosed && !mapUrsObj[idx].attributes.open) ||
+                        (_settings.hideByStatusNotIdentified && (mapUrsObj[idx].attributes.resolution === 1)) ||
+                        (_settings.hideByStatusSolved && (mapUrsObj[idx].attributes.resolution === 0)) ||
+                        // Types
+                        (_settings.hideByTypeBlockedRoad && (mapUrsObj[idx].attributes.type === 19)) ||
+                        (_settings.hideByTypeGeneralError && (mapUrsObj[idx].attributes.type === 10)) ||
+                        (_settings.hideByTypeIncorrectAddress && (mapUrsObj[idx].attributes.type === 7)) ||
+                        (_settings.hideByTypeIncorrectJunction && (mapUrsObj[idx].attributes.type === 12)) ||
+                        (_settings.hideByTypeIncorrectRoute && (mapUrsObj[idx].attributes.type === 8)) ||
+                        (_settings.hideByTypeIncorrectStreetPrefixOrSuffix && (mapUrsObj[idx].attributes.type === 22)) ||
+                        (_settings.hideByTypeIncorrectTurn && (mapUrsObj[idx].attributes.type === 6)) ||
+                        (_settings.hideByTypeMissingBridgeOverpass && (mapUrsObj[idx].attributes.type === 13)) ||
+                        (_settings.hideByTypeMissingExit && (mapUrsObj[idx].attributes.type === 15)) ||
+                        (_settings.hideByTypeMissingLandmark && (mapUrsObj[idx].attributes.type === 18)) ||
+                        (_settings.hideByTypeMissingOrInvalidSpeedLimit && (mapUrsObj[idx].attributes.type === 23)) ||
+                        (_settings.hideByTypeMissingRoad && (mapUrsObj[idx].attributes.type === 16)) ||
+                        (_settings.hideByTypeMissingRoundabout && (mapUrsObj[idx].attributes.type === 9)) ||
+                        (_settings.hideByTypeMissingStreetName && (mapUrsObj[idx].attributes.type === 21)) ||
+                        (_settings.hideByTypeTurnNotAllowed && (mapUrsObj[idx].attributes.type === 11)) ||
+                        (_settings.hideByTypeUndefined && (!mapUrsObj[idx].attributes.type || (mapUrsObj[idx].attributes.type > 23) || (mapUrsObj[idx].attributes.type < 6) || (mapUrsObj[idx].attributes.type === 17) || (mapUrsObj[idx].attributes.type === 20))) ||
+                        (_settings.hideByTypeWazeAutomatic && mapUrsObj[idx].attributes.description && mapUrsObj[idx].attributes.description.indexOf('Waze Automatic:') > -1) ||
+                        (_settings.hideByTypeWrongDrivingDirection && (mapUrsObj[idx].attributes.type === 14)) ||
+                        //Tags
+                        (_settings.hideByTaggedBog && (urceData.customType === 6)) ||
+                        (_settings.hideByTaggedClosure && (urceData.customType === 2)) ||
+                        (_settings.hideByTaggedConstruction && (urceData.customType === 1)) ||
+                        (_settings.hideByTaggedDifficult && (urceData.customType === 7)) ||
+                        (_settings.hideByTaggedEvent && (urceData.customType === 3)) ||
+                        (_settings.hideByTaggedNote && (urceData.customType === 4)) ||
+                        (_settings.hideByTaggedRoadworks && (urceData.customType === 0)) ||
+                        (_settings.hideByTaggedWslm && (urceData.customType === 5)) ||
+                        // Age of submission
+                        (_settings.hideByAgeOfSubmissionLessThan && (urceData.driveDaysOld < _settings.hideByAgeOfSubmissionLessThanDaysOld)) ||
+                        (_settings.hideByAgeOfSubmissionMoreThan && (urceData.driveDaysOld > _settings.hideByAgeOfSubmissionMoreThanDaysOld)) ||
+                        // Following, description, comments
+                        (_settings.hideFollowing && urSessionsObj[idx].isFollowing) ||
+                        (_settings.hideNotFollowing && !urSessionsObj[idx].isFollowing) ||
+                        (_settings.hideDescription && mapUrsObj[idx].attributes.description && (mapUrsObj[idx].attributes.description.length > 0) && (mapUrsObj[idx].attributes.description !== '')) ||
+                        (_settings.hideWithoutDescription && (!mapUrsObj[idx].attributes.description || (mapUrsObj[idx].attributes.description.length === 0) || (mapUrsObj[idx].attributes.description === ''))) ||
+                        (_settings.hideWithCommentsFromMe && (urceData.commentsByMe)) ||
+                        (_settings.hideWithoutCommentsFromMe && (!urceData.commentsByMe)) ||
+                        (_settings.hideLastCommentByMe && (urceData.lastCommentBy === _wmeUserId)) ||
+                        (_settings.hideLastCommentNotByMe && (urceData.lastCommentBy !== _wmeUserId)) ||
+                        (_settings.hideLastCommentByReporter && (urceData.lastCommentBy === -1)) ||
+                        (_settings.hideLastCommentNotByReporter && (urceData.lastCommentBy > 0)) ||
+                        (_settings.hideByCommentCountLessThan && (urceData.commentCount < _settings.hideByCommentCountLessThanNumber)) ||
+                        (_settings.hideByCommentCountMoreThan && (urceData.commentCount > _settings.hideByCommentCountMoreThanNumber)) ||
+                        (_settings.hideByAgeOfFirstCommentLessThan && (urceData.commentCount > 0) && (urceData.firstCommentDaysOld < _settings.hideByAgeOfFirstCommentLessThanDaysOld)) ||
+                        (_settings.hideByAgeOfFirstCommentMoreThan && (urceData.commentCount > 0) && (urceData.firstCommentDaysOld > _settings.hideByAgeOfFirstCommentMoreThanDaysOld)) ||
+                        (_settings.hideByAgeOfLastCommentLessThan && (urceData.commentCount > 0) && (urceData.lastCommentDaysOld < _settings.hideByAgeOfLastCommentLessThanDaysOld)) ||
+                        (_settings.hideByAgeOfLastCommentMoreThan && (urceData.commentCount > 0) && (urceData.lastcommentDaysOld > _settings.hideByAgeOfLastCommentMoreThanDaysOld)) ||
+                        (_settings.hideByKeywordIncluding && urceData.keywordIncluding) ||
+                        (_settings.hideByKeywordNotIncluding && urceData.keywordNotIncluding)
+                       ) urceData.hideUr = true;
+                    W.model.mapUpdateRequests.objects[chunk[idx]].attributes.urceData = urceData;
+                }
             }
             resolve();
         });
     }
 
-    async function handleUrMapMarkers(urIds, filter) {
-        urIds = urIds.sort();
-        await updateUrceData(urIds);
-        updateUrMapMarkers(urIds, filter);
-    }
-
-    function handleUrLayer(phase, filter, urMapMarkerIds) {
+    function handleUrLayer(phase, filter, urMapMarkerIdsArr) {
         return new Promise(async (resolve) => {
-            if (!_filtersApplying) {
-                _filtersApplying = true;
-                let zoomLevel = getZoomLevel();
-                if (filter === undefined || filter === null)
-                    filter = true;
-                    if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) ||
-                        (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel)))
-                        filter = false;
+            let zoomLevel = getZoomLevel();
+            if (filter === undefined || filter === null) {
+                filter = true;
+                if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel)))
+                    filter = false;
+            }
+            if (phase === 'init')
+                logDebug('Checking for UR markers already present before URC-E completed initialization.');
+            else if (phase === 'init_end')
+                logDebug('Updating UR markers that appeared after initialization completed.');
+            else if (phase === 'close')
+                logDebug('Updating UR markers after closing UR panel.');
+            else if (phase === 'settingsToggle')
+                logDebug('Updating UR markers after a setting toggle.');
+            else if (phase === 'sendComment')
+                logDebug('Updating UR markers after sending a comment.');
+            else if (phase === 'overflow')
+                logDebug('Updating UR markers from being added through UR overflow handling.');
+            else
+                logDebug('Updating UR markers that appeared after a ' + phase + ' event.');
+            if (!urMapMarkerIdsArr) {
+                urMapMarkerIdsArr = [];
+                W.model.mapUpdateRequests.getObjectArray().forEach((urObj) => {
+                    if (urMapMarkerIdsArr.indexOf(urObj.attributes.id) === -1)
+                        urMapMarkerIdsArr.push(urObj.attributes.id);
+                });
+            }
+            if (urMapMarkerIdsArr.length > 0) {
+                urMapMarkerIdsArr.sort();
                 if (phase === 'init')
-                    logDebug('Checking for UR markers already present before URC-E completed initialization.');
-                if (phase === 'init_end')
-                    logDebug('Updating UR markers that appeared after initialization completed.');
-                if (phase === 'save')
-                    logDebug('Updating UR markers after save.');
-                if (phase === 'close')
-                    logDebug('Updating UR markers after closing UR panel.');
-                if (phase === 'settingsToggle')
-                    logDebug('Updating UR markers after a setting toggle.');
-                if (phase === 'sendComment')
-                    logDebug('Updating UR markers after sending a comment.');
-                if (phase === 'zoomMove')
-                    logDebug('Updating UR markers after zooming or moving.');
-                if (phase === 'modeChange')
-                    logDebug('Updating UR markers after changing WME modes.');
-                if (!urMapMarkerIds) {
-                    urMapMarkerIds = [];
-                    W.model.mapUpdateRequests.getObjectArray().forEach((urObj) => {
-                        if (urMapMarkerIds.indexOf(urObj.attributes.id) === -1)
-                            urMapMarkerIds.push(urObj.attributes.id);
-                    });
+                    _markerCountOnInit = urMapMarkerIdsArr.length;
+                try {
+                    await updateUrceData(urMapMarkerIdsArr);
                 }
-                if (urMapMarkerIds.length > 0) {
-                    try {
-                        if (phase === 'init')
-                            _markerCountOnInit = urMapMarkerIds.length;
-                        await handleUrMapMarkers(urMapMarkerIds, filter);
-                        _filtersApplying = false;
-                        _filtersAppliedOnZoom = filter;
-                    }
-                    catch(error) {
-                        _filtersApplying = false;
-                        _filtersAppliedOnZoom = filter;
-                        return resolve(logWarning(error));
-                    }
+                catch(error) {
+                    logWarning(error);
+                }
+                if (phase !== 'overflow')
+                    updateUrMapMarkers(urMapMarkerIdsArr, filter);
+                if (_settings.enableUrOverflowHandling && (phase !== 'overflow')  && (urMapMarkerIdsArr.length > 499))
+                    handleUrOverflow();
+                else if (urMapMarkerIdsArr.length > 499)
+                    showUrLimitMsg('handleUrLayer');
+                else if (urMapMarkerIdsArr.length < 500)
+                    showUrLimitMsg('remove');
+                if (phase !== 'overflow') {
+                    _filtersAppliedOnZoom = filter;
                 }
             }
             resolve();
         });
+    }
+
+    function getOverflowUrsFromUrl(url) {
+        return new Promise((resolve) => {
+            (async function retry(tries) {
+                let data;
+                let errorObj = {error:null};
+                try {
+                    data = await $.getJSON(url);
+                }
+                catch(error) {
+                    if (error.status === 429)
+                        data = {error:{status:429}};
+                    else {
+                        if (!errorObj.error) {
+                            errorObj.error = (typeof error === 'object') ? error : {error};
+                            errorObj.error.url = url;
+                        }
+                    }
+                }
+                if (data && data.error && data.error.status === 429 && tries > 10)
+                    return resolve({error:{reason:'Too many retries.', url:url}});
+                else if (!data || (data.error && (data.error.status === 429))) {
+                    log('Rate limited by Waze server. Retrying overflow request.');
+                    setTimeout(retry, 100, url, ++tries);
+                }
+                else if (errorObj.error)
+                    resolve(errorObj);
+                else
+                    resolve(data);
+            })(url, 1);
+        });
+    }
+
+    function handleUrOverflow() {
+        let overflowUrsToPut = [];
+        let viewPortBounds = W.map.getExtent();
+        let viewPortCenter = W.map.getCenter();
+        let lonLatQuads = {
+            '1': {
+                from: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortCenter.lat),
+                to: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.right, viewPortBounds.top)
+            },
+            '2': {
+                from: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.left, viewPortCenter.lat),
+                to: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortBounds.top)
+            },
+            '3': {
+                from: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.left, viewPortBounds.bottom),
+                to: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortCenter.lat)
+            },
+            '4': {
+                from: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortBounds.bottom),
+                to: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.right, viewPortCenter.lat)
+            }
+        };
+        let lonLatQuad1Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=0&bbox=${lonLatQuads[1].from.lon},${lonLatQuads[1].from.lat},${lonLatQuads[1].to.lon},${lonLatQuads[1].to.lat}`);
+        let lonLatQuad2Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=0&bbox=${lonLatQuads[2].from.lon},${lonLatQuads[2].from.lat},${lonLatQuads[2].to.lon},${lonLatQuads[2].to.lat}`);
+        let lonLatQuad3Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=0&bbox=${lonLatQuads[3].from.lon},${lonLatQuads[3].from.lat},${lonLatQuads[3].to.lon},${lonLatQuads[3].to.lat}`);
+        let lonLatQuad4Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=0&bbox=${lonLatQuads[4].from.lon},${lonLatQuads[4].from.lat},${lonLatQuads[4].to.lon},${lonLatQuads[4].to.lat}`);
+        Promise.all([lonLatQuad1Resp, lonLatQuad2Resp, lonLatQuad3Resp, lonLatQuad4Resp]).then((values) => {
+            let respUrObjs = [];
+            values.forEach((resp) => {
+                if (resp.error)
+                    logWarning(resp.error)
+                else if (resp.mapUpdateRequests.objects.length > 499) {
+                    logWarning('WARNING: Server returned 500 objects in overflow request, this could mean the request was filtered by the server.');
+                    showUrLimitMsg('overflow');
+                }
+                else
+                    respUrObjs = respUrObjs.concat(resp.mapUpdateRequests.objects);
+            });
+            respUrObjs.forEach((respUrObj) => {
+                if (W.model.mapUpdateRequests.objects[respUrObj.id] === undefined) {
+                    let newUr = require('Waze/Feature/Vector/UpdateRequest');
+                    let toPutUr = new newUr(respUrObj);
+                    let toPutPoint = new OL.Geometry.Point();
+                    toPutPoint.x = respUrObj.geometry.coordinates[0];
+                    toPutPoint.y = respUrObj.geometry.coordinates[1];
+                    toPutPoint.transform(new OL.Projection("EPSG:4326"), new OL.Projection("EPSG:900913"));
+                    toPutUr.geometry = toPutPoint;
+                    let toPutReqBounds = new OL.Geometry.Polygon();
+                    let toPutBounds = new OL.Bounds(toPutPoint.x, toPutPoint.y, toPutPoint.x, toPutPoint.y);
+                    toPutReqBounds.bounds = toPutBounds;
+                    toPutUr.requestBounds = toPutReqBounds;
+                    overflowUrsToPut.push(toPutUr);
+                }
+            });
+            if (overflowUrsToPut.length > 0) {
+                while(overflowUrsToPut.length > 0) {
+                    let chunk = overflowUrsToPut.splice(0, 500);
+                    W.model.mapUpdateRequests.put(chunk);
+                    logDebug(chunk.length + ' URs added from overflow.');
+                }
+            }
+            else
+                logDebug('All URs submitted for overflow processing already exist on map.');
+        });
+    }
+
+    function showUrLimitMsg(phase) {
+        if (phase === 'remove') {
+            if (_urLimitTimeout !== undefined)
+                window.clearTimeout(_urLimitTimeout);
+            if ($('#urLimit').length > 0)
+                $('#urLimit').remove();
+            if ($('#urceBanner').length > 0)
+                $('#urceBanner').remove();
+            return;
+        }
+        let msg = (phase === 'overflow') ? I18n.t('urce.prompts.UrOverflowErrorWithOverflowEnabled') : I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled');
+        if ($('#urceBanner').length === 0)
+            $("#map").append($('<div>', {id:'urceBanner', style:'width:100%; font-size:15px; font-weight:bold; margin-left:auto; margin-right:auto; position:absolute; top:0px; left:10px; z-index: 20000; display:none;'}));
+        $('#urceBanner').empty().append(
+            $('<div>', {id:'urceBannerMsg', style:`width:${(msg.length * 10)}px; text-align:center; font-size:15px; font-weight:600; margin-left:auto; margin-right:auto; color:black; background-color:red;`}).text(msg)
+        );
+        $('#urceBanner').show();
+        if ($('#urLimit').length === 0) {
+            $('#panel-urce-comments').prepend(
+                $('<div>', {id:'urLimit', class:'URCE-divWarningBox'}).html(msg)
+            )
+        }
+        if (_urLimitTimeout !== undefined)
+            window.clearTimeout(_urLimitTimeout);
+        _urLimitTimeout = window.setTimeout(() => {
+            $('#urceBannerMsg').remove();
+            if ($('#urceBanner').children().length === 0)
+                $('#urceBanner').remove();
+        }, 8000);
     }
 
     function mouseDown() {
@@ -1757,22 +1920,41 @@
         _mouseIsDown = false;
     }
 
-    async function invokeZoomMoveEnd() {
-        logDebug('Invoking function on zoomEnd or moveEnd event.');
+    function invokeMoveEnd() {
+        if (_settings.enableAutoRefresh && (getZoomLevel() > 2) && (W.model.mapUpdateRequests.getObjectArray().length > 499) && (W.saveController.options.actionManager.events.object._undoStack.length === 0))
+            return W.controller.reload();
+        else if (!_settings.enableUrOverflowHandling && (W.model.mapUpdateRequests.getObjectArray().length > 499))
+            showUrLimitMsg('moveEnd');
+        else
+            showUrLimitMsg('remove');
+    }
+
+    async function invokeZoomEnd() {
         let zoomLevel = getZoomLevel();
+        if (_settings.enableAutoRefresh && (zoomLevel > 2) && (W.model.mapUpdateRequests.getObjectArray().length > 499) && (W.saveController.options.actionManager.events.object._undoStack.length === 0)) {
+            return W.controller.reload();
+        }
         let filter = null;
         if (_settings.disableFilteringAboveZoom || _settings.disableFilteringBelowZoom) {
-            if (!_filtersAppliedOnZoom && _settings.disableFilteringAboveZoom && (zoomLevel > _settings.disableFilteringAboveZoomLevel))
+            if (!_filtersAppliedOnZoom && _settings.disableFilteringAboveZoom && (zoomLevel > (_settings.disableFilteringAboveZoomLevel - 1)))
                 filter = true;
-            if (!_filtersAppliedOnZoom && _settings.disableFilteringBelowZoom && (zoomLevel < _settings.disableFilteringBelowZoomLevel))
+            if (!_filtersAppliedOnZoom && _settings.disableFilteringBelowZoom && (zoomLevel < (_settings.disableFilteringBelowZoomLevel + 1)))
                 filter = true;
             if (_filtersAppliedOnZoom && _settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
                 filter = false;
             if (_filtersAppliedOnZoom && _settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))
                 filter = false;
         }
+        if (W.model.mapUpdateRequests.getObjectArray().length > 499) {
+            if (_settings.enableUrOverflowHandling)
+                handleUrOverflow();
+            else
+                showUrLimitMsg('zoomEnd');
+        }
+        else if (W.model.mapUpdateRequests.getObjectArray().length < 500)
+            showUrLimitMsg('remove');
         if (filter !== null)
-            await handleUrLayer('zoomMove', filter, null);
+            await handleUrLayer('zoomEnd', filter, null);
     }
 
     function invokeModeChange() {
@@ -2225,14 +2407,14 @@
             });
         });
         let urMarkerObserver = new MutationObserver((mutations) => {
-            let urMapMarkerIds = [];
+            let urMapMarkerIdsArr = [];
             mutations.forEach((mutation) => {
                 if (mutation.type === 'childList') {
                     for (let idx = 0; idx < mutation.addedNodes.length; idx++) {
                         let addedNode = mutation.addedNodes[idx];
                         if (mutation.addedNodes[idx].classList && addedNode.classList.contains('map-problem') && mutation.addedNodes[idx].classList.contains('user-generated')) {
-                            if ((parseInt(mutation.addedNodes[idx].attributes['data-id'].value) > 0) && (urMapMarkerIds.indexOf(parseInt(mutation.addedNodes[idx].attributes['data-id'].value)) === -1))
-                                urMapMarkerIds.push(parseInt(mutation.addedNodes[idx].attributes['data-id'].value));
+                            if ((parseInt(mutation.addedNodes[idx].attributes['data-id'].value) > 0) && (urMapMarkerIdsArr.indexOf(parseInt(mutation.addedNodes[idx].attributes['data-id'].value)) === -1))
+                                urMapMarkerIdsArr.push(parseInt(mutation.addedNodes[idx].attributes['data-id'].value));
                         }
                     }
                 }
@@ -2260,8 +2442,8 @@
             if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel)) ||
                 (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel)))
                 filter = false;
-            if (urMapMarkerIds.length > 0)
-                handleUrMapMarkers(urMapMarkerIds, filter);
+            if (urMapMarkerIdsArr.length > 0)
+                handleUrLayer('markersAdded', filter, urMapMarkerIdsArr);
         });
         if ((status === 'enable') && (!saveButtonObserver.isObserving || !urPanelContainerObserver.isObserving || !urMarkerObserver.isObserving)) {
             logDebug('Enabling MOs.');
@@ -2278,8 +2460,8 @@
                 urMarkerObserver.isObserving = true;
             }
             logDebug('Registering map.events event hooks.');
-            WazeWrap.Events.register('zoomend', null, invokeZoomMoveEnd);
-            WazeWrap.Events.register('moveend', null, invokeZoomMoveEnd);
+            WazeWrap.Events.register('zoomend', null, invokeZoomEnd);
+            WazeWrap.Events.register('moveend', null, invokeMoveEnd);
             //WazeWrap.Events.register('mousedown', null, mouseDown);
             W.map.events.registerPriority('mousedown', null, mouseDown);
             WazeWrap.Events.register('mouseup', null, mouseUp);
@@ -2305,8 +2487,8 @@
                 .off('mouseover', '.map-problem.user-generated', markerMouseOver)
                 .off('mouseout', '.map-problem.user-generated', markerMouseOut);
             logDebug('Unregistering map.events event hook.');
-            WazeWrap.Events.unregister('zoomend', null, invokeZoomMoveEnd);
-            WazeWrap.Events.unregister('moveend', null, invokeZoomMoveEnd);
+            WazeWrap.Events.unregister('zoomend', null, invokeZoomEnd);
+            WazeWrap.Events.unregister('moveend', null, invokeMoveEnd);
             //WazeWrap.Events.unregister('mousedown', null, mouseDown);
             W.map.events.unregister('mousedown', null, mouseDown);
             WazeWrap.Events.unregister('mouseup', null, mouseUp);
@@ -2369,7 +2551,7 @@
           '#sidepanel-urc-e #panel-urce-comments .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; position:absolute }' +
           '#sidepanel-urc-e #panel-urce-comments .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; padding-left:16px; }' +
           // Settings tab
-          '#sidepanel-urc-e #panel-urce-settings .URCE-divNeedTranslation { background-color:indianred; border:1px solid silver; margin:6px 0 6px 0; font-size:12px; border-radius:4px; padding:5px; font-weight:600; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-divDefaultSettings { background-color:lightgray; border-top:1px solid gray; border-bottom:1px solid gray; margin-top:8px; text-align:center; font-size:12px; font-weight:600; width:286px; text-transform:uppercase; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }' +
@@ -2379,7 +2561,7 @@
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:11px;}' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-subHeading { font-weight:600; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 16px !important; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst.urceDisabled, .URCE-controls.URCE-textFirst.urceDisabled { color:#808080; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst.urceDisabled, .URCE-controls.URCE-textFirst.urceDisabled, div.URCE-label.urceDisabled { color:#808080; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline { display:inline; padding-left:3px; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline.urceDisabled { display:inline; padding-left:2px; cursor:default; color:#808080; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; position:absolute }' +
@@ -2389,10 +2571,11 @@
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080;  display:inline-block; position:relative; padding-left:16px; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:11px; text-align:right; }' +
           // Common
+          '#sidepanel-urc-e .URCE-divWarningBox { background-color:indianred; border:1px solid silver; margin:6px 0 6px 0; font-size:12px; border-radius:4px; padding:5px; font-weight:600; }' +
           '#sidepanel-urc-e .URCE-expandCollapseAll { font-size:10px; margin-bottom:-8px; text-align:right; }' +
           '#sidepanel-urc-e .URCE-expandCollapseAllItem { display:inline; cursor:pointer; }' +
           '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:12px; margin-right:4px; }' +
-          '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; width:290px; }' +
+          '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; width:286px; }' +
           '#sidepanel-urc-e .URCE-field.urStyle { border:unset !important; padding:unset !important; border-radius:unset !important; }' +
           '#sidepanel-urc-e .URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }' +
           '#sidepanel-urc-e .URCE-legend.urStyle { border-bottom-style:unset !important; margin-bottom:2px !important; width:100% !important; background-color:#F6F7F7 !important; line-height:20px !important; padding:0 2px 0 2px !important; border-top:1px solid #C0C0C0 !important; border-bottom:1px solid #C0C0C0 !important; }' +
@@ -2445,7 +2628,7 @@
         let urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '';
         if (_needTranslation) {
             $('#panel-urce-settings').append(
-                $('<div>', {id:'needTranslation', class:'URCE-divNeedTranslation'}).html(
+                $('<div>', {id:'needTranslation', class:'URCE-divWarningBox'}).html(
                     `URC-E does not currently have a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>). Translations are setup on a Google Sheet, so they are simple to do.<br><br>If you would like to provide a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>), please contact ${SCRIPT_AUTHOR} via forum PM or Discord, or click reply on the forum thread:<br><a href="https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278" target="_blank">https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278</a>`
                 )
             );
@@ -2663,7 +2846,20 @@
                     $('<label>', {for:'_cbhideZoomOutLinks', title:I18n.t('urce.prefs.HideZoomOutLinksTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.HideZoomOutLinks')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbunfollowUrAfterSend', urceprefs:'urce', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.UnfollowUrAfterSendTitle')}).prop('checked', _settings.unfollowUrAfterSend),
-                    $('<label>', {for:'_cbunfollowUrAfterSend', title:I18n.t('urce.prefs.UnfollowUrAfterSendTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.UnfollowUrAfterSend'))
+                    $('<label>', {for:'_cbunfollowUrAfterSend', title:I18n.t('urce.prefs.UnfollowUrAfterSendTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.UnfollowUrAfterSend')),
+                    $('<div>', {class:'URCE-controls URCE-textFirst'}).append(
+                        $('<div>', {title:formatText(I18n.t('urce.prefs.ReminderDaysTitle'), false), class:'URCE-label', urceprefs:'urce'}).append(I18n.t('urce.prefs.ReminderDays') + ': ').append(
+                            $('<input>', {type:'number', id:'_numreminderDays', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'urce', min:'0', max:'9999', step:'1', value:_settings.reminderDays, title:formatText(I18n.t('urce.prefs.ReminderDaysTitle'), false)})
+                        ),
+                        $('<div>', {title:formatText(I18n.t('urce.prefs.CloseDaysTitle'), false), class:'URCE-label', urceprefs:'urce'}).append(I18n.t('urce.prefs.CloseDays') + ': ').append(
+                            $('<input>', {type:'number', id:'_numcloseDays', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'urce', min:'1', max:'9999', step:'1', value:_settings.closeDays, title:formatText(I18n.t('urce.prefs.CloseDaysTitle'), false)})
+                        )
+                    ),
+                    $('<input>', {type:'checkbox', id:'_cbenableUrOverflowHandling', urceprefs:'urce-marker-nodisable', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.EnableUrOverflowHandlingTitle')}).prop('checked', _settings.enableUrOverflowHandling),
+                    $('<label>', {for:'_cbenableUrOverflowHandling', title:I18n.t('urce.prefs.EnableUrOverflowHandlingTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableUrOverflowHandling')),
+                    $('<br>'),
+                    $('<input>', {type:'checkbox', id:'_cbenableAutoRefresh', urceprefs:'urce-marker-nodisable', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.EnableAutoRefreshTitle')}).prop('checked', _settings.enableAutoRefresh),
+                    $('<label>', {for:'_cbenableAutoRefresh', title:I18n.t('urce.prefs.EnableAutoRefreshTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.EnableAutoRefresh'))
                 )
             ),
             // UR Marker Preferences
@@ -2781,12 +2977,11 @@
                     ),
                     $('<div>').append(
                         $('<input>', {type:'checkbox', id:'_cbdisableFilteringBelowZoom', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.DisableFilteringBelowZoomLevelTitle')}).prop('checked', _settings.disableFilteringBelowZoom),
-                        $('<label>', {for:'_cbdiableFilteringBelowZoom', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.DisableFilteringBelowZoomLevelTitle')}).text(I18n.t('urce.prefs.DisableFilteringBelowZoomLevel')),
+                        $('<label>', {for:'_cbdisableFilteringBelowZoom', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.DisableFilteringBelowZoomLevelTitle')}).text(I18n.t('urce.prefs.DisableFilteringBelowZoomLevel')),
                         $('<div>', {class:'URCE-divDaysInline'}).append(
                             $('<input>', {type:'number', id:'_numdisableFilteringBelowZoomLevel', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'filtering', min:'0', max:'10', step:'1', value:_settings.disableFilteringBelowZoomLevel, title:I18n.t('urce.prefs.DisableFilteringBelowZoomLevelTitle')})
                         )
                     ),
-                    $('<br>'),
                     // -- Lifecycle
                     $('<div>').append(
                         $('<div>', {class:'URCE-subHeading'}).text(I18n.t('urce.prefs.LifeCycleStatus') + ':').append('<br>')
@@ -2910,7 +3105,7 @@
                     $('<div>').append(
                         $('<div>', {class:'URCE-subHeading'}).text(I18n.t('urce.prefs.HideByAgeOfSubmission') + ':').append('<br>')
                     ).append(
-                        $('<div>').append(
+                        $('<div>', {style:'display:inline-flex;'}).append(
                             $('<input>', {type:'checkbox', id:'_cbhideByAgeOfSubmissionLessThan', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideByAgeOfSubmissionLessThanTitle')}).prop('checked', _settings.hideByAgeOfSubmissionLessThan),
                             $('<label>', {for:'_cbhideByAgeOfSubmissionLessThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByAgeOfSubmissionLessThanTitle')}).text(I18n.t('urce.common.LessThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -2918,7 +3113,7 @@
                                 $('<div>', {class:'URCE-divDaysInline', urceprefs:'filtering'}).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
                             )
                         ),
-                        $('<div>').append(
+                        $('<div>', {style:'display:inline-flex;'}).append(
                             $('<input>', {type:'checkbox', id:'_cbhideByAgeOfSubmissionMoreThan', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideByAgeOfSubmissionMoreThanTitle')}).prop('checked', _settings.hideByAgeOfSubmissionMoreThan),
                             $('<label>', {for:'_cbhideByAgeOfSubmissionMoreThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByAgeOfSubmissionMoreThanTitle')}).text(I18n.t('urce.common.MoreThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -2933,7 +3128,7 @@
                     ).append(
                         // -- -- Following / not following
                         $('<div>', {class:'URCE-textFirst', urceprefs:'filtering'}).append(
-                            $('<div>').text(I18n.t('urce.common.Following') + ': ').append(
+                            $('<div>', {style:'display:inline-flex;'}).text(I18n.t('urce.common.Following') + ': ').append(
                                 $('<div>', {style:'display:inline;'}).append(
                                     $('<input>', {type:'checkbox', id:'_cbhideFollowing', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideFollowingTitle')}).prop('checked', _settings.hideFollowing),
                                     $('<label>', {for:'_cbhideFollowing', urceprefs:'filtering', title:I18n.t('urce.prefs.HideFollowingTitle')}).text(I18n.t('urce.common.Following')),
@@ -2942,7 +3137,7 @@
                                 )
                             ),
                             // -- -- With / without description
-                            $('<div>').text(I18n.t('objects.venue.fields.description') + ': ').append(
+                            $('<div>', {style:'display:inline-flex;'}).text(I18n.t('objects.venue.fields.description') + ': ').append(
                                 $('<div>', {style:'display:inline;'}).append(
                                     $('<input>', {type:'checkbox', id:'_cbhideWithDescription', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideWithDescriptionTitle')}).prop('checked', _settings.hideWithDescription),
                                     $('<label>', {for:'_cbhideWithDescription', urceprefs:'filtering', title:I18n.t('urce.prefs.HideWithDescriptionTitle')}).text(I18n.t('urce.common.With')),
@@ -2951,7 +3146,7 @@
                                 )
                             ),
                             // -- -- With / without comments from me
-                            $('<div>').text(I18n.t('urce.prefs.HideCommentsFromMe') + ': ').append(
+                            $('<div>', {style:'display:inline-flex;'}).text(I18n.t('urce.prefs.HideCommentsFromMe') + ': ').append(
                                 $('<div>', {style:'display:inline;'}).append(
                                     $('<input>', {type:'checkbox', id:'_cbhideWithCommentsFromMe', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideWithCommentsFromMeTitle')}).prop('checked', _settings.hideWithCommentsFromMe),
                                     $('<label>', {for:'_cbhideWithCommentsFromMe', urceprefs:'filtering', title:I18n.t('urce.prefs.HideWithCommentsFromMeTitle')}).text(I18n.t('urce.common.With')),
@@ -2960,7 +3155,7 @@
                                 )
                             ),
                             // -- -- First comment by me yes / no
-                            $('<div>').text(I18n.t('urce.prefs.HideFirstCommentByMe') + ': ').append(
+                            $('<div>', {style:'display:inline-flex;'}).text(I18n.t('urce.prefs.HideFirstCommentByMe') + ': ').append(
                                 $('<div>', {style:'display:inline;'}).append(
                                     $('<input>', {type:'checkbox', id:'_cbhideFirstCommentByMe', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideFirstCommentByMeTitle')}).prop('checked', _settings.hideFirstCommentByMe),
                                     $('<label>', {for:'_cbhideFirstCommentByMe', urceprefs:'filtering', title:I18n.t('urce.prefs.HideFirstCommentByMeTitle')}).text(I18n.t('urce.common.Yes')),
@@ -2969,7 +3164,7 @@
                                 )
                             ),
                             // -- -- Last comment by me yes / no
-                            $('<div>').text(I18n.t('urce.prefs.HideLastCommentByMe') + ': ').append(
+                            $('<div>', {style:'display:inline-flex;'}).text(I18n.t('urce.prefs.HideLastCommentByMe') + ': ').append(
                                 $('<div>', {style:'display:inline;'}).append(
                                     $('<input>', {type:'checkbox', id:'_cbhideLastCommentByMe', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideLastCommentByMeTitle')}).prop('checked', _settings.hideLastCommentByMe),
                                     $('<label>', {for:'_cbhideLastCommentByMe', urceprefs:'filtering', title:I18n.t('urce.prefs.HideLastCommentByMeTitle')}).text(I18n.t('urce.common.Yes')),
@@ -2978,7 +3173,7 @@
                                 )
                             ),
                             // -- -- Last comment by reporter yes / no
-                            $('<div>').text(I18n.t('urce.prefs.HideLastCommentByReporter') + ': ').append(
+                            $('<div>', {style:'display:inline-flex;'}).text(I18n.t('urce.prefs.HideLastCommentByReporter') + ': ').append(
                                 $('<div>', {style:'display:inline;'}).append(
                                     $('<input>', {type:'checkbox', id:'_cbhideLastCommentByReporter', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideLastCommentByReporterTitle')}).prop('checked', _settings.hideLastCommentByReporter),
                                     $('<label>', {for:'_cbhideLastCommentByReporter', urceprefs:'filtering', title:I18n.t('urce.prefs.HideLastCommentByReporterTitle')}).text(I18n.t('urce.common.Yes')),
@@ -2988,7 +3183,7 @@
                             )
                         ),
                         // -- -- Less than / more than XX comments
-                        $('<div>').append(
+                        $('<div>', {style:'display:inline-flex;'}).append(
                             $('<input>', {type:'checkbox', id:'_cbhideByCommentCountLessThan', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideByCommentCountLessThanTitle')}).prop('checked', _settings.hideByCommentCountLessThan),
                             $('<label>', {for:'_cbhideByCommentCountLessThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByCommentCountLessThanTitle')}).text(I18n.t('urce.common.LessThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -2996,7 +3191,7 @@
                                 $('<div>', {class:'URCE-divDaysInline', urceprefs:'filtering'}).append(I18n.t('urce.tabs.Comments').toLowerCase())
                             )
                         ),
-                        $('<div>').append(
+                        $('<div>', {style:'display:inline-flex;'}).append(
                             $('<input>', {type:'checkbox', id:'_cbhideByCommentCountMoreThan', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideByCommentCountMoreThanTitle')}).prop('checked', _settings.hideByCommentCountMoreThan),
                             $('<label>', {for:'_cbhideByCommentCountMoreThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByCommentCountMoreThanTitle')}).text(I18n.t('urce.common.MoreThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3005,7 +3200,7 @@
                             )
                         ),
                         // -- -- Age of first comment less than / more than XX days old
-                        $('<div>').append(
+                        $('<div>', {style:'display:inline-flex;'}).append(
                             $('<input>', {type:'checkbox', id:'_cbhideByAgeOfFirstCommentLessThan', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideByAgeOfFirstCommentLessThanTitle')}).prop('checked', _settings.hideByAgeOfFirstCommentLessThan),
                             $('<label>', {for:'_cbhideByAgeOfFirstCommentLessThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByAgeOfFirstCommentLessThanTitle')}).text(I18n.t('urce.prefs.HideByAgeOfFirstCommentLessThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3013,7 +3208,7 @@
                                 $('<div>', {class:'URCE-divDaysInline', urceprefs:'filtering'}).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
                             )
                         ),
-                        $('<div>').append(
+                        $('<div>', {style:'display:inline-flex;'}).append(
                             $('<input>', {type:'checkbox', id:'_cbhideByAgeOfFirstCommentMoreThan', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideByAgeOfFirstCommentMoreThanTitle')}).prop('checked', _settings.hideByAgeOfFirstCommentMoreThan),
                             $('<label>', {for:'_cbhideByAgeOfFirstCommentMoreThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByAgeOfFirstCommentMoreThanTitle')}).text(I18n.t('urce.prefs.HideByAgeOfFirstCommentMoreThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3022,7 +3217,7 @@
                             )
                         ),
                         // -- -- Age of last comment less than / more than XX days old
-                        $('<div>').append(
+                        $('<div>', {style:'display:inline-flex;'}).append(
                             $('<input>', {type:'checkbox', id:'_cbhideByAgeOfLastCommentLessThan', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideByAgeOfLastCommentLessThanTitle')}).prop('checked', _settings.hideByAgeOfLastCommentLessThan),
                             $('<label>', {for:'_cbhideByAgeOfLastCommentLessThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByAgeOfLastCommentLessThanTitle')}).text(I18n.t('urce.prefs.HideByAgeOfLastCommentLessThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3030,7 +3225,7 @@
                                 $('<div>', {class:'URCE-divDaysInline', urceprefs:'filtering'}).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
                             )
                         ),
-                        $('<div>').append(
+                        $('<div>', {style:'display:inline-flex;'}).append(
                             $('<input>', {type:'checkbox', id:'_cbhideByAgeOfLastCommentMoreThan', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideByAgeOfLastCommentMoreThanTitle')}).prop('checked', _settings.hideByAgeOfLastCommentMoreThan),
                             $('<label>', {for:'_cbhideByAgeOfLastCommentMoreThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByAgeOfLastCommentMoreThanTitle')}).text(I18n.t('urce.prefs.HideByAgeOfLastCommentMoreThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3039,14 +3234,14 @@
                             )
                         ),
                         // -- -- Including / not including keyword
-                        $('<div>').append(
+                        $('<div>', {style:'display:inline-flex;'}).append(
                             $('<input>', {type:'checkbox', id:'_cbhideByKeywordIncluding', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideByKeywordIncludingTitle')}).prop('checked', _settings.hideByKeywordIncluding),
                             $('<label>', {for:'_cbhideByKeywordIncluding', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByKeywordIncludingTitle')}).text(I18n.t('urce.prefs.HideByKeywordIncluding')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
                                 $('<input>', {type:'text', id:'_texthideByKeywordIncludingKeyword', class:'urceSettingsTextBox', style:'width:75px; height:20px;', urceprefs:'filtering', value:_settings.hideByKeywordIncludingKeyword, title:I18n.t('urce.prefs.HideByKeywordIncludingTitle')})
                             )
                         ),
-                        $('<div>').append(
+                        $('<div>', {style:'display:inline-flex;'}).append(
                             $('<input>', {type:'checkbox', id:'_cbhideByKeywordNotIncluding', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideByKeywordNotIncludingTitle')}).prop('checked', _settings.hideByKeywordNotIncluding),
                             $('<label>', {for:'_cbhideByKeywordNotIncluding', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByKeywordNotIncludingTitle')}).text(I18n.t('urce.prefs.HideByKeywordNotIncluding')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3057,25 +3252,6 @@
                             $('<input>', {type:'checkbox', id:'_cbhideByKeywordCaseInsensitive', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideByKeywordCaseInsensitiveTitle')}).prop('checked', _settings.hideByKeywordCaseInsensitive),
                             $('<label>', {for:'_cbhideByKeywordCaseInsensitive', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByKeywordCaseInsensitiveTitle')}).text(I18n.t('urce.prefs.HideByKeywordCaseInsensitive'))
                         )
-                    )
-                )
-            ),
-            // Common Preferences
-            $('<fieldset>', {id:'urce-prefs-fieldset-common-prefs', class:`URCE-field${urStyle}`}).append(
-                $('<legend>', {id:'urce-prefs-legend-common-prefs', class:`URCE-legend${urStyle}`}).append(
-                    $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
-                    $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.CommonPrefs'))
-                ).click(function() {
-                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
-                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
-                    $($(this).siblings()[0]).toggleClass('collapse');
-                }),
-                $('<div>', {class:'URCE-controls URCE-textFirst'}).append(
-                    $('<div>', {title:formatText(I18n.t('urce.prefs.ReminderDaysTitle'), false), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.ReminderDays') + ': ').append(
-                        $('<input>', {type:'number', id:'_numreminderDays', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'common', min:'0', max:'9999', step:'1', value:_settings.reminderDays, title:formatText(I18n.t('urce.prefs.ReminderDaysTitle'), false)})
-                    ),
-                    $('<div>', {title:formatText(I18n.t('urce.prefs.CloseDaysTitle'), false), class:'URCE-label', urceprefs:'common'}).append(I18n.t('urce.prefs.CloseDays') + ': ').append(
-                        $('<input>', {type:'number', id:'_numcloseDays', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'common', min:'1', max:'9999', step:'1', value:_settings.closeDays, title:formatText(I18n.t('urce.prefs.CloseDaysTitle'), false)})
                     )
                 )
             )
@@ -3235,7 +3411,7 @@
             new WazeWrap.Interface.Tab('URC-E β', $content, initTab, null);
         else
             new WazeWrap.Interface.Tab('URC-E', $content, initTab, null);
-        $('div#sidepanel-urc-e').width('300px');
+        $('div#sidepanel-urc-e').width('295px');
         showScriptInfoAlert();
         return new Promise((resolve) => { resolve(); });
     }
@@ -3555,7 +3731,7 @@
                             "AutoSwitchCommentListTitle": "Automatically switch to the comment list designated for the area the UR is in, if there is a list associated with the area.\nOpening a UR in an area that does not have a list associated will use the \"Comment List\" you have selected above.",
                             "UrcePrefs": "URC-E Preferences",
                             "AutoCenterOnUr": "Auto center on UR",
-                            "AutoCenterOnUrTitle": "Auto center the map to the selected UR at the current map zoom level when the UR has comments and the zoom level is less than 4.",
+                            "AutoCenterOnUrTitle": "Auto center the map to the selected UR at the current map zoom level when the UR has comments.",
                             "AutoClickOpenSolvedNi": "Auto click open, solved or not identified",
                             "AutoClickOpenSolvedNiTitle": "Suppress the message about recent pending questions to the reporter and then, depending on the choice set for that comment, automatically select Open, Solved or Not Identified.",
                             "AutoCloseUrPanel": "Auto close UR panel",
@@ -3592,6 +3768,10 @@
                             "HideZoomOutLinksTitle": "Hide the zoom out links on the comments tab.",
                             "UnfollowUrAfterSend": "Unfollow UR after send",
                             "UnfollowUrAfterSendTitle": "Unfollow the UR after sending a comment.",
+                            "EnableUrOverflowHandling": "Enable UR overflow handling",
+                            "EnableUrOverflowHandlingTitle": "If this setting is enabled and there are more than 499 URs on the screen, URC-E will attempt to gather more URs and add them to the map, if they do not already exist.\nWME does not display more than 500 URs on a single screen on its own.",
+                            "EnableAutoRefresh": "Enable auto refresh on zoom / pan",
+                            "EnableAutoRefreshTitle": "Reloads the map data when zooming or panning to show URs that may have been missed due to WME's 500 UR limit.  Will only reload if the zoom level is between 3 and 10, there are not pending edits, and there are more than 499 URs loaded.",
                             "UrMarkerPrefs": "UR Marker Preferences",
                             "EnableUrPillCounts": "Enable UR pill counts",
                             "EnableUrPillCountsTitle": "Enable or disable the pill with UR counts on the map marker.",
@@ -3736,7 +3916,7 @@
                             "InsertDayOfWeekTitle": "Shortcut - Drive day of week: Click this icon to insert the drive date day of the week into the new comment box at the cursor position (full day of week name in locale language).",
                             "InsertDescriptionTitle": "Shortcut - Description: Click this icon to insert the UR description into the new comment box at the cursor position.",
                             "InsertSelSegsTitle": "Shortcut - Segment name(s): Click this icon to either replace '$SELSEGS$' (or '$SELSEGS)' with the name of the currently selected segment(s), or\nit will insert the name of the currently selected segment(s) into the comment box at the cursor position.",
-                            "InsertTimeCasualTitle": "Shortcut - Drive time of day (casual): Click this icon toinser t the drive date time of day into the new comment box at the cursor position (in locale language).\n\n04:00am-11:59am: morning\n12:00pm-03:59pm: afternoon\n04:00pm-08:59pm: evening\n09:00pm-03:59am: night",
+                            "InsertTimeCasualTitle": "Shortcut - Drive time of day (casual): Click this icon to insert the drive date time of day into the new comment box at the cursor position (in locale language).\n\n04:00am-11:59am: morning\n12:00pm-03:59pm: afternoon\n04:00pm-08:59pm: evening\n09:00pm-03:59am: night",
                             "InsertTimeTitle": "Shortcut - Drive time of day: Click this icon to insert the drive date time of day into the new comment box at the cursor position (2-digit hour, 2-digit minute in locale format).",
                             "InsertWazeUsernameTitle": "Shortcut - Waze username: Click this icon to insert your Waze username into the new comment box at the cursor position."
                         },
@@ -3758,6 +3938,8 @@
                             "SelSegsInsertError": "In order to use the <i class=\"fa fa-road\" aria-hidden=\"true\"></i> button in the UR Panel, you must first select one or two segments.",
                             "SelSegsInsertErrorHeader": "Error Inserting Segment Names",
                             "CustomListUsed": "URC-E has loaded your \"Custom\" comment list. However, only the comments themselves have been loaded. The settings text and tooltips were not loaded. Further, this functionality is deprecated and may be discontinued at any time. An alternative solution may or may not be offered at that time.",
+                            "UrOverflowErrorWithOverflowEnabled": "URC-E attempted to handle an overflow of more than 500 URs, but still reached the 500 UR limit. Please zoom in and refresh.",
+                            "UrOverflowErrorWithoutOverflowEnabled": "WME will not load more than 500 URs per screen. Some URs may be missing. You can try to enable overflow handling, or zoom in and refresh.",
                             "SwitchingCommentLists": "Switching comment lists",
                             "TimedOutWaitingStatic": "Timed out waiting for the static list to become available. Is it enabled?",
                             "UpdateRequired": "You are using an older version of URC-E, which has caused an error. Please update to at least version",
