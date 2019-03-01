@@ -1,4 +1,4 @@
-/ ==UserScript==
+// ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
 // @version     2019.02.29.01
