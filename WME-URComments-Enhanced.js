@@ -1,7 +1,7 @@
-// ==UserScript==
+/ ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.02.28.02
+// @version     2019.02.29.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'NEW: Warning for more than 499 URs on screen when UR overflow is not enabled.', 'NEW: UR overflow handling (aka "backfill").', 'NEW: Auto refresh setting on zoom / pan.', 'CHANGE: Auto center on UR now automatically centers at current zoom level for all levels.', 'ENHANCE: Debug logging for marker manipulation now queues into single per manipulation type log message.', 'REVERT: Changed back to mutation handling for marker filtering / manipulation.', 'BUGFIX: Filtering intermittent during zooms and other functions.', 'BUGFIX: UR overflow handling was only processing open URs and a smaller portion of the screen.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'NEW: UR overflow handling (aka "backfill").', 'NEW: Warning for more than 499 URs on screen when UR overflow is not enabled.', 'NEW: Auto refresh setting on zoom / pan.', 'CHANGE: Auto center on UR now automatically centers at current zoom level for all levels.', 'ENHANCE: Debug logging for marker manipulation now queues into single per manipulation type log message.', 'BUGFIX: Filtering intermittent during zooms and other functions.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -3771,7 +3771,7 @@
                             "EnableUrOverflowHandling": "Enable UR overflow handling",
                             "EnableUrOverflowHandlingTitle": "If this setting is enabled and there are more than 499 URs on the screen, URC-E will attempt to gather more URs and add them to the map, if they do not already exist.\nWME does not display more than 500 URs on a single screen on its own.",
                             "EnableAutoRefresh": "Enable auto refresh on zoom / pan",
-                            "EnableAutoRefreshTitle": "If this setting is enabled, URC-E will invoke a 'soft refresh' (reload) of the WME map when the following conditions are all met:\n1) Zoom level is 3-10.\n2) More than 499 URs were returned by WME.\n3) No saves are pending.\n\nThis is useful for when an area has more than 500 URs in a single screen display and you do not want to enable 'UR Overflow handling'.",
+                            "EnableAutoRefreshTitle": "Reloads the map data when zooming or panning to show URs that may have been missed due to WME's 500 UR limit.  Will only reload if the zoom level is between 3 and 10, there are not pending edits, and there are more than 499 URs loaded.",
                             "UrMarkerPrefs": "UR Marker Preferences",
                             "EnableUrPillCounts": "Enable UR pill counts",
                             "EnableUrPillCountsTitle": "Enable or disable the pill with UR counts on the map marker.",
