@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.03.03.01
+// @version     2019.03.03.02
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ 'NEW: UR overflow handling (aka "backfill").', 'NEW: Warning for more than 499 URs on screen when UR overflow is not enabled.', 'NEW: Auto refresh setting on zoom / pan.', 'CHANGE: Auto center on UR now automatically centers at current zoom level for all levels.', 'ENHANCE: Debug logging for marker manipulation now queues into single per manipulation type log message.', 'BUGFIX: Filtering intermittent during zooms and other functions.' ];
+    const SCRIPT_VERSION_CHANGES = [ 'NEW: UR overflow handling (aka "backfill").', 'NEW: Warning for more than 499 URs on screen when UR overflow is not enabled.', 'NEW: Auto refresh setting on zoom / pan.', 'CHANGE: Auto center on UR now automatically centers at current zoom level for all levels.', 'ENHANCE: Debug logging for marker manipulation now queues into single per manipulation type log message.', 'BUGFIX: Filtering intermittent during zooms and other functions.', 'ENHANCEMENT: Better overflow handling. Now queues sub-quadrants to get ALL URs.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -97,7 +97,7 @@
     let _mouseIsDown = false;
     let _needTranslation = false;
     let _unstackedMasterId = null;
-    let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId, _popupTimeout, _urceTabLightboxTo, _urPanelLightboxTo, _initUrIdInUrlObserver, _initUrIdInUrlTo, _popupDelayTimout, _urLimitTimeout;
+    let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId, _popupTimeout, _urceTabLightboxTo, _urPanelLightboxTo, _initUrIdInUrlObserver, _initUrIdInUrlTo, _popupDelayTimout, _urLimitTimeout, _lastUrOverflowCount;
 
     function log(message) { console.log('URC-E:', message); }
     function logError(message) { console.error('URC-E:', message); }
@@ -1769,8 +1769,10 @@
                 }
                 if (phase !== 'overflow')
                     updateUrMapMarkers(urMapMarkerIdsArr, filter);
-                if (_settings.enableUrOverflowHandling && (phase !== 'overflow')  && (urMapMarkerIdsArr.length > 499))
-                    handleUrOverflow();
+                if (_settings.enableUrOverflowHandling && (urMapMarkerIdsArr.length > 499)) {
+                    if (_lastUrOverflowCount !== urMapMarkerIdsArr.length)
+                        handleUrOverflow();
+                }
                 else if (urMapMarkerIdsArr.length > 499)
                     showUrLimitMsg('handleUrLayer');
                 else if (urMapMarkerIdsArr.length < 500)
@@ -1801,58 +1803,52 @@
                         }
                     }
                 }
-                if (data && data.error && data.error.status === 429 && tries > 10)
+                if (tries > 10)
                     return resolve({error:{reason:'Too many retries.', url:url}});
+                else if (errorObj.error)
+                    return resolve(errorObj);
                 else if (!data || (data.error && (data.error.status === 429))) {
                     log('Rate limited by Waze server. Retrying overflow request.');
                     setTimeout(retry, 100, url, ++tries);
                 }
-                else if (errorObj.error)
-                    resolve(errorObj);
                 else
                     resolve(data);
             })(url, 1);
         });
     }
 
-    function handleUrOverflow() {
+    async function handleUrOverflow() {
+        let baseUrl = `https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=3%2C0&bbox=`;
         let overflowUrsToPut = [];
-        let viewPortBounds = W.map.getExtent();
-        let viewPortCenter = W.map.getCenter();
-        let lonLatQuads = {
-            '1': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortCenter.lat),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.right, viewPortBounds.top)
-            },
-            '2': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.left, viewPortCenter.lat),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortBounds.top)
-            },
-            '3': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.left, viewPortBounds.bottom),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortCenter.lat)
-            },
-            '4': {
-                from: WazeWrap.Geometry.ConvertTo4326(viewPortCenter.lon, viewPortBounds.bottom),
-                to: WazeWrap.Geometry.ConvertTo4326(viewPortBounds.right, viewPortCenter.lat)
-            }
-        };
-        let lonLatQuad1Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=0&bbox=${lonLatQuads[1].from.lon},${lonLatQuads[1].from.lat},${lonLatQuads[1].to.lon},${lonLatQuads[1].to.lat}`);
-        let lonLatQuad2Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=0&bbox=${lonLatQuads[2].from.lon},${lonLatQuads[2].from.lat},${lonLatQuads[2].to.lon},${lonLatQuads[2].to.lat}`);
-        let lonLatQuad3Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=0&bbox=${lonLatQuads[3].from.lon},${lonLatQuads[3].from.lat},${lonLatQuads[3].to.lon},${lonLatQuads[3].to.lat}`);
-        let lonLatQuad4Resp = getOverflowUrsFromUrl(`https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=0&bbox=${lonLatQuads[4].from.lon},${lonLatQuads[4].from.lat},${lonLatQuads[4].to.lon},${lonLatQuads[4].to.lat}`);
-        Promise.all([lonLatQuad1Resp, lonLatQuad2Resp, lonLatQuad3Resp, lonLatQuad4Resp]).then((values) => {
+        let vpBoundsFrom = WazeWrap.Geometry.ConvertTo4326(W.map.getExtent().left, W.map.getExtent().bottom);
+        let vpBoundsTo = WazeWrap.Geometry.ConvertTo4326(W.map.getExtent().right, W.map.getExtent().top);
+        let vpCenter = WazeWrap.Geometry.ConvertTo4326(W.map.getCenter().lon, W.map.getCenter().lat);
+        let overflowUrlsToCheck = [
+            `${baseUrl}${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
+            `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
+            `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpBoundsFrom.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)}`,
+            `${baseUrl}${vpCenter.lon.toFixed(6)},${vpBoundsFrom.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpCenter.lat.toFixed(6)}`
+            ];
+        while (overflowUrlsToCheck.length > 0) {
+            let overflowUrl = overflowUrlsToCheck.shift();
+            let data = await getOverflowUrsFromUrl(overflowUrl);
             let respUrObjs = [];
-            values.forEach((resp) => {
-                if (resp.error)
-                    logWarning(resp.error)
-                else if (resp.mapUpdateRequests.objects.length > 499) {
-                    logWarning('WARNING: Server returned 500 objects in overflow request, this could mean the request was filtered by the server.');
-                    showUrLimitMsg('overflow');
-                }
-                else
-                    respUrObjs = respUrObjs.concat(resp.mapUpdateRequests.objects);
-            });
+            if (data.error)
+                logWarning(data.error);
+            else if (data.mapUpdateRequests && data.mapUpdateRequests.objects && data.mapUpdateRequests.objects.length > 499) {
+                logDebug('More than 499 objects returned in overflow request, queueing sub quadrants for further checking.');
+                let bbox = overflowUrl.split('bbox=')[1].split(',');
+                let bboxFrom = WazeWrap.Geometry.ConvertTo900913(bbox[0], bbox[1]);
+                let bboxTo = WazeWrap.Geometry.ConvertTo900913(bbox[2], bbox[3]);
+                let subQuadCenter = WazeWrap.Geometry.ConvertTo4326((bboxFrom.lon - ((bboxFrom.lon - bboxTo.lon) / 2)), (bboxTo.lat - ((bboxTo.lat - bboxFrom.lat) / 2)));
+                overflowUrlsToCheck.push(`${baseUrl}${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)},${bbox[2]},${bbox[3]}`);
+                overflowUrlsToCheck.push(`${baseUrl}${bbox[0]},${subQuadCenter.lat.toFixed(6)},${subQuadCenter.lon.toFixed(6)},${bbox[3]}`);
+                overflowUrlsToCheck.push(`${baseUrl}${bbox[0]},${bbox[1]},${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)}`);
+                overflowUrlsToCheck.push(`${baseUrl}${subQuadCenter.lon.toFixed(6)},${bbox[1]},${bbox[2]},${subQuadCenter.lat.toFixed(6)}`);
+            }
+            else if (data.mapUpdateRequests && data.mapUpdateRequests.objects.length > 0) {
+                respUrObjs = respUrObjs.concat(data.mapUpdateRequests.objects);
+            }
             respUrObjs.forEach((respUrObj) => {
                 if (W.model.mapUpdateRequests.objects[respUrObj.id] === undefined) {
                     let newUr = require('Waze/Feature/Vector/UpdateRequest');
@@ -1869,16 +1865,17 @@
                     overflowUrsToPut.push(toPutUr);
                 }
             });
-            if (overflowUrsToPut.length > 0) {
-                while(overflowUrsToPut.length > 0) {
-                    let chunk = overflowUrsToPut.splice(0, 500);
-                    W.model.mapUpdateRequests.put(chunk);
-                    logDebug(chunk.length + ' URs added from overflow.');
-                }
+        }
+        if (overflowUrsToPut.length > 0) {
+            _lastUrOverflowCount = [...overflowUrsToPut].length;
+            while(overflowUrsToPut.length > 0) {
+                let chunk = overflowUrsToPut.splice(0, 500);
+                W.model.mapUpdateRequests.put(chunk);
+                logDebug(chunk.length + ' URs added from overflow.');
             }
-            else
-                logDebug('All URs submitted for overflow processing already exist on map.');
-        });
+        }
+        else
+            logDebug('All URs submitted for overflow processing already exist on map.');
     }
 
     function showUrLimitMsg(phase) {
