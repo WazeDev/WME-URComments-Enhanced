@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.03.04.01
+// @version     2019.03.05.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ '<b>NEW:</b> Per comment list settings!', '<b>ENHANCEMENT:</b> Better overflow handling. Now queues sub-quadrants to get ALL URs.', '<b>ENHANCEMENT:</b> Improved center on UR (popup link), UR Panel crosshairs click and center on UR function.', '<b>ENHANCEMENT:</b> Added dismiss button for over limit message and needs translation message.', '<b>ENHANCEMENT:</b> Removed unnecessary logging.', '<b>BUGFIX:</b> Popup prevented selecting unstacked UR in some situations.', '<b>BUGFIX:</b> Unstack / restack routine sometimes flickered the UR markers involved.' ];
+    const SCRIPT_VERSION_CHANGES = [ '<b>NEW:</b> Per comment list settings!', '<b>ENHANCEMENT:</b> Customizable unstack sensitivity and disable above zoom (zoomed out beyond) level.', '<b>ENHANCEMENT: Unstack markers now temporarily hides markers not involved in the unstacking.', '<b>ENHANCEMENT:</b> Split <i>Auto set new UR comment (with description)</i> out to not insert on SLURs and added a new setting of <i>Auto set new UR Comment (SLUR)</i>.', '<b>ENHANCEMENT:</b> Better overflow handling. Now queues sub-quadrants to get ALL URs.', '<b>ENHANCEMENT:</b> Improved center on UR (popup link), UR Panel crosshairs click and center on UR function.', '<b>ENHANCEMENT:</b> Added dismiss button for over limit message and need translation message.', '<b>ENHANCEMENT:</b> Removed unnecessary logging.', '<b>BUGFIX:</b> Popup prevented selecting unstacked UR in some situations.', '<b>BUGFIX:</b> Unstack / restack routine sometimes flickered the UR markers involved.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -133,13 +133,14 @@
             enableAppendMode: false,
             // Per Comment List Settings
             perCommentListSettings: {},
-            // URC-E Preferences
+            // URC-E Master Settings
             autoCenterOnUr: false,
             autoClickOpenSolvedNi: false,
             autoCloseUrPanel: (_settings.autoCloseCommentWindow),
             autoSaveAfterSolvedOrNiComment: false,
             autoSendReminders: false,
             autoSetNewUrComment: false,
+            autoSetNewUrCommentSlur: false,
             autoSetNewUrCommentWithDescription: false,
             autoSetReminderUrComment:false,
             autoSwitchToUrCommentsTab: false,
@@ -156,7 +157,7 @@
             enableAutoRefresh: false,
             reminderDays: 0,
             closeDays: 7,
-            // UR Marker Prefs
+            // UR Marker Settings
             enableUrPillCounts: false,
             disableUrMarkerPopup: false,
             urMarkerPopupDelay: 2,
@@ -164,6 +165,8 @@
             doNotShowTagNameOnPill: false,
             replaceTagNameWithEditorName: false,
             unstackMarkers: false,
+            unstackDisableAboveZoom: 3,
+            unstackSensitivity: 15,
             customMarkersRoadworks: false,
             customMarkersConstruction: false,
             customMarkersClosures: false,
@@ -175,7 +178,7 @@
             customMarkersNativeSl: false,
             customMarkersCustom: false,
             customMarkersCustomText: '',
-            // UR Filtering Prefs
+            // UR Filtering Settings
             enableUrceUrFiltering: false,
             hideOutsideEditableArea: false,
             doNotFilterTaggedUrs: false,
@@ -582,7 +585,8 @@
             let commentNum = Object.values(_defaultComments).find((defaultComment) => { return defaultComment.urNum === W.model.mapUpdateRequests.objects[urId].attributes.type }).commentNum;
             if (_selUr.urOpen && commentNum) {
                 if ((_settings.perCommentListSettings[_currentCommentList].autoSetNewUrComment && !W.model.mapUpdateRequests.objects[urId].attributes.description) ||
-                    (_settings.perCommentListSettings[_currentCommentList].autoSetNewUrCommentWithDescription && W.model.mapUpdateRequests.objects[urId].attributes.description)) {
+                    (_settings.perCommentListSettings[_currentCommentList].autoSetNewUrCommentWithDescription && W.model.mapUpdateRequests.objects[urId].attributes.description && (W.model.mapUpdateRequests.objects[urId].attributes.type !== 23)) ||
+                    (_settings.perCommentListSettings[_currentCommentList].autoSetNewUrCommentSlur && W.model.mapUpdateRequests.objects[urId].attributes.type === 23)) {
                     if (_settings.autoClickOpenSolvedNi)
                         autoClickOpenSolvedNi(commentNum);
                     try {
@@ -968,6 +972,9 @@
     function restackMarkers() {
         if (_markerStackArray.length === 0)
             return;
+        let filter = true;
+        if ((_settings.disableFilteringAboveZoom && (W.map.getZoom() < _settings.disableFilteringAboveZoomLevel)) || (_settings.disableFilteringBelowZoom && (W.map.getZoom() > _settings.disableFilteringBelowZoomLevel)))
+            filter = false;
         let markerCollection = W.map.updateRequestLayer.markers;
         if (markerCollection !== null) {
             for (let marker in markerCollection) {
@@ -978,6 +985,12 @@
                         testMarkerObj.model.attributes.geometry.y = testMarkerObj.model.attributes.geometry.urceRealY;
                         delete(testMarkerObj.model.attributes.geometry.urceRealX);
                         delete(testMarkerObj.model.attributes.geometry.urceRealY);
+                    }
+                    if (!(filter && _settings.enableUrceUrFiltering && testMarkerObj.model.attributes.urceData.hideUr &&
+                        (!((_selUr.urId === testMarkerObj.id) && _settings.doNotHideSelectedUr)) &&
+                        (!((testMarkerObj.model.attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs)))) {
+                        if (testMarkerObj.icon.imageDiv.style.display === 'none')
+                            $(testMarkerObj.icon.imageDiv).show();
                     }
                 }
             }
@@ -1025,7 +1038,7 @@
                             let xDiff = unstackedX - parsePxString(markerCollection[markerCollection[marker].id].icon.imageDiv.style.left);
                             let yDiff = unstackedY - parsePxString(markerCollection[markerCollection[marker].id].icon.imageDiv.style.top);
                             let distSquared = ((xDiff * xDiff) + (yDiff * yDiff));
-                            if (distSquared < (15 * 15)) // unstackSensitivity * unstackSensitivity
+                            if (distSquared < (_settings.unstackSensitivity * _settings.unstackSensitivity))
                                 stackList.push(parseInt(markerCollection[marker].id));
                         }
                     }
@@ -1033,7 +1046,7 @@
             }
         }
         if (stackList.length > 0) {
-            if ((W.map.getZoom() < 3) || (stackList.length === 1))
+            if ((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))
                 logDebug('Single marker highlighted. Adjusting geometry properties to prevent recentering.');
             else
                 logDebug('Markers are stacked!');
@@ -1048,11 +1061,19 @@
                     let x = parsePxString(markerCollection[thisUrId].icon.imageDiv.style.left);
                     let y = parsePxString(markerCollection[thisUrId].icon.imageDiv.style.top);
                     _markerStackArray.push(new stackListObj(thisUrId, x, y));
-                    if (!((W.map.getZoom() < 3) || (stackList.length === 1))) {
+                    if (!((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
                         markerCollection[thisUrId].icon.imageDiv.style.left = unstackedX + 'px';
                         markerCollection[thisUrId].icon.imageDiv.style.top = unstackedY + 'px';
                         unstackedX += 10;
                         unstackedY -= 30;
+                    }
+                }
+                if (!((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
+                    for (let marker in markerCollection) {
+                        if (markerCollection.hasOwnProperty(marker)) {
+                            if (!isIdAlreadyUnstacked(markerCollection[marker].id))
+                                $(markerCollection[markerCollection[marker].id].icon.imageDiv).hide();
+                        }
                     }
                 }
             }
@@ -2284,21 +2305,23 @@
     function processPerCommentListSettings(commentListIdx) {
         let perCommentListSettingsChanged = false;
         let defaultPerCommentListSettings = {
-                autoSendReminders: _settings.autoSendReminders,
-                autoSendReminders_useDefault: true,
-                autoSetNewUrComment: _settings.autoSetNewUrComment,
-                autoSetNewUrComment_useDefault: true,
-                autoSetNewUrCommentWithDescription: _settings.autoSetNewUrCommentWithDescription,
-                autoSetNewUrCommentWithDescription_useDefault: true,
-                autoSetReminderUrComment: _settings.autoSetReminderUrComment,
-                autoSetReminderUrComment_useDefault: true,
-                tagEmail: _settings.tagEmail,
-                tagEmail_useDefault: true,
-                reminderDays: _settings.reminderDays,
-                reminderDays_useDefault: true,
-                closeDays: _settings.closeDays,
-                closeDays_useDefault: true
-            };
+            autoSendReminders: _settings.autoSendReminders,
+            autoSendReminders_useDefault: true,
+            autoSetNewUrComment: _settings.autoSetNewUrComment,
+            autoSetNewUrComment_useDefault: true,
+            autoSetNewUrCommentSlur: _settings.autoSetNewUrCommentSlur,
+            autoSetNewUrCommentSlur_useDefault: true,
+            autoSetNewUrCommentWithDescription: _settings.autoSetNewUrCommentWithDescription,
+            autoSetNewUrCommentWithDescription_useDefault: true,
+            autoSetReminderUrComment: _settings.autoSetReminderUrComment,
+            autoSetReminderUrComment_useDefault: true,
+            tagEmail: _settings.tagEmail,
+            tagEmail_useDefault: true,
+            reminderDays: _settings.reminderDays,
+            reminderDays_useDefault: true,
+            closeDays: _settings.closeDays,
+            closeDays_useDefault: true
+        };
         if (_settings.perCommentListSettings[commentListIdx] === undefined) {
             _settings.perCommentListSettings[commentListIdx] = defaultPerCommentListSettings;
             perCommentListSettingsChanged = true;
@@ -2327,6 +2350,11 @@
             '      <input type="checkbox" id="_cbperCommentList_autoSetNewUrComment" urceprefs="perCommentList" class="urceSettingsCheckbox' + ((perCListSettings.autoSetNewUrComment_useDefault) ? ' urceDisabled' : '') + '" title="' + I18n.t('urce.prefs.AutoSetNewUrCommentTitle') + '" ' + ((perCListSettings.autoSetNewUrComment) ? 'checked="true"' : '') + ' ' + ((perCListSettings.autoSetNewUrComment_useDefault) ? 'disabled="true"' : '') + '>' +
             '      <label for="_cbperCommentList_autoSetNewUrComment" title="' + I18n.t('urce.prefs.AutoSetNewUrCommentTitle') + '" urceprefs="perCommentList" class="URCE-label' + ((perCListSettings.autoSetNewUrComment_useDefault) ? ' urceDisabled' : '') + '">' + I18n.t('urce.prefs.AutoSetNewUrComment') + '</label>' +
             '      <input type="checkbox" style="margin-left:8px;" id="_cbperCommentList_autoSetNewUrComment_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="' + I18n.t('urce.prefs.UseDefault') + '" ' + ((perCListSettings.autoSetNewUrComment_useDefault) ? 'checked="true"' : '') + '>' +
+            '   </div>' +
+            '   <div>' +
+            '      <input type="checkbox" id="_cbperCommentList_autoSetNewUrCommentSlur" urceprefs="perCommentList" class="urceSettingsCheckbox' + ((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? ' urceDisabled' : '') + '" title="' + I18n.t('urce.prefs.AutoSetNewUrCommentSlurTitle') + '" ' + ((perCListSettings.autoSetNewUrCommentSlur) ? 'checked="true"' : '') + ' ' + ((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? 'disabled="true"' : '') + '>' +
+            '      <label for="_cbperCommentList_autoSetNewUrCommentSlur" title="' + I18n.t('urce.prefs.AutoSetNewUrCommentSlurTitle') + '" urceprefs="perCommentList" class="URCE-label' + ((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? ' urceDisabled' : '') + '">' + I18n.t('urce.prefs.AutoSetNewUrCommentSlur') + '</label>' +
+            '      <input type="checkbox" style="margin-left:8px;" id="_cbperCommentList_autoSetNewUrCommentSlur_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="' + I18n.t('urce.prefs.UseDefault') + '" ' + ((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? 'checked="true"' : '') + '>' +
             '   </div>' +
             '   <div>' +
             '      <input type="checkbox" id="_cbperCommentList_autoSetNewUrCommentWithDescription" urceprefs="perCommentList" class="urceSettingsCheckbox' + ((perCListSettings.autoSetNewUrCommentWithDescription_useDefault) ? ' urceDisabled' : '') + '" title="' + I18n.t('urce.prefs.AutoSetNewUrCommentWithDescriptionTitle') + '" ' + ((perCListSettings.autoSetNewUrCommentWithDescription) ? 'checked="true"' : '') + ' ' + ((perCListSettings.autoSetNewUrCommentWithDescription_useDefault) ? 'disabled="true"' : '') + '>' +
@@ -2764,7 +2792,7 @@
                     )
                 )
             ),
-            // Per Comment List Settings Preferences
+            // Per Comment List Settings Settings
 			$('<fieldset>', {id:'urce-prefs-fieldset-perCommentListSettings', class:`URCE-field${urStyle}`}).append(
 				$('<legend>', {id:'urce-prefs-legend-perCommentListSettings', class:`URCE-legend${urStyle}`}).append(
 					$('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
@@ -2776,8 +2804,7 @@
 				}),
 				$('<div>', {id:'URCE-divPerCommentListSettings'})
             ),
-            $('<div>', {class:'URCE-divDefaultSettings'}).text(I18n.t('urce.prefs.DefaultSettings')),
-            // URC-E Preferences
+            // URC-E Master Settings
             $('<fieldset>', {id:'urce-prefs-fieldset-urc-e-prefs', class:`URCE-field${urStyle}`}).append(
                 $('<legend>', {id:'urce-prefs-legend-urc-e-prefs', class:`URCE-legend${urStyle}`}).append(
                     $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
@@ -2838,6 +2865,9 @@
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbautoSetNewUrComment', urceprefs:'urce', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.AutoSetNewUrCommentTitle')}).prop('checked', _settings.autoSetNewUrComment),
                     $('<label>', {for:'_cbautoSetNewUrComment', title:I18n.t('urce.prefs.AutoSetNewUrCommentTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSetNewUrComment')),
+                    $('<br>'),
+                    $('<input>', {type:'checkbox', id:'_cbautoSetNewUrCommentSlur', urceprefs:'urce', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.AutoSetNewUrCommentSlurTitle')}).prop('checked', _settings.autoSetNewUrCommentSlur),
+                    $('<label>', {for:'_cbautoSetNewUrCommentSlur', title:I18n.t('urce.prefs.AutoSetNewUrCommentSlurTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSetNewUrCommentSlur')),
                     $('<br>'),
                     $('<input>', {type:'checkbox', id:'_cbautoSetNewUrCommentWithDescription', urceprefs:'urce', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.AutoSetNewUrCommentWithDescriptionTitle')}).prop('checked', _settings.autoSetNewUrCommentWithDescription),
                     $('<label>', {for:'_cbautoSetNewUrCommentWithDescription', title:I18n.t('urce.prefs.AutoSetNewUrCommentWithDescriptionTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.AutoSetNewUrCommentWithDescription')),
@@ -2929,7 +2959,7 @@
                     )
                 )
             ),
-            // UR Marker Preferences
+            // UR Marker Settings
             $('<fieldset>', {id:'urce-prefs-fieldset-ur-marker-prefs', class:`URCE-field${urStyle}`}).append(
                 $('<legend>', {id:'urce-prefs-legend-ur-marker-prefs', class:`URCE-legend${urStyle}`}).append(
                     $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
@@ -2973,6 +3003,22 @@
                     $('<input>', {type:'checkbox', id:'_cbunstackMarkers', urceprefs:'marker-nodisable', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.UnstackMarkersTitle')}).prop('checked', _settings.unstackMarkers),
                     $('<label>', {for:'_cbunstackMarkers', urceprefs:'marker-nodisable', title:I18n.t('urce.prefs.UnstackMarkersTitle'), class:'URCE-label'}).text(I18n.t('urce.prefs.UnstackMarkers')),
                     $('<br>'),
+                    $('<div>', {class:'URCE-textFirst', urceprefs:'marker-nodisable-unstack'}).append(
+                        $('<div>', {title:I18n.t('urce.prefs.UnstackSensativityTitle')}).text(I18n.t('urce.prefs.UnstackSensitivity') + ': ').append(
+                            $('<div>', {style:'display:inline;'}).append(
+                                $('<div>', {class:'URCE-divDaysInline'}).append(
+                                    $('<input>', {type:'number', id:'_numunstackSensitivity', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'marker-nodisable-unstack', min:'1', max:'99', step:'1', value:_settings.unstackSensitivity, title:I18n.t('urce.prefs.UnstackSensitivityTitle')})
+                                )
+                            )
+                        ),
+                        $('<div>', {title:I18n.t('urce.prefs.UnstackDisableAboveZoomTitle')}).text(I18n.t('urce.prefs.UnstackDisableAboveZoom') + ': ').append(
+                            $('<div>', {style:'display:inline;'}).append(
+                                $('<div>', {class:'URCE-divDaysInline'}).append(
+                                    $('<input>', {type:'number', id:'_numunstackDisableAboveZoom', class:'URCE-daysInput urceSettingsNumberBox', urceprefs:'marker-nodisable-unstack', min:'0', max:'10', step:'1', value:_settings.unstackDisableAboveZoom, title:I18n.t('urce.prefs.UnstackDisableAboveZoomTitle')})
+                                )
+                            )
+                        )
+                    ),
                     // -- Custom markers
                     $('<div>').append(
                         $('<div>', {class:'URCE-subHeading'}).text(I18n.t('urce.prefs.UseCustomMarkersFor') + ':').css({fontWeight:'600'}).append('<br>')
@@ -3012,7 +3058,7 @@
                     )
                 )
             ),
-            // UR Filtering Preferences
+            // UR Filtering Settings
             $('<fieldset>', {id:'urce-prefs-fieldset-ur-filtering-prefs', class:`URCE-field${urStyle}`}).append(
                 $('<legend>', {id:'urce-prefs-legend-ur-filtering-prefs', class:`URCE-legend${urStyle}`}).append(
                     $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
@@ -3172,7 +3218,7 @@
                     $('<div>').append(
                         $('<div>', {class:'URCE-subHeading'}).text(I18n.t('urce.prefs.HideByAgeOfSubmission') + ':').append('<br>')
                     ).append(
-                        $('<div>', {style:'display:inline-flex;'}).append(
+                        $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbhideByAgeOfSubmissionLessThan', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideByAgeOfSubmissionLessThanTitle')}).prop('checked', _settings.hideByAgeOfSubmissionLessThan),
                             $('<label>', {for:'_cbhideByAgeOfSubmissionLessThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByAgeOfSubmissionLessThanTitle')}).text(I18n.t('urce.common.LessThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3180,7 +3226,7 @@
                                 $('<div>', {class:'URCE-divDaysInline', urceprefs:'filtering'}).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
                             )
                         ),
-                        $('<div>', {style:'display:inline-flex;'}).append(
+                        $('<div>').append(
                             $('<input>', {type:'checkbox', id:'_cbhideByAgeOfSubmissionMoreThan', urceprefs:'filtering', class:'urceSettingsCheckbox', title:I18n.t('urce.prefs.HideByAgeOfSubmissionMoreThanTitle')}).prop('checked', _settings.hideByAgeOfSubmissionMoreThan),
                             $('<label>', {for:'_cbhideByAgeOfSubmissionMoreThan', urceprefs:'filtering', class:'URCE-label', title:I18n.t('urce.prefs.HideByAgeOfSubmissionMoreThanTitle')}).text(I18n.t('urce.common.MoreThan')),
                             $('<div>', {class:'URCE-divDaysInline'}).append(
@@ -3331,6 +3377,10 @@
             $('[urceprefs=filtering]').prop('disabled', true).addClass('urceDisabled');
         else
             $('[urceprefs=filtering]').prop('disabled', false).removeClass('urceDisabled');
+        if (!isChecked('#_cbunstackMarkers'))
+            $('[urceprefs$="-unstack"]').prop('disabled', true).addClass('urceDisabled');
+        else
+            $('[urceprefs$="-unstack"]').prop('disabled', false).removeClass('urceDisabled');
         $('.urceSettingsCheckbox').off().on('change', function() {
             let otherSettingName = null;
             let settingName = $(this)[0].id.substr(3);
@@ -3381,6 +3431,12 @@
                 else
                     $('div#_divZoomOutLinks').show();
             }
+            if (settingName === 'unstackMarkers') {
+                if (this.checked)
+                    $('[urceprefs$="-unstack"]').prop('disabled', false).removeClass('urceDisabled');
+                else
+                    $('[urceprefs$="-unstack"]').prop('disabled', true).addClass('urceDisabled');
+            }
             if (urcePrefs === 'markerMaster') {
                 if (!this.checked)
                     $('[urceprefs=marker]').prop('disabled', true).addClass('urceDisabled');
@@ -3403,7 +3459,7 @@
                 }
             });
             saveSettingsToStorage();
-            if ((urcePrefs.indexOf('marker') > -1) || (urcePrefs.indexOf('filtering') > -1))
+            if (((urcePrefs.indexOf('marker') > -1) || (urcePrefs.indexOf('filtering') > -1)) && (settingName.indexOf('unstack') === -1))
                 handleUrLayer('settingsToggle', null, null);
         });
         $('.urceSettingsNumberBox').off().on('change', function() {
@@ -3424,7 +3480,8 @@
                     }
                 });
                 saveSettingsToStorage();
-                handleUrLayer('settingsToggle', null, null);
+                if (settingName.indexOf('unstack') === -1)
+                    handleUrLayer('settingsToggle', null, null);
             }
         });
         $('.urceSettingsTextBox').off().on('change', function() {
@@ -3822,9 +3879,8 @@
                             "AutoSwitchCommentListTitle": "Automatically switch to the comment list designated for the area the UR is in, if there is a list associated with the area.\nOpening a UR in an area that does not have a list associated will use the \"Comment List\" you have selected above.",
                             "PerCommentListSettings": "Per comment list settings",
                             "SettingsFor": "Settings for",
-                            "UseDefault": "Use default",
-                            "DefaultSettings": "Default Settings",
-                            "UrcePrefs": "URC-E Preferences",
+                            "UseDefault": "Use 'URC-E Master Settings' setting",
+                            "UrcePrefs": "URC-E Master Settings",
                             "AutoCenterOnUr": "Auto center on UR",
                             "AutoCenterOnUrTitle": "Auto center the map to the selected UR at the current map zoom level when the UR has comments.",
                             "AutoClickOpenSolvedNi": "Auto click open, solved or not identified",
@@ -3839,6 +3895,8 @@
                             "AutoSendRemindersWarningTitle": "AUTOMATICALLY SEND REMINDERS at the reminder days setting.\nThis only happens when they are visible on your screen.\n\nNOTE: When using this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to all open URs\nafter 'Reminder days'.",
                             "AutoSetNewUrComment": "Auto set new UR comment (without description)",
                             "AutoSetNewUrCommentTitle": "Automatically set the default UR comment for the UR type on new (do not already have comments) URs that do not have a description.",
+                            "AutoSetNewUrCommentSlur": "Auto set new UR comment (SLURs)",
+                            "AutoSetNewURCommentSlurTitle": "Automatically set the default UR comment for new (do not already have comments) SLURs.",
                             "AutoSetNewUrCommentWithDescription": "Auto set new UR comment (with description)",
                             "AutoSetNewUrCommentWithDescriptionTitle": "Automatically set the default UR comment for the UR type on new (do not already have comments) URs that have a description.",
                             "AutoSetReminderUrComment": "Auto set reminder UR comment",
@@ -3867,7 +3925,7 @@
                             "EnableUrOverflowHandlingTitle": "If this setting is enabled and there are more than 499 URs on the screen, URC-E will attempt to gather more URs and add them to the map, if they do not already exist.\nWME does not display more than 500 URs on a single screen on its own.",
                             "EnableAutoRefresh": "Enable auto refresh on zoom / pan",
                             "EnableAutoRefreshTitle": "Reloads the map data when zooming or panning to show URs that may have been missed due to WME's 500 UR limit.  Will only reload if the zoom level is between 3 and 10, there are not pending edits, and there are more than 499 URs loaded.",
-                            "UrMarkerPrefs": "UR Marker Preferences",
+                            "UrMarkerPrefs": "UR Marker Settings",
                             "EnableUrPillCounts": "Enable UR pill counts",
                             "EnableUrPillCountsTitle": "Enable or disable the pill with UR counts on the map marker.",
                             "DisableUrMarkerPopup": "Disable UR marker popup",
@@ -3882,6 +3940,10 @@
                             "ReplaceTagNameWithEditorNameTitle": "When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds when commenting), replace the tag type with the editors name.",
                             "UnstackMarkers": "Unstack markers",
                             "UnstackMarkersTitle": "Attempt to unstack markers by offsetting them. Similar to how URO+ unstacks markers.",
+                            "UnstackSensitivity": "Unstack sensitivity",
+                            "UnstackSensitivityTitle": "Specify the sensitivity for which markers are considered stacked.\nDefault: 15",
+                            "UnstackDisableAboveZoom": "Unstack disable above zoom level",
+                            "UnstackDisableAboveZoomTitle": "When you zoom out beyond this specified zoom level, marker unstacking will be disabled.\nDefault: 3",
                             "UseCustomMarkersFor": "Use Custom Markers for",
                             "BogTitle": "Replace default UR marker with custom marker for the URs with '[BOG]' (boots on ground) / '[BOTG]' (boots on the ground) in the description or comments.",
                             "ClosureTitle": "Replace default UR marker with custom marker for the URs with '[CLOSURE]' in the description or comments.",
@@ -3894,7 +3956,7 @@
                             "NativeSpeedLimits": "Native speed limits",
                             "NativeSpeedLimitsTitle": "Replace default UR marker with custom marker for the URs with 'speed limit' type.",
                             "CustomTitle": "Replace default UR marker with custom marker for the URs with the text in the box to the right in the description or comments.",
-                            "UrFilteringPrefs": "UR Filtering Preferences",
+                            "UrFilteringPrefs": "UR Filtering Settings",
                             "EnableUrceUrFiltering": "Enable URC-E UR filtering",
                             "EnableUrceUrFilteringTitle": "Enable or disable URComments-Enhanced built-in UR filtering.",
                             "HideOutsideEditableArea": "Hide outside editable area",
@@ -3979,7 +4041,6 @@
                             "HideUrsCloseNeededTitle": "Hide URs that need closing.",
                             "HideUrsReminderNeeded": "Reminders needed",
                             "HideUrsReminderNeededTitle": "Hide URs where reminders are needed.",
-                            "CommonPrefs": "Common Preferences",
                             "ReminderDays": "Reminder days",
                             "ReminderDaysTitle": "Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment.\nThis is the number of days since the first comment.\nSet to 0 if you do not use reminders.",
                             "CloseDays": "Close days",
