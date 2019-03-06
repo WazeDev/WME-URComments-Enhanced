@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.03.05.01
+// @version     2019.03.06.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ '<b>NEW:</b> Per comment list settings!', '<b>ENHANCEMENT:</b> Customizable unstack sensitivity and disable above zoom (zoomed out beyond) level.', '<b>ENHANCEMENT: Unstack markers now temporarily hides markers not involved in the unstacking.', '<b>ENHANCEMENT:</b> Split <i>Auto set new UR comment (with description)</i> out to not insert on SLURs and added a new setting of <i>Auto set new UR Comment (SLUR)</i>.', '<b>ENHANCEMENT:</b> Better overflow handling. Now queues sub-quadrants to get ALL URs.', '<b>ENHANCEMENT:</b> Improved center on UR (popup link), UR Panel crosshairs click and center on UR function.', '<b>ENHANCEMENT:</b> Added dismiss button for over limit message and need translation message.', '<b>ENHANCEMENT:</b> Removed unnecessary logging.', '<b>BUGFIX:</b> Popup prevented selecting unstacked UR in some situations.', '<b>BUGFIX:</b> Unstack / restack routine sometimes flickered the UR markers involved.' ];
+    const SCRIPT_VERSION_CHANGES = [ '<b>NEW:</b> Per comment list settings!', '<b>ENHANCEMENT:</b> Handle changing to MTE mode and back cleanly.', '<b>ENHANCEMENT:</b> Append mode now inserts new comment at cursor position.', '<b>ENHANCEMENT:</b> Customizable unstack sensitivity and disable above zoom (zoomed out beyond) level.', '<b>ENHANCEMENT:</b> Unstack markers now temporarily hides markers not involved in the unstacking.', '<b>ENHANCEMENT:</b> Split <i>Auto set new UR comment (with description)</i> out to not insert on SLURs and added a new setting of <i>Auto set new UR Comment (SLUR)</i>.', '<b>ENHANCEMENT:</b> Better overflow handling. Now queues sub-quadrants to get ALL URs.', '<b>ENHANCEMENT:</b> Improved center on UR (popup link), UR Panel crosshairs click and center on UR function.', '<b>ENHANCEMENT:</b> Added dismiss button for over limit message and need translation message.', '<b>ENHANCEMENT:</b> Removed unnecessary logging.', '<b>BUGFIX:</b> Popup prevented selecting unstacked UR in some situations.', '<b>BUGFIX:</b> Unstack / restack routine sometimes flickered the UR markers involved.', '<b>BUGFIX:</b> Default comment with $SELSEGS$ did not give popup alert.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -881,6 +881,8 @@
                     newVal += ' ';
                 newVal += currVal.slice(cursorPos);
             }
+            if (newVal.length > 2000)
+                return showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentTooLong'), false, 'OK', '', null, null);
             $('.new-comment-text').val(newVal).selectRange((cursorPos + outputText.length + 1)).change().keyup();
         }
     }
@@ -904,24 +906,40 @@
     function postUrComment(comment, doubleClick) {
         return new Promise((resolve, reject) => {
             (function retry(comment, tries) {
-                let commentOutput;
+                let commentOutput, cursorPos;
                 if (tries > 100)
                     reject('Timed out waiting for the comment text box to become available.');
-                else if (!$('.new-comment-text')[0])
+                else if ($('.new-comment-text').length === 0)
                     setTimeout(retry, 100, comment, ++tries);
                 else {
                     if (_settings.enableAppendMode && $('.new-comment-text').val() !== '' && !doubleClick) {
-                        commentOutput = $('.new-comment-text').val() + formatText('\n\n' + comment, true);
-                        if (commentOutput.length > 2000) {
-                            showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentTooLong'), false, 'OK', '', null, null);
-                            return reject({type:'tooLong', text:I18n.t('urce.prompts.CommentTooLong')});
+                        cursorPos = $('.new-comment-text')[0].selectionStart;
+                        let currVal = $('.new-comment-text').val();
+                        let newVal = currVal.slice(0, cursorPos);
+                        if ((newVal.length > 0) && (newVal.slice(newVal.length-1).search(/\s/) === -1))
+                            newVal += ' ';
+                        newVal += formatText(comment, true);
+                        if (currVal.slice(cursorPos).length > 0) {
+                            if (currVal.substr(cursorPos, 1).search(/\s/) === -1)
+                                newVal += ' ';
+                            newVal += currVal.slice(cursorPos);
                         }
+                        commentOutput = newVal;
                     }
                     else
                         commentOutput = formatText(comment, true);
-                    $('.new-comment-text').val(commentOutput).change().keyup();
+                    if (commentOutput.length > 2000) {
+                        showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentTooLong'), false, 'OK', '', null, null);
+                        return reject({type:'tooLong', text:I18n.t('urce.prompts.CommentTooLong')});
+                    }
+                    if (cursorPos !== undefined)
+                        $('.new-comment-text').val(commentOutput).selectRange((cursorPos + comment.length + 1)).change().keyup();
+                    else
+                        $('.new-comment-text').val(commentOutput).change().keyup();
                     if ((commentOutput.indexOf('$SELSEGS$') === -1) && (commentOutput.indexOf('$SELSEGS') === -1))
                         $('.new-comment-text').blur();
+                    else
+                        return resolve(showAlertBox('fa-road', I18n.t('urce.prompts.SelSegsFoundHeader'), I18n.t('urce.prompts.SelSegsFound'), false, 'OK', '', null, null));
                     resolve();
                 }
             })(comment, 1);
@@ -1914,8 +1932,14 @@
             await handleUrLayer('zoomEnd', filter, null);
     }
 
-    function invokeModeChange() {
-        handleUrLayer('modeChange', null, null);
+    async function invokeModeChange(event) {
+        if (event[0] && event[0].changed && event[0].changed.mode === 1)
+            await initBackgroundTasks('disable');
+        else if (event[0] && event[0].changed && event[0].changed.mode === 0) {
+            await initBackgroundTasks('enable');
+        }
+        if (event[0] && event[0].changed && ((event[0].changed.mode === 0) || (event[0].changed.isImperial === true) || (event[0].changed.isImperial === false)))
+            handleUrLayer('modeChange', null, null);
     }
 
     function handleUrMarkerClick() {
@@ -2459,7 +2483,8 @@
         maskBoxes(null, true, phase, maskUrPanel);
     }
 
-    function initMutationObservers(status) {
+    async function initBackgroundTasks(status) {
+        logDebug('Initializing background tasks.');
         let saveButtonObserver = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if ($(mutation.target).hasClass('waze-icon-save') && mutation.type === 'attributes' && mutation.attributeName === 'class' && mutation.target.classList.contains('ItemDisabled') && (mutation.oldValue.toString().indexOf('ItemDisabled') === -1))
@@ -2526,7 +2551,21 @@
             if (urMapMarkerIdsArr.length > 0)
                 handleUrLayer('markersAdded', filter, urMapMarkerIdsArr);
         });
-        if ((status === 'enable') && (!saveButtonObserver.isObserving || !urPanelContainerObserver.isObserving || !urMarkerObserver.isObserving)) {
+        if (status === 'enable') {
+            logDebug('Setting event listeners for UR markers.');
+            $(W.map.updateRequestLayer.div)
+                .off('click', '.map-problem.user-generated', handleUrMarkerClick)
+                .on('click', '.map-problem.user-generated', handleUrMarkerClick)
+                .off('mouseover', '.map-problem.user-generated', markerMouseOver)
+                .on('mouseover', '.map-problem.user-generated', markerMouseOver)
+                .off('mouseout', '.map-problem.user-generated', markerMouseOut)
+                .on('mouseout', '.map-problem.user-generated', markerMouseOut);
+            try {
+                await handleUrLayer('init', null, null);
+            }
+            catch(error) {
+                logWarning(error); // Don't need to return here, go ahead and setup the MOs.
+            }
             logDebug('Enabling MOs.');
             if (!saveButtonObserver.isObserving) {
                 saveButtonObserver.observe(document.getElementById('toolbar'), { childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true });
@@ -2540,15 +2579,14 @@
                 urMarkerObserver.observe(W.map.updateRequestLayer.div, { childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true });
                 urMarkerObserver.isObserving = true;
             }
-            logDebug('Registering map.events event hooks.');
+            logDebug('Registering event hooks.');
             WazeWrap.Events.register('zoomend', null, invokeZoomEnd);
             WazeWrap.Events.register('moveend', null, invokeMoveEnd);
-            //WazeWrap.Events.register('mousedown', null, mouseDown);
             W.map.events.registerPriority('mousedown', null, mouseDown);
             WazeWrap.Events.register('mouseup', null, mouseUp);
-            WazeWrap.Events.register('change:mode', invokeModeChange);
-            WazeWrap.Events.register('change:isImperial', invokeModeChange);
-        } else if ((status === 'disable') && (saveButtonObserver.isObserving || urPanelContainerObserver.isObserving || urMarkerObserver.isObserving)) {
+            WazeWrap.Events.register('change:mode', null, invokeModeChange);
+            WazeWrap.Events.register('change:isImperial', null, invokeModeChange);
+        } else if (status === 'disable') {
             logDebug('Disabling MOs.');
             if (saveButtonObserver.isObserving) {
                 saveButtonObserver.disconnect();
@@ -2570,31 +2608,9 @@
             logDebug('Unregistering map.events event hook.');
             WazeWrap.Events.unregister('zoomend', null, invokeZoomEnd);
             WazeWrap.Events.unregister('moveend', null, invokeMoveEnd);
-            //WazeWrap.Events.unregister('mousedown', null, mouseDown);
             W.map.events.unregister('mousedown', null, mouseDown);
             WazeWrap.Events.unregister('mouseup', null, mouseUp);
-            WazeWrap.Events.unregister('change:mode', invokeModeChange);
-            WazeWrap.Events.unregister('change:isImperial', invokeModeChange);
         }
-    }
-
-    async function initBackgroundTasks() {
-        logDebug('Initializing background tasks.');
-        logDebug('Setting event listeners for UR markers.');
-        $(W.map.updateRequestLayer.div)
-            .off('click', '.map-problem.user-generated', handleUrMarkerClick)
-            .on('click', '.map-problem.user-generated', handleUrMarkerClick)
-            .off('mouseover', '.map-problem.user-generated', markerMouseOver)
-            .on('mouseover', '.map-problem.user-generated', markerMouseOver)
-            .off('mouseout', '.map-problem.user-generated', markerMouseOut)
-            .on('mouseout', '.map-problem.user-generated', markerMouseOut);
-        try {
-            await handleUrLayer('init', null, null);
-        }
-        catch(error) {
-            logWarning(error); // Don't need to return here, go ahead and setup the MOs.
-        }
-        initMutationObservers('enable');
         return new Promise((resolve) => { resolve(); });
     }
 
@@ -3679,7 +3695,7 @@
         }
         maskBoxes(null, true, 'init', (urId > 0));
         maskBoxes(I18n.t('urce.prompts.WaitingOnInit') + '.<br>' + I18n.t('urce.common.PleaseWait') + '.', false, 'init', (urId > 0));
-        await initBackgroundTasks();
+        await initBackgroundTasks('enable');
         if (W.model.mapUpdateRequests.getObjectArray().length > _markerCountOnInit)
             await handleUrLayer('init_end', null, null);
         _markerCountOnInit = -1;
@@ -3715,7 +3731,7 @@
             if (buildCommentListResult.error)
                 handleError(buildCommentListResult.error, buildCommentListResult.static, buildCommentListResult.phase, (urIdInUrl > 0));
             else if (!urIdInUrl)
-                await initBackgroundTasks();
+                await initBackgroundTasks('enable');
             window.addEventListener("beforeunload", () => {
                 saveSettingsToStorage();
             }, false);
