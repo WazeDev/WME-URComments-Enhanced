@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.03.08.01
+// @version     2019.03.10.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,7 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ '<b>NEW:</b> Restriction system for use by region / country leadership!', '<b>ENHANCEMENT:</b> Moved all timeouts into an object.', '<b>ENHANCEMENT:</b> Combined banners and panel alerts into single function.', '<b>CHANGE:</b> <i>Auto zoom in on new UR</i> only zooms in for URs with zero comments and you are zoomed out beyond zoom level 5.', '<b>CHANGE:</b> <i>Auto center on UR</i> will now recenter the map for ALL URs at the current zoom level.', '<b>CHANGE:</b> <i>Auto zoom out after comment</i> will zoom you back to the zoom level you were at when the UR Panel opened.' ];
+    const SCRIPT_VERSION_CHANGES = [ '<b>NEW:</b> Restriction system for use by region / country leadership!', '<b>ENHANCEMENT:</b> Moved all timeouts into an object.', '<b>ENHANCEMENT:</b> Combined banners and panel alerts into single function.', '<b>CHANGE:</b> <i>Auto zoom in on new UR</i> only zooms in for URs with zero comments and you are zoomed out beyond zoom level 5.', '<b>CHANGE:</b> <i>Auto center on UR</i> will now recenter the map for ALL URs at the current zoom level.', '<b>CHANGE:</b> <i>Auto zoom out after comment</i> will zoom you back to the zoom level you were at when the UR Panel opened.', 'BUGFIX: Some timeouts needed indexing.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -64,17 +64,17 @@
     };
     let _timeouts = {
         alertBannerTimeout: {},
+        checkRestrictions: {},
+        getUrSessionAsync: {},
+        getMapUrsAsync: {},
+        getOverflowUrsFromUrl: {},
+        urceTabLightbox: {},
+        urPanelLightbox: {},
         bootstrap: undefined,
         saveSettingsToStorage: undefined,
-        checkRestrictions: undefined,
-        getUrSessionAsync: undefined,
-        getMapUrsAsync: undefined,
         postUrComment: undefined,
         popupDelay: undefined,
         popup: undefined,
-        getOverflowUrsFromUrl: undefined,
-        urceTabLightbox: undefined,
-        urPanelLightbox: undefined,
         checkForStaticListArray: undefined,
         initUrIdInUrl: undefined
     };
@@ -114,7 +114,6 @@
     let _mouseIsDown = false;
     let _needTranslation = false;
     let _unstackedMasterId = null;
-    let _alertIdx = 0;
     let _restoreZoom, _$restoreTab, _restoreTabPosition, _wmeUserId, _initUrIdInUrlObserver, _lastUrOverflowCount;
 
     function log(message) { console.log('URC-E:', message); }
@@ -307,23 +306,23 @@
             _timeouts.saveSettingsToStorage = window.setTimeout(saveSettingsToStorage, 5000);
     }
 
-    function checkTimeout(timeout, index) {
-        if (index) {
-            if (_timeouts[timeout] && (_timeouts[timeout][index] !== undefined)) {
-                window.clearTimeout(_timeouts[timeout][index]);
-                _timeouts[timeout][index] = undefined;
+    function checkTimeout(obj) {
+        if (obj.toIndex) {
+            if (_timeouts[obj.timeout] && (_timeouts[obj.timeout][obj.toIndex] !== undefined)) {
+                window.clearTimeout(_timeouts[obj.timeout][obj.toIndex]);
+                _timeouts[obj.timeout][obj.toIndex] = undefined;
             }
         }
         else {
-            if (_timeouts[timeout] !== undefined) {
-                window.clearTimeout(_timeouts[timeout]);
-                _timeouts[timeout] = undefined;
+            if (_timeouts[obj.timeout] !== undefined) {
+                window.clearTimeout(_timeouts[obj.timeout]);
+                _timeouts[obj.timeout] = undefined;
             }
         }
     }
 
     async function saveSettingsToStorage() {
-        checkTimeout('saveSettingsToStorage');
+        checkTimeout({timeout:'saveSettingsToStorage'});
         if (localStorage) {
             if (_settings.commentListCollapses === undefined)
                 _settings.commentListCollapses = {};
@@ -394,12 +393,12 @@
 
     function showAlertBanner(message, delay, mapBanner, panelBox, panelBoxTitle, panelBoxDismiss, index, phase) {
         if (phase === 'remove' && (index !== null)) {
-            checkTimeout('alertBannerTimeout', index);
+            checkTimeout({timeout:'alertBannerTimeout', toIndex:index});
             if ($(`#urceAlertPanelBox-${index}`).length > 0)
                 $(`#urceAlertPanelBox-${index}`).remove();
             return;
         }
-        index = (index === null) ? ++_alertIdx : index;
+        index = (index === null) ? Date.now() : index;
         if (mapBanner) {
             if ($(`#urceAlertBanner-${index}`).length > 0)
                 $(`#urceAlertBanner-${index}`).remove();
@@ -407,11 +406,12 @@
             $(`#urceAlertBanner-${index}`).append(
                 $('<div>', {id:`urceAlertBannerMsg-${index}`, class:'URCE-alertBannerMsg', style:`width:${(message.length * 10)}px;`}).text(message)
             ).show();
-            checkTimeout('alertBannerTimeout', index);
+            checkTimeout({timeout:'alertBannerTimeout', toIndex:index});
             _timeouts.alertBannerTimeout[index] = window.setTimeout(() => {
                 $(`#urceAlertBannerMsg-${index}`).remove();
                 if ($(`#urceAlertBanner-${index}`).children().length === 0)
                     $(`#urceAlertBanner-${index}`).remove();
+                checkTimeout({timeout:'alertBannerTimeout', toIndex:index});
             }, delay);
         }
         if (panelBox) {
@@ -466,7 +466,6 @@
 
     function checkRestrictions() {
         return new Promise((resolve) => {
-            checkTimeout('checkRestrictions');
             let state, country;
             if (this && this.objectType === 'state') {
                 country = W.model.countries.getObjectById(Object.values(this.objects)[0].countryID).abbr;
@@ -477,16 +476,18 @@
                 state = null;
             }
             else {
-                (function retry(tries) {
+                (function retry(tries, toIndex) {
+                    checkTimeout({timeout:'checkRestrictions', toIndex:toIndex});
                     if (tries > 100)
                         return resolve(logError('Unable to check for restrictions.'));
                     else if (!W.model.countries.top)
-                        _timeouts.checkRestrictions = window.setTimeout(retry, 100, ++tries);
+                        _timeouts.checkRestrictions[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex);
                     else {
+                        checkTimeout({timeout:'checkRestrictions', toIndex:toIndex});
                         country = W.model.countries.top.abbr;
                         state = (W.model.states && W.model.states.top) ? W.model.states.top.name : null;
                     }
-                })(1);
+                })(1, Date.now());
             }
             _restrictionsEnforce = {};
             let restrictionsAlertBannerTitle = I18n.t('urce.prompts.RestrictionsEnforcedTitle') + ':\n';
@@ -520,9 +521,9 @@
 
     function getUrSessionsAsync(urIds) {
         return new Promise((resolve, reject) => {
-            (async function retry(urIds, tries) {
+            (async function retry(urIds, tries, toIndex) {
                 let urSessionsObj;
-                checkTimeout('getUrSessionAsync');
+                checkTimeout({timeout:'getUrSessionAsync', toIndex:toIndex});
                 try {
                     urSessionsObj = await W.model.updateRequestSessions.getAsync(urIds);
                     urSessionsObj.sort((a, b) => { return a.id - b.id; });
@@ -536,18 +537,20 @@
                 if (tries > 49 && !urSessionsObj)
                     reject('50 tries at getting urSessions async have elapsed. Stopping loop.');
                 else if (!urSessionsObj)
-                    _timeouts.getUrSessionAsync = window.setTimeout(retry, 100, urIds, ++tries);
-                else
+                    _timeouts.getUrSessionAsync[toIndex] = window.setTimeout(retry, 100, urIds, ++tries, toIndex);
+                else {
+                    checkTimeout({timeout:'getUrSessionAsync', toIndex:toIndex});
                     resolve(urSessionsObj);
-            })(urIds, 1);
+                }
+            })(urIds, 1, Date.now());
         });
     }
 
     function getMapUrsAsync(urIds) {
         return new Promise((resolve, reject) => {
-            (async function retry(urIds, tries) {
+            (async function retry(urIds, tries, toIndex) {
                 let mapUrsObj;
-                checkTimeout('getMapUrsAsync')
+                checkTimeout({timeout:'getMapUrsAsync', toIndex:toIndex});
                 try {
                     mapUrsObj = await W.model.mapUpdateRequests.getByIds(urIds);
                     mapUrsObj.sort((a, b) => { return a.id - b.id; });
@@ -561,10 +564,12 @@
                 if (tries > 49 && !mapUrsObj)
                     reject('50 tries at getting mapUpdateRequests async have elapsed. Stopping loop.');
                 else if (!mapUrsObj)
-                    _timeouts.getMapUrsAsync = window.setTimeout(retry, 100, urIds, ++tries);
-                else
+                    _timeouts.getMapUrsAsync[toIndex] = window.setTimeout(retry, 100, urIds, ++tries, toIndex);
+                else {
+                    checkTimeout({timeout:'getMapUrsAsync', toIndex:toIndex});
                     resolve(mapUrsObj);
-            })(urIds, 1);
+                }
+            })(urIds, 1, Date.now());
         });
     }
 
@@ -990,7 +995,7 @@
         return new Promise((resolve, reject) => {
             (function retry(comment, tries) {
                 let commentOutput, cursorPos;
-                checkTimeout('postUrComment');
+                checkTimeout({timeout:'postUrComment'});
                 if (tries > 100)
                     reject('Timed out waiting for the comment text box to become available.');
                 else if ($('.new-comment-text').length === 0)
@@ -1088,7 +1093,7 @@
                         delete(testMarkerObj.model.attributes.geometry.urceRealX);
                         delete(testMarkerObj.model.attributes.geometry.urceRealY);
                     }
-                    if (!(filter && _settings.enableUrceUrFiltering && testMarkerObj.model.attributes.urceData.hideUr &&
+                    if (!(filter && _settings.enableUrceUrFiltering && testMarkerObj.model.attributes && testMarkerObj.model.attributes.urceData && testMarkerObj.model.attributes.urceData.hideUr &&
                         (!((_selUr.urId === testMarkerObj.id) && _settings.doNotHideSelectedUr)) &&
                         (!((testMarkerObj.model.attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs)))) {
                         if (testMarkerObj.icon.imageDiv.style.display === 'none')
@@ -1298,7 +1303,7 @@
                     if (popupDelay < 0)
                         handlePopup({popupContent:popupContent, popupX:popupX, popupY:popupY, urId:markerId});
                     else {
-                        checkTimeout('popupDelay');
+                        checkTimeout({timeout:'popupDelay'});
                         _timeouts.popupDelay = window.setTimeout(handlePopup, popupDelay, {popupContent:popupContent, popupX:popupX, popupY:popupY, urId:markerId});
                     }
                 }
@@ -1320,8 +1325,8 @@
         if (_mousedOverMarkerId !== popupObj.urId)
             return;
         $('#urceDiv').css({'height':'auto', 'width':'auto'}).html(popupObj.popupContent).off().on('mouseleave', hidePopup).on('mouseenter', () => {
-            checkTimeout('popup');
-            checkTimeout('popupDelay');
+            checkTimeout({timeout:'popup'});
+            checkTimeout({timeout:'popupDelay'});
         }).on('dblclick', {doubleClick:true}, hidePopup);
         $('#_urceOpenInNewTab').off().on('mouseup', saveSettingsToStorage);
         $('#_urceRecenterSession').off().on('click', {urId:popupObj.urId}, recenterOnUr);
@@ -1338,15 +1343,15 @@
         popupObj.popupX = (popupObj.popupX < 0) ? 0 : popupObj.popupX;
         popupObj.popupY = (popupObj.popupY < 0) ? 0 : popupObj.popupY;
         $('#urceDiv').css({'top':`${popupObj.popupY}px`, 'left':`${popupObj.popupX}px`, 'visibility':'visible'});
-        checkTimeout('popup');
-        checkTimeout('popupDelay');
+        checkTimeout({timeout:'popup'});
+        checkTimeout({timeout:'popupDelay'});
         if (_settings.urMarkerPopupTimeout > 0)
             _timeouts.popup = window.setTimeout(hidePopup, (_settings.urMarkerPopupTimeout * 1000));
     }
 
     function hidePopup(event) {
         let newUrId = (event && event.toElement && (parseInt($(event.toElement).attr('data-id')) > -1)) ? parseInt($(event.toElement).attr('data-id')) : null;
-        checkTimeout('popup');
+        checkTimeout({timeout:'popup'});
         if ($('#urceDiv').css('visibility') !== 'hidden')
             $('#urceDiv').css({'visibility':'hidden'});
         $('#urceDiv').off();
@@ -1876,8 +1881,8 @@
 
     function getOverflowUrsFromUrl(url) {
         return new Promise((resolve) => {
-            (async function retry(url, tries) {
-                checkTimeout('getOverflowUrsFromUrl');
+            (async function retry(url, tries, toIndex) {
+                checkTimeout({timeout:'getOverflowUrsFromUrl', toIndex:toIndex});
                 let data;
                 let errorObj = {error:null};
                 try {
@@ -1899,11 +1904,13 @@
                     return resolve(errorObj);
                 else if (!data || (data.error && (data.error.status === 429))) {
                     log('Rate limited by Waze server. Retrying overflow request.');
-                    _timeouts.getOverflowUrsFromUrl = window.setTimeout(retry, 100, url, ++tries);
+                    _timeouts.getOverflowUrsFromUrl[toIndex] = window.setTimeout(retry, 100, url, ++tries, toIndex);
                 }
-                else
+                else {
+                    checkTimeout({timeout:'getOverflowUrsFromUrl', toIndex:toIndex});
                     resolve(data);
-            })(url, 1);
+                }
+            })(url, 1, Date.now());
         });
     }
 
@@ -2049,8 +2056,6 @@
 
     function maskBoxes(message, unmask, phase, maskUrPanel) {
         let zIndex = (phase === 'init') ? 19999 : 10000;
-        checkTimeout('urPanelLightbox');
-        checkTimeout('urceTabLightbox');
         if (unmask) {
             $(`#urceTabLightbox-${phase}`).remove();
             $(`#urPanelLightbox-${phase}`).remove();
@@ -2060,30 +2065,35 @@
                 $('#sidepanel-urc-e').css('position', 'relative');
                 let $urceTabDisabled = $('<div>', {id:`urceTabLightbox-${phase}`, style:`position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.75); color:white; z-index:${zIndex};`});
                 $urceTabDisabled.html('<div style="text-align:center; padding-top:200px; width:290px; position:fixed; font-weight:800;">' + message + '</div>');
-                (function retry(tries) {
-                    checkTimeout('urceTabLightbox');
+                (function retry(tries, toIndex) {
+                    checkTimeout({timeout:'urceTabLightbox', toIndex:toIndex});
                     let $urceSidePanel = $('#sidepanel-urc-e');
                     if ((tries > 99) && ($urceSidePanel.length === 0))
                         return logError('Timed out trying to add mask to URCE side panel.');
                     else if ($urceSidePanel.length === 0)
-                        _timeouts.urceTabLightbox = window.setTimeout(retry, 100, ++tries);
-                    else
+                        _timeouts.urceTabLightbox[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex);
+                    else {
+                        checkTimeout({timeout:'urceTabLightbox', toIndex:toIndex});
                         $urceSidePanel.prepend($urceTabDisabled);
-                })(1);
+                    }
+                })(1, Date.now());
             }
             if (maskUrPanel && ($(`#urPanelLightbox-${phase}`).length === 0)) {
                 $($('#panel-container .mapUpdateRequest.panel.show').children()[0]).css('position', 'relative');
                 let $urPanelDisabled = $('<div>', {id:`urPanelLightbox-${phase}`, style:`position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.75); color:white; z-index:${zIndex};`});
                 $urPanelDisabled.html('<div style="text-align:center; padding-top:200px; width:290px; position:fixed; font-weight:800;">' + message + '</div>');
-                (function retry(tries) {
+                (function retry(tries, toIndex) {
+                    checkTimeout({timeout:'urPanelLightbox', toIndex:toIndex});
                     let $urPanel = $('#panel-container .mapUpdateRequest.panel.show');
                     if ((tries > 99) && ($urPanel.length === 0))
                         return logError('Timed out trying to add mask to UR panel.');
                     else if ($urPanel.length === 0)
-                        _timeouts.urPanelLightbox = window.setTimeout(retry, 100, ++tries);
-                    else
+                        _timeouts.urPanelLightbox[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex);
+                    else {
+                        checkTimeout({timeout:'urPanelLightbox', toIndex:toIndex});
                         $($urPanel.children()[0]).prepend($urPanelDisabled);
-                })(1);
+                    }
+                })(1, Date.now());
             }
         }
     }
@@ -2130,7 +2140,7 @@
     function checkForStaticListArray(oldVarName) {
         return new Promise((resolve, reject) => {
             (function retry(oldVarName, tries) {
-                checkTimeout('checkForStaticListArray');
+                checkTimeout({timeout:'checkForStaticListArray'});
                 if (tries > 100)
                     reject('timedOutWaitingStatic|');
                 else if (!window['Urcomments' + oldVarName + 'Array2'])
@@ -3461,7 +3471,31 @@
                         )
                     )
                 )
-            )
+            )/*,
+            // Tools
+            $('<fieldset>', {id:'urce-prefs-fieldset-tools', class:`URCE-field${urStyle}`}).append(
+                $('<legend>', {id:'urce-prefs-legend-tools', class:`URCE-legend${urStyle}`}).append(
+                    $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
+                    $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.Tools'))
+                ).click(function() {
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
+                    $($(this).siblings()[0]).toggleClass('collapse');
+                }),
+                $('<div>', {class:'URCE-controls URCE-divCC'}).append(
+                    $('<input>', {type:'button', id:'_butbackupSettings', urceprefs:'tools', class:'urceSettingsButton', title:I18n.t('urce.prefs.BackupSettingsTitle')}).on('click', function() {
+                        saveSettingsToStorage();
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(new Blob([JSON.stringify(_settings)], {type:'application/json' }));
+                        a.download = 'urce-settings-v' + SCRIPT_VERSION + '.json';
+                        a.click();
+                        $(a).remove();
+                    }),
+                    $('<input>', {type:'button', id:'_butrestoreSettings', urceprefs:'tools', class:'urceSettingsButton', title:I18n.t('urce.prefs.RestoreSettingsTitle')}).on('click', function() {
+                        log(this);
+                    })
+                )
+            ) */
         );
         if (!isChecked('#_cbenableUrPillCounts'))
             $('[urceprefs=marker]').prop('disabled', true).addClass('urceDisabled');
@@ -3810,7 +3844,7 @@
     }
 
     async function initFinish(urId) {
-        checkTimeout('initUrIdInUrl');
+        checkTimeout({timeout:'initUrIdInUrl'});
         if (_initUrIdInUrlObserver && _initUrIdInUrlObserver.isObserving) {
             _initUrIdInUrlObserver.isObserving = false;
             _initUrIdInUrlObserver.disconnect();
@@ -3825,7 +3859,7 @@
     }
 
     function initCheckForUrPanel(urId, tries) {
-        checkTimeout('initUrIdInUrl');
+        checkTimeout({timeout:'initUrIdInUrl'});
         if (tries > 150)
             return logWarning('UR ' + urId + ' found in URL, but UR panel failed to open.');
         else if ($('#panel-container').children().length === 0) {
@@ -3888,6 +3922,7 @@
 
     function bootstrap(tries) {
         if (W && W.map && W.model && $ && WazeWrap.Ready) {
+            checkTimeout({timeout:'bootstrap'});
             log('Bootstrapping.');
             init();
         }
