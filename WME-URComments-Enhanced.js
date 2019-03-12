@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.03.10.01
+// @version     2019.03.12.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -47,7 +47,19 @@
     const SETTINGS_STORE_NAME = "WME_URC-E";
     const ALERT_UPDATE = true;
     const SCRIPT_VERSION = GM_info.script.version;
-    const SCRIPT_VERSION_CHANGES = [ '<b>NEW:</b> Restriction system for use by region / country leadership!', '<b>ENHANCEMENT:</b> Moved all timeouts into an object.', '<b>ENHANCEMENT:</b> Combined banners and panel alerts into single function.', '<b>CHANGE:</b> <i>Auto zoom in on new UR</i> only zooms in for URs with zero comments and you are zoomed out beyond zoom level 5.', '<b>CHANGE:</b> <i>Auto center on UR</i> will now recenter the map for ALL URs at the current zoom level.', '<b>CHANGE:</b> <i>Auto zoom out after comment</i> will zoom you back to the zoom level you were at when the UR Panel opened.', 'BUGFIX: Some timeouts needed indexing.' ];
+    const SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Restriction system for use by region / country leadership!',
+                                    '<b>NEW:</b> Backup URC-E settings to JSON.',
+                                    '<b>NEW:</b> Restore URC-E settings from backup JSON file.',
+                                    '<b>NEW:</b> Reset URC-E settings to default.',
+                                    '<b>ENHANCEMENT:</b> Moved all timeouts into an object.',
+                                    '<b>ENHANCEMENT:</b> Combined banners and panel alerts into single function.',
+                                    '<b>ENHANCEMENT:</b> Append mode / shortcuts / insert comment / etc. now return focus to the new comment box.',
+                                    '<b>ENHANCEMENT:</b> Append mode now ensures there is a blank line before and after the inserted comment.',
+                                    '<b>CHANGE:</b> <i>Auto zoom in on new UR</i> only zooms in for URs with zero comments and you are zoomed out beyond zoom level 5.',
+                                    '<b>CHANGE:</b> <i>Auto center on UR</i> will now recenter the map for ALL URs at the current zoom level.',
+                                    '<b>CHANGE:</b> <i>Auto zoom out after comment</i> will zoom you back to the zoom level you were at when the UR Panel opened.',
+                                    '<b>BUGFIX:</b> <i>Hide without description</i> failed to filter in some instances.',
+                                    '<b>BUGFIX:</b> Some timeouts needed indexing. Now indexed based on random ID generated at time of timeout call.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -135,9 +147,14 @@
         }
     }
 
-    function loadSettingsFromStorage() {
-        logDebug('Loading settings from storage.');
-        let loadedSettings = $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
+    function getRandomId() {
+        return Math.random().toString(36).slice(2);
+    }
+
+    async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
+        if (!restoreSettings)
+            logDebug('Loading settings from storage.');
+        let invalidRestoreSettings = [];
         let defaultSettings = {
             lastVersion: undefined,
             wmeUserId: undefined,
@@ -250,7 +267,7 @@
             hideFollowing: false,
             hideNotFollowing: false,
             hideWithDescription: false,
-            hideWithoutDeescription: false,
+            hideWithoutDescription: false,
             hideWithCommentsFromMe: false,
             hideWithoutCommentsFromMe: false,
             hideFirstCommentByMe: false,
@@ -277,7 +294,32 @@
             hideByKeywordNotIncludingKeyword: '',
             hideByKeywordCaseInsensitive: false
         };
-        _settings = loadedSettings ? loadedSettings : defaultSettings;
+        if (restoreSettings && (restoreSettings !== 'resetSettings') && !proceedWithRestore) {
+            for (let prop in restoreSettings) {
+                if (!defaultSettings.hasOwnProperty(prop))
+                    invalidRestoreSettings.push(prop);
+                else {
+                    if ((restoreSettings[prop] === 'true') || (restoreSettings[prop] === true))
+                        restoreSettings[prop] = true;
+                    else if ((restoreSettings[prop] === 'false') || (restoreSettings[prop] === false))
+                        restoreSettings[prop] = false;
+                    else if ((typeof restoreSettings[prop] !== 'object') && !isNaN(restoreSettings[prop]) && (restoreSettings[prop].length > 0) && (restoreSettings[prop] !== parseInt(restoreSettings[prop])))
+                        restoreSettings[prop] = parseInt(restoreSettings[prop]);
+                }
+            }
+            if (invalidRestoreSettings.length > 0) {
+                invalidRestoreSettings.forEach((prop) => {
+                    delete(restoreSettings[prop]);
+                });
+            }
+            let outputText = '<b>' + I18n.t('urce.prompts.RestoreSettingsNumOfSettings') + ':</b> ' + Object.keys(restoreSettings).length + '<br>';
+            outputText += '<b>' + I18n.t('urce.prompts.RestoreSettingsInvalidSettings') + ':</b> ';
+            outputText += ((invalidRestoreSettings.length > 0) ? invalidRestoreSettings.join(', ') + ' <i>(<b>' + I18n.t('urce.common.Total') + ':</b> ' + invalidRestoreSettings.length + ')</i>' : '<i>' + I18n.t('urce.common.None') + '</i>');
+            outputText += '<br><br><b>' + I18n.t('urce.prompts.RestoreSettingsConfirmation') + '?</b>';
+            return showAlertBox('fa-cog', I18n.t('urce.prompts.RestoreSettings'), formatText(outputText), true, I18n.t('urce.common.Yes'), I18n.t('urce.common.No'), () => { loadSettingsFromStorage(restoreSettings, true); }, () => { })
+        }
+        let loadedSettings = (restoreSettings === 'resetSettings') ? undefined : restoreSettings || $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
+        _settings = loadedSettings || defaultSettings;
         for (let prop in defaultSettings) {
             if (!_settings.hasOwnProperty(prop))
                 _settings[prop] = defaultSettings[prop];
@@ -302,8 +344,16 @@
                 changed = true;
             }
         });
-        if (deleted || changed)
+        if (deleted || changed || proceedWithRestore)
             _timeouts.saveSettingsToStorage = window.setTimeout(saveSettingsToStorage, 5000);
+        if (proceedWithRestore) {
+            initTab();
+            await changeCommentList(parseInt($(this).val()), false, true);
+            await handleUrLayer('settingsToggle', null, null);
+            showAlertBox('fa-cog',
+                         ((restoreSettings === 'resetSettings') ? I18n.t('urce.prompts.ResetSettings') + '.' : I18n.t('urce.prompts.RestoreSettings') + '.'),
+                         ((restoreSettings === 'resetSettings') ? I18n.t('urce.prompts.ResetSettingsComplete') + '.' : I18n.t('urce.prompts.RestoreSettingsComplete') + '.'), false, 'OK', null, null, null);
+        }
     }
 
     function checkTimeout(obj) {
@@ -398,7 +448,7 @@
                 $(`#urceAlertPanelBox-${index}`).remove();
             return;
         }
-        index = (index === null) ? Date.now() : index;
+        index = (index === null) ? getRandomId() : index;
         if (mapBanner) {
             if ($(`#urceAlertBanner-${index}`).length > 0)
                 $(`#urceAlertBanner-${index}`).remove();
@@ -487,7 +537,7 @@
                         country = W.model.countries.top.abbr;
                         state = (W.model.states && W.model.states.top) ? W.model.states.top.name : null;
                     }
-                })(1, Date.now());
+                })(1, getRandomId());
             }
             _restrictionsEnforce = {};
             let restrictionsAlertBannerTitle = I18n.t('urce.prompts.RestrictionsEnforcedTitle') + ':\n';
@@ -542,7 +592,7 @@
                     checkTimeout({timeout:'getUrSessionAsync', toIndex:toIndex});
                     resolve(urSessionsObj);
                 }
-            })(urIds, 1, Date.now());
+            })(urIds, 1, getRandomId());
         });
     }
 
@@ -569,7 +619,7 @@
                     checkTimeout({timeout:'getMapUrsAsync', toIndex:toIndex});
                     resolve(mapUrsObj);
                 }
-            })(urIds, 1, Date.now());
+            })(urIds, 1, getRandomId());
         });
     }
 
@@ -971,7 +1021,7 @@
             }
             if (newVal.length > 2000)
                 return showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentTooLong'), false, 'OK', '', null, null);
-            $('.new-comment-text').val(newVal).selectRange((cursorPos + outputText.length + 1)).change().keyup();
+            $('.new-comment-text').val(newVal).selectRange((cursorPos + outputText.length + 1)).change().keyup().focus();
         }
     }
 
@@ -994,7 +1044,8 @@
     function postUrComment(comment, doubleClick) {
         return new Promise((resolve, reject) => {
             (function retry(comment, tries) {
-                let commentOutput, cursorPos;
+                let commentOutput, cursorPos, newCursorPos;
+                let postNls = 0;
                 checkTimeout({timeout:'postUrComment'});
                 if (tries > 100)
                     reject('Timed out waiting for the comment text box to become available.');
@@ -1003,14 +1054,31 @@
                 else {
                     if (_settings.enableAppendMode && $('.new-comment-text').val() !== '' && !doubleClick) {
                         cursorPos = $('.new-comment-text')[0].selectionStart;
+                        newCursorPos = cursorPos;
                         let currVal = $('.new-comment-text').val();
                         let newVal = currVal.slice(0, cursorPos);
-                        if ((newVal.length > 0) && (newVal.slice(newVal.length-1).search(/\s/) === -1))
-                            newVal += ' ';
+                        if ((newVal.length > 0) && (newVal.slice(-1).search(/[\n\r]/) > -1)) {
+                            if (newVal.slice(-2, -1).search(/[\n\r]/) === -1) {
+                                newVal += '\n';
+                                newCursorPos++;
+                            }
+                        }
+                        else {
+                            newVal += '\n\n';
+                            newCursorPos += 2;
+                        }
                         newVal += formatText(comment, true);
                         if (currVal.slice(cursorPos).length > 0) {
-                            if (currVal.substr(cursorPos, 1).search(/\s/) === -1)
-                                newVal += ' ';
+                            if (currVal.substr(cursorPos, 1).search(/[\n\r]/) > -1) {
+                                if (currVal.substr(cursorPos + 1, 1).search(/[\n\r]/) === -1) {
+                                    newVal += '\n';
+                                    postNls++;
+                                }
+                            }
+                            else {
+                                newVal += '\n\n';
+                                postNls += 2;
+                            }
                             newVal += currVal.slice(cursorPos);
                         }
                         commentOutput = newVal;
@@ -1022,11 +1090,11 @@
                         return reject({type:'tooLong', text:I18n.t('urce.prompts.CommentTooLong')});
                     }
                     if (cursorPos !== undefined)
-                        $('.new-comment-text').val(commentOutput).selectRange((cursorPos + comment.length + 1)).change().keyup();
+                        $('.new-comment-text').val(commentOutput).selectRange((newCursorPos + comment.replace(/\\[r|n]+/gmi, ' ').length + postNls)).change().keyup().focus();
                     else
-                        $('.new-comment-text').val(commentOutput).change().keyup();
+                        $('.new-comment-text').val(commentOutput).change().keyup().focus();
                     if ((commentOutput.indexOf('$SELSEGS$') === -1) && (commentOutput.indexOf('$SELSEGS') === -1))
-                        $('.new-comment-text').blur();
+                        $('.new-comment-text').blur().focus();
                     else
                         return resolve(showAlertBox('fa-road', I18n.t('urce.prompts.SelSegsFoundHeader'), I18n.t('urce.prompts.SelSegsFound'), false, 'OK', '', null, null));
                     resolve();
@@ -1910,7 +1978,7 @@
                     checkTimeout({timeout:'getOverflowUrsFromUrl', toIndex:toIndex});
                     resolve(data);
                 }
-            })(url, 1, Date.now());
+            })(url, 1, getRandomId());
         });
     }
 
@@ -2076,7 +2144,7 @@
                         checkTimeout({timeout:'urceTabLightbox', toIndex:toIndex});
                         $urceSidePanel.prepend($urceTabDisabled);
                     }
-                })(1, Date.now());
+                })(1, getRandomId());
             }
             if (maskUrPanel && ($(`#urPanelLightbox-${phase}`).length === 0)) {
                 $($('#panel-container .mapUpdateRequest.panel.show').children()[0]).css('position', 'relative');
@@ -2093,7 +2161,7 @@
                         checkTimeout({timeout:'urPanelLightbox', toIndex:toIndex});
                         $($urPanel.children()[0]).prepend($urPanelDisabled);
                     }
-                })(1, Date.now());
+                })(1, getRandomId());
             }
         }
     }
@@ -2760,6 +2828,10 @@
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; padding-left:16px; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080;  display:inline-block; position:relative; padding-left:16px; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:11px; text-align:right; }' +
+          '#sidepanel-urc-e #panel-urce-settings .urceSettingsButton { font-size:11px; margin-left:10px; background-color:lightgray; border:none; cursor:default; height:18px; }' +
+          '#sidepanel-urc-e #panel-urce-settings .urceSettingsButtonFile { font-size:11px; background-color:lightgray; border:none; cursor:default; height:18px; margin-top:6px; }' +
+          '#sidepanel-urc-e #panel-urce-settings .urceSettingsButton.active, .urceSettingsButtonFile:hover, .urceSettingsButton:hover { background-color:gray !important; }' +
+          '#sidepanel-urc-e #panel-urce-settings .URCE-divRestoreFileError { font-weight:600; margin:6px; }' +
           // Common
           '#sidepanel-urc-e .URCE-divDismiss { display:inline-block; float:right; width:16px; height:16px; margin-top:-12px; border-radius:50%; border:1px solid black; background-color:white; text-align:center; cursor:pointer; }' +
           '#sidepanel-urc-e .URCE-divWarningBox { background-color:indianred; border:1px solid silver; margin:6px 0 6px 0; font-size:12px; border-radius:4px; padding:5px; font-weight:600; }' +
@@ -2798,7 +2870,7 @@
 
     function initCommentsTab() {
         logDebug('Initializing Comments tab.');
-        $('#panel-urce-comments').append(
+        $('#panel-urce-comments').empty().append(
             $('<div>', {id:'_divZoomOutLinks', class:'URCE-divCCLinks', style:(_settings.hideZoomOutLinks) ? 'display: none;' : ''}).append(
                 $('<div>', {id:'urceIcon', class:'URCE-divIcon'}).append(
                     $('<img>', {src:GM_info.script.icon, class:'URCE-icon'})
@@ -2822,7 +2894,7 @@
         if (_needTranslation)
             showAlertBanner(`URC-E does not currently have a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>). Translations are setup on a Google Sheet, so they are simple to do.<br><br>If you would like to provide a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>), please contact ${SCRIPT_AUTHOR} via forum PM or Discord, or click reply on the forum thread:<br><a href="https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278" target="_blank">https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278</a>`,
                             null, false, true, null, true, 9998, null);
-        $('#panel-urce-settings').append(
+        $('#panel-urce-settings').empty().append(
             $('<div>', {id:'expandCollapseAll', class:'URCE-expandCollapseAll'}).append(
                 $('<div>', {class:'URCE-expandCollapseAllItem'}).text(I18n.t('urce.common.ExpandAll')).off().on('click', () => {
                     let $legends = $('legend[id^="urce-prefs-legend"');
@@ -3471,7 +3543,7 @@
                         )
                     )
                 )
-            )/*,
+            ),
             // Tools
             $('<fieldset>', {id:'urce-prefs-fieldset-tools', class:`URCE-field${urStyle}`}).append(
                 $('<legend>', {id:'urce-prefs-legend-tools', class:`URCE-legend${urStyle}`}).append(
@@ -3483,19 +3555,66 @@
                     $($(this).siblings()[0]).toggleClass('collapse');
                 }),
                 $('<div>', {class:'URCE-controls URCE-divCC'}).append(
-                    $('<input>', {type:'button', id:'_butbackupSettings', urceprefs:'tools', class:'urceSettingsButton', title:I18n.t('urce.prefs.BackupSettingsTitle')}).on('click', function() {
-                        saveSettingsToStorage();
-                        const a = document.createElement('a');
-                        a.href = URL.createObjectURL(new Blob([JSON.stringify(_settings)], {type:'application/json' }));
-                        a.download = 'urce-settings-v' + SCRIPT_VERSION + '.json';
-                        a.click();
-                        $(a).remove();
-                    }),
-                    $('<input>', {type:'button', id:'_butrestoreSettings', urceprefs:'tools', class:'urceSettingsButton', title:I18n.t('urce.prefs.RestoreSettingsTitle')}).on('click', function() {
-                        log(this);
-                    })
+                    $('<div>').text('Settings:').append(
+                        $('<button>', {id:'_butbackupSettings', urceprefs:'tools', class:'urceSettingsButton', title:I18n.t('urce.prefs.BackupSettingsTitle')}).text(I18n.t('urce.common.Backup')).on('click', () => {
+                            saveSettingsToStorage();
+                            const a = document.createElement('a');
+                            a.href = URL.createObjectURL(new Blob([JSON.stringify({URCE:_settings})], {type:'application/json' }));
+                            a.download = 'urce-settings-v' + SCRIPT_VERSION + '.json';
+                            a.click();
+                            $(a).remove();
+                        }),
+                        $('<button>', {id:'_butrestoreSettings', urceprefs:'tools', class:'urceSettingsButton', title:I18n.t('urce.prefs.RestoreSettingsTitle')}).text(I18n.t('urce.common.Restore')).on('click', function() {
+                            if (this.className.indexOf('active') === -1) {
+                                $(this).addClass('active');
+                                $('#urceRestoreSettingsFile').show();
+                            }
+                            else {
+                                $(this).removeClass('active');
+                                $('#_filerestoreSettings').val('');
+                                $('#urceRestoreSettingsFile').hide().removeClass('error');
+                                $('#urceRestoreSettingsFileError').empty();
+                            }
+                        }),
+                        $('<button>', {id:'_butresetSettings', urceprefs:'tools', class:'urceSettingsButton', title:I18n.t('urce.prefs.ResetSettingsTitle')}).text(I18n.t('urce.common.Reset')).on('click', () => {
+                            showAlertBox('fa-cog', I18n.t('urce.prompts.ResetSettings'), I18n.t('urce.prompts.ResetSettingsConfirmation'), true, I18n.t('urce.common.Yes'), I18n.t('urce.common.No'), () => { loadSettingsFromStorage('resetSettings', true) }, () => { });
+                        }),
+                        $('<div>', {id:'urceRestoreSettingsFile', style:'display:none;'}).append(
+                            $('<input>', {type:'file', id:'_filerestoreSettings', urceprefs:'tools', class:'urceSettingsButtonFile', title:I18n.t('urce.prefs.RestoreSettingsSelectFileTitle')}).on('change', function() {
+                                let file = this.files[0]
+                                if (((file.type === 'application/json') || (file.type === 'text/json')) && (file.size < 102400)) {
+                                    let reader = new FileReader();
+                                    reader.onload = function() {
+                                        let restoreSettings;
+                                        try {
+                                            restoreSettings = $.parseJSON(this.result);
+                                        }
+                                        catch (error) {
+                                            logError('Unable to parse the input file.');
+                                            logError(error);
+                                            return $('#_filerestoreSettings').val('');
+                                        }
+                                        if (!restoreSettings.hasOwnProperty('URCE')) {
+                                            logWarning('Invalid URCE settings JSON file.');
+                                            $('#urceRestoreSettingsFileError').empty().text(`* ${I18n.t('urce.prefs.RestoreSettingsFileError')}`);
+                                            $('#urceRestoreSettingsFile').addClass('error');
+                                        }
+                                        else
+                                            loadSettingsFromStorage(restoreSettings.URCE);
+                                    }
+                                    reader.readAsText(file);
+                                }
+                                else {
+                                    logWarning('Invalid URCE settings JSON file.');
+                                    $('#urceRestoreSettingsFileError').empty().text(`* ${I18n.t('urce.prefs.RestoreSettingsFileError')}`);
+                                    $('#urceRestoreSettingsFile').addClass('error');
+                                }
+                            }),
+                            $('<div>', {id:'urceRestoreSettingsFileError', class:'URCE-divRestoreFileError error'})
+                        )
+                    )
                 )
-            ) */
+            )
         );
         if (!isChecked('#_cbenableUrPillCounts'))
             $('[urceprefs=marker]').prop('disabled', true).addClass('urceDisabled');
@@ -4002,6 +4121,7 @@
                         "common": {
                             "All": "All",
                             "AutoSwitched": "auto switched",
+                            "Backup": "Backup",
                             "CollapseAll": "Collapse all",
                             "CommentList": "Comment List",
                             "CurrentCommentListTitle": "You can change the currently loaded comment list using this drop down.\nChanging this drop down will not be saved as a setting and will not change your default list (located on the settings tab).\nThis is only to allow you to quickly switch between lists.",
@@ -4020,10 +4140,14 @@
                             "Loading": "Loading",
                             "MoreThan": "More than",
                             "No": "No",
+                            "None": "none by me",
                             "NotFollowing": "Not following",
                             "PleaseWait": "Please wait",
+                            "Reset": "Reset",
+                            "Restore": "Restore",
                             "Style": "Style",
                             "Title": "URComment-Enhanced",
+                            "Total": "Total",
                             "Type": "Type",
                             "With": "With",
                             "Without": "Without",
@@ -4058,7 +4182,7 @@
                             "UseDefault": "Use 'URC-E Master Settings' setting",
                             "UrcePrefs": "URC-E Master Settings",
                             "AutoCenterOnUr": "Auto center on UR",
-                            "AutoCenterOnUrTitle": "Auto center the map to the selected UR at the current map zoom level when the UR has comments.",
+                            "AutoCenterOnUrTitle": "Auto center the map to the selected UR at the current map zoom level.",
                             "AutoClickOpenSolvedNi": "Auto click open, solved or not identified",
                             "AutoClickOpenSolvedNiTitle": "Suppress the message about recent pending questions to the reporter and then, depending on the choice set for that comment, automatically select Open, Solved or Not Identified.",
                             "AutoCloseUrPanel": "Auto close UR panel",
@@ -4072,7 +4196,7 @@
                             "AutoSetNewUrComment": "Auto set new UR comment (without description)",
                             "AutoSetNewUrCommentTitle": "Automatically set the default UR comment for the UR type on new (do not already have comments) URs that do not have a description.",
                             "AutoSetNewUrCommentSlur": "Auto set new UR comment (SLURs)",
-                            "AutoSetNewURCommentSlurTitle": "Automatically set the default UR comment for new (do not already have comments) SLURs.",
+                            "AutoSetNewUrCommentSlurTitle": "Automatically set the default UR comment for new (do not already have comments) SLURs.",
                             "AutoSetNewUrCommentWithDescription": "Auto set new UR comment (with description)",
                             "AutoSetNewUrCommentWithDescriptionTitle": "Automatically set the default UR comment for the UR type on new (do not already have comments) URs that have a description.",
                             "AutoSetReminderUrComment": "Auto set reminder UR comment",
@@ -4226,7 +4350,13 @@
                             "DisableFilteringBelowZoomLevel": "Disable filtering below zoom level",
                             "DisableFilteringBelowZoomLevelTitle": "Disable UR filtering when zoomed in below the specified zoom level. Set to '10' to enable all filtering.",
                             "EnableAppendMode": "Enable append comment mode",
-                            "EnableAppendModeTitle": "Enabling append comment mode will allow you to append a comment to the existing text in the new-comment box.\nThe comment is appended with a blank line between the existing text and the new text.\nThe status of the UR is set to the status of the new comment you clicked to append.\nIf the comment would end up being longer than 2000 characters, append mode will give a warning and not alter the text in the comment box, but the status would have been changed."
+                            "EnableAppendModeTitle": "Enabling append comment mode will allow you to append a comment to the existing text in the new-comment box.\nThe comment is appended with a blank line between the existing text and the new text.\nThe status of the UR is set to the status of the new comment you clicked to append.\nIf the comment would end up being longer than 2000 characters, append mode will give a warning and not alter the text in the comment box, but the status would have been changed.",
+                            "Tools": "Tools",
+                            "BackupSettingsTitle": "Download a backup copy of your URC-E settings in JSON format.\nThis backup can be used to restore your settings to another computer, or in the event you lose your settings.\n\nNote: Please do not modify the JSON file in any way. The format is crucial to proper restoral of settings.",
+                            "RestoreSettingsFileError": "Invalid URC-E settings JSON file.",
+                            "RestoreSettingsSelectFileTitle": "Select the JSON file created by the URC-E \"Backup\" settings button.",
+                            "RestoreSettingsTitle": "Restore a backup copy of your URC-E settings from the JSON backup file created with the backup settings button.\n\nNote: Please do not modify the JSON file in any way. The format is crucial to proper restoral of settings.",
+                            "ResetSettingsTitle": "Reset all URC-E settings back to their default values.\n\nNote: Almost all settings default to disabled."
                         },
                         "tabs": {
                             "Comments": "Comments",
@@ -4265,6 +4395,14 @@
                             "NoCommentBox": "URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.",
                             "CommentInsertTimedOut": "URC-E timed out waiting for the comment text box to become available.",
                             "ReminderMessageAuto": "URC-E: Automatically sending reminder message to UR:",
+                            "ResetSettings": "Reset Settings",
+                            "ResetSettingsComplete": "Settings reset complete",
+                            "ResetSettingsConfirmation": "Are you sure you want to reset URC-E settings back to their default values?",
+                            "RestoreSettingsComplete": "Settings restore complete",
+                            "RestoreSettingsConfirmation": "Would you like to proceed with restoring your URC-E settings?",
+                            "RestoreSettingsInvalidSettings": "Invalid settings removed from JSON file",
+                            "RestoreSettingsNumOfSettings": "Number of settings to restore",
+                            "RestoreSettings": "Restore Settings",
                             "RestrictionsEnforced": "Restrictions enforced!",
                             "RestrictionsEnforcedTitle": "The following restrictions have been enforced",
                             "SelSegsFound": "The selected comment contains '$SELSEGS$'.<br><br>In order to replace this text with the road name(s), please select one or two segments and click the <i class=\"fa fa-road\" aria-hidden=\"true\"></i> button in the UR panel.",
