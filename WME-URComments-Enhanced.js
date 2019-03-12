@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.03.12.02
+// @version     2019.03.12.03
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -60,7 +60,8 @@
                                     '<b>CHANGE:</b> <i>Auto zoom out after comment</i> will zoom you back to the zoom level you were at when the UR Panel opened.',
                                     '<b>BUGFIX:</b> <i>Hide without description</i> failed to filter in some instances.',
                                     '<b>BUGFIX:</b> Some timeouts needed indexing. Now indexed based on random ID generated at time of timeout call.',
-                                    '<b>BUGFIX:</b> Comments erroneously inserted into map comment new comment box as well.' ];
+                                    '<b>BUGFIX:</b> Comments erroneously inserted into map comment new comment box as well.',
+                                    '<b>BUGFIX:</b> Restore URC-E settings did not retain settings not in the backup file (newer settings).' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -156,6 +157,7 @@
         if (!restoreSettings)
             logDebug('Loading settings from storage.');
         let invalidRestoreSettings = [];
+        let retainedSettings = [];
         let defaultSettings = {
             lastVersion: undefined,
             wmeUserId: undefined,
@@ -297,8 +299,10 @@
         };
         if (restoreSettings && (restoreSettings !== 'resetSettings') && !proceedWithRestore) {
             for (let prop in restoreSettings) {
-                if (!defaultSettings.hasOwnProperty(prop))
+                if (!defaultSettings.hasOwnProperty(prop)) {
                     invalidRestoreSettings.push(prop);
+                    delete(restoreSettings[prop]);
+                }
                 else {
                     if ((restoreSettings[prop] === 'true') || (restoreSettings[prop] === true))
                         restoreSettings[prop] = true;
@@ -308,15 +312,18 @@
                         restoreSettings[prop] = parseInt(restoreSettings[prop]);
                 }
             }
-            if (invalidRestoreSettings.length > 0) {
-                invalidRestoreSettings.forEach((prop) => {
-                    delete(restoreSettings[prop]);
-                });
+            for (let prop in _settings) {
+                if (!restoreSettings.hasOwnProperty(prop)) {
+                    restoreSettings[prop] = _settings[prop];
+                    retainedSettings.push(prop);
+                }
             }
-            let outputText = '<b>' + I18n.t('urce.prompts.RestoreSettingsNumOfSettings') + ':</b> ' + Object.keys(restoreSettings).length + '<br>';
-            outputText += '<b>' + I18n.t('urce.prompts.RestoreSettingsInvalidSettings') + ':</b> ';
+            let outputText = '<b>' + I18n.t('urce.prompts.RestoreSettingsNumOfSettings') + ':</b> ' + (Object.keys(restoreSettings).length - retainedSettings.length);
+            outputText += '<br><b>' + I18n.t('urce.prompts.RestoreSettingsRetainedSettings') + ':</b> ';
+            outputText += ((retainedSettings.length > 0) ? retainedSettings.join(', ') + ' <i>(<b>' + I18n.t('urce.common.Total') + ':</b> ' + retainedSettings.length + ')</i>' : '<i>' + I18n.t('urce.common.None') + '</i>');
+            outputText += '<br><b>' + I18n.t('urce.prompts.RestoreSettingsInvalidSettings') + ':</b> ';
             outputText += ((invalidRestoreSettings.length > 0) ? invalidRestoreSettings.join(', ') + ' <i>(<b>' + I18n.t('urce.common.Total') + ':</b> ' + invalidRestoreSettings.length + ')</i>' : '<i>' + I18n.t('urce.common.None') + '</i>');
-            outputText += '<br><br><b>' + I18n.t('urce.prompts.RestoreSettingsConfirmation') + '?</b>';
+            outputText += '<br><br><b>' + I18n.t('urce.prompts.RestoreSettingsConfirmation') + '</b>';
             return showAlertBox('fa-cog', I18n.t('urce.prompts.RestoreSettings'), formatText(outputText), true, I18n.t('urce.common.Yes'), I18n.t('urce.common.No'), () => { loadSettingsFromStorage(restoreSettings, true); }, () => { })
         }
         let loadedSettings = (restoreSettings === 'resetSettings') ? undefined : restoreSettings || $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
@@ -4399,11 +4406,12 @@
                             "ResetSettings": "Reset Settings",
                             "ResetSettingsComplete": "Settings reset complete",
                             "ResetSettingsConfirmation": "Are you sure you want to reset URC-E settings back to their default values?",
+                            "RestoreSettings": "Restore Settings",
                             "RestoreSettingsComplete": "Settings restore complete",
                             "RestoreSettingsConfirmation": "Would you like to proceed with restoring your URC-E settings?",
                             "RestoreSettingsInvalidSettings": "Invalid settings removed from JSON file",
                             "RestoreSettingsNumOfSettings": "Number of settings to restore",
-                            "RestoreSettings": "Restore Settings",
+                            "RestoreSettingsRetainedSettings": "Retained current settings",
                             "RestrictionsEnforced": "Restrictions enforced!",
                             "RestrictionsEnforcedTitle": "The following restrictions have been enforced",
                             "SelSegsFound": "The selected comment contains '$SELSEGS$'.<br><br>In order to replace this text with the road name(s), please select one or two segments and click the <i class=\"fa fa-road\" aria-hidden=\"true\"></i> button in the UR panel.",
