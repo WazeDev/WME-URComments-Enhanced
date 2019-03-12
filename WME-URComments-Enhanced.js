@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.03.12.01
+// @version     2019.03.12.02
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -59,7 +59,8 @@
                                     '<b>CHANGE:</b> <i>Auto center on UR</i> will now recenter the map for ALL URs at the current zoom level.',
                                     '<b>CHANGE:</b> <i>Auto zoom out after comment</i> will zoom you back to the zoom level you were at when the UR Panel opened.',
                                     '<b>BUGFIX:</b> <i>Hide without description</i> failed to filter in some instances.',
-                                    '<b>BUGFIX:</b> Some timeouts needed indexing. Now indexed based on random ID generated at time of timeout call.' ];
+                                    '<b>BUGFIX:</b> Some timeouts needed indexing. Now indexed based on random ID generated at time of timeout call.',
+                                    '<b>BUGFIX:</b> Comments erroneously inserted into map comment new comment box as well.' ];
     const DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
     const DEBUG = true;
     const LOAD_BEGIN_TIME = performance.now();
@@ -841,8 +842,8 @@
     }
 
     function autoClickSendButton() {
-        $('.new-comment-form .send-button').trigger('click');
-        $('.new-comment-text').off('blur', autoClickSendButton);
+        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').trigger('click');
+        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').off('blur', autoClickSendButton);
     }
 
     function autoClickOpenSolvedNi(commentNum) {
@@ -853,11 +854,11 @@
         }
         $('#panel-container .mapUpdateRequest .top-section .body').scrollTop($('#panel-container .mapUpdateRequest .top-section .body')[0].scrollHeight);
         if (_commentList[commentNum].urstatus === 'notidentified' && _selUr.newStatus !== 'notidentified')
-            $('input[value="not-identified"]').trigger('click');
+            $('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="not-identified"]').trigger('click');
         else if (_commentList[commentNum].urstatus === 'solved' && _selUr.newStatus !== 'solved')
-            $('input[value="solved"]').trigger('click');
+            $('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="solved"]').trigger('click');
         else if (_commentList[commentNum].urstatus === 'open' && (_selUr.newStatus === 'solved' || _selUr.newStatus === 'notidentified'))
-            $('input[value="open"]').trigger('click');
+            $('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="open"]').trigger('click');
         window.confirm = confirmHold;
     }
 
@@ -951,8 +952,8 @@
     }
 
     function handleClickedShortcut(event) {
-        let cursorPos = $('.new-comment-text')[0].selectionStart;
-        let currVal = $('.new-comment-text').val();
+        let cursorPos = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].selectionStart;
+        let currVal = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val();
         let newVal = currVal.slice(0, cursorPos);
         let outputText;
         let replaceText;
@@ -1000,7 +1001,7 @@
                     if (replaceText === '_INSERT_')
                         outputText = streetName;
                     else
-                        $('.new-comment-text').val(currVal.replace(replaceText, streetName)).change().keyup();
+                        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(currVal.replace(replaceText, streetName)).change().keyup();
                 }
                 else
                     showAlertBox('fa-road', I18n.t('urce.prompts.SelSegsInsertErrorHeader'), I18n.t('urce.prompts.SelSegsInsertError'), false, 'OK', '', null, null);
@@ -1021,7 +1022,7 @@
             }
             if (newVal.length > 2000)
                 return showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentTooLong'), false, 'OK', '', null, null);
-            $('.new-comment-text').val(newVal).selectRange((cursorPos + outputText.length + 1)).change().keyup().focus();
+            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(newVal).selectRange((cursorPos + outputText.length + 1)).change().keyup().focus();
         }
     }
 
@@ -1049,13 +1050,13 @@
                 checkTimeout({timeout:'postUrComment'});
                 if (tries > 100)
                     reject('Timed out waiting for the comment text box to become available.');
-                else if ($('.new-comment-text').length === 0)
+                else if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length === 0)
                     _timeouts.postUrComment = window.setTimeout(retry, 100, comment, ++tries);
                 else {
-                    if (_settings.enableAppendMode && $('.new-comment-text').val() !== '' && !doubleClick) {
-                        cursorPos = $('.new-comment-text')[0].selectionStart;
+                    if (_settings.enableAppendMode && $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val() !== '' && !doubleClick) {
+                        cursorPos = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].selectionStart;
                         newCursorPos = cursorPos;
-                        let currVal = $('.new-comment-text').val();
+                        let currVal = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val();
                         let newVal = currVal.slice(0, cursorPos);
                         if ((newVal.length > 0) && (newVal.slice(-1).search(/[\n\r]/) > -1)) {
                             if (newVal.slice(-2, -1).search(/[\n\r]/) === -1) {
@@ -1090,11 +1091,11 @@
                         return reject({type:'tooLong', text:I18n.t('urce.prompts.CommentTooLong')});
                     }
                     if (cursorPos !== undefined)
-                        $('.new-comment-text').val(commentOutput).selectRange((newCursorPos + comment.replace(/\\[r|n]+/gmi, ' ').length + postNls)).change().keyup().focus();
+                        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).selectRange((newCursorPos + comment.replace(/\\[r|n]+/gmi, ' ').length + postNls)).change().keyup().focus();
                     else
-                        $('.new-comment-text').val(commentOutput).change().keyup().focus();
+                        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).change().keyup().focus();
                     if ((commentOutput.indexOf('$SELSEGS$') === -1) && (commentOutput.indexOf('$SELSEGS') === -1))
-                        $('.new-comment-text').blur().focus();
+                        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').blur().focus();
                     else
                         return resolve(showAlertBox('fa-road', I18n.t('urce.prompts.SelSegsFoundHeader'), I18n.t('urce.prompts.SelSegsFound'), false, 'OK', '', null, null));
                     resolve();
