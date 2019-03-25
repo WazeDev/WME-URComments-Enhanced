@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.03.20.01
+// @version     2019.03.25.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
 // @require     https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
+// @require     https://apis.google.com/js/api.js
 // @author      dBsooner
 // @license     MIT/BSD/X11
 // @connect     sheets.googleapis.com
@@ -20,6 +21,7 @@
 /* global WazeWrap */
 /* global OL */
 /* global _ */
+/* global gapi */
 
 /*
  * Original concept and code for URComments (URC) was written by rickzabel and licensed under MIT/BSD/X11.
@@ -2226,47 +2228,144 @@
         return _commentLists.find((cList) => { return cList.idx === commentListIdx });
     }
 
+    function setGapiSigninStatus() {
+        if (gapi.auth2.getAuthInstance().currentUser.get().hasGrantedScopes('https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly')) {
+            $('#gapiSignInOutButton').html('Sign out').attr('title', 'Sign out of Google for this app.');
+            $('#gapiRevokeAccessButton').show();
+            $('#urceGSheetCreateConvert').show();
+            return true;
+        }
+        else {
+            $('#gapiSignInOutButton').html('Sign In/Authorize').attr('title', 'Sign into Google and authorize this app.');
+            $('#gapiRevokeAccessButton').hide();
+            $('#urceGSheetCreateConvert').hide();
+            return false;
+        }
+    }
+
+    function updateGapiSigninStatus() {
+        setGapiSigninStatus();
+    }
+
+    function checkGapiSigninStatus() {
+        return new Promise((resolve) => { resolve(setGapiSigninStatus()) });
+    }
+
+    function makeApiRestCall(obj) {
+        return new Promise(async (resolve) => {
+            let data, token = gapi.auth.getToken().access_token;
+            try {
+                let options = {...obj};
+                options.beforeSend = function(request) {
+                    request.setRequestHeader('Authorization', `Bearer ${token}`);
+                };
+                data = await $.ajax(options).fail((response) => {
+                    let err = {error: response.responseJSON.error.code, message: response.responseJSON.error.message, urceError: true};
+                    logError(err);
+                    return resolve(err);
+                });
+                resolve(data);
+            } catch(error) {
+                let err;
+                if (typeof error !== 'object')
+                    err = {error: error};
+                else
+                    err = error;
+                err.urceError = true;
+                logError(err);
+                return resolve(err);
+            }
+        });
+    }
+
     async function createStaticToGoogleSheet(convert) {
-        if (_createConvert)
+        if (_createConvert || (await checkGapiSigninStatus() === false))
             return;
         if (convert && getCommentListInfo(_currentCommentList).type !== 'static')
             return showAlertBox('fa-table', I18n.t('urce.prompts.ConvertToGoogleSheet'), I18n.t('urce.prompts.ConversionLoadAddonFirst'), false, 'OK', null, null, null);
-        _createConvert = true;
         showAlertBox('fa-table',
                      ((convert) ? I18n.t('urce.prompts.ConvertToGoogleSheet') : I18n.t('urce.prompts.CreateGoogleSheet')),
                      ((convert) ? I18n.t('urce.prompts.ConvertingToGoogleSheet') : I18n.t('urce.prompts.CreatingGoogleSheet')),
                      false, I18n.t('urce.common.PleaseWait'), null, 'disabled', null);
-        let data, errorText, idx, defaultsArr = {}, dataReq = {};
-        if (convert) {
-            Object.keys(_defaultComments).forEach((key) => {
-                if (key === 'dr')
-                    idx = 0;
-                else if (key === 'dc')
-                    idx = 1;
-                else
-                    idx = _defaultComments[key].urNum;
-                defaultsArr[idx] = (_defaultComments[key].commentNum !== null) ? [_commentList[_defaultComments[key].commentNum].title] : [''];
-            });
-            defaultsArr = Object.values(defaultsArr);
-            let commentsArr = _commentList.map((entry) => {
-                return [entry.title, entry.comment, ((entry.urstatus === 'open') ? 'Open' : (entry.urstatus === 'solved') ? 'Solved' : (entry.urstatus === 'notidentified') ? 'NotIdentified' : (entry.urstatus !== '') ? entry.urstatus.toUpperCase() : '')];
-            });
-            dataReq = {username:W.model.loginManager.user.userName, action:'convert', defaultsArr:JSON.stringify(defaultsArr), commentsArr:JSON.stringify(commentsArr), key:'_N;lsO;@^a::^{X-NRkOOA<7-*Go+0'};
-        }
-        else
-            dataReq = {username:W.model.loginManager.user.userName, action:'create', key:'_N;lsO;@^a::^{X-NRkOOA<7-*Go+0'};
-        try {
-            data = await $.ajax({url:'https://script.google.com/macros/s/AKfycbyJNqJBq49607jnU-VV_StOkc9JaF5-UZAbpLtqdTqTJVJp4a8/exec',
-                                 method: 'POST',
-                                 dataType:'json',
-                                 data:dataReq}).fail((response) => {
-                logError(response);
-                errorText = 'Fail response. Code: ' + response.status + ' - Text: ' + response.responseText;
-            });
-        } catch(error) {
-            logError(error);
-            if (!errorText)
-                errorText = 'Caught error. Code: ' + error.status + ' - Text: ' + error.responseText;
+        _createConvert = true;
+        let response, date = new Date(), newSsId, createError = false, checkPermissionsByUser = false, convertDefaultsError = false, convertCommentsError = false;
+        let dateTs = '' + date.getFullYear() +
+            (date.getMonth() < 9 ? '0' + (date.getMonth()+1) : (date.getMonth()+1))  +
+            (date.getDate() < 9 ? '0' + (date.getDate()+1) : (date.getDate()+1)) +
+            (date.getHours() < 10 ? '0' + date.getHours() : date.getHours()) +
+            (date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes()) +
+            (date.getSeconds() < 10 ? '0' + date.getSeconds() : date.getSeconds());
+        response = await makeApiRestCall({url:`https://www.googleapis.com/drive/v3/files/1JVtw4xwjKmPX_H1Xo1uwyYwxguM-oSi0LotD4lEwmK4/copy?alt=json&key=${URCE_API_KEY}`,
+                                          method:'POST',
+                                          contentType:'application/json',
+                                          data: JSON.stringify({ name: `URC-E Custom Comments - ${W.model.loginManager.user.userName} - ${dateTs}` }),
+                                          processData: false});
+        if (response.urceError)
+            createError = true;
+        else {
+            newSsId = response.id.toString();
+            response = await makeApiRestCall({url:`https://www.googleapis.com/drive/v3/files/${newSsId}/permissions?key=${URCE_API_KEY}`,
+                                              method:'GET'});
+            if (response.urceError)
+                checkPermissionsByUser = true;
+            else {
+                let permissionCheck = [...response.permissions].filter(function(obj) { return obj.id === 'anyoneWithLink'; });
+                if (permissionCheck.length === 0) {
+                    response = await makeApiRestCall({url:`https://www.googleapis.com/drive/v3/files/${newSsId}/permissions?alt=json&key=${URCE_API_KEY}`,
+                                                      method:'POST',
+                                                      contentType:'application/json',
+                                                      data: JSON.stringify({ role: 'reader', type: 'anyone' }),
+                                                      processData: false});
+                    if (response.urceError)
+                        checkPermissionsByUser = true;
+                }
+                else {
+                    if (permissionCheck.filter(function(obj) { return (obj.type === 'anyone') && ((obj.role  === 'writer') || (obj.role === 'reader') || (obj.role === 'commenter')); }).length === 0) {
+                        response = await makeApiRestCall({url:`https://www.googleapis.com/drive/v3/files/${newSsId}/permissions/anyoneWithLink?alt=json&key=${URCE_API_KEY}`,
+                                                          method:'POST',
+                                                          contentType:'application/json',
+                                                          data: JSON.stringify({ role: 'reader' }),
+                                                          processData: false});
+                        if (response.urceError)
+                            checkPermissionsByUser = true;
+                    }
+                }
+            }
+            if (convert) {
+                let idx, defaultsArr = {};
+                Object.keys(_defaultComments).forEach((key) => {
+                    if (key === 'dr')
+                        idx = 0;
+                    else if (key === 'dc')
+                        idx = 1;
+                    else
+                        idx = _defaultComments[key].urNum;
+                    defaultsArr[idx] = (_defaultComments[key].commentNum !== null) ? [_commentList[_defaultComments[key].commentNum].title] : [''];
+                });
+                defaultsArr = Object.values(defaultsArr);
+                let commentsArr = _commentList.map((entry) => {
+                    return [entry.title, entry.comment, ((entry.urstatus === 'open') ? 'Open' : (entry.urstatus === 'solved') ? 'Solved' : (entry.urstatus === 'notidentified') ? 'NotIdentified' : (entry.urstatus !== '') ? entry.urstatus.toUpperCase() : '')];
+                });
+                response = await makeApiRestCall({url:`https://sheets.googleapis.com/v4/spreadsheets/${newSsId}/values/CustomComments!B5:B22?valueInputOption=RAW&alt=json&key=${URCE_API_KEY}`,
+                                                  method:'PUT',
+                                                  contentType:'application/json',
+                                                  data: JSON.stringify({ values: defaultsArr }),
+                                                  processData: false});
+                if (response.urceError)
+                    convertDefaultsError = true;
+                response = await makeApiRestCall({url:`https://sheets.googleapis.com/v4/spreadsheets/${newSsId}/values/CustomComments!A25:C${(commentsArr.length + 25 - 1)}?valueInputOption=RAW&alt=json&key=${URCE_API_KEY}`,
+                                                  method:'PUT',
+                                                  contentType:'application/json',
+                                                  data: JSON.stringify({ values: commentsArr }),
+                                                  processData: false});
+                if (response.urceError)
+                    convertCommentsError = true;
+                response = await makeApiRestCall({url:`https://sheets.googleapis.com/v4/spreadsheets/${newSsId}/values/CustomComments!D26:D30?valueInputOption=RAW&alt=json&key=${URCE_API_KEY}`,
+                                                  method:'PUT',
+                                                  contentType:'application/json',
+                                                  data: JSON.stringify({ values: [ [''], [''], [''], [''], [''] ] }),
+                                                  processData: false});
+            }
         }
         if (_alertBoxArray.length > 0) {
             for(let idx = 0; idx < _alertBoxArray.length; idx++) {
@@ -2276,25 +2375,53 @@
         }
         if (_alertBoxInUse && $('#urceAlertTickBtn').hasClass('urceButtonDisabled'))
             closeAlertBox();
-        if (!errorText && data && data.ssId) {
-            let ssUrl = 'https://docs.google.com/spreadsheets/d/' + data.ssId + '/edit';
-            let content = ((convert) ? I18n.t('urce.prompts.ConversionComplete') : I18n.t('urce.prompts.CreationComplete'));
-            content += '<br><br>' +
-                '<ol><li>' + I18n.t('urce.prompts.ConvertCreateCompleteStep1') + ': <a href="' + ssUrl + '" target="_blank">' + ssUrl + '</a>' +
-                '<li>' + I18n.t('urce.prompts.ConvertCreateCompleteStep2') +
-                '<li>' + I18n.t('urce.prompts.ConvertCreateCompleteStep3') +
-                '<li>' + I18n.t('urce.prompts.ConvertCreateCompleteStep4') +
-                '<li>' + I18n.t('urce.prompts.ConvertCreateCompleteStep5') +
-                '<li>' + I18n.t('urce.prompts.ConvertCreateCompleteStep6') + ': <b><i>1JVtw4xwjKmPX_H1Xo1uwyYwxguM-oSi0LotD4lEwmK4</i></b>' +
-                '<li>' + I18n.t('urce.prompts.ConvertCreateCompleteStep7') +
-                '</ol><br>' + I18n.t('urce.prompts.ConvertCreateCompleteSummary');
-            showAlertBox('fa-table', ((convert) ? I18n.t('urce.prompts.ConvertToGoogleSheet') : I18n.t('urce.prompts.CreateGoogleSheet')), content, false, 'OK', null, null, null);
-        }
+        let content = '<div id="urceCreateConvertResults">' +
+            '<div><div><b>' + I18n.t('urce.prompts.ConvertCreateCreateCustomSpreadsheet') + ':</b> <div style="display:inline-block;' + ((createError) ? ' color:red;' : '') + '"><i>' + ((createError) ? I18n.t('urce.common.Failed') : I18n.t('urce.common.Success')) + '</i></div></div>' +
+            '<div><b>' + I18n.t('urce.prompts.ConvertCreateSetProperPermissions') + ':</b> <div style="display:inline-block;' + ((checkPermissionsByUser) ? ' color:red;' : '') + '"><i>' + ((createError) ? I18n.t('urce.common.NotApplicable') : (checkPermissionsByUser) ? I18n.t('urce.common.NeedsChecked') : I18n.t('urce.common.Success')) + '</i></div></div>' +
+            '<div><b>' + I18n.t('urce.prompts.ConvertCreateConvertCurrent') + ':</b> <div style="display:inline-block;"><i>' + ((createError) ? I18n.t('urce.common.NotApplicable') : (convert) ? I18n.t('urce.common.Yes') : I18n.t('urce.common.No')) + '</i></div></div>' +
+            '<div><b>' + I18n.t('urce.prompts.ConvertCreateConvertDefaultComments') + ':</b> <div style="display:inline-block;' + ((convertDefaultsError) ? ' color:red;' : '') + '"><i>' + ((createError || !convert) ? I18n.t('urce.common.NotApplicable') : (convertDefaultsError) ? I18n.t('urce.common.Failed') : I18n.t('urce.common.Success')) + '</i></div></div>' +
+            '<div><b>' + I18n.t('urce.prompts.ConvertCreateConvertComments') + ':</b> <div style="display:inline-block;' + ((convertCommentsError) ? ' color:red;' : '') + '"><i>' + ((createError || !convert) ? I18n.t('urce.common.NotApplicable') : (convertCommentsError) ? I18n.t('urce.common.Failed') : I18n.t('urce.common.Success')) + '</i></div></div>' +
+            '</div><div><div style="margin-top:10px; border-top:1px solid black; padding-top:10px;"><b>' + I18n.t('urce.prompts.ConvertCreateSpreadsheetURL') + ':</b> ' + ((createError) ? I18n.t('urce.common.NotApplicable') : '<a href="https://docs.google.com/spreadsheets/d/' + newSsId + '/edit" target="_blank">https://docs.google.com/spreadsheets/d/' + newSsId + '/edit</a>') + '</div>' +
+            '<div><b>' + I18n.t('urce.prompts.ConvertCreateGoogleAccount') + ':</b> <i>' + gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getEmail() + '</i></div>' +
+            '<div><b>' + I18n.t('urce.prompts.ConvertCreateSpreadsheetID') + ':</b> <i>' + ((createError) ? I18n.t('urce.common.NotApplicable') : newSsId) + '</i><div id="urceCopySsId" style="display:inline-block; margin-left:5px;" title="' + I18n.t('urce.prompts.ConvertCreateSpreadsheetIDCopyTitle') + '"><i class="fa fa-files-o" aria-hidden="true"></i></div></div>' +
+            '</div><div style="margin-top:10px; border-top:1px solid black; padding-top:10px;"><b>' + I18n.t('urce.prompts.ConvertCreateNextSteps') + ':</b>' +
+            '<ul>';
+        if (createError)
+            content += '<li>' + I18n.t('urce.prompts.ConvertCreateNextStepsCreateError') + '</li></ul>';
         else {
-            if (errorText)
-                logError(errorText);
-            showAlertBox('fa-table', ((convert) ? I18n.t('urce.prompts.ConvertToGoogleSheet') : I18n.t('urce.prompts.CreateGoogleSheet')), I18n.t('urce.prompts.ConvertCreateFailed'), false, 'OK', null, null, null);
+            if (checkPermissionsByUser) {
+                content += '<li>' + I18n.t('urce.prompts.ConvertCreateNextStepsCheckPermissions') + '</li>' +
+                    '<ol><li><a href="https://docs.google.com/spreadsheets/d/' + newSsId + '/edit" target="_blank">' + I18n.t('urce.prompts.ConvertCreateNextStepsCheckPermissionsStep1') + '</li></a>' +
+                    '<li>' + I18n.t('urce.prompts.ConvertCreateNextStepsCheckPermissionsStep2') + '</li>' +
+                    '<li>' + I18n.t('urce.prompts.ConvertCreateNextStepsCheckPermissionsStep3') + '</li>' +
+                    '<li>' + I18n.t('urce.prompts.ConvertCreateNextStepsCheckPermissionsStep4') + '</li>' +
+                    '<li>' + I18n.t('urce.prompts.ConvertCreateNextStepsCheckPermissionsStep5') + '</li>' +
+                    '<li>' + I18n.t('urce.prompts.ConvertCreateNextStepsCheckPermissionsStep6') + '</li>' +
+                    '<li>' + I18n.t('urce.prompts.ConvertCreateNextStepsCheckPermissionsStep7') + '</li>' +
+                    '<li>' + I18n.t('urce.prompts.ConvertCreateNextStepsCheckPermissionsStep8') + '</li></ol>';
+            }
+            if (convertDefaultsError)
+                content += '<li>' + I18n.t('urce.prompts.ConvertCreateNextStepsConvertDefaultsError') + '</li>';
+            if (convertCommentsError)
+                content += '<li>' + I18n.t('urce.prompts.ConvertCreateNextStepsConvertCommentsError') + '</li>';
+            if (!checkPermissionsByUser && !convertDefaultsError && !convertCommentsError)
+                content += '<li>' + I18n.t('urce.common.NotApplicable');
+            content += '</ul></div><div style="margin-top:10px; border-top:1px solid black; padding-top:10px;">';
+            if (!checkPermissionsByUser && !convertDefaultsError && !convertCommentsError)
+                content += ((convert) ? I18n.t('urce.prompts.ConversionComplete') : I18n.t('urce.prompts.CreationComplete'));
+            else
+                content += I18n.t('urce.prompts.ConvertCreateCompletionSteps');
+            content += '<ol><li>' + I18n.t('urce.prompts.ConvertCreateCompletionStepsStep1').replace('$COPY_ICON$', '<i class="fa fa-files-o" aria-hidden="true"></i>') + '</li>' +
+                '<li>' + I18n.t('urce.prompts.ConvertCreateCompletionStepsStep2') + '</li>' +
+                '<li>' + I18n.t('urce.prompts.ConvertCreateCompletionStepsStep3') + '</li></ol>';
         }
+        content += '</div>';
+        showAlertBox('fa-table', ((convert) ? I18n.t('urce.prompts.ConvertToGoogleSheet') : I18n.t('urce.prompts.CreateGoogleSheet')), content, false, 'OK', null, null, null);
+        $('#urceCopySsId').off().on('click', () => {
+            $('<input>', {id:'copySsIdTemp'}).val(newSsId).appendTo('body').select();
+            document.execCommand('copy');
+            $('#copySsIdTemp').remove();
+        });
         _createConvert = false;
     }
 
@@ -2431,6 +2558,8 @@
                                     $('<div>', {id:groupDivId+'_body', class:`${collapsed} URCE-group_body ${urStyle}`})
                                 )
                             )
+                            _commentList[commentId] = {'title':rowObj.title, 'comment':'', 'urstatus':'GROUP TITLE'};
+                            commentId++;
                         }
                         else { // SHOULD be a normal comments row, push values to arrays and build html.
                             if ((rowObj.urstatus !== 'solved') && (rowObj.urstatus !== 'notidentified') && (rowObj.urstatus !== 'open') && (rowObj.urstatus !== 'blank line'))
@@ -2847,6 +2976,27 @@
             WazeWrap.Events.register('change:isImperial', null, invokeModeChange);
             W.model.states.on('objectsadded', checkRestrictions);
             W.model.countries.on('objectsadded', checkRestrictions);
+            logDebug('Initializing gapi.');
+            gapi.load('client:auth2', function() {
+                gapi.client.init({
+                    apiKey: URCE_API_KEY,
+                    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest','https://sheets.googleapis.com/$discovery/rest?version=v4'],
+                    clientId: '309982510721-gsu1aodqc5upc6aolkq3m1f0c2dll6kp.apps.googleusercontent.com',
+                    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly'
+                }).then(() => {
+                    gapi.auth2.getAuthInstance().isSignedIn.listen(updateGapiSigninStatus);
+                    setGapiSigninStatus();
+                    $('#gapiSignInOutButton').off().on('click', function() {
+                        if (gapi.auth2.getAuthInstance().isSignedIn.get())
+                            gapi.auth2.getAuthInstance().signOut();
+                        else
+                            gapi.auth2.getAuthInstance().signIn();
+                    });
+                    $('#gapiRevokeAccessButton').off().on('click', function() {
+                        gapi.auth2.getAuthInstance().disconnect();
+                    });
+                })
+            });
         } else if (status === 'disable') {
             logDebug('Disabling MOs.');
             if (saveButtonObserver.isObserving) {
@@ -2928,12 +3078,15 @@
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; padding-left:16px; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080;  display:inline-block; position:relative; padding-left:16px; }' +
           '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:11px; text-align:right; }' +
-          '#sidepanel-urc-e #panel-urce-settings .urceSettingsButton { font-size:11px; margin-left:10px; background-color:lightgray; border:none; cursor:default; height:18px; border-radius:4px; border:1px solid gray; }' +
-          '#sidepanel-urc-e #panel-urce-settings .urceSettingsButtonFile { font-size:11px; background-color:lightgray; border:1px solid gray; cursor:default; height:18px; margin-top:6px; border-radius:4px;  }' +
-          '#sidepanel-urc-e #panel-urce-settings .urceSettingsButton.active, .urceSettingsButtonFile:hover, .urceSettingsButton:hover { background-color:gray !important; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-divRestoreFileError { font-weight:600; margin:6px; font-size:11px; text-align:left; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-divToolsContainer { border: 1px solid silver; border-radius:4px; text-align:center; font-size:12px; padding:5px; font-weight:600; margin-bottom:6px; }' +
-          '#sidepanel-urc-e #panel-urce-settings .URCE-divToolsContainer.header { border: 1px solid gray; background:silver; text-transform:uppercase; padding:2px; }' +
+          // Tools tab
+          '#sidepanel-urc-e #panel-urce-tools .URCE-divCC { text-align:center; }' +
+          '#sidepanel-urc-e #panel-urce-tools .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }' +
+          '#sidepanel-urc-e #panel-urce-tools .urceToolsButton { font-size:11px; margin-left:10px; background-color:lightgray; border:none; cursor:default; height:18px; border-radius:4px; border:1px solid gray; }' +
+          '#sidepanel-urc-e #panel-urce-tools .urceToolsButtonFile { font-size:11px; background-color:lightgray; border:1px solid gray; cursor:default; height:18px; margin-top:6px; border-radius:4px;  }' +
+          '#sidepanel-urc-e #panel-urce-tools .urceToolsButton.active, .urceToolsButtonFile:hover, .urceToolsButton:hover { background-color:gray !important; }' +
+          '#sidepanel-urc-e #panel-urce-tools .URCE-divRestoreFileError { font-weight:600; margin:6px; font-size:11px; text-align:left; }' +
+          '#sidepanel-urc-e #panel-urce-tools #URCE-divCustomGoogleSheetInfoBox { text-align:left; margin-top:10px; border-top:1px solid black; padding:10px 0 10px 0; }' +
+          '#sidepanel-urc-e #panel-urce-tools #urceGSheetCreateConvert { margin-top:5px; }' +
           // Common
           '#sidepanel-urc-e .URCE-divDismiss { display:inline-block; float:right; width:16px; height:16px; margin-top:-12px; border-radius:50%; border:1px solid black; background-color:white; text-align:center; cursor:pointer; }' +
           '#sidepanel-urc-e .URCE-divWarningBox { background-color:indianred; border:1px solid silver; margin:6px 0 6px 0; font-size:12px; border-radius:4px; padding:5px; font-weight:600; }' +
@@ -2989,6 +3142,124 @@
                 autoCloseUrPanel();
             W.map.setCenter(W.map.getCenter(), parseInt(this.getAttribute('zoomTo')));
         });
+    }
+
+    function initToolsTab() {
+        logDebug('Initializing Tools tab.');
+        let urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '';
+        $('#panel-urce-tools').empty().append(
+            $('<div>', {id:'expandCollapseAll', class:'URCE-expandCollapseAll'}).append(
+                $('<div>', {class:'URCE-expandCollapseAllItem'}).text(I18n.t('urce.common.ExpandAll')).off().on('click', () => {
+                    let $legends = $('legend[id^="urce-tools-legend"');
+                    for (let idx = 0; idx < $legends.length; idx++) {
+                        if ($legends[idx].nextSibling.className.indexOf('collapse') > -1)
+                            $($legends[idx]).click();
+                    }
+                }),
+                $('<div>', {style:'display:inline;'}).text(' : '),
+                $('<div>', {class:'URCE-expandCollapseAllItem'}).text(I18n.t('urce.common.CollapseAll')).off().on('click', () => {
+                    let $legends = $('legend[id^="urce-tools-legend"');
+                    for (let idx = 0; idx < $legends.length; idx++) {
+                        if ($legends[idx].nextSibling.className.indexOf('collapse') === -1)
+                            $($legends[idx]).click();
+                    }
+                })
+            ),
+            // Tools
+            $('<fieldset>', {id:'urce-tools-fieldset-settings', class:`URCE-field${urStyle}`}).append(
+                $('<legend>', {id:'urce-tools-legend-settings', class:`URCE-legend${urStyle}`}).append(
+                    $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
+                    $('<span>', {class:'URCE-span'}).text(I18n.t('urce.tabs.Settings'))
+                ).click(function() {
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
+                    $($(this).siblings()[0]).toggleClass('collapse');
+                }),
+                $('<div>', {class:'URCE-controls URCE-divCC'}).append(
+                    $('<button>', {id:'_butbackupSettings', urceprefs:'tools', class:'urceToolsButton', title:I18n.t('urce.tools.BackupSettingsTitle')}).text(I18n.t('urce.common.Backup')).on('click', () => {
+                        saveSettingsToStorage();
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(new Blob([JSON.stringify({URCE:_settings})], {type:'application/json' }));
+                        a.download = 'urce-settings-v' + SCRIPT_VERSION + '.json';
+                        a.click();
+                        $(a).remove();
+                    }),
+                    $('<button>', {id:'_butrestoreSettings', urceprefs:'tools', class:'urceToolsButton', title:I18n.t('urce.tools.RestoreSettingsTitle')}).text(I18n.t('urce.common.Restore')).on('click', function() {
+                        if (this.className.indexOf('active') === -1) {
+                            $(this).addClass('active');
+                            $('#urceRestoreSettingsFile').show();
+                        }
+                        else {
+                            $(this).removeClass('active');
+                            $('#_filerestoreSettings').val('');
+                            $('#urceRestoreSettingsFile').hide().removeClass('error');
+                            $('#urceRestoreSettingsFileError').empty();
+                        }
+                    }),
+                    $('<button>', {id:'_butresetSettings', urceprefs:'tools', class:'urceToolsButton', title:I18n.t('urce.tools.ResetSettingsTitle')}).text(I18n.t('urce.common.Reset')).on('click', () => {
+                        showAlertBox('fa-cog', I18n.t('urce.prompts.ResetSettings'), I18n.t('urce.prompts.ResetSettingsConfirmation'), true, I18n.t('urce.common.Yes'), I18n.t('urce.common.No'), () => { loadSettingsFromStorage('resetSettings', true) }, () => { });
+                    }),
+                    $('<div>', {id:'urceRestoreSettingsFile', style:'display:none;'}).append(
+                        $('<input>', {type:'file', id:'_filerestoreSettings', urceprefs:'tools', class:'urceToolsButtonFile', title:I18n.t('urce.tools.RestoreSettingsSelectFileTitle')}).on('change', function() {
+                            let file = this.files[0]
+                            if (((file.type === 'application/json') || (file.type === 'text/json')) && (file.size < 102400)) {
+                                let reader = new FileReader();
+                                reader.onload = function() {
+                                    let restoreSettings;
+                                    try {
+                                        restoreSettings = $.parseJSON(this.result);
+                                    }
+                                        catch (error) {
+                                            logError('Unable to parse the input file.');
+                                            logError(error);
+                                            return $('#_filerestoreSettings').val('');
+                                        }
+                                    if (!restoreSettings.hasOwnProperty('URCE')) {
+                                            logWarning('Invalid URCE settings JSON file.');
+                                        $('#urceRestoreSettingsFileError').show();
+                                        $('#urceRestoreSettingsFile').addClass('error');
+                                        }
+                                    else
+                                        loadSettingsFromStorage(restoreSettings.URCE);
+                                }
+                                reader.readAsText(file);
+                            }
+                            else {
+                                logWarning('Invalid URCE settings JSON file.');
+                                $('#urceRestoreSettingsFileError').show();
+                                $('#urceRestoreSettingsFile').addClass('error');
+                                }
+                        }),
+                        $('<div>', {id:'urceRestoreSettingsFileError', class:'URCE-divRestoreFileError error', style:'display:none;'}).html(`* ${I18n.t('urce.tools.RestoreSettingsFileError')}`)
+                    )
+                )
+            ),
+            $('<fieldset>', {id:'urce-tools-fieldset-customGoogleSpreadsheet', class:`URCE-field${urStyle}`}).append(
+                $('<legend>', {id:'urce-tools-legend-customGoogleSpreadsheet', class:`URCE-legend${urStyle}`}).append(
+                    $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
+                    $('<span>', {class:'URCE-span'}).text(I18n.t('urce.tools.CustomGoogleSpreadsheet'))
+                ).click(function() {
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
+                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
+                    $($(this).siblings()[0]).toggleClass('collapse');
+                }),
+                $('<div>', {class:'URCE-controls URCE-divCC'}).append(
+                    $('<div>').append(
+                        $('<button>', {id:'gapiSignInOutButton', class:'urceToolsButton', title:I18n.t('urce.tools.CustomGoogleSheetSignInTitle')}).text(I18n.t('urce.tools.CustomGoogleSheetSignIn')),
+                        $('<button>', {id:'gapiRevokeAccessButton', class:'urceToolsButton', title:I18n.t('urce.tools.CustomGoogleSheetRevokeAccessTitle'), style:'display:none;'}).text(I18n.t('urce.tools.CustomGoogleSheetRevokeAccess'))
+                    ),
+                    $('<div>', {id:'urceGSheetCreateConvert', urceprefs:'tools', display:'none'}).append(
+                        $('<button>', {id:'_butconvertCurrentCustom', urceprefs:'tools', class:'urceToolsButton', title:I18n.t('urce.tools.ConvertCurrentCustomTitle')}).text(I18n.t('urce.tools.ConvertCurrentCustom')).on('click', function() {
+                            createStaticToGoogleSheet(true);
+                        }),
+                        $('<button>', {id:'_butcreateNewCustom', urceprefs:'tools', class:'urceToolsButton', title:I18n.t('urce.tools.CreateNewCustomTitle')}).text(I18n.t('urce.tools.CreateNewCustom')).on('click', function() {
+                            createStaticToGoogleSheet(false);
+                        })
+                    ),
+                    $('<div>', {id: 'URCE-divCustomGoogleSheetInfoBox', style:'text-align:left; margin-top:10px;'}).html(I18n.t('urce.tools.CustomGoogleSheetInfoBox'))
+                )
+            )
+        )
     }
 
     function initSettingsTab() {
@@ -3654,87 +3925,6 @@
                         )
                     )
                 )
-            ),
-            // Tools
-            $('<fieldset>', {id:'urce-prefs-fieldset-tools', class:`URCE-field${urStyle}`}).append(
-                $('<legend>', {id:'urce-prefs-legend-tools', class:`URCE-legend${urStyle}`}).append(
-                    $('<i>', {class:'fa fa-fw fa-chevron-down URCE-chevron'}),
-                    $('<span>', {class:'URCE-span'}).text(I18n.t('urce.prefs.Tools'))
-                ).click(function() {
-                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
-                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
-                    $($(this).siblings()[0]).toggleClass('collapse');
-                }),
-                $('<div>', {class:'URCE-controls URCE-divCC'}).append(
-                    $('<div>', {class:'URCE-divToolsContainer'}).append(
-                        $('<div>', {class:'URCE-divToolsContainer header'}).text(I18n.t('urce.tabs.Settings')),
-                        $('<button>', {id:'_butbackupSettings', urceprefs:'tools', class:'urceSettingsButton', title:I18n.t('urce.prefs.BackupSettingsTitle')}).text(I18n.t('urce.common.Backup')).on('click', () => {
-                            saveSettingsToStorage();
-                            const a = document.createElement('a');
-                            a.href = URL.createObjectURL(new Blob([JSON.stringify({URCE:_settings})], {type:'application/json' }));
-                            a.download = 'urce-settings-v' + SCRIPT_VERSION + '.json';
-                            a.click();
-                            $(a).remove();
-                        }),
-                        $('<button>', {id:'_butrestoreSettings', urceprefs:'tools', class:'urceSettingsButton', title:I18n.t('urce.prefs.RestoreSettingsTitle')}).text(I18n.t('urce.common.Restore')).on('click', function() {
-                            if (this.className.indexOf('active') === -1) {
-                                $(this).addClass('active');
-                                $('#urceRestoreSettingsFile').show();
-                            }
-                            else {
-                                $(this).removeClass('active');
-                                $('#_filerestoreSettings').val('');
-                                $('#urceRestoreSettingsFile').hide().removeClass('error');
-                                $('#urceRestoreSettingsFileError').empty();
-                            }
-                        }),
-                        $('<button>', {id:'_butresetSettings', urceprefs:'tools', class:'urceSettingsButton', title:I18n.t('urce.prefs.ResetSettingsTitle')}).text(I18n.t('urce.common.Reset')).on('click', () => {
-                            showAlertBox('fa-cog', I18n.t('urce.prompts.ResetSettings'), I18n.t('urce.prompts.ResetSettingsConfirmation'), true, I18n.t('urce.common.Yes'), I18n.t('urce.common.No'), () => { loadSettingsFromStorage('resetSettings', true) }, () => { });
-                        }),
-                        $('<div>', {id:'urceRestoreSettingsFile', style:'display:none;'}).append(
-                            $('<input>', {type:'file', id:'_filerestoreSettings', urceprefs:'tools', class:'urceSettingsButtonFile', title:I18n.t('urce.prefs.RestoreSettingsSelectFileTitle')}).on('change', function() {
-                                let file = this.files[0]
-                                if (((file.type === 'application/json') || (file.type === 'text/json')) && (file.size < 102400)) {
-                                    let reader = new FileReader();
-                                    reader.onload = function() {
-                                        let restoreSettings;
-                                        try {
-                                            restoreSettings = $.parseJSON(this.result);
-                                        }
-                                        catch (error) {
-                                            logError('Unable to parse the input file.');
-                                            logError(error);
-                                            return $('#_filerestoreSettings').val('');
-                                        }
-                                        if (!restoreSettings.hasOwnProperty('URCE')) {
-                                            logWarning('Invalid URCE settings JSON file.');
-                                            $('#urceRestoreSettingsFileError').show();
-                                            $('#urceRestoreSettingsFile').addClass('error');
-                                        }
-                                        else
-                                            loadSettingsFromStorage(restoreSettings.URCE);
-                                    }
-                                    reader.readAsText(file);
-                                }
-                                else {
-                                    logWarning('Invalid URCE settings JSON file.');
-                                    $('#urceRestoreSettingsFileError').show();
-                                    $('#urceRestoreSettingsFile').addClass('error');
-                                }
-                            }),
-                            $('<div>', {id:'urceRestoreSettingsFileError', class:'URCE-divRestoreFileError error', style:'display:none;'}).html(`* ${I18n.t('urce.prefs.RestoreSettingsFileError')}`)
-                        )
-                    ),
-                    $('<div>', {class:'URCE-divToolsContainer'}).append(
-                        $('<div>', {class:'URCE-divToolsContainer header'}).text(I18n.t('urce.prefs.CustomGoogleSpreadsheet')),
-                        $('<button>', {id:'_butconvertCurrentCustom', urceprefs:'tools', class:'urceSettingsButton', title:I18n.t('urce.prefs.ConvertCurrentCustomTitle')}).text(I18n.t('urce.prefs.ConvertCurrentCustom')).on('click', function() {
-                                createStaticToGoogleSheet(true);
-                        }),
-                        $('<button>', {id:'_butcreateNewCustom', urceprefs:'tools', class:'urceSettingsButton', title:I18n.t('urce.prefs.CreateNewCustomTitle')}).text(I18n.t('urce.prefs.CreateNewCustom')).on('click', function() {
-                                createStaticToGoogleSheet(false);
-                        })
-                    )
-                )
             )
         );
         if (!isChecked('#_cbenableUrPillCounts'))
@@ -3882,6 +4072,7 @@
         logDebug('Firing initTab via callback.');
         initSettingsTab();
         initCommentsTab();
+        initToolsTab();
         if ($('img#urceIcon').length === 0) $('a[href="#sidepanel-urc-e"]').prepend($('<img>', {id:'urceIcon', class:'URCE-tabIcon', src:GM_info.script.icon}));
     }
 
@@ -3919,10 +4110,12 @@
             '<ul class="nav nav-tabs">' +
             '<li class="active"><a data-toggle="tab" href="#panel-urce-comments" aria-expanded="true">' + I18n.t('urce.tabs.Comments') + '</a></li>' +
             '<li><a data-toggle="tab" href="#panel-urce-settings" aria-expanded="true">' + I18n.t('urce.tabs.Settings') + '</a></li>' +
+            '<li><a data-toggle="tab" href="#panel-urce-tools" aria-expanded="true">' + I18n.t('urce.tabs.Tools') + '</a></li>' +
             '</ul>',
             $('<div>', {class:'tab-content URCE-divTabs'}).append(
                 $('<div>', {class:'tab-pane active', id:'panel-urce-comments'}),
-                $('<div>', {class:'tab-pane', id:'panel-urce-settings'})
+                $('<div>', {class:'tab-pane', id:'panel-urce-settings'}),
+                $('<div>', {class:'tab-pane', id:'panel-urce-tools'})
             )
         ).html();
         if (SCRIPT_NAME.indexOf('β') > -1)
@@ -4256,20 +4449,23 @@
                             "ErrorGeneric": "An error has occurred within URC-E. Please contact a WazeDev team member.",
                             "ErrorHeader": "URC-E Error",
                             "ExpandAll": "Expand all",
+                            "Failed": "Failed",
                             "Following": "Following",
                             "LessThan": "Less than",
                             "List": "List",
                             "ListOwner": "List owner",
                             "Loading": "Loading",
                             "MoreThan": "More than",
+                            "NeedsChecked": "Needs checked",
                             "No": "No",
                             "None": "None",
+                            "NotApplicable": "Not applicable",
                             "NotFollowing": "Not following",
                             "PleaseWait": "Please wait",
                             "Reset": "Reset",
                             "Restore": "Restore",
                             "Style": "Style",
-                            "Title": "URComment-Enhanced",
+                            "Success": "Success",
                             "Total": "Total",
                             "Type": "Type",
                             "With": "With",
@@ -4367,8 +4563,8 @@
                             "UnstackMarkersTitle": "Attempt to unstack markers by offsetting them. Similar to how URO+ unstacks markers.",
                             "UnstackSensitivity": "Unstack sensitivity",
                             "UnstackSensitivityTitle": "Specify the sensitivity for which markers are considered stacked.\nDefault: 15",
-                            "UnstackDisableAboveZoom": "Unstack disable above zoom level",
-                            "UnstackDisableAboveZoomTitle": "When you zoom out beyond this specified zoom level, marker unstacking will be disabled.\nDefault: 3",
+                            "UnstackDisableAboveZoom": "Unstack disable when zoom level <",
+                            "UnstackDisableAboveZoomTitle": "When you zoom out wider than the specified zoom level, marker unstacking will be disabled.\nDefault: 3",
                             "UseCustomMarkersFor": "Use Custom Markers for",
                             "BogTitle": "Replace default UR marker with custom marker for the URs with '[BOG]' (boots on ground) / '[BOTG]' (boots on the ground) in the description or comments.",
                             "ClosureTitle": "Replace default UR marker with custom marker for the URs with '[CLOSURE]' in the description or comments.",
@@ -4390,6 +4586,22 @@
                             "DoNotFilterTaggedUrsTitle": "Do not filter URs that are tagged with a [] tag. Example: [NOTE]",
                             "DoNotHideSelectedUr": "Do not hide selected UR",
                             "DoNotHideSelectedUrTitle": "Do not hide a UR if it is currently being selected.",
+                            "DisableFilteringAboveZoomLevel": "Disable filtering when zoom level <",
+                            "DisableFilteringAboveZoomLevelTitle": "Disable UR filtering when zoomed out wider than the specified zoom level. Set to '0' to enable all filtering.",
+                            "DisableFilteringBelowZoomLevel": "Disable filtering when zoom level >",
+                            "DisableFilteringBelowZoomLevelTitle": "Disable UR filtering when zoomed in tighter than the specified zoom level. Set to '10' to enable all filtering.",
+                            "LifeCycleStatus": "Hide by lifecycle status",
+                            "HideWaiting": "Waiting",
+                            "HideWaitingTitle": "Only show URs that need work (hide URs in other parts of the life-cycle).",
+                            "HideUrsCloseNeeded": "Close needed",
+                            "HideUrsCloseNeededTitle": "Hide URs that need closing.",
+                            "HideUrsReminderNeeded": "Reminders needed",
+                            "HideUrsReminderNeededTitle": "Hide URs where reminders are needed.",
+                            "HideByStatus": "Hide by status",
+                            "HideByStatusOpenTitle": "Hide all open URs.",
+                            "HideByStatusClosedTitle": "Hide all closed (solved and not identified) URs.",
+                            "HideByStatusNotIdentifiedTitle": "Hide all closed as not identified URs.",
+                            "HideByStatusSolvedTitle": "Hide all closed as solved URs.",
                             "HideByType": "Hide by type",
                             "HideByTypeBlockedRoadTitle": "Hide all blocked road URs.",
                             "HideByTypeGeneralErrorTitle": "Hide all general error URs.",
@@ -4418,11 +4630,6 @@
                             "HideByTaggedNoteTitle": "Hide all URs with [NOTE] in description or comments.",
                             "HideByTaggedRoadworksTitle": "Hide all URs with [ROADWORKS] in description or comments. Used in the UK.",
                             "HideByTaggedWslmTitle": "Hide all URs with [WSLM] in description or comments.",
-                            "HideByStatus": "Hide by status",
-                            "HideByStatusOpenTitle": "Hide all open URs.",
-                            "HideByStatusClosedTitle": "Hide all closed (solved and not identified) URs.",
-                            "HideByStatusNotIdentifiedTitle": "Hide all closed as not identified URs.",
-                            "HideByStatusSolvedTitle": "Hide all closed as solved URs.",
                             "HideByAgeOfSubmission": "Hide by age of submission",
                             "HideByAgeOfSubmissionLessThanTitle": "Hide URs that were originally created less than specified number of days ago.",
                             "HideByAgeOfSubmissionMoreThanTitle": "Hide URs that were originally created more than specified number of days ago.",
@@ -4459,38 +4666,17 @@
                             "HideByKeywordNotIncludingTitle": "Hide URs that do not include the custom word / text specified.",
                             "HideByKeywordCaseInsensitive": "Case-insensitive keyword matches",
                             "HideByKeywordCaseInsensitiveTitle": "If enabled, searching for the above including or not including keywords will be done using case insensitive searching.",
-                            "LifeCycleStatus": "Hide by lifecycle status",
-                            "HideWaiting": "Waiting",
-                            "HideWaitingTitle": "Only show URs that need work (hide URs in other parts of the life-cycle).",
-                            "HideUrsCloseNeeded": "Close needed",
-                            "HideUrsCloseNeededTitle": "Hide URs that need closing.",
-                            "HideUrsReminderNeeded": "Reminders needed",
-                            "HideUrsReminderNeededTitle": "Hide URs where reminders are needed.",
                             "ReminderDays": "Reminder days",
                             "ReminderDaysTitle": "Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment.\nThis is the number of days since the first comment.\nSet to 0 if you do not use reminders.",
                             "CloseDays": "Close days",
                             "CloseDaysTitle": "Number of days to use when calculating UR filtering.\nThis is the number of days since the last comment.\nExample: If you close 4 days after the last comment, set to 4.\nAnything less than this time will be considered 'waiting' as long as there is at least one comment already.",
-                            "DisableFilteringAboveZoomLevel": "Disable filtering above zoom level",
-                            "DisableFilteringAboveZoomLevelTitle": "Disabled UR filtering when zoomed out above the specified zoom level. Set to '0' to enable all filtering.",
-                            "DisableFilteringBelowZoomLevel": "Disable filtering below zoom level",
-                            "DisableFilteringBelowZoomLevelTitle": "Disable UR filtering when zoomed in below the specified zoom level. Set to '10' to enable all filtering.",
                             "EnableAppendMode": "Enable append comment mode",
-                            "EnableAppendModeTitle": "Enabling append comment mode will allow you to append a comment to the existing text in the new-comment box.\nThe comment is appended with a blank line between the existing text and the new text.\nThe status of the UR is set to the status of the new comment you clicked to append.\nIf the comment would end up being longer than 2000 characters, append mode will give a warning and not alter the text in the comment box, but the status would have been changed.",
-                            "Tools": "Tools",
-                            "BackupSettingsTitle": "Download a backup copy of your URC-E settings in JSON format.\nThis backup can be used to restore your settings to another computer, or in the event you lose your settings.\n\nNote: Please do not modify the JSON file in any way. The format is crucial to proper restoral of settings.",
-                            "RestoreSettingsFileError": "Invalid URC-E settings JSON file.",
-                            "RestoreSettingsSelectFileTitle": "Select the JSON file created by the URC-E \"Backup\" settings button.",
-                            "RestoreSettingsTitle": "Restore a backup copy of your URC-E settings from the JSON backup file created with the backup settings button.\n\nNote: Please do not modify the JSON file in any way. The format is crucial to proper restoral of settings.",
-                            "ResetSettingsTitle": "Reset all URC-E settings back to their default values.\n\nNote: Almost all settings default to disabled.",
-                            "CustomGoogleSpreadsheet": "Custom Google Spreadsheet",
-                            "ConvertCurrentCustom": "Convert current custom",
-                            "ConvertCurrentCustomTitle": "Convert your current custom comment list addon to URC-E style Google Sheet for easy maintenance, sharing, etc.",
-                            "CreateNewCustom": "Create new custom",
-                            "CreateNewCustomTitle": "Create your own URC-E custom comment list Google sheet for easy maintenance, sharing, etc."
+                            "EnableAppendModeTitle": "Enabling append comment mode will allow you to append a comment to the existing text in the new-comment box.\nThe comment is appended with a blank line between the existing text and the new text.\nThe status of the UR is set to the status of the new comment you clicked to append.\nIf the comment would end up being longer than 2000 characters, append mode will give a warning and not alter the text in the comment box, but the status would have been changed."
                         },
                         "tabs": {
                             "Comments": "Comments",
-                            "Settings": "Settings"
+                            "Settings": "Settings",
+                            "Tools": "Tools"
                         },
                         "tags": {
                             "Bog": "[BOG] / [BOTG]",
@@ -4501,6 +4687,24 @@
                             "Note": "[NOTE]",
                             "Roadworks": "[ROADWORKS]",
                             "Wslm": "[WSLM]"
+                        },
+                        "tools": {
+                            "BackupSettingsTitle": "Download a backup copy of your URC-E settings in JSON format.\nThis backup can be used to restore your settings to another computer, or in the event you lose your settings.\n\nNote: Please do not modify the JSON file in any way. The format is crucial to proper restoral of settings.",
+                            "RestoreSettingsFileError": "Invalid URC-E settings JSON file.",
+                            "RestoreSettingsSelectFileTitle": "Select the JSON file created by the URC-E \"Backup\" settings button.",
+                            "RestoreSettingsTitle": "Restore a backup copy of your URC-E settings from the JSON backup file created with the backup settings button.\n\nNote: Please do not modify the JSON file in any way. The format is crucial to proper restoral of settings.",
+                            "ResetSettingsTitle": "Reset all URC-E settings back to their default values.\n\nNote: Almost all settings default to disabled.",
+                            "CustomGoogleSheetSignIn": "Sign In/Authorize",
+                            "CustomGoogleSheetSignInTitle": "Sign into Google and authorize this app.",
+                            "CustomGoogleSheetSignout": "Sign out",
+                            "CustomGoogleSheetRevokeAccess": "Revoke Access",
+                            "CustomGoogleSheetRevokeAccessTitle": "Revoke access to your Google data for this app.",
+                            "CustomGoogleSpreadsheet": "Custom Google Spreadsheet",
+                            "ConvertCurrentCustom": "Convert current custom",
+                            "ConvertCurrentCustomTitle": "Convert your current custom comment list addon to URC-E style Google Sheet for easy maintenance, sharing, etc.",
+                            "CreateNewCustom": "Create new custom",
+                            "CreateNewCustomTitle": "Create your own URC-E custom comment list Google sheet for easy maintenance, sharing, etc.",
+                            "CustomGoogleSheetInfoBox": "In order for URC-E to create a new Google Spreadsheet within your Google Drive, you must first sign-in / authorize URC-E to access your Google Drive account.<br><br>URC-E needs access to two sets of permissions for your Google Account. The first is drive.file, which is any file created by URC-E within your Google Drive. However, this does not allow URC-E to access the main \"template\" created to copy from. In order to see this template, a second permission of drive.readonly is asked for. This permission is what causes the \"unverified\" warning from Google as URC-E cannot become verified due to not owning the Waze.com domain.<br><br>Once you have created / converted your own static sheet, you can click \"Deauthorize\" and even \"Sign out\" as URC-E does not need any permissions to your Google account after the initial creation of the new spreadsheet."
                         },
                         "urPanel": {
                             "InsertDateCasualTitle": "Shortcut - Drive date (casual): Click this icon to insert the drive date into the new comment box at the cursor position (full month name, 2-digit day in locale format).",
@@ -4522,22 +4726,39 @@
                         },
                         "prompts": {
                             "CommentTooLong": "Appending another comment to the current text will cause the comment to be longer than 2000 characters, which is too long. URC-E did not append the selected comment and left the new-comment box with the same text it had.",
-                            "ConversionComplete": "URC-E successfully converted your currently loaded custom comment list addon to a Google Sheet!<br>Please follow the steps below to start using your new sheet!",
                             "ConversionLoadAddonFirst": "In order to convert a custom comments addon script to the new URC-E style Google Sheet, you must first ensure your custom comments addon is enabled in TamperMonkey and selected in URC-E's Comment List settings box.",
-                            "ConvertCreateCompleteStep1": "Open the spreadsheet URL",
-                            "ConvertCreateCompleteStep2": "Select <b><i>File</i></b>, then <b><i>Make a copy...</i></b>",
-                            "ConvertCreateCompleteStep3": "Change <b><i>Name</i></b>, if you wish. Click the <b><i>Folder</i></b> box and select a folder within your own <b><i>My Drive</i></b>.<br>Note: You may need to click the <i class=\"fa fa-arrow-left\" aria-hidden=\"true\"></i> in the top left to go back folder levels.<br><b>IMPORTANT:</b> Make sure you select <b><i>Share it with the same people</i></b> or it won't allow the script to access it later.",
-                            "ConvertCreateCompleteStep4": "Click <b><i>OK</i></b>.",
-                            "ConvertCreateCompleteStep5": "A new tab will open with your customized copy of the Custom Comments spreadsheet that was saved to your Google Drive in the folder you chose in the previous steps.",
-                            "ConvertCreateCompleteStep6": "Copy the Spreadsheet ID, which is the part between <b><i>/d/</i></b> and <b><i>/edit</i></b>. Example",
-                            "ConvertCreateCompleteStep7": "In the URC-E Settings, select <b><i>Custom G Sheet</i></b> from the <b><i>Comment List</i></b> box and paste your spreadsheet ID into the box that appears.",
-                            "ConvertCreateCompleteSummary": "Congratulations! You now have a custom Google Sheet for your custom comments you can edit and share.",
-                            "ConvertCreateFailed": "Uh-oh! Something went wrong during the process. You can try again, but if this error persists, please contact a member of the WazeDev team.",
+                            "ConvertCreateCreateCustomSpreadsheet": "Create custom spreadsheet",
+                            "ConvertCreateSetProperPermissions": "Set proper permissions",
+                            "ConvertCreateConvertCurrent": "Convert current",
+                            "ConvertCreateConvertDefaultComments": "Convert default comments",
+                            "ConvertCreateConvertComments": "Conver comments",
+                            "ConvertCreateSpreadsheetURL": "Spreadsheet URL",
+                            "ConvertCreateGoogleAccount": "Google account",
+                            "ConvertCreateSpreadsheetID": "Spreadsheet ID",
+                            "ConvertCreateSpreadsheetIDCopyTitle": "Click here to copy the Spreadsheet ID to your clipboard.",
+                            "ConvertCreateNextSteps": "Next steps",
+                            "ConvertCreateNextStepsCreateError": "Try again. If this error persists, please contact a member of the WazeDev team.",
+                            "ConvertCreateNextStepsCheckPermissions": "Check permissions on your new google sheet by performing the following",
+                            "ConvertCreateNextStepsCheckPermissionsStep1": "Open your spreadsheet",
+                            "ConvertCreateNextStepsCheckPermissionsStep2": "Click <b>Share</b> at the top right.",
+                            "ConvertCreateNextStepsCheckPermissionsStep3": "Click <b>Advanced</b> at the bottom right.",
+                            "ConvertCreateNextStepsCheckPermissionsStep4": "If the first line after <b>Who has access</b> start with <i>Anyone who has the link can...</i>, then permissions are okay and you can close the permissions screen and disregard this warning. Otherwise proceed to the next step.",
+                            "ConvertCreateNextStepsCheckPermissionsStep5": "Click <b>Change...</b> next to <i>Specific people can access</i>",
+                            "ConvertCreateNextStepsCheckPermissionsStep6": "Select <i>On - Anyone with the link</i>",
+                            "ConvertCreateNextStepsCheckPermissionsStep7": "Ensure <i>Access: Anyone (no sign-in required)</i> is set to <b>Can view</b>.",
+                            "ConvertCreateNextStepsCheckPermissionsStep8": "Click <b>Save</b> then <b>Done</b>.",
+                            "ConvertCreateNextStepsConvertDefaultsError": "Your default comments were not set correctly in cells B5 to B22 in your spreadsheet. Check the sheet and update accordingly.",
+                            "ConvertCreateNextStepsConvertCommentsError": "Your current custom comments were not correctly converted. You can try again, but if the error persists, please contact a member of the WazeDev team.",
+                            "ConvertCreateCompletionSteps": "After completing the <b>next steps</b> above, follow the following steps to start using your custom comments:",
+                            "ConvertCreateCompletionStepsStep1": "Click the $COPY_ICON$ next to your <b>Spreadsheet ID</b> above to copy your spreadsheet ID.",
+                            "ConvertCreateCompletionStepsStep2": "Paste the spreadsheet ID into the <b>Custom Google Spreadsheet ID</b> box in URC-E settings.",
+                            "ConvertCreateCompletionStepsStep3": "Select <b>Custom G Sheet</b> from the available comment lists in URC-E settings.",
                             "ConvertingToGoogleSheet": "URC-E is converting your currently loaded custom comment list addon to a Google sheet. Please wait.",
                             "ConvertToGoogleSheet": "Convert to Google Sheet",
                             "CreateGoogleSheet": "Create Google Sheet",
                             "CreatingGoogleSheet": "URC-E is creating a custom Google sheet for you. Please wait.",
-                            "CreationComplete": "URC-E successfully created a custom Google Sheet for you!<br>Please follow the steps below to start using your new sheet!",
+                            "ConversionComplete": "URC-E successfully converted your currently loaded custom comment list addon to a Google Sheet!<br>Please follow the following steps to start using your custom comments:",
+                            "CreationComplete": "URC-E successfully created a custom Google Sheet for you!<br>Please follow the following steps to start using your custom comments:",
                             "CustomGSheetLoadError": "An error has occurred loading your URC-E custom comment Google sheet.<br><br>Please make sure you have done the following:\n<ul><li>Used <b><i>Make a copy...</i></b> on the original spreadsheet that was created for you and saved it to your own Google Drive.\n<li>Set the correct <b><i>Custom Google Spreadsheet ID</i></b> (should be the ID of the copy created in the previous step) set on the settings tab.\n<li>Ensured your spreadsheet is shared to everyone with a link can view.\n</ul>If all these have been done and you are still having issues, please contact a WazeDev team member.",
                             "NoCommentBox": "URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.",
                             "CommentInsertTimedOut": "URC-E timed out waiting for the comment text box to become available.",
@@ -4558,8 +4779,6 @@
                             "SelSegsInsertError": "In order to use the <i class=\"fa fa-road\" aria-hidden=\"true\"></i> button in the UR Panel, you must first select one or two segments.",
                             "SelSegsInsertErrorHeader": "Error Inserting Segment Names",
                             "SetCustomSsIdFirst": "Before you can select <b><i>Custom G Sheet</i></b> as your comment list, you must first set the <b><i>Custom Google Spreadsheet ID</i></b> setting on the URC-E settings tab.",
-                            "CustomListUsed": "URC-E has loaded your \"Custom\" comment list. However, only the comments themselves have been loaded. The settings text and tooltips were not loaded. Further, this functionality is deprecated and may be discontinued at any time. An alternative solution may or may not be offered at that time.",
-                            "UrOverflowErrorWithOverflowEnabled": "URC-E attempted to handle an overflow of more than 500 URs, but still reached the 500 UR limit. Please zoom in and refresh.",
                             "UrOverflowErrorWithoutOverflowEnabled": "WME will not load more than 500 URs per screen. Some URs may be missing. You can try to enable overflow handling, or zoom in and refresh.",
                             "SwitchingCommentLists": "Switching comment lists",
                             "TimedOutWaitingStatic": "Timed out waiting for the static list to become available. Is it enabled?",
