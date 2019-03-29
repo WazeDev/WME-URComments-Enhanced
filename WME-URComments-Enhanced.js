@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.03.25.01
+// @version     2019.03.29.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -65,7 +65,8 @@
                                     '<b>BUGFIX:</b> <i>Hide without description</i> failed to filter in some instances.',
                                     '<b>BUGFIX:</b> Some timeouts needed indexing. Now indexed based on random ID generated at time of timeout call.',
                                     '<b>BUGFIX:</b> Comments erroneously inserted into map comment new comment box as well.',
-                                    '<b>BUGFIX:</b> Pill colors not applying correctly. New color added (see forum thread).' ],
+                                    '<b>BUGFIX:</b> Pill colors not applying correctly. New color added (see forum thread).',
+                                    '<b>BUGFIX:</b> Custom marker by custom text not working correctly.' ],
           DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
           DEBUG = true,
           LOAD_BEGIN_TIME = performance.now(),
@@ -967,7 +968,7 @@
             else
                 text = text.replace(/("?\$URD\$?"?)+/gmi, '');
         }
-        return text.replace(/\\[r|n]+/gmi, '\n');
+        return text.replace(/\\[r|n]+/gm, '\n');
     }
 
     function handleClickedShortcut(event) {
@@ -1110,7 +1111,7 @@
                         return reject({type:'tooLong', text:I18n.t('urce.prompts.CommentTooLong')});
                     }
                     if (cursorPos !== undefined)
-                        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).selectRange((newCursorPos + comment.replace(/\\[r|n]+/gmi, ' ').length + postNls)).change().keyup().focus();
+                        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).selectRange((newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls)).change().keyup().focus();
                     else
                         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).change().keyup().focus();
                     if ((commentOutput.indexOf('$SELSEGS$') === -1) && (commentOutput.indexOf('$SELSEGS') === -1))
@@ -1835,6 +1836,10 @@
                         urceData.customType = convertTagToCustomType(urceData.tagType);
                     else if (mapUrsObj[idx].attributes.type === 23)
                         urceData.customType = 98;
+                    else if (_settings.customMarkersCustom && (_settings.customMarkersCustomText.length > 0) && (urceData.fullText.search(new RegExp('\\[' + _settings.customMarkersCustomText.replace(/[[\]]+/gim, '') + '\\]')) > -1)) {
+                        urceData.tagType = 99;
+                        urceData.customType = 99;
+                    }
                     else
                         urceData.customType = -1;
                     if ((keywordIncludingRegex !== null) && (urceData.fullText.search(keywordIncludingRegex) > -1))
@@ -4415,7 +4420,7 @@
                                 let translationDef1 = translationDefinition[1];
                                 if (typeof translations[translationLocale][translationDef0] === 'undefined')
                                     translations[translationLocale][translationDef0] = {};
-                                translations[translationLocale][translationDef0][translationDef1] = data.values[entryIdx][valIdx].replace('$SCRIPT_AUTHOR$', SCRIPT_AUTHOR).replace(/\\[r|n]+/gmi, '\n');
+                                translations[translationLocale][translationDef0][translationDef1] = data.values[entryIdx][valIdx].replace('$SCRIPT_AUTHOR$', SCRIPT_AUTHOR).replace(/\\[r|n]+/gm, '\n');
                             }
                         }
                     }
