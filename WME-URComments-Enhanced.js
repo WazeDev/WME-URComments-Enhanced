@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name        WME URComments-Enhanced (beta)
+// @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
 // @version     2019.03.29.01
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
@@ -73,7 +73,6 @@
           STATIC_ONLY_USERS = [ 'itzwolf' ],
           URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c',
           URCE_SPREADSHEET_ID = '1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ';
-
     let _settings = {},
         _selUr = {
             doubleClick: false,
