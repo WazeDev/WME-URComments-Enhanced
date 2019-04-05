@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.04.04.01
+// @version     2019.04.05.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -39,8 +39,11 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>ENHANCEMENT:</b> Complete overhaul to conform with stricter eslint rules.',
-        '<b>BUGFIX:</b> Loading fails if comment list contains empty row.'],
+    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> UR Overflow handling now obeys WME layer setting for show/hide closed.',
+        '<b>ENHANCEMENT:</b> Longer wait for Waze model to populate countries data.',
+        '<b>ENHANCEMENT:</b> Background tasks are temporarily disabled during overflow so data from overflow can be reused for speed.',
+        '<b>ENHANCEMENT:</b> Complete overhaul to conform with stricter eslint rules.',
+        '<b>BUGFIX:</b> Loading fails if comment list contains empty row. (again)'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
     LOAD_BEGIN_TIME = performance.now(),
@@ -87,7 +90,103 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
         checkForStaticListArray: undefined,
         initUrIdInUrl: undefined
     };
-
+const _saveButtonObserver = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+        if ($(mutation.target).hasClass('waze-icon-save')
+                && mutation.type === 'attributes'
+                && mutation.attributeName === 'class'
+                && mutation.target.classList.contains('ItemDisabled')
+                && (mutation.oldValue.toString().indexOf('ItemDisabled') === -1)
+        )
+            handleAfterSave();
+    });
+});
+const _urPanelContainerObserver = new MutationObserver(async mutations => {
+    const newUrId = await getUrId();
+    mutations.forEach(mutation => {
+        if ($(mutation.target).is('#panel-container')
+                && (mutation.type === 'childList')
+                && (mutation.addedNodes.length > 0)
+                && (mutation.addedNodes[0].className.indexOf('show') > -1)
+                && (newUrId > 0)
+        ) {
+            handleUpdateRequestContainer(newUrId, 'UR panel mutation');
+        }
+        else if (_selUr.handling
+                && $(mutation.target).is('#panel-container')
+                && (mutation.type === 'childList')
+                && (mutation.removedNodes.length > 0)
+                && (mutation.removedNodes[0].className.indexOf('show') > -1)
+        ) {
+            handleAfterCloseUpdateContainer();
+        }
+        else if (_selUr.handling
+                && $(mutation.target).hasClass('comment-list')
+                && (mutation.type === 'childList')
+                && (mutation.addedNodes.length > 0)
+                && (newUrId > 0)
+                && (newUrId === _selUr.urId)
+        ) {
+            handleAfterCommentMutation(newUrId);
+        }
+        else if (_selUr.handling
+                && (mutation.type === 'attributes')
+                && (mutation.attributeName === 'data-state')
+        ) {
+            if (mutation.target.attributes['data-state'].nodeValue === 'open')
+                _selUr.newStatus = 'open';
+            else if (mutation.target.attributes['data-state'].nodeValue === 'solved')
+                _selUr.newStatus = 'solved';
+            else if (mutation.target.attributes['data-state'].nodeValue === 'not-identified')
+                _selUr.newStatus = 'notidentified';
+            else
+                logWarning(mutation.target.attributes['data-state'].nodeValue);
+        }
+    });
+});
+const _urMarkerObserver = new MutationObserver(mutations => {
+    const urMapMarkerIdsArr = [];
+    mutations.forEach(mutation => {
+        if (mutation.type === 'childList') {
+            for (let idx = 0; idx < mutation.addedNodes.length; idx++) {
+                const addedNode = mutation.addedNodes[idx];
+                if (mutation.addedNodes[idx].classList && addedNode.classList.contains('map-problem') && mutation.addedNodes[idx].classList.contains('user-generated')) {
+                    if ((parseInt(mutation.addedNodes[idx].attributes['data-id'].value) > 0) && (urMapMarkerIdsArr.indexOf(parseInt(mutation.addedNodes[idx].attributes['data-id'].value)) === -1))
+                        urMapMarkerIdsArr.push(parseInt(mutation.addedNodes[idx].attributes['data-id'].value));
+                }
+            }
+        }
+        else if (mutation.type === 'attributes'
+                && mutation.target.classList
+                && (mutation.target.classList.contains('user-generated') || mutation.target.classList.contains('has-comments'))
+        ) {
+            if ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList.contains('selected')) {
+                if (parseInt(mutation.target.attributes['data-id'].value) > 0) {
+                    if (!_selUr.handling) {
+                        if (!(_selUr.urId > 0) || (_selUr.urId !== parseInt(mutation.target.attributes['data-id'].value))) {
+                            _selUr = {
+                                doubleClick: false,
+                                handling: false,
+                                newStatus: undefined,
+                                urId: parseInt(mutation.target.attributes['data-id'].value),
+                                urOpen: false
+                            };
+                            logDebug(`Caught selected UR by backdoor. Firing the minions. urId: ${_selUr.urId}`);
+                        }
+                    }
+                }
+            }
+        }
+    });
+    const zoomLevel = W.map.getZoom();
+    let filter = true;
+    if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
+            || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))
+    )
+        filter = false;
+    if (urMapMarkerIdsArr.length > 0)
+        handleUrLayer('markersAdded', filter, [...urMapMarkerIdsArr]);
+});
 
 let _settings = {},
     _selUr = {
@@ -104,6 +203,7 @@ let _settings = {},
     _createConvert = false,
     _currentCommentList = null,
     _filtersAppliedOnZoom = false,
+    _initialUrLayerScan = false,
     _markerCountOnInit = -1,
     _mousedOverMarkerId = null,
     _mouseIsDown = false,
@@ -114,7 +214,6 @@ let _settings = {},
     _restoreTabPosition,
     _wmeUserId,
     _initUrIdInUrlObserver,
-    _lastUrOverflowCount,
     _gapiAuth2,
     _gapiUser;
 
@@ -543,70 +642,72 @@ function getCollapsedGroups() {
 
 function checkRestrictions() {
     return new Promise(resolve => {
-        let state,
-            country;
-        if (this && this.objectType === 'state') {
-            country = W.model.countries.getObjectById(Object.values(this.objects)[0].countryID).abbr;
-            state = Object.values(this.objects)[0].name;
-        }
-        else if (this && this.objectType === 'country') {
-            country = Object.values(this.objects)[0].abbr;
-            state = null;
-        }
-        else {
-            (function retry(tries, toIndex) {
-                checkTimeout({ timeout: 'checkRestrictions', toIndex });
-                if (tries > 100) {
-                    resolve(logError('Unable to check for restrictions.'));
+        (function retry(tries, toIndex) {
+            checkTimeout({ timeout: 'checkRestrictions', toIndex });
+            let state,
+                country;
+            if (tries < 301) {
+                if (this && this.objectType === 'state') {
+                    country = W.model.countries.getObjectById(Object.values(this.objects)[0].countryID).abbr;
+                    state = Object.values(this.objects)[0].name;
                 }
-                else if (!W.model.countries.top) {
+                else if (this && this.objectType === 'country') {
+                    country = Object.values(this.objects)[0].abbr;
+                    state = null;
+                }
+                if (!country && !W.model.countries.top) {
+                    logDebug(`Waiting on Waze model for countries to populate. Try ${tries} of 300.`);
                     _timeouts.checkRestrictions[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex);
                 }
                 else {
+                    logDebug('Setting up restrictions.');
                     checkTimeout({ timeout: 'checkRestrictions', toIndex });
-                    country = W.model.countries.top.abbr;
-                    state = (W.model.states && W.model.states.top) ? W.model.states.top.name : null;
+                    country = country || W.model.countries.top.abbr;
+                    state = state || ((W.model.states && W.model.states.top) ? W.model.states.top.name : null);
+                    _restrictionsEnforce = {};
+                    let restrictionsAlertBannerTitle = `${I18n.t('urce.prompts.RestrictionsEnforcedTitle')}:\n`;
+                    if (_restrictions[country]) {
+                        if (state && _restrictions[country][state]) {
+                            restrictionsAlertBannerTitle += `\n${W.model.countries.getByAttributes({ abbr: country })[0].name} - ${state}:`;
+                            Object.keys(_restrictions[country][state]).forEach(restriction => {
+                                _restrictionsEnforce[restriction] = _restrictions[country][state][restriction];
+                                restrictionsAlertBannerTitle += `\n${I18n.t(`urce.prefs.${restriction.charAt(0).toUpperCase()}${restriction.slice(1)}`)}: `;
+                                if (_restrictionsEnforce[restriction] === true)
+                                    restrictionsAlertBannerTitle += I18n.t('urce.common.Enabled');
+                                else if (_restrictionsEnforce[restriction] === false)
+                                    restrictionsAlertBannerTitle += I18n.t('urce.common.Disabled');
+                                else
+                                    restrictionsAlertBannerTitle += I18n.t('common.time.days', { days: _restrictionsEnforce[restriction] });
+                            });
+                        }
+                        else if (_restrictions[country].ALL && (Object.keys(_restrictions[country].ALL).length > 0)) {
+                            restrictionsAlertBannerTitle += `\n${W.model.countries.getByAttributes({ abbr: country })[0].name} - ${I18n.t('urce.common.All')}:`;
+                            Object.keys(_restrictions[country].ALL).forEach(restriction => {
+                                _restrictionsEnforce[restriction] = _restrictions[country].ALL[restriction];
+                                restrictionsAlertBannerTitle += `\n${I18n.t(`urce.prefs.${restriction.charAt(0).toUpperCase()}${restriction.slice(1)}`)}: `;
+                                if (_restrictionsEnforce[restriction] === true)
+                                    restrictionsAlertBannerTitle += I18n.t('urce.common.Enabled');
+                                else if (_restrictionsEnforce[restriction] === false)
+                                    restrictionsAlertBannerTitle += I18n.t('urce.common.Disabled');
+                                else
+                                    restrictionsAlertBannerTitle += I18n.t('common.time.days', { days: _restrictionsEnforce[restriction] });
+                            });
+                        }
+                        if (Object.values(_restrictionsEnforce).length > 0)
+                            showAlertBanner(I18n.t('urce.prompts.RestrictionsEnforced'), null, false, true, restrictionsAlertBannerTitle, false, 9997, null);
+                        else
+                            showAlertBanner(null, null, false, true, null, false, 9997, 'remove');
+                    }
+                    else {
+                        showAlertBanner(null, null, false, true, null, false, 9997, 'remove');
+                    }
+                    resolve();
                 }
-            }(1, getRandomId()));
-        }
-        _restrictionsEnforce = {};
-        let restrictionsAlertBannerTitle = `${I18n.t('urce.prompts.RestrictionsEnforcedTitle')}:\n`;
-        if (_restrictions[country]) {
-            if (state && _restrictions[country][state]) {
-                restrictionsAlertBannerTitle += `\n${W.model.countries.getByAttributes({ abbr: country })[0].name} - ${state}:`;
-                Object.keys(_restrictions[country][state]).forEach(restriction => {
-                    _restrictionsEnforce[restriction] = _restrictions[country][state][restriction];
-                    restrictionsAlertBannerTitle += `\n${I18n.t(`urce.prefs.${restriction.charAt(0).toUpperCase()}${restriction.slice(1)}`)}: `;
-                    if (_restrictionsEnforce[restriction] === true)
-                        restrictionsAlertBannerTitle += I18n.t('urce.common.Enabled');
-                    else if (_restrictionsEnforce[restriction] === false)
-                        restrictionsAlertBannerTitle += I18n.t('urce.common.Disabled');
-                    else
-                        restrictionsAlertBannerTitle += I18n.t('common.time.days', { days: _restrictionsEnforce[restriction] });
-                });
             }
-            else if (_restrictions[country].ALL && (Object.keys(_restrictions[country].ALL).length > 0)) {
-                restrictionsAlertBannerTitle += `\n${W.model.countries.getByAttributes({ abbr: country })[0].name} - ${I18n.t('urce.common.All')}:`;
-                Object.keys(_restrictions[country].ALL).forEach(restriction => {
-                    _restrictionsEnforce[restriction] = _restrictions[country].ALL[restriction];
-                    restrictionsAlertBannerTitle += `\n${I18n.t(`urce.prefs.${restriction.charAt(0).toUpperCase()}${restriction.slice(1)}`)}: `;
-                    if (_restrictionsEnforce[restriction] === true)
-                        restrictionsAlertBannerTitle += I18n.t('urce.common.Enabled');
-                    else if (_restrictionsEnforce[restriction] === false)
-                        restrictionsAlertBannerTitle += I18n.t('urce.common.Disabled');
-                    else
-                        restrictionsAlertBannerTitle += I18n.t('common.time.days', { days: _restrictionsEnforce[restriction] });
-                });
+            else {
+                resolve(logError('Unable to check for restrictions'));
             }
-            if (Object.values(_restrictionsEnforce).length > 0)
-                showAlertBanner(I18n.t('urce.prompts.RestrictionsEnforced'), null, false, true, restrictionsAlertBannerTitle, false, 9997, null);
-            else
-                showAlertBanner(null, null, false, true, null, false, 9997, 'remove');
-        }
-        else {
-            showAlertBanner(null, null, false, true, null, false, 9997, 'remove');
-        }
-        resolve();
+        }(1, getRandomId()));
     });
 }
 
@@ -2119,17 +2220,22 @@ function handleUrLayer(phase, filter, urMapMarkerIdsArr) {
             urMapMarkerIdsArr.sort();
             if (phase === 'init')
                 _markerCountOnInit = urMapMarkerIdsArr.length;
+            if (phase === 'overflow' && _initialUrLayerScan) {
+                if (_markerCountOnInit > -1)
+                    _markerCountOnInit += urMapMarkerIdsArr.length;
+                else
+                    _markerCountOnInit = urMapMarkerIdsArr.length;
+            }
             try {
                 await updateUrceData(urMapMarkerIdsArr);
             }
             catch (error) {
                 logWarning(error);
             }
-            if (phase !== 'overflow')
-                updateUrMapMarkers(urMapMarkerIdsArr, filter);
+            updateUrMapMarkers(urMapMarkerIdsArr, filter);
             if (_settings.enableUrOverflowHandling && (urMapMarkerIdsArr.length > 499)) {
-                if (_lastUrOverflowCount !== urMapMarkerIdsArr.length)
-                    handleUrOverflow();
+                if (phase !== 'overflow')
+                    await handleUrOverflow();
             }
             else if (urMapMarkerIdsArr.length > 499) {
                 showAlertBanner(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), 5000, true, true, null, true, 9999, null);
@@ -2180,65 +2286,74 @@ function getOverflowUrsFromUrl(urlStr) {
     });
 }
 
-async function handleUrOverflow() {
-    const baseUrl = `https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=3%2C0&bbox=`,
-        overflowUrsToPut = [],
-        vpBounds = W.map.getExtent().transform(W.map.projection, W.map.displayProjection),
-        vpBoundsFrom = { lon: vpBounds.left, lat: vpBounds.bottom },
-        vpBoundsTo = { lon: vpBounds.right, lat: vpBounds.top },
-        vpCenter = W.map.getCenter().transform(W.map.projection, W.map.displayProjection),
-        overflowUrlsToCheck = [
-            `${baseUrl}${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
-            `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
-            `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpBoundsFrom.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)}`,
-            `${baseUrl}${vpCenter.lon.toFixed(6)},${vpBoundsFrom.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpCenter.lat.toFixed(6)}`
-        ];
-    while (overflowUrlsToCheck.length > 0) {
-        const overflowUrl = overflowUrlsToCheck.shift(),
-            data = await getOverflowUrsFromUrl(overflowUrl);
-        let respUrObjs = [];
-        if (data.error) {
-            logWarning(data.error);
-        }
-        else if (data.mapUpdateRequests && data.mapUpdateRequests.objects && data.mapUpdateRequests.objects.length > 499) {
-            logDebug('More than 499 objects returned in overflow request, queueing sub quadrants for further checking.');
-            const bbox = overflowUrl.split('bbox=')[1].split(','),
-                bboxFrom = WazeWrap.Geometry.ConvertTo900913(bbox[0], bbox[1]),
-                bboxTo = WazeWrap.Geometry.ConvertTo900913(bbox[2], bbox[3]),
-                subQuadCenter = WazeWrap.Geometry.ConvertTo4326((bboxFrom.lon - ((bboxFrom.lon - bboxTo.lon) / 2)), (bboxTo.lat - ((bboxTo.lat - bboxFrom.lat) / 2)));
-            overflowUrlsToCheck.push(`${baseUrl}${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)},${bbox[2]},${bbox[3]}`);
-            overflowUrlsToCheck.push(`${baseUrl}${bbox[0]},${subQuadCenter.lat.toFixed(6)},${subQuadCenter.lon.toFixed(6)},${bbox[3]}`);
-            overflowUrlsToCheck.push(`${baseUrl}${bbox[0]},${bbox[1]},${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)}`);
-            overflowUrlsToCheck.push(`${baseUrl}${subQuadCenter.lon.toFixed(6)},${bbox[1]},${bbox[2]},${subQuadCenter.lat.toFixed(6)}`);
-        }
-        else if (data.mapUpdateRequests && data.mapUpdateRequests.objects.length > 0) {
-            respUrObjs = respUrObjs.concat(data.mapUpdateRequests.objects);
-        }
-        respUrObjs.forEach(respUrObj => {
-            if (W.model.mapUpdateRequests.objects[respUrObj.id] === undefined) {
-                const NewUr = require('Waze/Feature/Vector/UpdateRequest'),
-                    toPutUr = new NewUr(respUrObj),
-                    toPutPoint = new OL.Geometry.Point(respUrObj.geometry.coordinates[0], respUrObj.geometry.coordinates[1]).transform(W.map.displayProjection, W.map.projection);
-                toPutUr.geometry = toPutPoint;
-                const toPutReqBounds = new OL.Geometry.Polygon(),
-                    toPutBounds = new OL.Bounds(toPutPoint.x, toPutPoint.y, toPutPoint.x, toPutPoint.y);
-                toPutReqBounds.bounds = toPutBounds;
-                toPutUr.requestBounds = toPutReqBounds;
-                overflowUrsToPut.push(toPutUr);
+function handleUrOverflow() {
+    return new Promise(async resolve => {
+        const baseUrl = `https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=`
+            + `${(($('#layer-switcher-item_closed_update_requests').is(':checked')) ? '3' : '1')}%2C0&bbox=`,
+            overflowUrsToPut = [],
+            vpBounds = W.map.getExtent().transform(W.map.projection, W.map.displayProjection),
+            vpBoundsFrom = { lon: vpBounds.left, lat: vpBounds.bottom },
+            vpBoundsTo = { lon: vpBounds.right, lat: vpBounds.top },
+            vpCenter = W.map.getCenter().transform(W.map.projection, W.map.displayProjection),
+            overflowUrlsToCheck = [
+                `${baseUrl}${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
+                `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
+                `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpBoundsFrom.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)}`,
+                `${baseUrl}${vpCenter.lon.toFixed(6)},${vpBoundsFrom.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpCenter.lat.toFixed(6)}`
+            ];
+        while (overflowUrlsToCheck.length > 0) {
+            const overflowUrl = overflowUrlsToCheck.shift(),
+                data = await getOverflowUrsFromUrl(overflowUrl);
+            let respUrObjs = [];
+            if (data.error) {
+                logWarning(data.error);
             }
-        });
-    }
-    if (overflowUrsToPut.length > 0) {
-        _lastUrOverflowCount = [...overflowUrsToPut].length;
-        while (overflowUrsToPut.length > 0) {
-            const chunk = overflowUrsToPut.splice(0, 500);
-            W.model.mapUpdateRequests.put(chunk);
-            logDebug(`${chunk.length} URs added from overflow.`);
+            else if (data.mapUpdateRequests && data.mapUpdateRequests.objects && data.mapUpdateRequests.objects.length > 499) {
+                logDebug('More than 499 objects returned in overflow request, queueing sub quadrants for further checking.');
+                const bbox = overflowUrl.split('bbox=')[1].split(','),
+                    bboxFrom = WazeWrap.Geometry.ConvertTo900913(bbox[0], bbox[1]),
+                    bboxTo = WazeWrap.Geometry.ConvertTo900913(bbox[2], bbox[3]),
+                    subQuadCenter = WazeWrap.Geometry.ConvertTo4326((bboxFrom.lon - ((bboxFrom.lon - bboxTo.lon) / 2)), (bboxTo.lat - ((bboxTo.lat - bboxFrom.lat) / 2)));
+                overflowUrlsToCheck.push(`${baseUrl}${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)},${bbox[2]},${bbox[3]}`);
+                overflowUrlsToCheck.push(`${baseUrl}${bbox[0]},${subQuadCenter.lat.toFixed(6)},${subQuadCenter.lon.toFixed(6)},${bbox[3]}`);
+                overflowUrlsToCheck.push(`${baseUrl}${bbox[0]},${bbox[1]},${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)}`);
+                overflowUrlsToCheck.push(`${baseUrl}${subQuadCenter.lon.toFixed(6)},${bbox[1]},${bbox[2]},${subQuadCenter.lat.toFixed(6)}`);
+            }
+            else if (data.mapUpdateRequests && data.mapUpdateRequests.objects.length > 0) {
+                respUrObjs = respUrObjs.concat(data.mapUpdateRequests.objects);
+            }
+            respUrObjs.forEach(respUrObj => {
+                if (W.model.mapUpdateRequests.objects[respUrObj.id] === undefined) {
+                    const NewUr = require('Waze/Feature/Vector/UpdateRequest'),
+                        toPutUr = new NewUr(respUrObj),
+                        toPutPoint = new OL.Geometry.Point(respUrObj.geometry.coordinates[0], respUrObj.geometry.coordinates[1]).transform(W.map.displayProjection, W.map.projection);
+                    toPutUr.geometry = toPutPoint;
+                    const toPutReqBounds = new OL.Geometry.Polygon(),
+                        toPutBounds = new OL.Bounds(toPutPoint.x, toPutPoint.y, toPutPoint.x, toPutPoint.y);
+                    toPutReqBounds.bounds = toPutBounds;
+                    toPutUr.requestBounds = toPutReqBounds;
+                    overflowUrsToPut.push(toPutUr);
+                }
+            });
         }
-    }
-    else {
-        logDebug('All URs submitted for overflow processing already exist on map.');
-    }
+        if (overflowUrsToPut.length > 0) {
+            const urIdsArr = overflowUrsToPut.map(obj => obj.attributes.id);
+            while (overflowUrsToPut.length > 0) {
+                const chunk = overflowUrsToPut.splice(0, 500);
+                W.model.mapUpdateRequests.put(chunk);
+                logDebug(`${chunk.length} URs added from overflow.`);
+            }
+            if (!_initialUrLayerScan)
+                await initBackgroundTasks('disable', 'overflow');
+            await handleUrLayer('overflow', null, urIdsArr);
+            if (!_initialUrLayerScan)
+                await initBackgroundTasks('enable', 'overflow');
+        }
+        else {
+            logDebug('All URs submitted for overflow processing already exist on map.');
+        }
+        resolve({ error: false });
+    });
 }
 
 function mouseDown() {
@@ -2279,7 +2394,7 @@ async function invokeZoomEnd() {
     }
     if (W.model.mapUpdateRequests.getObjectArray().length > 499) {
         if (_settings.enableUrOverflowHandling)
-            handleUrOverflow();
+            await handleUrOverflow();
         else
             showAlertBanner(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), 5000, true, true, null, true, 9999, null);
     }
@@ -2293,9 +2408,9 @@ async function invokeZoomEnd() {
 
 async function invokeModeChange(event) {
     if (event && event.changed && event.changed.mode === 1)
-        await initBackgroundTasks('disable');
+        await initBackgroundTasks('disable', 'invokeModeChange');
     else if (event && event.changed && event.changed.mode === 0)
-        await initBackgroundTasks('enable');
+        await initBackgroundTasks('enable', 'invokeModeChange');
     if (event && event.changed && ((event.changed.mode === 0) || (event.changed.isImperial === true) || (event.changed.isImperial === false)))
         handleUrLayer('modeChange', null, null);
 }
@@ -2753,7 +2868,7 @@ function processCommentList(data) {
                     if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName)))
                         return resolve({ error: true, text: `Script expected to see the following column names in the comment definition spreadsheet:\n${EXPECTED_FIELD_NAMES.join(', ')}\nHowever, the spreadsheet returned these:\n${ssFieldNames.join(', ')}` });
                 }
-                else if (data[entryIdx][0] !== '') {
+                else if (data[entryIdx][0]) {
                     data[entryIdx][0].split('|').forEach((entry, i) => createRowObj(entry, i));
                     if (rowObj.title !== 'URCE_REMOVED_SO_SKIP') {
                         if (rowObj.title === 'URCE_ERROR')
@@ -3106,105 +3221,18 @@ function handleError(obj) {
     maskBoxes(null, true, obj.phase, obj.maskUrPanel);
 }
 
-async function initBackgroundTasks(status) {
-    logDebug('Initializing background tasks.');
-    const saveButtonObserver = new MutationObserver(mutations => {
-        mutations.forEach(mutation => {
-            if ($(mutation.target).hasClass('waze-icon-save')
-                && mutation.type === 'attributes'
-                && mutation.attributeName === 'class'
-                && mutation.target.classList.contains('ItemDisabled')
-                && (mutation.oldValue.toString().indexOf('ItemDisabled') === -1)
-            )
-                handleAfterSave();
-        });
-    });
-    const urPanelContainerObserver = new MutationObserver(async mutations => {
-        const newUrId = await getUrId();
-        mutations.forEach(mutation => {
-            if ($(mutation.target).is('#panel-container')
-                && (mutation.type === 'childList')
-                && (mutation.addedNodes.length > 0)
-                && (mutation.addedNodes[0].className.indexOf('show') > -1)
-                && (newUrId > 0)
-            ) {
-                handleUpdateRequestContainer(newUrId, 'UR panel mutation');
-            }
-            else if (_selUr.handling
-                && $(mutation.target).is('#panel-container')
-                && (mutation.type === 'childList')
-                && (mutation.removedNodes.length > 0)
-                && (mutation.removedNodes[0].className.indexOf('show') > -1)
-            ) {
-                handleAfterCloseUpdateContainer();
-            }
-            else if (_selUr.handling
-                && $(mutation.target).hasClass('comment-list')
-                && (mutation.type === 'childList')
-                && (mutation.addedNodes.length > 0)
-                && (newUrId > 0)
-                && (newUrId === _selUr.urId)
-            ) {
-                handleAfterCommentMutation(newUrId);
-            }
-            else if (_selUr.handling
-                && (mutation.type === 'attributes')
-                && (mutation.attributeName === 'data-state')
-            ) {
-                if (mutation.target.attributes['data-state'].nodeValue === 'open')
-                    _selUr.newStatus = 'open';
-                else if (mutation.target.attributes['data-state'].nodeValue === 'solved')
-                    _selUr.newStatus = 'solved';
-                else if (mutation.target.attributes['data-state'].nodeValue === 'not-identified')
-                    _selUr.newStatus = 'notidentified';
-                else
-                    logWarning(mutation.target.attributes['data-state'].nodeValue);
-            }
-        });
-    });
-    const urMarkerObserver = new MutationObserver(mutations => {
-        const urMapMarkerIdsArr = [];
-        mutations.forEach(mutation => {
-            if (mutation.type === 'childList') {
-                for (let idx = 0; idx < mutation.addedNodes.length; idx++) {
-                    const addedNode = mutation.addedNodes[idx];
-                    if (mutation.addedNodes[idx].classList && addedNode.classList.contains('map-problem') && mutation.addedNodes[idx].classList.contains('user-generated')) {
-                        if ((parseInt(mutation.addedNodes[idx].attributes['data-id'].value) > 0) && (urMapMarkerIdsArr.indexOf(parseInt(mutation.addedNodes[idx].attributes['data-id'].value)) === -1))
-                            urMapMarkerIdsArr.push(parseInt(mutation.addedNodes[idx].attributes['data-id'].value));
-                    }
-                }
-            }
-            else if (mutation.type === 'attributes'
-                && mutation.target.classList
-                && (mutation.target.classList.contains('user-generated') || mutation.target.classList.contains('has-comments'))
-            ) {
-                if ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList.contains('selected')) {
-                    if (parseInt(mutation.target.attributes['data-id'].value) > 0) {
-                        if (!_selUr.handling) {
-                            if (!(_selUr.urId > 0) || (_selUr.urId !== parseInt(mutation.target.attributes['data-id'].value))) {
-                                _selUr = {
-                                    doubleClick: false,
-                                    handling: false,
-                                    newStatus: undefined,
-                                    urId: parseInt(mutation.target.attributes['data-id'].value),
-                                    urOpen: false
-                                };
-                                logDebug(`Caught selected UR by backdoor. Firing the minions. urId: ${_selUr.urId}`);
-                            }
-                        }
-                    }
-                }
-            }
-        });
-        const zoomLevel = W.map.getZoom();
-        let filter = true;
-        if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
-            || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))
-        )
-            filter = false;
-        if (urMapMarkerIdsArr.length > 0)
-            handleUrLayer('markersAdded', filter, [...urMapMarkerIdsArr]);
-    });
+/**
+ * Initialize the background tasks.
+ *
+ * @async
+ * @function initBackgroundTasks
+ * @param {string} status enable || disable
+ * @param {string} phase init || initFinish || invokeModeChange || overflow
+ * @returns {Promise} Promise object with error: false
+ */
+
+async function initBackgroundTasks(status, phase) {
+    logDebug(`${((status === 'enable') ? 'Initializing' : 'Uninitializing')} background tasks.`);
     if (status === 'enable') {
         logDebug('Setting event listeners for UR markers.');
         $(W.map.updateRequestLayer.div)
@@ -3214,30 +3242,36 @@ async function initBackgroundTasks(status) {
             .on('mouseover', '.map-problem.user-generated', markerMouseOver)
             .off('mouseout', '.map-problem.user-generated', markerMouseOut)
             .on('mouseout', '.map-problem.user-generated', markerMouseOut);
-        try {
-            await handleUrLayer('init', null, null);
+        if (phase !== 'overflow') {
+            try {
+                _initialUrLayerScan = true;
+                await handleUrLayer('init', null, null);
+                _initialUrLayerScan = false;
+            }
+            catch (error) {
+                logWarning(error); // Don't need to return here, go ahead and setup the MOs.
+            }
         }
-        catch (error) {
-            logWarning(error); // Don't need to return here, go ahead and setup the MOs.
-        }
-        logDebug('Enabling MOs.');
-        if (!saveButtonObserver.isObserving) {
-            saveButtonObserver.observe(document.getElementById('toolbar'), {
-                childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true
-            });
-            saveButtonObserver.isObserving = true;
-        }
-        if (!urPanelContainerObserver.isObserving) {
-            urPanelContainerObserver.observe(document.getElementById('panel-container'), {
-                childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true
-            });
-            urPanelContainerObserver.isObserving = true;
-        }
-        if (!urMarkerObserver.isObserving) {
-            urMarkerObserver.observe(W.map.updateRequestLayer.div, {
-                childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true
-            });
-            urMarkerObserver.isObserving = true;
+        if (!_saveButtonObserver.isObserving || !_urPanelContainerObserver.isObserving || !_urMarkerObserver.isObserving) {
+            logDebug('Enabling MOs.');
+            if (!_saveButtonObserver.isObserving) {
+                _saveButtonObserver.observe(document.getElementById('toolbar'), {
+                    childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true
+                });
+                _saveButtonObserver.isObserving = true;
+            }
+            if (!_urPanelContainerObserver.isObserving) {
+                _urPanelContainerObserver.observe(document.getElementById('panel-container'), {
+                    childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true
+                });
+                _urPanelContainerObserver.isObserving = true;
+            }
+            if (!_urMarkerObserver.isObserving) {
+                _urMarkerObserver.observe(W.map.updateRequestLayer.div, {
+                    childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true
+                });
+                _urMarkerObserver.isObserving = true;
+            }
         }
         logDebug('Registering event hooks.');
         WazeWrap.Events.register('zoomend', null, invokeZoomEnd);
@@ -3248,43 +3282,47 @@ async function initBackgroundTasks(status) {
         WazeWrap.Events.register('change:isImperial', null, invokeModeChange);
         W.model.states.on('objectsadded', checkRestrictions);
         W.model.countries.on('objectsadded', checkRestrictions);
-        logDebug('Initializing gapi.');
-        gapi.load('client:auth2', () => {
-            gapi.client.init({
-                apiKey: URCE_API_KEY,
-                discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest', 'https://sheets.googleapis.com/$discovery/rest?version=v4'],
-                clientId: '309982510721-gsu1aodqc5upc6aolkq3m1f0c2dll6kp.apps.googleusercontent.com',
-                scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly'
-            }).then(() => {
-                _gapiAuth2 = gapi.auth2.getAuthInstance();
-                _gapiAuth2.isSignedIn.listen(updateGapiSigninStatus);
-                _gapiUser = _gapiAuth2.currentUser.get();
-                setGapiSigninStatus();
-                $('#gapiSignInOutButton').off().on('click', () => {
-                    if (_gapiAuth2.isSignedIn.get())
-                        _gapiAuth2.signOut();
-                    else
-                        _gapiAuth2.signIn();
-                });
-                $('#gapiRevokeAccessButton').off().on('click', () => {
-                    _gapiAuth2.disconnect();
+        if ((_gapiAuth2 === undefined) && (phase !== 'overflow')) {
+            logDebug('Initializing gapi.');
+            gapi.load('client:auth2', () => {
+                gapi.client.init({
+                    apiKey: URCE_API_KEY,
+                    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest', 'https://sheets.googleapis.com/$discovery/rest?version=v4'],
+                    clientId: '309982510721-gsu1aodqc5upc6aolkq3m1f0c2dll6kp.apps.googleusercontent.com',
+                    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly'
+                }).then(() => {
+                    _gapiAuth2 = gapi.auth2.getAuthInstance();
+                    _gapiAuth2.isSignedIn.listen(updateGapiSigninStatus);
+                    _gapiUser = _gapiAuth2.currentUser.get();
+                    setGapiSigninStatus();
+                    $('#gapiSignInOutButton').off().on('click', () => {
+                        if (_gapiAuth2.isSignedIn.get())
+                            _gapiAuth2.signOut();
+                        else
+                            _gapiAuth2.signIn();
+                    });
+                    $('#gapiRevokeAccessButton').off().on('click', () => {
+                        _gapiAuth2.disconnect();
+                    });
                 });
             });
-        });
+        }
     }
     else if (status === 'disable') {
-        logDebug('Disabling MOs.');
-        if (saveButtonObserver.isObserving) {
-            saveButtonObserver.disconnect();
-            saveButtonObserver.isObserving = false;
-        }
-        if (urPanelContainerObserver.isObserving) {
-            urPanelContainerObserver.disconnect();
-            urPanelContainerObserver.isObserving = false;
-        }
-        if (urMarkerObserver.isObserving) {
-            urMarkerObserver.disconnect();
-            urMarkerObserver.isObserving = false;
+        if (_saveButtonObserver.isObserving || _urPanelContainerObserver.isObserving || _urMarkerObserver.isObserving) {
+            logDebug('Disabling MOs.');
+            if (_saveButtonObserver.isObserving) {
+                _saveButtonObserver.disconnect();
+                _saveButtonObserver.isObserving = false;
+            }
+            if (_urPanelContainerObserver.isObserving) {
+                _urPanelContainerObserver.disconnect();
+                _urPanelContainerObserver.isObserving = false;
+            }
+            if (_urMarkerObserver.isObserving) {
+                _urMarkerObserver.disconnect();
+                _urMarkerObserver.isObserving = false;
+            }
         }
         logDebug('Disabling event listeners for UR markers.');
         $(W.map.updateRequestLayer.div)
@@ -3296,6 +3334,10 @@ async function initBackgroundTasks(status) {
         WazeWrap.Events.unregister('moveend', null, invokeMoveEnd);
         W.map.events.unregister('mousedown', null, mouseDown);
         WazeWrap.Events.unregister('mouseup', null, mouseUp);
+        WazeWrap.Events.unregister('change:mode', null, invokeModeChange);
+        WazeWrap.Events.unregister('change:isImperial', null, invokeModeChange);
+        W.model.states.off('objectsadded', checkRestrictions);
+        W.model.countries.off('objectsadded', checkRestrictions);
     }
     return new Promise(resolve => { resolve({ error: false }); });
 }
@@ -5250,7 +5292,7 @@ async function initFinish(urId) {
         _initUrIdInUrlObserver.isObserving = false;
         _initUrIdInUrlObserver.disconnect();
     }
-    await initBackgroundTasks('enable');
+    await initBackgroundTasks('enable', 'initFinish');
     if (W.model.mapUpdateRequests.getObjectArray().length > _markerCountOnInit)
         await handleUrLayer('init_end', null, null);
     _markerCountOnInit = -1;
@@ -5295,7 +5337,7 @@ async function init() {
             handleError(buildCommentListResult);
         }
         else if (!urIdInUrl) {
-            await initBackgroundTasks('enable');
+            await initBackgroundTasks('enable', 'init');
         }
         window.addEventListener('beforeunload', () => { saveSettingsToStorage(); }, false);
         log(`Fully initialized in ${Math.round(performance.now() - LOAD_BEGIN_TIME)} ms.`);
