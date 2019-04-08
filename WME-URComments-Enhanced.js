@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.04.05.01
+// @version     2019.04.08.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -43,7 +43,8 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
         '<b>ENHANCEMENT:</b> Longer wait for Waze model to populate countries data.',
         '<b>ENHANCEMENT:</b> Background tasks are temporarily disabled during overflow so data from overflow can be reused for speed.',
         '<b>ENHANCEMENT:</b> Complete overhaul to conform with stricter eslint rules.',
-        '<b>BUGFIX:</b> Loading fails if comment list contains empty row. (again)'],
+        '<b>BUGFIX:</b> Loading fails if comment list contains empty row. (again)',
+        '<b>BUGFIX:</b> Custom comment list would not autofill correctly (within Beta release channel).'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
     LOAD_BEGIN_TIME = performance.now(),
@@ -2821,7 +2822,7 @@ function convertCommentListStatic(commentListIdx) {
                 + `${((oldUrcArrIdx === defaultReminderIdx) ? '|default_is_true' : '|')}`
                 + `${((oldUrcArrIdx === closedNiIdx) ? '|default_is_true' : '|')}`;
             for (let i = 6; i < 24; i++) {
-                if ((i !== 17) && (i === 20))
+                if ((i !== 17) && (i !== 20))
                     temp += ((window[`Urcomments${oldVarName}def_names`][i]) && (window[`Urcomments${oldVarName}def_names`][i].toLowerCase() === oldUrcArr[oldUrcArrIdx].toLowerCase())) ? '|default_is_true' : '|';
             }
             data[entryIdx] = [temp];
@@ -3221,16 +3222,6 @@ function handleError(obj) {
     maskBoxes(null, true, obj.phase, obj.maskUrPanel);
 }
 
-/**
- * Initialize the background tasks.
- *
- * @async
- * @function initBackgroundTasks
- * @param {string} status enable || disable
- * @param {string} phase init || initFinish || invokeModeChange || overflow
- * @returns {Promise} Promise object with error: false
- */
-
 async function initBackgroundTasks(status, phase) {
     logDebug(`${((status === 'enable') ? 'Initializing' : 'Uninitializing')} background tasks.`);
     if (status === 'enable') {
@@ -3304,6 +3295,8 @@ async function initBackgroundTasks(status, phase) {
                     $('#gapiRevokeAccessButton').off().on('click', () => {
                         _gapiAuth2.disconnect();
                     });
+                }).catch(error => {
+                    logError(error);
                 });
             });
         }
