@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.04.08.01
+// @version     2019.04.08.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -39,12 +39,15 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> UR Overflow handling now obeys WME layer setting for show/hide closed.',
+    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> $SELSEGS$ no longer gives popup.',
+        '<b>CHANGE:</b> New comment box detects variables (text wrapped with $\'s) and disables the send button until they are no longer present.',
+        '<b>CHANGE:</b> UR Overflow handling now obeys WME layer setting for show/hide closed.',
         '<b>ENHANCEMENT:</b> Longer wait for Waze model to populate countries data.',
         '<b>ENHANCEMENT:</b> Background tasks are temporarily disabled during overflow so data from overflow can be reused for speed.',
         '<b>ENHANCEMENT:</b> Complete overhaul to conform with stricter eslint rules.',
         '<b>BUGFIX:</b> Loading fails if comment list contains empty row. (again)',
-        '<b>BUGFIX:</b> Custom comment list would not autofill correctly (within Beta release channel).'],
+        '<b>BUGFIX:</b> Custom comment list would not autofill correctly (within Beta release channel).',
+        '<b>BUGFIX:</b> Hard fail changed to Soft fail for UR in URL when UR Panel never appears.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
     LOAD_BEGIN_TIME = performance.now(),
@@ -884,6 +887,7 @@ async function handleUpdateRequestContainer(urId, caller) {
         $('#panel-container .mapUpdateRequest .actions .content .navigation').css({ display: 'none' });
     $('#panel-container .mapUpdateRequest .top-section .header .title .focus').off('click', recenterOnUr).on('click', { urId }, recenterOnUr);
     $('#panel-container .mapUpdateRequest .top-section').scrollTop($('#panel-container .mapUpdateRequest .top-section')[0].scrollHeight);
+    $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').off('keyup', checkValue).on('keyup', checkValue);
     if (W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount === 0) {
         if (_settings.autoZoomInOnNewUr)
             autoZoomIn(urId);
@@ -974,6 +978,21 @@ async function handleUpdateRequestContainer(urId, caller) {
     return true;
 }
 
+function checkValue() {
+    const varsFound = this.value.match(/\B(\$\w*\$)\B/gim);
+    if (varsFound) {
+        let title;
+        if ((this.value.indexOf('$SELSEGS$') > -1) || (this.value.indexOf('$SELSEGS') > -1))
+            title = I18n.t('urce.prompts.SelSegsFound');
+        else
+            title = I18n.t('urce.prompts.VarFound').replace('$VARSFOUND$', varsFound.join(', '));
+        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').prop('disabled', true).attr('title', title);
+    }
+    else if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').prop('disabled') === true) {
+        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').prop('disabled', false).attr('title', '');
+    }
+}
+
 async function handleClickedComment(commentNum, doubleClick) {
     _selUr.doubleClick = doubleClick;
     if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length === 0) {
@@ -991,10 +1010,7 @@ async function handleClickedComment(commentNum, doubleClick) {
             logError(new Error(postUrCommentResult.text));
         else
             showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
-        return;
     }
-    if ((_commentList[commentNum].comment.indexOf('$SELSEGS$') > -1) || (_commentList[commentNum].comment.indexOf('$SELSEGS') > -1))
-        showAlertBox('fa-road', I18n.t('urce.prompts.SelSegsFoundHeader'), I18n.t('urce.prompts.SelSegsFound'), false, 'OK', '', null, null);
 }
 
 function autoSwitchToUrceTab() {
@@ -1317,13 +1333,11 @@ function postUrComment(commentStr, doubleClick) {
                     else {
                         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).change().keyup().focus();
                     }
-                    if ((commentOutput.indexOf('$SELSEGS$') === -1) && (commentOutput.indexOf('$SELSEGS') === -1)) {
+                    if ((commentOutput.indexOf('$SELSEGS$') === -1) && (commentOutput.indexOf('$SELSEGS') === -1))
                         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').blur().focus();
-                    }
-                    else {
-                        showAlertBox('fa-road', I18n.t('urce.prompts.SelSegsFoundHeader'), I18n.t('urce.prompts.SelSegsFound'), false, 'OK', '', null, null);
-                        resolve({ error: false });
-                    }
+                    else
+                        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').focus();
+                    resolve({ error: false });
                 }
             }
         }(commentStr, 1));
@@ -2453,7 +2467,7 @@ function maskBoxes(message, unmask, phase, maskUrPanel) {
             (function retry(tries, toIndex) {
                 checkTimeout({ timeout: 'urceTabLightbox', toIndex });
                 const $urceSidePanel = $('#sidepanel-urc-e');
-                if ((tries > 99) && ($urceSidePanel.length === 0)) {
+                if ((tries > 100) && ($urceSidePanel.length === 0)) {
                     logError('Timed out trying to add mask to URCE side panel.');
                 }
                 else if ($urceSidePanel.length === 0) {
@@ -2472,8 +2486,8 @@ function maskBoxes(message, unmask, phase, maskUrPanel) {
             (function retry(tries, toIndex) {
                 checkTimeout({ timeout: 'urPanelLightbox', toIndex });
                 const $urPanel = $('#panel-container .mapUpdateRequest.panel.show');
-                if ((tries > 99) && ($urPanel.length === 0)) {
-                    logError('Timed out trying to add mask to UR panel.');
+                if ((tries > 100) && ($urPanel.length === 0)) {
+                    logWarning('Timed out trying to add mask to UR panel.');
                 }
                 else if ($urPanel.length === 0) {
                     _timeouts.urPanelLightbox[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex);
@@ -5279,7 +5293,7 @@ function initRestrictions() {
     });
 }
 
-async function initFinish(urId) {
+async function initFinish(urId, urPanelMissing) {
     checkTimeout({ timeout: 'initUrIdInUrl' });
     if (_initUrIdInUrlObserver && _initUrIdInUrlObserver.isObserving) {
         _initUrIdInUrlObserver.isObserving = false;
@@ -5290,8 +5304,17 @@ async function initFinish(urId) {
         await handleUrLayer('init_end', null, null);
     _markerCountOnInit = -1;
     maskBoxes(null, true, 'init', (urId > 0));
-    logDebug(`UR ${urId} marker in URL. Re-opening.`);
-    openUrPanel(urId);
+    if (urPanelMissing && W.model.mapUpdateRequests.objects[urId]) {
+        logDebug(`UR ${urId} marker in URL. UR Panel did not appear after 15 seconds, attempting to activate marker.`);
+        openUrPanel(urId);
+    }
+    else if (urPanelMissing) {
+        log(`UR ${urId} marker in URL. UR Panel did not appear after 15 seconds. Marker not found.`);
+    }
+    else {
+        logDebug(`UR ${urId} marker in URL. Re-opening.`);
+        openUrPanel(urId);
+    }
 }
 
 function initCheckForUrPanel(urId, tries) {
@@ -5305,9 +5328,9 @@ function initCheckForUrPanel(urId, tries) {
         }
     }
     else {
-        logWarning(`UR ${urId} found in URL, but UR panel failed to open.`);
+        logWarning(`UR ${urId} found in URL, but UR panel failed to open after 15 seconds.`);
+        initFinish(urId, true);
     }
-    return true;
 }
 
 async function init() {
@@ -5336,7 +5359,7 @@ async function init() {
         log(`Fully initialized in ${Math.round(performance.now() - LOAD_BEGIN_TIME)} ms.`);
         if (urIdInUrl > 0) {
             if ($('#panel-container').children().length === 0) {
-                logDebug(`urId ${urIdInUrl} found in URL, but the UR Panel has not shown up yet. Waiting.`);
+                logDebug(`urId ${urIdInUrl} found in URL, but the UR Panel has not shown up yet. Waiting up to 15 seconds.`);
                 _initUrIdInUrlObserver = new MutationObserver(mutations => {
                     mutations.forEach(mutation => {
                         if ((mutation.type === 'attributes')
@@ -5344,7 +5367,7 @@ async function init() {
                             && (mutation.target.className.indexOf('show') > -1)
                             && (mutation.oldValue.indexOf('show') === -1)
                         )
-                            initFinish(urIdInUrl);
+                            initFinish(urIdInUrl, false);
                     });
                 });
                 _initUrIdInUrlObserver.observe(document.getElementById('panel-container'), {
@@ -5354,7 +5377,7 @@ async function init() {
                 _timeouts.initUrIdInUrl = window.setTimeout(initCheckForUrPanel, 100, urIdInUrl, 1);
             }
             else {
-                initFinish(urIdInUrl);
+                initFinish(urIdInUrl, false);
             }
         }
         else {
@@ -5836,9 +5859,8 @@ function loadTranslations() {
                         RestoreSettingsRetainedSettings: 'Retained current settings',
                         RestrictionsEnforced: 'Restrictions enforced!',
                         RestrictionsEnforcedTitle: 'The following restrictions have been enforced',
-                        SelSegsFound: 'The selected comment contains "$SELSEGS$".<br><br>In order to replace this text with the road name(s), please select one or two segments and click the '
-                            + '<i class="fa fa-road" aria-hidden="true"></i> button in the UR panel.',
-                        SelSegsFoundHeader: '$SELSEGS$ Found in Comment',
+                        SelSegsFound: 'The selected comment contains "$SELSEGS$".\n\nIn order to replace this text with the road name(s), please\nselect one or two segments and click the road button '
+                            + 'in the\nUR panel.',
                         SelSegsInsertError: 'In order to use the <i class="fa fa-road" aria-hidden="true"></i> button in the UR Panel, you must first select one or two segments.',
                         SelSegsInsertErrorHeader: 'Error Inserting Segment Names',
                         SetCustomSsIdFirst: 'Before you can select <b><i>Custom G Sheet</i></b> as your comment list, you must first set the <b><i>Custom Google Spreadsheet ID</i></b> setting on '
@@ -5848,6 +5870,7 @@ function loadTranslations() {
                         SwitchingCommentLists: 'Switching comment lists',
                         TimedOutWaitingStatic: 'Timed out waiting for the static list to become available. Is it enabled?',
                         UpdateRequired: 'You are using an older version of URC-E, which has caused an error. Please update to at least version',
+                        VarFound: 'The selected comment contains variables: $VARSFOUND$.\n\nUntil these are replaced, the send button is disabled.',
                         WaitingOnInit: 'Waiting for URC-E to fully initialize'
                     },
                     time: {
