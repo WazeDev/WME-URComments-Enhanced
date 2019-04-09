@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.04.08.02
+// @version     2019.04.09.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -39,12 +39,15 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> $SELSEGS$ no longer gives popup.',
+    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Casual day and time shortcut and variable for use in custom comments. (See tooltip)',
+        '<b>CHANGE:</b> Slight change to casual times. Afternoon now lasts until 1759 instead of 1359.',
+        '<b>CHANGE:</b> $SELSEGS$ no longer gives popup.',
         '<b>CHANGE:</b> New comment box detects variables (text wrapped with $\'s) and disables the send button until they are no longer present.',
         '<b>CHANGE:</b> UR Overflow handling now obeys WME layer setting for show/hide closed.',
         '<b>ENHANCEMENT:</b> Longer wait for Waze model to populate countries data.',
         '<b>ENHANCEMENT:</b> Background tasks are temporarily disabled during overflow so data from overflow can be reused for speed.',
         '<b>ENHANCEMENT:</b> Complete overhaul to conform with stricter eslint rules.',
+        '<b>ENHANCEMENT:</b> UR marker mouseover now wraps long descriptions at 80 characters to prevent extremely wide popups.',
         '<b>BUGFIX:</b> Loading fails if comment list contains empty row. (again)',
         '<b>BUGFIX:</b> Custom comment list would not autofill correctly (within Beta release channel).',
         '<b>BUGFIX:</b> Hard fail changed to Soft fail for UR in URL when UR Panel never appears.'],
@@ -969,7 +972,10 @@ async function handleUpdateRequestContainer(urId, caller) {
                         }).off().on('click', { shortcut: 'timeCasual' }, handleClickedShortcut),
                         $('<i>', {
                             class: 'fa fa-calendar', 'aria-hidden': 'true', style: 'cursor:pointer; padding-left:4px;', title: I18n.t('urce.urPanel.InsertDateCasualTitle')
-                        }).off().on('click', { shortcut: 'dateCasual' }, handleClickedShortcut)
+                        }).off().on('click', { shortcut: 'dateCasual' }, handleClickedShortcut),
+                        $('<i>', {
+                            class: 'fa fa-calendar-plus-o', 'aria-hidden': 'true', style: 'cursor:pointer; padding-left:4px;', title: I18n.t('urce.urPanel.InsertDateTimeCasualModeTitle')
+                        }).off().on('click', { shortcut: 'dateTimeCasualMode' }, handleClickedShortcut)
                     )
                 )
             )
@@ -1075,9 +1081,24 @@ function autoZoomOut() {
     }
 }
 
+function convertTimeOfDayToCasual(hour) {
+    let casualText;
+    if ((hour > 20) || (hour < 4))
+        casualText = I18n.t('urce.time.Night');
+    else if ((hour > 3) && (hour < 12))
+        casualText = I18n.t('urce.time.Morning');
+    else if ((hour > 11) && (hour < 18))
+        casualText = I18n.t('urce.time.Afternoon');
+    else if ((hour > 17) && (hour < 21))
+        casualText = I18n.t('urce.time.Evening');
+    else
+        casualText = '';
+    return casualText;
+}
+
 function formatText(text, replaceVars) {
     if (replaceVars && (_selUr.urId > -1)) {
-        if (text.search(/(\$DRIVEDATE_DAY_OF_WEEK\$|\$DRIVEDATE_DATE\$|\$DRIVEDATE_DATE_CASUAL\$|\$DRIVEDATE_DAYS_AGO\$|\$DRIVEDATE_TIME\$|\$DRIVEDATE_TIME_CASUAL\$)/gm) > -1) {
+        if (text.search(/(\$(DRIVEDATE_DAY_OF_WEEK|DRIVEDATE_DATE|DRIVEDATE_DATE_CASUAL|DRIVEDATE_DAYS_AGO|DRIVEDATE_TIME|DRIVEDATE_TIME_CASUAL|DRIVEDATE_TIME_CASUALMODE)\$)/gm) > -1) {
             if (W.model.mapUpdateRequests.objects[_selUr.urId]) {
                 if (text.indexOf('$DRIVEDATE_DAY_OF_WEEK$') > -1) {
                     if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate > -1)) {
@@ -1124,23 +1145,61 @@ function formatText(text, replaceVars) {
                     }
                 }
                 if (text.indexOf('$DRIVEDATE_TIME_CASUAL$') > -1) {
-                    if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate > -1)) {
+                    if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate > -1))
+                        text = text.replace('$DRIVEDATE_TIME_CASUAL$', convertTimeOfDayToCasual(new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).getHours()));
+                    else
+                        text = text.replace('$DRIVEDATE_TIME_CASUAL$', '');
+                }
+                if (text.indexOf('$DRIVEDATE_TIME_CASUALMODE$') > -1) {
+                    if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData) {
+                        const driveDaysAgo = W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.driveDaysOld;
                         const driveHour = new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).getHours();
+                        const dayOfWeek = new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).getDay();
                         let casualText;
-                        if ((driveHour > 20) || (driveHour < 4))
-                            casualText = I18n.t('urce.time.Night');
-                        else if ((driveHour > 3) && (driveHour < 12))
-                            casualText = I18n.t('urce.time.Morning');
-                        else if ((driveHour > 11) && (driveHour < 16))
-                            casualText = I18n.t('urce.time.Afternoon');
-                        else if ((driveHour > 15) && (driveHour < 21))
-                            casualText = I18n.t('urce.time.Evening');
-                        else
+                        if (driveDaysAgo === 0) {
+                            if ((driveHour > 20) || (driveHour < 4))
+                                casualText = I18n.t('urce.time.Tonight');
+                            else
+                                casualText = I18n.t('urce.time.ThisCasualTOD').replace('$THIS_CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                        }
+                        else if (driveDaysAgo === 1) {
+                            if ((driveHour > 20) || (driveHour < 4))
+                                casualText = I18n.t('urce.time.LastNight');
+                            else
+                                casualText = I18n.t('urce.time.YesterdayCasualTOD').replace('$YESTERDAY_CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                        }
+                        else if ((driveDaysAgo > 1) && (driveDaysAgo < 21)) {
+                            if ((driveDaysAgo > 1) && (driveDaysAgo < 7))
+                                casualText = I18n.t('urce.time.ThisWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                            else if ((driveDaysAgo > 6) && (driveDaysAgo < 14))
+                                casualText = I18n.t('urce.time.LastWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                            else if ((driveDaysAgo > 13) && (driveDaysAgo < 21))
+                                casualText = I18n.t('urce.time.TwoWeeksAgo');
+                            casualText
+                                .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[I18n.translations[I18n.currentLocale()].date.week_day_order[dayOfWeek]])
+                                .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[I18n.translations[I18n.currentLocale()].date.week_day_order[dayOfWeek]])
+                                .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[I18n.translations[I18n.currentLocale()].date.week_day_order[dayOfWeek]])
+                                .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[I18n.translations[I18n.currentLocale()].date.week_day_order[dayOfWeek]]);
+                        }
+                        else if ((driveDaysAgo > 20) && (driveDaysAgo < 28)) {
+                            casualText = I18n.t('urce.time.ThreeWeeksAgo');
+                        }
+                        else if ((driveDaysAgo > 27) && (driveDaysAgo < 61)) {
+                            casualText = I18n.t('urce.time.AFewWeeksAgo');
+                        }
+                        else if ((driveDaysAgo > 60) && (driveDaysAgo < 121)) {
+                            casualText = I18n.t('urce.time.ACoupleMonthsAgo');
+                        }
+                        else if (driveDaysAgo > 120) {
+                            casualText = I18n.t('urce.time.AWhileBack');
+                        }
+                        else {
                             casualText = '';
-                        text = text.replace('$DRIVEDATE_TIME_CASUAL$', casualText);
+                        }
+                        text = text.replace('$DRIVEDATE_TIME_CASUALMODE$', casualText);
                     }
                     else {
-                        text = text.replace('$DRIVEDATE_TIME_CASUAL$', '');
+                        text = text.replace('$DRIVEDATE_TIME_CASUALMODE$', '');
                     }
                 }
             }
@@ -1201,6 +1260,9 @@ function handleClickedShortcut(event) {
     }
     else if (event.data.shortcut === 'dateCasual') {
         replaceText = '$DRIVEDATE_DATE_CASUAL$';
+    }
+    else if (event.data.shortcut === 'dateTimeCasualMode') {
+        replaceText = '$DRIVEDATE_TIME_CASUALMODE$';
     }
     else {
         return;
@@ -1534,7 +1596,7 @@ async function markerMouseOver() {
                 if (!W.model.mapUpdateRequests.objects[markerId].attributes.description)
                     popupContent += `<i>${I18n.t('urce.mouseOver.NoDescription')}</i>`;
                 else
-                    popupContent += clickify(W.model.mapUpdateRequests.objects[markerId].attributes.description, '');
+                    popupContent += clickify(W.model.mapUpdateRequests.objects[markerId].attributes.description.replace(/((?:.{80}).*?)\s/gm, '$1\n'), '');
                 if (W.model.mapUpdateRequests.objects[markerId].attributes.urceData.driveDaysOld > -1) {
                     popupContent += `<br><i>${I18n.t('mte.edit.submitted')} ${parseDaysAgo(W.model.mapUpdateRequests.objects[markerId].attributes.urceData.driveDaysOld)} `;
                     if (W.model.mapUpdateRequests.objects[markerId].attributes.driveDate > -1) {
@@ -5778,6 +5840,16 @@ function loadTranslations() {
                         + 'creation of the new spreadsheet.'
                     },
                     urPanel: {
+                        InsertDateTimeCasualModeTitle: 'Shortcut - Drive day and time (fully casual): Click this icon to insert the drive date into the new comment box at the cursor position.\n\n'
+                            + '0 days: this morning, this afternoon, this evening, tonight\n'
+                            + '1 days: yesterday morning, yesterday afternoon, yesterrday evening, last night\n'
+                            + '2-6 days: Day_of_Week morning/afternoon/evening/night\n'
+                            + '7-13 days:last Day_of_Week\n'
+                            + '14-20 days: Day_of_Week before last\n'
+                            + '21-27 days: three weeks ago\n'
+                            + '28-60 days: a few weeks ago\n'
+                            + '61-120 days: a couple months back\n'
+                            + '121+ days: a while ago',
                         InsertDateCasualTitle: 'Shortcut - Drive date (casual): Click this icon to insert the drive date into the new comment box at the cursor position (full month name, 2-digit '
                             + 'day in locale format).',
                         InsertDateTitle: 'Shortcut - Drive date: Click this icon to insert the drive date into the new comment box at the cursor position (2-digit month, 2-digit day, 4-digit year '
@@ -5788,7 +5860,7 @@ function loadTranslations() {
                         InsertSelSegsTitle: 'Shortcut - Segment name(s): Click this icon to either replace "$SELSEGS$" (or "$SELSEGS)" with the name of the currently selected segment(s), or\nit '
                             + 'will insert the name of the currently selected segment(s) into the comment box at the cursor position.',
                         InsertTimeCasualTitle: 'Shortcut - Drive time of day (casual): Click this icon to insert the drive date time of day into the new comment box at the cursor position (in locale '
-                            + 'language).\n\n04:00am-11:59am: morning\n12:00pm-03:59pm: afternoon\n04:00pm-08:59pm: evening\n09:00pm-03:59am: night',
+                            + 'language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
                         InsertTimeTitle: 'Shortcut - Drive time of day: Click this icon to insert the drive date time of day into the new comment box at the cursor position (2-digit hour, 2-digit '
                             + 'minute in locale format).',
                         InsertWazeUsernameTitle: 'Shortcut - Waze username: Click this icon to insert your Waze username into the new comment box at the cursor position.'
@@ -5874,10 +5946,21 @@ function loadTranslations() {
                         WaitingOnInit: 'Waiting for URC-E to fully initialize'
                     },
                     time: {
+                        ACoupleMonthsAgo: 'a couple months ago',
+                        AFewWeeksAgo: 'a few weeks ago',
                         Afternoon: 'afternoon',
+                        AWhileBack: 'a while back',
                         Evening: 'evening',
                         Morning: 'morning',
-                        Night: 'night'
+                        LastNight: 'last night',
+                        LastWeekTOD: 'last $DAY_NAME$ $CASUAL_TOD$',
+                        Night: 'night',
+                        ThisCasualTOD: 'this $THIS_CASUAL_TOD$',
+                        ThisWeekTOD: '$DAY_NAME$ $CASUAL_TOD$',
+                        Tonight: 'tonight',
+                        TwoWeeksAgo: '$DAY_NAME$ before last',
+                        ThreeWeeksAgo: 'three weeks ago',
+                        YesterdayCasualTOD: 'yesterday $YESTERDAY_CASUAL_TOD$'
                     }
                 }
             };
