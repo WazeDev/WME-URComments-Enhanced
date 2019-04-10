@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.04.09.01
+// @version     2019.04.10.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -40,6 +40,8 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
     SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Casual day and time shortcut and variable for use in custom comments. (See tooltip)',
+        '<b>NEW:</b> Invert filters.',
+        '<b>NEW:</b> Filter URs with / without comments from specified user(s).',
         '<b>CHANGE:</b> Slight change to casual times. Afternoon now lasts until 1759 instead of 1359.',
         '<b>CHANGE:</b> $SELSEGS$ no longer gives popup.',
         '<b>CHANGE:</b> New comment box detects variables (text wrapped with $\'s) and disables the send button until they are no longer present.',
@@ -50,7 +52,8 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
         '<b>ENHANCEMENT:</b> UR marker mouseover now wraps long descriptions at 80 characters to prevent extremely wide popups.',
         '<b>BUGFIX:</b> Loading fails if comment list contains empty row. (again)',
         '<b>BUGFIX:</b> Custom comment list would not autofill correctly (within Beta release channel).',
-        '<b>BUGFIX:</b> Hard fail changed to Soft fail for UR in URL when UR Panel never appears.'],
+        '<b>BUGFIX:</b> Hard fail changed to Soft fail for UR in URL when UR Panel never appears.',
+        '<b>BUGFIX:</b> Username was being added to pill even if the setting was disabled.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
     LOAD_BEGIN_TIME = performance.now(),
@@ -314,6 +317,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             customMarkersCustomText: '',
             // UR Filtering Settings
             enableUrceUrFiltering: false,
+            invertFilters: false,
             hideOutsideEditableArea: false,
             doNotFilterTaggedUrs: false,
             doNotHideSelectedUr: false,
@@ -392,7 +396,11 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             hideByKeywordIncludingKeyword: '',
             hideByKeywordNotIncluding: false,
             hideByKeywordNotIncludingKeyword: '',
-            hideByKeywordCaseInsensitive: false
+            hideByKeywordCaseInsensitive: false,
+            hideWithCommentBy: false,
+            hideWithCommentByUsers: '',
+            hideWithoutCommentBy: false,
+            hideWithoutCommentByUsers: ''
         };
     if (restoreSettings && (restoreSettings !== 'resetSettings') && !proceedWithRestore) {
         Object.keys(restoreSettings).forEach(prop => {
@@ -1175,7 +1183,7 @@ function formatText(text, replaceVars) {
                                 casualText = I18n.t('urce.time.LastWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
                             else if ((driveDaysAgo > 13) && (driveDaysAgo < 21))
                                 casualText = I18n.t('urce.time.TwoWeeksAgo');
-                            casualText
+                            casualText = casualText
                                 .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[I18n.translations[I18n.currentLocale()].date.week_day_order[dayOfWeek]])
                                 .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[I18n.translations[I18n.currentLocale()].date.week_day_order[dayOfWeek]])
                                 .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[I18n.translations[I18n.currentLocale()].date.week_day_order[dayOfWeek]])
@@ -2039,7 +2047,27 @@ function updateUrMapMarkers(urIds, filter) {
 function updateUrceData(urIds) {
     const processUrIds = [...urIds],
         reminderDays = _restrictionsEnforce.reminderDays || _settings.perCommentListSettings[_currentCommentList].reminderDays || 0,
-        closeDays = _restrictionsEnforce.closeDays || _settings.perCommentListSettings[_currentCommentList].closeDays || 7;
+        closeDays = _restrictionsEnforce.closeDays || _settings.perCommentListSettings[_currentCommentList].closeDays || 7,
+        getUserIdsToCheck = usersToCheck => {
+            if (usersToCheck.length > 0) {
+                // eslint-disable-next-line array-callback-return, consistent-return
+                const userIdsArr = usersToCheck.split(',').map(username => {
+                    if (W.model.users.getByAttributes({ userName: username.trim() }).length > 0)
+                        return W.model.users.getByAttributes({ userName: username.trim() })[0].id;
+                });
+                return userIdsArr;
+            }
+            return [];
+        },
+        checkCommentedUsers = (userIdsToCheck, userIds) => {
+            // eslint-disable-next-line array-callback-return, consistent-return
+            let retVal = false;
+            userIdsToCheck.forEach(userId => {
+                if (userIds.indexOf(parseInt(userId)) > -1)
+                    retVal = true;
+            });
+            return retVal;
+        };
     return new Promise(async resolve => {
         while (processUrIds.length > 0) {
             const chunk = processUrIds.splice(0, 500),
@@ -2082,6 +2110,8 @@ function updateUrceData(urIds) {
                     firstCommentDaysOld: -1,
                     fullText: '',
                     hideUr: false,
+                    hideWithCommentBy: false,
+                    hideWithoutCommentBy: false,
                     keywordIncluding: false,
                     keywordNotIncluding: false,
                     lastCommentBy: -2,
@@ -2156,6 +2186,23 @@ function updateUrceData(urIds) {
                 else {
                     urceData.fullText += (mapUrsObj[idx].attributes.description) ? mapUrsObj[idx].attributes.description : '';
                 }
+                if (_settings.hideWithCommentBy && (_settings.hideWithCommentByUsers.length > 0)) {
+                    const userIdsToCheck = getUserIdsToCheck(_settings.hideWithCommentByUsers);
+                    if ((userIdsToCheck.length > 0) && (urceData.commentUserIds.length > 0)) {
+                        if (checkCommentedUsers(userIdsToCheck, urceData.commentUserIds) === true)
+                            urceData.hideWithCommentBy = true;
+                    }
+                }
+                if (_settings.hideWithoutCommentBy && (_settings.hideWithoutCommentByUsers.length > 0)) {
+                    const userIdsToCheck = getUserIdsToCheck(_settings.hideWithoutCommentByUsers);
+                    if ((userIdsToCheck.length > 0) && (urceData.commentUserIds.length > 0)) {
+                        if (checkCommentedUsers(userIdsToCheck, urceData.commentUserIds) !== true)
+                            urceData.hideWithoutCommentBy = true;
+                    }
+                    else if (urceData.commentUserIds.length === 0) {
+                        urceData.hideWithoutCommentBy = true;
+                    }
+                }
                 // eslint-disable-next-line no-control-regex
                 urceData.fullText = urceData.fullText.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, ' ');
                 urceData.tagType = (urceData.fullText.search(tagRegex) > -1) ? urceData.fullText.replace(tagRegex, '$1') : -1;
@@ -2181,7 +2228,7 @@ function updateUrceData(urIds) {
                 else if (urceData.tagType === -1)
                     urceData.customType = -1;
                 if ((urceData.tagType === -1) || _settings.replaceTagNameWithEditorName) {
-                    if (urceData.fullText.search(tagUsernameRegex) > -1)
+                    if (_settings.replaceTagNameWithEditorName && (urceData.fullText.search(tagUsernameRegex) > -1))
                         urceData.tagType = W.loginManager.user.userName;
                     else if (urceData.tagType)
                         urceData.tagType = urceData.tagType;
@@ -2253,8 +2300,16 @@ function updateUrceData(urIds) {
                     || (_settings.hideByAgeOfLastCommentMoreThan && (urceData.commentCount > 0) && (urceData.lastcommentDaysOld > _settings.hideByAgeOfLastCommentMoreThanDaysOld))
                     || (_settings.hideByKeywordIncluding && urceData.keywordIncluding)
                     || (_settings.hideByKeywordNotIncluding && urceData.keywordNotIncluding)
+                    || (_settings.hideWithCommentBy && urceData.hideWithCommentBy)
+                    || (_settings.hideWithoutCommentBy && urceData.hideWithoutCommentBy)
                 )
                     urceData.hideUr = true;
+                if (_settings.invertFilters) {
+                    if (urceData.hideUr)
+                        urceData.hideUr = false;
+                    else
+                        urceData.hideUr = true;
+                }
                 W.model.mapUpdateRequests.objects[chunk[idx]].attributes.urceData = urceData;
             }
         }
@@ -2910,7 +2965,7 @@ function convertCommentListStatic(commentListIdx) {
 
 function processCommentList(data) {
     return new Promise(resolve => {
-        logDebug('Procesing comment list data.');
+        logDebug('Processing comment list data.');
         if (data) {
             const EXPECTED_FIELD_NAMES = ['TITLE', 'COMMENT', 'URSTATUS', 'DR', 'DC', 'IT', 'IA', 'IR', 'MRA', 'GE', 'TNA', 'IJ', 'MBO', 'WDD', 'ME', 'MR', 'ML', 'BR', 'MSN', 'ISPS', 'SL'],
                 rowObj = {},
@@ -4276,6 +4331,13 @@ function initSettingsTab() {
                 }).text(I18n.t('urce.prefs.EnableUrceUrFiltering')),
                 $('<br>'),
                 $('<input>', {
+                    type: 'checkbox', id: '_cbinvertFilters', urceprefs: 'filtering', class: 'urceSettingsCheckbox', title: I18n.t('urce.prefs.InvertFiltersTitle')
+                }).prop('checked', _settings.invertFilters),
+                $('<label>', {
+                    for: '_cbinvertFilters', urceprefs: 'filtering', title: I18n.t('urce.prefs.InvertFiltersTitle'), class: 'URCE-label'
+                }).text(I18n.t('urce.prefs.InvertFilters')),
+                $('<br>'),
+                $('<input>', {
                     type: 'checkbox', id: '_cbhideOutsideEditableArea', urceprefs: 'filtering', class: 'urceSettingsCheckbox', title: I18n.t('urce.prefs.HideOutsideEditableAreaTitle')
                 }).prop('checked', _settings.hideOutsideEditableArea),
                 $('<label>', {
@@ -4988,6 +5050,45 @@ function initSettingsTab() {
                         $('<label>', {
                             for: '_cbhideByKeywordCaseInsensitive', urceprefs: 'filtering', class: 'URCE-label', title: I18n.t('urce.prefs.HideByKeywordCaseInsensitiveTitle')
                         }).text(I18n.t('urce.prefs.HideByKeywordCaseInsensitive'))
+                    ),
+                    // -- -- With / without comment by
+                    $('<div>', { style: 'display:inline-flex;' }).append(
+                        $('<input>', {
+                            type: 'checkbox', id: '_cbhideWithCommentBy', urceprefs: 'filtering', class: 'urceSettingsCheckbox', title: I18n.t('urce.prefs.HideWithCommentByTitle')
+                        }).prop('checked', _settings.hideWithCommentBy),
+                        $('<label>', {
+                            for: '_cbhideWithCommentBy', urceprefs: 'filtering', class: 'URCE-label', title: I18n.t('urce.prefs.HideWithCommentByTitle')
+                        }).text(I18n.t('urce.prefs.HideWithCommentBy')),
+                        $('<div>', { class: 'URCE-divDaysInline' }).append(
+                            $('<input>', {
+                                type: 'text',
+                                id: '_texthideWithCommentByUsers',
+                                class: 'urceSettingsTextBox',
+                                style: 'width:75px; height:20px;',
+                                urceprefs: 'filtering',
+                                value: _settings.hideWithCommentByUsers,
+                                title: I18n.t('urce.prefs.HideWithCommentByTitle')
+                            })
+                        )
+                    ),
+                    $('<div>', { style: 'display:inline-flex;' }).append(
+                        $('<input>', {
+                            type: 'checkbox', id: '_cbhideWithoutCommentBy', urceprefs: 'filtering', class: 'urceSettingsCheckbox', title: I18n.t('urce.prefs.HideWithoutCommentByTitle')
+                        }).prop('checked', _settings.hideWithoutCommentBy),
+                        $('<label>', {
+                            for: '_cbhideWithoutCommentBy', urceprefs: 'filtering', class: 'URCE-label', title: I18n.t('urce.prefs.HideWithoutCommentByTitle')
+                        }).text(I18n.t('urce.prefs.HideWithoutCommentBy')),
+                        $('<div>', { class: 'URCE-divDaysInline' }).append(
+                            $('<input>', {
+                                type: 'text',
+                                id: '_texthideWithoutCommentByUsers',
+                                class: 'urceSettingsTextBox',
+                                style: 'width:75px; height:20px;',
+                                urceprefs: 'filtering',
+                                value: _settings.hideWithoutCommentByUsers,
+                                title: I18n.t('urce.prefs.HideWithoutCommentByTitle')
+                            })
+                        )
                     )
                 )
             )
@@ -5702,6 +5803,9 @@ function loadTranslations() {
                         UrFilteringPrefs: 'UR Filtering Settings',
                         EnableUrceUrFiltering: 'Enable URC-E UR filtering',
                         EnableUrceUrFilteringTitle: 'Enable or disable URComments-Enhanced built-in UR filtering.',
+                        InvertFilters: 'Invert filters',
+                        InvertFiltersTitle: 'This will invert the filters you select / do not select.\n\nExample: If a filter were to match a selected / enabled setting, it would normally '
+                            + 'be hidden.\nBut, if you enable "invert filters", the marker would be shown and all others that do not match will be hidden.',
                         HideOutsideEditableArea: 'Hide outside editable area',
                         HideOutsideEditableAreaTitle: 'Hide URs outside your editable area.',
                         DoNotFilterTaggedUrs: 'Do not filter tagged URs',
@@ -5788,6 +5892,10 @@ function loadTranslations() {
                         HideByKeywordNotIncludingTitle: 'Hide URs that do not include the custom word / text specified.',
                         HideByKeywordCaseInsensitive: 'Case-insensitive keyword matches',
                         HideByKeywordCaseInsensitiveTitle: 'If enabled, searching for the above including or not including keywords will be done using case insensitive searching.',
+                        HideWithCommentBy: 'Hide with comment by',
+                        HideWithCommentByTitle: 'Hide URs that have been commented on by the specified user(s).\nUse a comma (,) to separate usernames.',
+                        HideWithoutCommentBy: 'Hide without comment by',
+                        HideWithoutCommentByTitle: 'Hide URs that have not been commented on by the specified user(s).\nUse a comma (,) to separate usernames.',
                         ReminderDays: 'Reminder days',
                         ReminderDaysTitle: 'Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment.\nThis is the number of days since the first '
                             + 'comment.\nSet to 0 if you do not use reminders.',
@@ -5844,7 +5952,7 @@ function loadTranslations() {
                             + '0 days: this morning, this afternoon, this evening, tonight\n'
                             + '1 days: yesterday morning, yesterday afternoon, yesterrday evening, last night\n'
                             + '2-6 days: Day_of_Week morning/afternoon/evening/night\n'
-                            + '7-13 days:last Day_of_Week\n'
+                            + '7-13 days: last Day_of_Week morning/afternoon/evening/night\n'
                             + '14-20 days: Day_of_Week before last\n'
                             + '21-27 days: three weeks ago\n'
                             + '28-60 days: a few weeks ago\n'
