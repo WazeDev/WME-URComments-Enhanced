@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.04.10.01
+// @version     2019.04.11.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -1923,7 +1923,9 @@ function updateUrMapMarkers(urIds, filter) {
             }
         };
     for (let idx = 0; idx < urIds.length; idx++) {
-        if (filter && _settings.enableUrceUrFiltering && W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.hideUr
+        if (filter && _settings.enableUrceUrFiltering
+            && (W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.hideUr
+                || (_settings.hideOutsideEditableArea && !W.model.mapUpdateRequests.objects[urIds[idx]].canEdit()))
             && (!((_selUr.urId === urIds[idx]) && _settings.doNotHideSelectedUr))
             && (!((W.model.mapUpdateRequests.objects[urIds[idx]].attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs))
         ) {
@@ -2235,8 +2237,7 @@ function updateUrceData(urIds) {
                     else
                         urceData.tagType = -1;
                 }
-                if ((_settings.hideOutsideEditableArea && !mapUrsObj[idx].canEdit())
-                    || (_settings.hideWaiting && urceData.waiting)
+                if ((_settings.hideWaiting && urceData.waiting)
                     || (_settings.needsClosed && urceData.needsClosed)
                     || (_settings.hideUrsReminderNeeded && urceData.needsReminder)
                     || (_settings.hideByStatusOpen && mapUrsObj[idx].attributes.open)
@@ -3747,7 +3748,8 @@ function initToolsTab() {
 
 function initSettingsTab() {
     logDebug('Initializing Settings tab.');
-    const urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '';
+    const urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '',
+        inverted = (_settings.invertFilters) ? 'Inverted' : '';
     if (_needTranslation) {
         showAlertBanner(`URC-E does not currently have a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>). Translations are setup on a Google Sheet, so they are simple to do.<br><br>If you would like to provide a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>), please contact ${SCRIPT_AUTHOR} via forum PM or Discord, or click reply on the forum thread:<br><a href="https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278" target="_blank">https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278</a>`,
             null, false, true, null, true, 9998, null);
@@ -4402,7 +4404,7 @@ function initSettingsTab() {
                 ),
                 // -- Lifecycle
                 $('<div>').append(
-                    $('<div>', { class: 'URCE-subHeading' }).text(`${I18n.t('urce.prefs.LifeCycleStatus')}:`).append('<br>')
+                    $('<div>', { class: 'URCE-subHeading' }).text(`${I18n.t(`urce.prefs.LifeCycleStatus${inverted}`)}:`).append('<br>')
                 ).append(
                     $('<input>', {
                         type: 'checkbox', id: '_cbhideWaiting', urceprefs: 'filtering', class: 'urceSettingsCheckbox', title: I18n.t('urce.prefs.HideWaitingTitle')
@@ -4428,7 +4430,7 @@ function initSettingsTab() {
                 ),
                 // -- Hide by status
                 $('<div>').append(
-                    $('<div>', { class: 'URCE-subHeading' }).text(`${I18n.t('urce.prefs.HideByStatus')}:`).append('<br>')
+                    $('<div>', { class: 'URCE-subHeading' }).text(`${I18n.t(`urce.prefs.HideByStatus${inverted}`)}:`).append('<br>')
                 ).append(
                     $('<input>', {
                         type: 'checkbox', id: '_cbhideByStatusOpen', urceprefs: 'filtering', class: 'urceSettingsCheckbox', title: I18n.t('urce.prefs.HideByStatusOpenTitle')
@@ -4461,7 +4463,7 @@ function initSettingsTab() {
                 ),
                 // -- Hide by type
                 $('<div>').append(
-                    $('<div>', { class: 'URCE-subHeading' }).text(`${I18n.t('urce.prefs.HideByType')}:`).append('<br>')
+                    $('<div>', { class: 'URCE-subHeading' }).text(`${I18n.t(`urce.prefs.HideByType${inverted}`)}:`).append('<br>')
                 ).append(
                     $('<input>', {
                         type: 'checkbox', id: '_cbhideByTypeBlockedRoad', urceprefs: 'filtering', class: 'urceSettingsCheckbox', title: I18n.t('urce.prefs.HideByTypeBlockedRoadTitle')
@@ -4608,7 +4610,7 @@ function initSettingsTab() {
                 ),
                 // -- Hide by tagged
                 $('<div>').append(
-                    $('<div>', { class: 'URCE-subHeading' }).text(`${I18n.t('urce.prefs.HideByTagged')}:`).append('<br>')
+                    $('<div>', { class: 'URCE-subHeading' }).text(`${I18n.t(`urce.prefs.HideByTagged${inverted}`)}:`).append('<br>')
                 ).append(
                     $('<input>', {
                         type: 'checkbox', id: '_cbhideByTaggedBog', urceprefs: 'filtering', class: 'urceSettingsCheckbox', title: I18n.t('urce.prefs.HideByTaggedBogTitle')
@@ -4669,7 +4671,7 @@ function initSettingsTab() {
                 ),
                 // -- Hide by age of submission
                 $('<div>').append(
-                    $('<div>', { class: 'URCE-subHeading' }).text(`${I18n.t('urce.prefs.HideByAgeOfSubmission')}:`).append('<br>')
+                    $('<div>', { class: 'URCE-subHeading' }).text(`${I18n.t(`urce.prefs.HideByAgeOfSubmission${inverted}`)}:`).append('<br>')
                 ).append(
                     $('<div>').append(
                         $('<input>', {
@@ -4726,7 +4728,7 @@ function initSettingsTab() {
                 ),
                 // -- Hide by description, comments, following
                 $('<div>').append(
-                    $('<div>', { class: 'URCE-subHeading' }).text(`${I18n.t('urce.prefs.DescriptionCommentsFollowing')}:`).append('<br>')
+                    $('<div>', { class: 'URCE-subHeading' }).text(`${I18n.t(`urce.prefs.DescriptionCommentsFollowing${inverted}`)}:`).append('<br>')
                 ).append(
                     // -- -- Following / not following
                     $('<div>', { class: 'URCE-textFirst', urceprefs: 'filtering' }).append(
@@ -5184,6 +5186,8 @@ function initSettingsTab() {
             }
         });
         saveSettingsToStorage();
+        if (settingName === 'invertFilters')
+            initSettingsTab();
         if (((urcePrefs.indexOf('marker') > -1) || (urcePrefs.indexOf('filtering') > -1)) && (settingName.indexOf('unstack') === -1))
             handleUrLayer('settingsToggle', null, null);
     });
@@ -5817,85 +5821,91 @@ function loadTranslations() {
                         DisableFilteringBelowZoomLevel: 'Disable filtering when zoom level >',
                         DisableFilteringBelowZoomLevelTitle: 'Disable UR filtering when zoomed in tighter than the specified zoom level. Set to "10" to enable all filtering.',
                         LifeCycleStatus: 'Hide by lifecycle status',
+                        LifeCycleStatusInverted: 'Show by lifecycle status',
                         HideWaiting: 'Waiting',
-                        HideWaitingTitle: 'Only show URs that need work (hide URs in other parts of the life-cycle).',
+                        HideWaitingTitle: 'Hide/show URs that do not currently need work.',
                         HideUrsCloseNeeded: 'Close needed',
-                        HideUrsCloseNeededTitle: 'Hide URs that need closing.',
+                        HideUrsCloseNeededTitle: 'Hide/show URs that need closing.',
                         HideUrsReminderNeeded: 'Reminders needed',
-                        HideUrsReminderNeededTitle: 'Hide URs where reminders are needed.',
+                        HideUrsReminderNeededTitle: 'Hide/show URs where reminders are needed.',
                         HideByStatus: 'Hide by status',
-                        HideByStatusOpenTitle: 'Hide all open URs.',
-                        HideByStatusClosedTitle: 'Hide all closed (solved and not identified) URs.',
-                        HideByStatusNotIdentifiedTitle: 'Hide all closed as not identified URs.',
-                        HideByStatusSolvedTitle: 'Hide all closed as solved URs.',
+                        HideByStatusInverted: 'Show by status',
+                        HideByStatusOpenTitle: 'Hide/show all open URs.',
+                        HideByStatusClosedTitle: 'Hide/show all closed (solved and not identified) URs.',
+                        HideByStatusNotIdentifiedTitle: 'Hide/show all closed as not identified URs.',
+                        HideByStatusSolvedTitle: 'Hide/show all closed as solved URs.',
                         HideByType: 'Hide by type',
-                        HideByTypeBlockedRoadTitle: 'Hide all blocked road URs.',
-                        HideByTypeGeneralErrorTitle: 'Hide all general error URs.',
-                        HideByTypeIncorrectAddressTitle: 'Hide all incorrect address URs.',
-                        HideByTypeIncorrectJunctionTitle: 'Hide all incorrect junction URs.',
-                        HideByTypeIncorrectRouteTitle: 'Hide all incorrect route URs.',
-                        HideByTypeIncorrectStreetPrefixOrSuffixTitle: 'Hide all incorrect street prefix or suffix URs.',
-                        HideByTypeIncorrectTurnTitle: 'Hide all incorrect turn URs.',
-                        HideByTypeMissingBridgeOverpassTitle: 'Hide all missing bridge overpass URs.',
-                        HideByTypeMissingExitTitle: 'Hide all missing exit URs.',
-                        HideByTypeMissingLandmarkTitle: 'Hide all missing landmark URs.',
-                        HideByTypeMissingOrInvalidSpeedLimitTitle: 'Hide all missing or invalid speed limit URs.',
-                        HideByTypeMissingRoadTitle: 'Hide all missing road URs.',
-                        HideByTypeMissingRoundaboutTitle: 'Hide all missing roundabout URs.',
-                        HideByTypeMissingStreetNameTitle: 'Hide all missing street name URs.',
-                        HideByTypeTurnNotAllowedTitle: 'Hide all turn not allowed URs.',
-                        HideByTypeUndefinedTitle: 'Hide all undefined URs.',
-                        HideByTypeWazeAutomaticTitle: 'Hide all Waze automatic URs.',
-                        HideByTypeWrongDrivingDirectionTitle: 'Hide all wrong driving direction URs.',
+                        HideByTypeInverted: 'Show by type',
+                        HideByTypeBlockedRoadTitle: 'Hide/show all blocked road URs.',
+                        HideByTypeGeneralErrorTitle: 'Hide/show all general error URs.',
+                        HideByTypeIncorrectAddressTitle: 'Hide/show all incorrect address URs.',
+                        HideByTypeIncorrectJunctionTitle: 'Hide/show all incorrect junction URs.',
+                        HideByTypeIncorrectRouteTitle: 'Hide/show all incorrect route URs.',
+                        HideByTypeIncorrectStreetPrefixOrSuffixTitle: 'Hide/show all incorrect street prefix or suffix URs.',
+                        HideByTypeIncorrectTurnTitle: 'Hide/show all incorrect turn URs.',
+                        HideByTypeMissingBridgeOverpassTitle: 'Hide/show all missing bridge overpass URs.',
+                        HideByTypeMissingExitTitle: 'Hide/show all missing exit URs.',
+                        HideByTypeMissingLandmarkTitle: 'Hide/show all missing landmark URs.',
+                        HideByTypeMissingOrInvalidSpeedLimitTitle: 'Hide/show all missing or invalid speed limit URs.',
+                        HideByTypeMissingRoadTitle: 'Hide/show all missing road URs.',
+                        HideByTypeMissingRoundaboutTitle: 'Hide/show all missing roundabout URs.',
+                        HideByTypeMissingStreetNameTitle: 'Hide/show all missing street name URs.',
+                        HideByTypeTurnNotAllowedTitle: 'Hide/show all turn not allowed URs.',
+                        HideByTypeUndefinedTitle: 'Hide/show all undefined URs.',
+                        HideByTypeWazeAutomaticTitle: 'Hide/show all Waze automatic URs.',
+                        HideByTypeWrongDrivingDirectionTitle: 'Hide/show all wrong driving direction URs.',
                         HideByTagged: 'Hide by tagged',
-                        HideByTaggedBogTitle: 'Hide all URs with [BOG] (boots on ground) / [BOTG] (boots on the ground) in description or comments.',
-                        HideByTaggedClosureTitle: 'Hide all URs with [CLOSURE] in description or comments.',
-                        HideByTaggedConstructionTitle: 'Hide all URs with [CONSTRUCTION] in description or comments.',
-                        HideByTaggedDifficultTitle: 'Hide all URs with [DIFFICULT] in description or comments.',
-                        HideByTaggedEventTitle: 'Hide all URs with [EVENT] in description or comments.',
-                        HideByTaggedNoteTitle: 'Hide all URs with [NOTE] in description or comments.',
-                        HideByTaggedRoadworksTitle: 'Hide all URs with [ROADWORKS] in description or comments. Used in the UK.',
-                        HideByTaggedWslmTitle: 'Hide all URs with [WSLM] in description or comments.',
+                        HideByTaggedInverted: 'Show by tagged',
+                        HideByTaggedBogTitle: 'Hide/show all URs with [BOG] (boots on ground) / [BOTG] (boots on the ground) in description or comments.',
+                        HideByTaggedClosureTitle: 'Hide/show all URs with [CLOSURE] in description or comments.',
+                        HideByTaggedConstructionTitle: 'Hide/show all URs with [CONSTRUCTION] in description or comments.',
+                        HideByTaggedDifficultTitle: 'Hide/show all URs with [DIFFICULT] in description or comments.',
+                        HideByTaggedEventTitle: 'Hide/show all URs with [EVENT] in description or comments.',
+                        HideByTaggedNoteTitle: 'Hide/show all URs with [NOTE] in description or comments.',
+                        HideByTaggedRoadworksTitle: 'Hide/show all URs with [ROADWORKS] in description or comments. Used in the UK.',
+                        HideByTaggedWslmTitle: 'Hide/show all URs with [WSLM] in description or comments.',
                         HideByAgeOfSubmission: 'Hide by age of submission',
-                        HideByAgeOfSubmissionLessThanTitle: 'Hide URs that were originally created less than specified number of days ago.',
-                        HideByAgeOfSubmissionMoreThanTitle: 'Hide URs that were originally created more than specified number of days ago.',
+                        HideByAgeOfSubmissionInverted: 'Show by age of submission',
+                        HideByAgeOfSubmissionLessThanTitle: 'Hide/show URs that were originally created less than specified number of days ago.',
+                        HideByAgeOfSubmissionMoreThanTitle: 'Hide/show URs that were originally created more than specified number of days ago.',
                         DescriptionCommentsFollowing: 'Hide by description, comment, following',
-                        HideFollowingTitle: 'Hide URs you are following.',
-                        HideNotFollowingTitle: 'Hide URs you are not following.',
-                        HideWithDescriptionTitle: 'Hide URs that have a description.',
-                        HideWithoutDescriptionTitle: 'Hide URs that do not have a description.',
+                        DescriptionCommentsFollowingInverted: 'Show by description, comment following',
+                        HideFollowingTitle: 'Hide/show URs you are following.',
+                        HideNotFollowingTitle: 'Hide/show URs you are not following.',
+                        HideWithDescriptionTitle: 'Hide/show URs that have a description.',
+                        HideWithoutDescriptionTitle: 'Hide/show URs that do not have a description.',
                         HideCommentsFromMe: 'Comments from me',
-                        HideWithCommentsFromMeTitle: 'Hide URs you have commented on.',
-                        HideWithoutCommentsFromMeTitle: 'Hide URs you have not commented on.',
+                        HideWithCommentsFromMeTitle: 'Hide/show URs you have commented on.',
+                        HideWithoutCommentsFromMeTitle: 'Hide/show URs you have not commented on.',
                         HideFirstCommentByMe: 'First comment by me',
-                        HideFirstCommentByMeTitle: 'Hide URs where you were the first person to comment.',
-                        HideFirstCommentNotByMeTitle: 'Hide URs where someone else was the first person to comment.',
+                        HideFirstCommentByMeTitle: 'Hide/show URs where you were the first person to comment.',
+                        HideFirstCommentNotByMeTitle: 'Hide/show URs where someone else was the first person to comment.',
                         HideLastCommentByMe: 'Last comment by me',
-                        HideLastCommentByMeTitle: 'Hide URs where you are the last person to comment.',
-                        HideLastCommentNotByMeTitle: 'Hide URs where someone else is the last person to comment.',
+                        HideLastCommentByMeTitle: 'Hide/show URs where you are the last person to comment.',
+                        HideLastCommentNotByMeTitle: 'Hide/show URs where someone else is the last person to comment.',
                         HideLastCommentByReporter: 'Last comment by reporter',
-                        HideLastCommentByReporterTitle: 'Hide URs where the reporter is the last person to comment.',
-                        HideLastCommentNotByReporterTitle: 'Hide URs where the reporter is not the last person to comment.',
-                        HideByCommentCountLessThanTitle: 'Hide URs that contain less comments than the number specified.',
-                        HideByCommentCountMoreThanTitle: 'Hide URs that contain more comments than the number specified.',
+                        HideLastCommentByReporterTitle: 'Hide/show URs where the reporter is the last person to comment.',
+                        HideLastCommentNotByReporterTitle: 'Hide/show URs where the reporter is not the last person to comment.',
+                        HideByCommentCountLessThanTitle: 'Hide/show URs that contain less comments than the number specified.',
+                        HideByCommentCountMoreThanTitle: 'Hide/show URs that contain more comments than the number specified.',
                         HideByAgeOfFirstCommentLessThan: 'First comment less than',
-                        HideByAgeOfFirstCommentLessThanTitle: 'Hide URs where the first comment is less than the days specified ago.',
+                        HideByAgeOfFirstCommentLessThanTitle: 'Hide/show URs where the first comment is less than the days specified ago.',
                         HideByAgeOfFirstCommentMoreThan: 'First comment more than',
-                        HideByAgeOfFirstCommentMoreThanTitle: 'Hide URs where the first comment is more than the days specified ago.',
+                        HideByAgeOfFirstCommentMoreThanTitle: 'Hide/show URs where the first comment is more than the days specified ago.',
                         HideByAgeOfLastCommentLessThan: 'Last comment less than',
-                        HideByAgeOfLastCommentLessThanTitle: 'Hide URs where the last comment is less than the days specified ago.',
+                        HideByAgeOfLastCommentLessThanTitle: 'Hide/show URs where the last comment is less than the days specified ago.',
                         HideByAgeOfLastCommentMoreThan: 'Last comment more than',
-                        HideByAgeOfLastCommentMoreThanTitle: 'Hide URs where the last comment is more than the days specified ago.',
-                        HideByKeywordIncluding: 'Hide URs including keyword',
-                        HideByKeywordIncludingTitle: 'Hide URs that include the custom word / text specified.',
-                        HideByKeywordNotIncluding: 'Hide URs not including keyword',
-                        HideByKeywordNotIncludingTitle: 'Hide URs that do not include the custom word / text specified.',
+                        HideByAgeOfLastCommentMoreThanTitle: 'Hide/show URs where the last comment is more than the days specified ago.',
+                        HideByKeywordIncluding: 'Including keyword',
+                        HideByKeywordIncludingTitle: 'Hide/show URs that include the custom word / text specified.',
+                        HideByKeywordNotIncluding: 'Not including keyword',
+                        HideByKeywordNotIncludingTitle: 'Hide/show URs that do not include the custom word / text specified.',
                         HideByKeywordCaseInsensitive: 'Case-insensitive keyword matches',
                         HideByKeywordCaseInsensitiveTitle: 'If enabled, searching for the above including or not including keywords will be done using case insensitive searching.',
-                        HideWithCommentBy: 'Hide with comment by',
-                        HideWithCommentByTitle: 'Hide URs that have been commented on by the specified user(s).\nUse a comma (,) to separate usernames.',
-                        HideWithoutCommentBy: 'Hide without comment by',
-                        HideWithoutCommentByTitle: 'Hide URs that have not been commented on by the specified user(s).\nUse a comma (,) to separate usernames.',
+                        HideWithCommentBy: 'With comment by',
+                        HideWithCommentByTitle: 'Hide/show URs that have been commented on by the specified user(s).\nUse a comma (,) to separate usernames.',
+                        HideWithoutCommentBy: 'Without comment by',
+                        HideWithoutCommentByTitle: 'Hide/show URs that have not been commented on by the specified user(s).\nUse a comma (,) to separate usernames.',
                         ReminderDays: 'Reminder days',
                         ReminderDaysTitle: 'Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment.\nThis is the number of days since the first '
                             + 'comment.\nSet to 0 if you do not use reminders.',
