@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.04.11.02
+// @version     2019.04.12.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -51,7 +51,6 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
         '<b>ENHANCEMENT:</b> Complete overhaul to conform with stricter eslint rules.',
         '<b>ENHANCEMENT:</b> UR marker mouseover now wraps long descriptions at 80 characters to prevent extremely wide popups.',
         '<b>BUGFIX:</b> Loading fails if comment list contains empty row. (again)',
-        '<b>BUGFIX:</b> Custom comment list would not autofill correctly (within Beta release channel).',
         '<b>BUGFIX:</b> Hard fail changed to Soft fail for UR in URL when UR Panel never appears.',
         '<b>BUGFIX:</b> Username was being added to pill even if the setting was disabled.',
         '<b>BUGFIX:</b> Certain old URC custom addons threw an error due to formatting.'],
@@ -994,7 +993,7 @@ async function handleUpdateRequestContainer(urId, caller) {
 }
 
 function checkValue() {
-    const varsFound = this.value.match(/\B(\$\w*\$)\B/gim);
+    const varsFound = this.value.match(/(\B\$[A-Za-z0-9]*\$?)/gm);
     if (varsFound) {
         let title;
         if ((this.value.indexOf('$SELSEGS$') > -1) || (this.value.indexOf('$SELSEGS') > -1))
