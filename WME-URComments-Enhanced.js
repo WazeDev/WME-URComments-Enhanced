@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.04.12.02
+// @version     2019.04.30.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -39,22 +39,15 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Casual day and time shortcut and variable for use in custom comments. (See tooltip)',
-        '<b>NEW:</b> Invert filters.',
-        '<b>NEW:</b> Filter URs with / without comments from specified user(s).',
-        '<b>CHANGE:</b> Slight change to casual times. Afternoon now lasts until 1759 instead of 1359.',
-        '<b>CHANGE:</b> $SELSEGS$ no longer gives popup.',
-        '<b>CHANGE:</b> New comment box detects variables (text wrapped with $\'s) and disables the send button until they are no longer present.',
-        '<b>CHANGE:</b> UR Overflow handling now obeys WME layer setting for show/hide closed.',
-        '<b>ENHANCEMENT:</b> Longer wait for Waze model to populate countries data.',
-        '<b>ENHANCEMENT:</b> Background tasks are temporarily disabled during overflow so data from overflow can be reused for speed.',
-        '<b>ENHANCEMENT:</b> Complete overhaul to conform with stricter eslint rules.',
-        '<b>ENHANCEMENT:</b> UR marker mouseover now wraps long descriptions at 80 characters to prevent extremely wide popups.',
-        '<b>BUGFIX:</b> Loading fails if comment list contains empty row. (again)',
-        '<b>BUGFIX:</b> Hard fail changed to Soft fail for UR in URL when UR Panel never appears.',
-        '<b>BUGFIX:</b> Username was being added to pill even if the setting was disabled.',
-        '<b>BUGFIX:</b> Certain old URC custom addons threw an error due to formatting.',
-        '<b>BUGFIX:</b> 2019.04.12.01 had issue with new fully casual shortcut.'],
+    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Filter by closed by (comma separated list of usernames)',
+        '<b>NEW:</b> Link to Custom Google Spreadsheet on settings tab.',
+        '<b>CHANGE:</b> Filter by keyword is now regex compatible.',
+        '<b>REMOVED:</b> Filter by type Waze automatic (deprecated)',
+        '<b>BUGFIX:</b> Check restrictions and load comment list failed to run during mode change.',
+        '<b>BUGFIX:</b> Re-initialization of background tasks failed to run when returning from events mode.',
+        '<b>BUGFIX:</b> Alignment of "Use URC-E Master Settings setting" in different locales.',
+        '<b>BUGFIX:</b> Zoom out links did not work.',
+        '<b>BUGFIX:</b> Switching comment lists could result in incorrect default comments.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = false,
     LOAD_BEGIN_TIME = performance.now(),
@@ -72,7 +65,7 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
         ir: { commentNum: null, urNum: 8 }, // Incorrect route
         mra: { commentNum: null, urNum: 9 }, // Missing roundabout
         ge: { commentNum: null, urNum: 10 }, // General error
-        tna: { commentNu: null, urNum: 11 }, // Turn not allowed
+        tna: { commentNum: null, urNum: 11 }, // Turn not allowed
         ij: { commentNum: null, urNum: 12 }, // Incorrect junction
         mbo: { commentNum: null, urNum: 13 }, // Missing bridge overpass
         wdd: { commentNum: null, urNum: 14 }, // Wrong driving direction
@@ -335,6 +328,8 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             hideByStatusClosed: false,
             hideByStatusNotIdentified: false,
             hideByStatusSolved: false,
+            hideByStatusClosedBy: false,
+            hideByStatusClosedByUsers: '',
             // -- Hide by type
             hideByTypeBlockedRoad: false,
             hideByTypeGeneralError: false,
@@ -352,7 +347,6 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             hideByTypeMissingStreetName: false,
             hideByTypeTurnNotAllowed: false,
             hideByTypeUndefined: false,
-            hideByTypeWazeAutomatic: false,
             hideByTypeWrongDrivingDirection: false,
             // -- Hide by tag
             hideByTaggedBog: false,
@@ -456,7 +450,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
     let deleted = false;
     ['autoCloseCommentWindow', 'hideClosedUrs', 'showOthersUrsPastReminderClose', 'onlyShowMyUrs', 'hideTaggedUrs', 'hideUrsWoComments', 'hideUrsWoCommentsOrDescriptions',
         'hideUrsWoCommentsWithDescriptions', 'hideUrsWithUserReplies', 'disableAboveZoomLevel', 'hideByAgeOfLastCommentLessThanDaysAgo',
-        'hideByAgeOfLastCommentMoreThanDaysAgo', 'hideByAgeOfFirstCommentMoreThanDaysAgo'].forEach(oldSetting => {
+        'hideByAgeOfLastCommentMoreThanDaysAgo', 'hideByAgeOfFirstCommentMoreThanDaysAgo', 'hideByTypeWazeAutomatic'].forEach(oldSetting => {
         if (_settings.hasOwnProperty(oldSetting)) {
             delete (_settings[oldSetting]);
             deleted = true;
@@ -2083,18 +2077,18 @@ function updateUrceData(urIds) {
                 urceData = {};
             logDebug(`Updating urceData for urIds: ${chunk.join(', ')} (Total Count: ${chunk.length})`);
             if (_settings.hideByKeywordIncludingKeyword.length > 0) {
+                includingKeyword = _settings.hideByKeywordIncludingKeyword.trim(); // Make regex compat ... .replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
                 if (_settings.hideByKeywordCaseInsensitive)
                     keywordIncludingRegex = new RegExp(includingKeyword, 'gim');
                 else
                     keywordIncludingRegex = new RegExp(includingKeyword, 'gm');
-                includingKeyword = ` ${_settings.hideByKeywordIncludingKeyword.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')} `;
             }
             if (_settings.hideByKeywordNotIncludingKeyword.length > 0) {
+                notIncludingKeyword = _settings.hideByKeywordNotIncludingKeyword.trim(); // Make regex comapt ... .replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
                 if (_settings.hideByKeywordCaseInsensitive)
                     keywordNotIncludingRegex = new RegExp(notIncludingKeyword, 'gim');
                 else
                     keywordNotIncludingRegex = new RegExp(notIncludingKeyword, 'gm');
-                notIncludingKeyword = ` ${_settings.hideByKeywordNotIncludingKeyword.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')} `;
             }
             const urSessionsObj = await getUrSessionsAsync(chunk);
             if (urSessionsObj.error)
@@ -2112,6 +2106,7 @@ function updateUrceData(urIds) {
                     firstCommentBy: -2,
                     firstCommentDaysOld: -1,
                     fullText: '',
+                    hideByStatusClosedBy: false,
                     hideUr: false,
                     hideWithCommentBy: false,
                     hideWithoutCommentBy: false,
@@ -2189,6 +2184,11 @@ function updateUrceData(urIds) {
                 else {
                     urceData.fullText += (mapUrsObj[idx].attributes.description) ? mapUrsObj[idx].attributes.description : '';
                 }
+                if (!mapUrsObj[idx].attributes.open && _settings.hideByStatusClosedBy && (_settings.hideByStatusClosedByUsers.length > 0)) {
+                    const userIdsToCheck = getUserIdsToCheck(_settings.hideByStatusClosedByUsers);
+                    if ((userIdsToCheck.length > 0) && (userIdsToCheck.indexOf(mapUrsObj[idx].attributes.resolvedBy) > -1))
+                        urceData.hideByStatusClosedBy = true;
+                }
                 if (_settings.hideWithCommentBy && (_settings.hideWithCommentByUsers.length > 0)) {
                     const userIdsToCheck = getUserIdsToCheck(_settings.hideWithCommentByUsers);
                     if ((userIdsToCheck.length > 0) && (urceData.commentUserIds.length > 0)) {
@@ -2245,6 +2245,7 @@ function updateUrceData(urIds) {
                     || (_settings.hideByStatusClosed && !mapUrsObj[idx].attributes.open)
                     || (_settings.hideByStatusNotIdentified && (mapUrsObj[idx].attributes.resolution === 1))
                     || (_settings.hideByStatusSolved && (mapUrsObj[idx].attributes.resolution === 0))
+                    || (_settings.hideByStatusClosedBy && urceData.hideByStatusClosedBy)
                     // Types
                     || (_settings.hideByTypeBlockedRoad && (mapUrsObj[idx].attributes.type === 19))
                     || (_settings.hideByTypeGeneralError && (mapUrsObj[idx].attributes.type === 10))
@@ -2267,7 +2268,6 @@ function updateUrceData(urIds) {
                             || (mapUrsObj[idx].attributes.type < 6)
                             || (mapUrsObj[idx].attributes.type === 17)
                             || (mapUrsObj[idx].attributes.type === 20)))
-                    || (_settings.hideByTypeWazeAutomatic && mapUrsObj[idx].attributes.description && mapUrsObj[idx].attributes.description.indexOf('Waze Automatic:') > -1)
                     || (_settings.hideByTypeWrongDrivingDirection && (mapUrsObj[idx].attributes.type === 14))
                     // Tags
                     || (_settings.hideByTaggedBog && (urceData.customType === 6))
@@ -2545,8 +2545,11 @@ async function invokeModeChange(event) {
         await initBackgroundTasks('disable', 'invokeModeChange');
     else if (event && event.changed && event.changed.mode === 0)
         await initBackgroundTasks('enable', 'invokeModeChange');
-    if (event && event.changed && ((event.changed.mode === 0) || (event.changed.isImperial === true) || (event.changed.isImperial === false)))
+    if (event && event.changed && ((event.changed.mode === 0) || (event.changed.isImperial === true) || (event.changed.isImperial === false))) {
         handleUrLayer('modeChange', null, null);
+        await checkRestrictions();
+        await changeCommentList(_currentCommentList, false, true);
+    }
 }
 
 function handleUrMarkerClick() {
@@ -3131,6 +3134,7 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
     return new Promise(async resolve => {
         commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
         const commentListInfo = getCommentListInfo(commentListIdx);
+        Object.values(_defaultComments).forEach(a => { a.commentNum = null; });
         logDebug(`Building comment list for: ${commentListInfo.name}`);
         if (phase !== 'init')
             maskBoxes(`${I18n.t('urce.prompts.SwitchingCommentLists')}.<br>${I18n.t('urce.common.PleaseWait')}.`, false, phase, (_selUr.urId > 0));
@@ -3245,47 +3249,65 @@ function processPerCommentListSettings(commentListIdx) {
             + `<div>${I18n.t('urce.prefs.SettingsFor')}: ${getCommentListInfo(commentListIdx).name}</div>`
             + '<div class="URCE-controls">'
             + '   <div>'
-            + `      <input type="checkbox" id="_cbperCommentList_autoSendReminders" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSendReminders_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSendRemindersTitle')}" ${((perCListSettings.autoSendReminders) ? 'checked="true"' : '')} ${((perCListSettings.autoSendReminders_useDefault) ? 'disabled="true"' : '')}>`
-            + `      <label for="_cbperCommentList_autoSendReminders" title="${I18n.t('urce.prefs.AutoSendRemindersTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSendReminders_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSendReminders')}</label>`
-            + `      <div class="URCE-divWarning URCE-divWarningPre">(<div class="URCE-divWarning URCE-divWarningTitle" title="${I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}">${I18n.t('urce.prefs.AutoSendRemindersWarning')}</div><div class="URCE-divWarning">)</div></div>`
-            + `      <input type="checkbox" style="margin-left:8px;" id="_cbperCommentList_autoSendReminders_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSendReminders_useDefault) ? 'checked="true"' : '')}>`
+            + '      <div style="width:calc(100% - 18px); display:inline-block">'
+            + `         <input type="checkbox" id="_cbperCommentList_autoSendReminders" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSendReminders_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSendRemindersTitle')}" ${((perCListSettings.autoSendReminders) ? 'checked="true"' : '')} ${((perCListSettings.autoSendReminders_useDefault) ? 'disabled="true"' : '')}>`
+            + `         <label for="_cbperCommentList_autoSendReminders" title="${I18n.t('urce.prefs.AutoSendRemindersTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSendReminders_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSendReminders')}</label>`
+            + `         <div class="URCE-divWarning URCE-divWarningPre">(<div class="URCE-divWarning URCE-divWarningTitle" title="${I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}">${I18n.t('urce.prefs.AutoSendRemindersWarning')}</div><div class="URCE-divWarning">)</div></div>`
+            + '      </div>'
+            + `      <input type="checkbox" style="right:1px;" id="_cbperCommentList_autoSendReminders_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSendReminders_useDefault) ? 'checked="true"' : '')}>`
             + '   </div>'
             + '   <div>'
-            + `      <input type="checkbox" id="_cbperCommentList_autoSetNewUrComment" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSetNewUrComment_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSetNewUrCommentTitle')}" ${((perCListSettings.autoSetNewUrComment) ? 'checked="true"' : '')} ${((perCListSettings.autoSetNewUrComment_useDefault) ? 'disabled="true"' : '')}>`
-            + `      <label for="_cbperCommentList_autoSetNewUrComment" title="${I18n.t('urce.prefs.AutoSetNewUrCommentTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSetNewUrComment_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSetNewUrComment')}</label>`
-            + `      <input type="checkbox" style="margin-left:8px;" id="_cbperCommentList_autoSetNewUrComment_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSetNewUrComment_useDefault) ? 'checked="true"' : '')}>`
+            + '      <div style="width:calc(100% - 18px); display:inline-block">'
+            + `         <input type="checkbox" id="_cbperCommentList_autoSetNewUrComment" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSetNewUrComment_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSetNewUrCommentTitle')}" ${((perCListSettings.autoSetNewUrComment) ? 'checked="true"' : '')} ${((perCListSettings.autoSetNewUrComment_useDefault) ? 'disabled="true"' : '')}>`
+            + `         <label for="_cbperCommentList_autoSetNewUrComment" title="${I18n.t('urce.prefs.AutoSetNewUrCommentTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSetNewUrComment_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSetNewUrComment')}</label>`
+            + '      </div>'
+            + `      <input type="checkbox" style="right:1px;" id="_cbperCommentList_autoSetNewUrComment_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSetNewUrComment_useDefault) ? 'checked="true"' : '')}>`
             + '   </div>'
             + '   <div>'
-            + `      <input type="checkbox" id="_cbperCommentList_autoSetNewUrCommentSlur" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSetNewUrCommentSlurTitle')}" ${((perCListSettings.autoSetNewUrCommentSlur) ? 'checked="true"' : '')} ${((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? 'disabled="true"' : '')}>`
-            + `      <label for="_cbperCommentList_autoSetNewUrCommentSlur" title="${I18n.t('urce.prefs.AutoSetNewUrCommentSlurTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSetNewUrCommentSlur')}</label>`
-            + `      <input type="checkbox" style="margin-left:8px;" id="_cbperCommentList_autoSetNewUrCommentSlur_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? 'checked="true"' : '')}>`
+            + '      <div style="width:calc(100% - 18px); display:inline-block">'
+            + `         <input type="checkbox" id="_cbperCommentList_autoSetNewUrCommentSlur" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSetNewUrCommentSlurTitle')}" ${((perCListSettings.autoSetNewUrCommentSlur) ? 'checked="true"' : '')} ${((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? 'disabled="true"' : '')}>`
+            + `         <label for="_cbperCommentList_autoSetNewUrCommentSlur" title="${I18n.t('urce.prefs.AutoSetNewUrCommentSlurTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSetNewUrCommentSlur')}</label>`
+            + '      </div>'
+            + `      <input type="checkbox" style="right:1px;" id="_cbperCommentList_autoSetNewUrCommentSlur_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? 'checked="true"' : '')}>`
             + '   </div>'
             + '   <div>'
-            + `      <input type="checkbox" id="_cbperCommentList_autoSetNewUrCommentWithDescription" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSetNewUrCommentWithDescription_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSetNewUrCommentWithDescriptionTitle')}" ${((perCListSettings.autoSetNewUrCommentWithDescription) ? 'checked="true"' : '')} ${((perCListSettings.autoSetNewUrCommentWithDescription_useDefault) ? 'disabled="true"' : '')}>`
-            + `      <label for="_cbperCommentList_autoSetNewUrCommentWithDescription" title="${I18n.t('urce.prefs.AutoSetNewUrCommentWithDescriptionTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSetNewUrCommentWithDescription_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSetNewUrCommentWithDescription')}</label>`
-            + `      <input type="checkbox" style="margin-left:8px;" id="_cbperCommentList_autoSetNewUrCommentWithDescription_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSetNewUrCommentWithDescription_useDefault) ? 'checked="true"' : '')}>`
+            + '      <div style="width:calc(100% - 18px); display:inline-block">'
+            + `         <input type="checkbox" id="_cbperCommentList_autoSetNewUrCommentWithDescription" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSetNewUrCommentWithDescription_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSetNewUrCommentWithDescriptionTitle')}" ${((perCListSettings.autoSetNewUrCommentWithDescription) ? 'checked="true"' : '')} ${((perCListSettings.autoSetNewUrCommentWithDescription_useDefault) ? 'disabled="true"' : '')}>`
+            + `         <label for="_cbperCommentList_autoSetNewUrCommentWithDescription" title="${I18n.t('urce.prefs.AutoSetNewUrCommentWithDescriptionTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSetNewUrCommentWithDescription_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSetNewUrCommentWithDescription')}</label>`
+            + '      </div>'
+            + `      <input type="checkbox" style="right:1px;" id="_cbperCommentList_autoSetNewUrCommentWithDescription_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSetNewUrCommentWithDescription_useDefault) ? 'checked="true"' : '')}>`
             + '   </div>'
             + '   <div>'
-            + `      <input type="checkbox" id="_cbperCommentList_autoSetReminderUrComment" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSetReminderUrComment_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSetReminderUrCommentTitle')}" ${((perCListSettings.autoSetReminderUrComment) ? 'checked="true"' : '')} ${((perCListSettings.autoSetReminderUrComment_useDefault) ? 'disabled="true"' : '')}>`
-            + `      <label for="_cbperCommentList_autoSetReminderUrComment" title="${I18n.t('urce.prefs.AutoSetReminderUrCommentTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSetReminderUrComment_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSetReminderUrComment')}</label>`
-            + `      <input type="checkbox" style="margin-left:8px;" id="_cbperCommentList_autoSetReminderUrComment_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSetReminderUrComment_useDefault) ? 'checked="true"' : '')}>`
+            + '      <div style="width:calc(100% - 18px); display:inline-block">'
+            + `         <input type="checkbox" id="_cbperCommentList_autoSetReminderUrComment" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSetReminderUrComment_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSetReminderUrCommentTitle')}" ${((perCListSettings.autoSetReminderUrComment) ? 'checked="true"' : '')} ${((perCListSettings.autoSetReminderUrComment_useDefault) ? 'disabled="true"' : '')}>`
+            + `         <label for="_cbperCommentList_autoSetReminderUrComment" title="${I18n.t('urce.prefs.AutoSetReminderUrCommentTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSetReminderUrComment_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSetReminderUrComment')}</label>`
+            + '      </div>'
+            + `      <input type="checkbox" style="right:1px;" id="_cbperCommentList_autoSetReminderUrComment_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSetReminderUrComment_useDefault) ? 'checked="true"' : '')}>`
             + '   </div>'
             + '</div>'
             + '<div class="URCE-controls URCE-textFirst">'
             + '   <div>'
-            + `      <div style="display:inline;" title="${I18n.t('urce.prefs.TagEmailTitle')}" class="URCE-label${((perCListSettings.tagEmail_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.TagEmail')}</div>`
-            + `      <input type="text" id="_textperCommentList_tagEmail" class="URCE-textInput urceSettingsTextBox${((perCListSettings.tagEmail_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList" value="${perCListSettings.tagEmail}" title="${I18n.t('urce.prefs.TagEmailTitle')}" ${((perCListSettings.tagEmail_useDefault) ? 'disabled="true"' : '')}>`
-            + `      <input type="checkbox" style="margin-left:8px;" id="_cbperCommentList_tagEmail_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.tagEmail_useDefault) ? 'checked="true"' : '')}>`
+            + '      <div style="width:calc(100% - 18px); display:inline-block">'
+            + `         <div style="display:inline;" title="${I18n.t('urce.prefs.TagEmailTitle')}" class="URCE-label${((perCListSettings.tagEmail_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.TagEmail')}:</div>`
+            + `         <input type="text" id="_textperCommentList_tagEmail" class="URCE-textInput urceSettingsTextBox${((perCListSettings.tagEmail_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList" value="${perCListSettings.tagEmail}" title="${I18n.t('urce.prefs.TagEmailTitle')}" ${((perCListSettings.tagEmail_useDefault) ? 'disabled="true"' : '')}>`
+            + '      </div>'
+            + `      <input type="checkbox" style="right:1px;" id="_cbperCommentList_tagEmail_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.tagEmail_useDefault) ? 'checked="true"' : '')}>`
             + '   </div>'
             + '   <div>'
-            + `      <div style="display:inline;" title="${I18n.t('urce.prefs.ReminderDaysTitle')}" class="URCE-label${((perCListSettings.reminderDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList">${I18n.t('urce.prefs.ReminderDays')}</div>`
-            + `      <input type="number" id="_numperCommentList_reminderDays" class="URCE-daysInput urceSettingsNumberBox${((perCListSettings.reminderDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList" min="0" max="9999" step="1" value="${perCListSettings.reminderDays}" title="${I18n.t('urce.prefs.ReminderDaysTitle')}" ${((perCListSettings.reminderDays_useDefault) ? 'disabled="true"' : '')}>`
-            + `      <input type="checkbox" style="margin-left:8px;" id="_cbperCommentList_reminderDays_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.reminderDays_useDefault) ? 'checked="true"' : '')}>`
+            + '      <div style="width:calc(100% - 18px); display:inline-block">'
+            + `         <div style="display:inline;" title="${I18n.t('urce.prefs.ReminderDaysTitle')}" class="URCE-label${((perCListSettings.reminderDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList">${I18n.t('urce.prefs.ReminderDays')}:</div>`
+            + `         <input type="number" id="_numperCommentList_reminderDays" class="URCE-daysInput urceSettingsNumberBox${((perCListSettings.reminderDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList" min="0" max="9999" step="1" value="${perCListSettings.reminderDays}" title="${I18n.t('urce.prefs.ReminderDaysTitle')}" ${((perCListSettings.reminderDays_useDefault) ? 'disabled="true"' : '')}>`
+            + `         <div style="display:inline;" class="URCE-label${((perCListSettings.reminderDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList">${I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, '')}</div>`
+            + '      </div>'
+            + `      <input type="checkbox" style="right:1px;" id="_cbperCommentList_reminderDays_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.reminderDays_useDefault) ? 'checked="true"' : '')}>`
             + '   </div>'
             + '   <div>'
-            + `      <div style="display:inline;" title="${I18n.t('urce.prefs.CloseDaysTitle')}" class="URCE-label${((perCListSettings.closeDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList">${I18n.t('urce.prefs.CloseDays')}</div>`
-            + `      <input type="number" id="_numperCommentList_closeDays" class="URCE-daysInput urceSettingsNumberBox${((perCListSettings.closeDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList" min="1" max="9999" step="1" value="${perCListSettings.closeDays}" title="${I18n.t('urce.prefs.CloseDaysTitle')}" ${((perCListSettings.closeDays_useDefault) ? 'disabled="true"' : '')}>`
-            + `      <input type="checkbox" style="margin-left:8px;" id="_cbperCommentList_closeDays_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.closeDays_useDefault) ? 'checked="true"' : '')}>`
+            + '      <div style="width:calc(100% - 18px); display:inline-block">'
+            + `         <div style="display:inline;" title="${I18n.t('urce.prefs.CloseDaysTitle')}" class="URCE-label${((perCListSettings.closeDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList">${I18n.t('urce.prefs.CloseDays')}:</div>`
+            + `         <input type="number" id="_numperCommentList_closeDays" class="URCE-daysInput urceSettingsNumberBox${((perCListSettings.closeDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList" min="1" max="9999" step="1" value="${perCListSettings.closeDays}" title="${I18n.t('urce.prefs.CloseDaysTitle')}" ${((perCListSettings.closeDays_useDefault) ? 'disabled="true"' : '')}>`
+            + `         <div style="display:inline;" class="URCE-label${((perCListSettings.closeDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList">${I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, '')}</div>`
+            + '      </div>'
+            + `      <input type="checkbox" style="right:1px;" id="_cbperCommentList_closeDays_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.closeDays_useDefault) ? 'checked="true"' : '')}>`
             + '   </div>'
             + '</div>';
     $('#URCE-divPerCommentListSettings').html(htmlOut);
@@ -3460,8 +3482,6 @@ async function initBackgroundTasks(status, phase) {
         WazeWrap.Events.unregister('moveend', null, invokeMoveEnd);
         W.map.events.unregister('mousedown', null, mouseDown);
         WazeWrap.Events.unregister('mouseup', null, mouseUp);
-        WazeWrap.Events.unregister('change:mode', null, invokeModeChange);
-        WazeWrap.Events.unregister('change:isImperial', null, invokeModeChange);
         W.model.states.off('objectsadded', checkRestrictions);
         W.model.countries.off('objectsadded', checkRestrictions);
     }
@@ -3605,7 +3625,7 @@ function initCommentsTab() {
         ),
         $('<div>', { id: '_commentList', class: 'URCE-divCC' })
     );
-    $('a[id^="zoomOutLink"]').off().on('click', () => {
+    $('a[id^="zoomOutLink"]').off().on('click', function () {
         if ($('#panel-container .mapUpdateRequest .top-section .close-panel').length > 0)
             autoCloseUrPanel();
         W.map.setCenter(W.map.getCenter(), parseInt(this.getAttribute('zoomTo')));
@@ -3840,14 +3860,28 @@ function initSettingsTab() {
                     type: 'checkbox', id: '_cbautoSwitchCommentList', urceprefs: 'commentList', class: 'urceSettingsCheckbox', title: I18n.t('urce.prefs.AutoSwitchCommentListTitle')
                 }).prop('checked', _settings.autoSwitchCommentList),
                 $('<label>', { for: '_cbautoSwitchCommentList', title: I18n.t('urce.prefs.AutoSwitchCommentListTitle'), class: 'URCE-label' }).text(I18n.t('urce.prefs.AutoSwitchCommentList')),
-                $('<div>', { class: 'URCE-spreadsheetLink' }).append(
-                    $('<a>', {
-                        class: 'URCE-Controls URCE-spreadsheetLink', id: 'urce-spreadsheet-link', title: I18n.t('urce.prefs.SpreadsheetLinkTitle'), href: 'http://bit.ly/urc-e_ss'
-                    }).text(I18n.t('urce.prefs.SpreadsheetLink')).click(function (e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        window.open(this.href, '_blank');
-                    })
+                $('<div>', { id: 'urceSpreadsheetLinks' }).append(
+                    $('<div>', { class: 'URCE-spreadsheetLink', id: 'urceSpreadsheetLinkDiv' }).append(
+                        $('<a>', {
+                            class: 'URCE-Controls URCE-spreadsheetLink', id: 'urce-spreadsheet-link', title: I18n.t('urce.prefs.SpreadsheetLinkTitle'), href: 'http://bit.ly/urc-e_ss'
+                        }).text(I18n.t('urce.prefs.SpreadsheetLink')).click(function (e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.open(this.href, '_blank');
+                        })
+                    ),
+                    ((_settings.customSsId && (_settings.customSsId.length > 0))
+                        ? $('<div>', { class: 'URCE-spreadsheetLink', id: 'urceCustomSpreadsheetLinkDiv' }).append(
+                            $('<a>', {
+                                class: 'URCE-Controls URCE-spreadsheetLink', id: 'urce-customSpreadsheet-link', title: I18n.t('urce.prefs.CustomSpreadsheetLinkTitle'), href: `https://docs.google.com/spreadsheets/d/${_settings.customSsId}/edit`
+                            }).text(I18n.t('urce.prefs.CustomSpreadsheetLink')).click(function (e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.open(this.href, '_blank');
+                            })
+                        )
+                        : ''
+                    )
                 )
             )
         ),
@@ -4090,7 +4124,8 @@ function initSettingsTab() {
                             step: '1',
                             value: _settings.reminderDays,
                             title: formatText(I18n.t('urce.prefs.ReminderDaysTitle'), false)
-                        })
+                        }),
+                        $('<div>', { class: 'URCE-divDaysInline', urceprefs: 'urce' }).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
                     ),
                     $('<div>', { title: formatText(I18n.t('urce.prefs.CloseDaysTitle'), false), class: 'URCE-label', urceprefs: 'urce' }).append(`${I18n.t('urce.prefs.CloseDays')}: `).append(
                         $('<input>', {
@@ -4103,7 +4138,8 @@ function initSettingsTab() {
                             step: '1',
                             value: _settings.closeDays,
                             title: formatText(I18n.t('urce.prefs.CloseDaysTitle'), false)
-                        })
+                        }),
+                        $('<div>', { class: 'URCE-divDaysInline', urceprefs: 'urce' }).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
                     )
                 )
             )
@@ -4460,7 +4496,26 @@ function initSettingsTab() {
                     $('<label>', {
                         for: '_cbhideByStatusSolved', urceprefs: 'filtering', title: I18n.t('urce.prefs.HideByStatusSolvedTitle'), class: 'URCE-label'
                     }).text(I18n.t('venues.update_requests.panel.solved')),
-                    $('<br>')
+                    $('<br>'),
+                    $('<div>', { style: 'display:inline-flex;' }).append(
+                        $('<input>', {
+                            type: 'checkbox', id: '_cbhideByStatusClosedBy', urceprefs: 'filtering', class: 'urceSettingsCheckbox', title: I18n.t('urce.prefs.HideByStatusClosedByTitle')
+                        }).prop('checked', _settings.hideByStatusClosedBy),
+                        $('<label>', {
+                            for: '_cbhideByStatusClosedBy', urceprefs: 'filtering', class: 'URCE-label', title: I18n.t('urce.prefs.HideByStatusClosedByTitle')
+                        }).text(`${I18n.t('urce.common.ClosedBy')}:`),
+                        $('<div>', { class: 'URCE-divDaysInline' }).append(
+                            $('<input>', {
+                                type: 'text',
+                                id: '_texthideByStatusClosedByUsers',
+                                class: 'urceSettingsTextBox',
+                                style: 'width:150px; height:20px;',
+                                urceprefs: 'filtering',
+                                value: _settings.hideByStatusClosedByUsers,
+                                title: I18n.t('urce.prefs.HideByStatusClosedByTitle')
+                            })
+                        )
+                    )
                 ),
                 // -- Hide by type
                 $('<div>').append(
@@ -4589,13 +4644,6 @@ function initSettingsTab() {
                     $('<label>', {
                         for: '_cbhideByTypeUndefined', urceprefs: 'filtering', title: I18n.t('urce.prefs.HideByTypeUndefinedTitle'), class: 'URCE-label'
                     }).text(I18n.t('urce.urTypes.Undefined')),
-                    $('<br>'),
-                    $('<input>', {
-                        type: 'checkbox', id: '_cbhideByTypeWazeAutomatic', urceprefs: 'filtering', class: 'urceSettingsCheckbox', title: I18n.t('urce.prefs.HideByTypeWazeAutomaticTitle')
-                    }).prop('checked', _settings.hideByTypeWazeAutomatic),
-                    $('<label>', {
-                        for: '_cbhideByTypeWazeAutomatic', urceprefs: 'filtering', title: I18n.t('urce.prefs.HideByTypeWazeAutomaticTitle'), class: 'URCE-label'
-                    }).text(I18n.t('urce.urTypes.WazeAutomatic')),
                     $('<br>'),
                     $('<input>', {
                         type: 'checkbox',
@@ -4868,7 +4916,7 @@ function initSettingsTab() {
                                 value: _settings.hideByCommentCountLessThanNumber,
                                 title: I18n.t('urce.prefs.HideByCommentCountLessThanTitle')
                             }),
-                            $('<div>', { class: 'URCE-divDaysInline', urceprefs: 'filtering' }).append(I18n.t('urce.tabs.Comments').toLowerCase())
+                            $('<div>', { class: 'URCE-divDaysInline', urceprefs: 'filtering' }).append(I18n.t('urce.tabs.Comments'))
                         )
                     ),
                     $('<div>', { style: 'display:inline-flex;' }).append(
@@ -4891,7 +4939,7 @@ function initSettingsTab() {
                                 value: _settings.hideByCommentCountMoreThanNumber,
                                 title: I18n.t('urce.prefs.HideByCommentCountMoreThanTitle')
                             }),
-                            $('<div>', { class: 'URCE-divDaysInline', urceprefs: 'filtering' }).append(I18n.t('urce.tabs.Comments').toLowerCase())
+                            $('<div>', { class: 'URCE-divDaysInline', urceprefs: 'filtering' }).append(I18n.t('urce.tabs.Comments'))
                         )
                     ),
                     // -- -- Age of first comment less than / more than XX days old
@@ -5229,6 +5277,28 @@ function initSettingsTab() {
                 }
             });
             saveSettingsToStorage();
+            if (settingName === 'customSsId') {
+                if (val && (val.length > 0)) {
+                    const $customSsIdLink = $('<a>', {
+                        class: 'URCE-Controls URCE-spreadsheetLink', id: 'urce-customSpreadsheet-link', title: I18n.t('urce.prefs.CustomSpreadsheetLinkTitle'), href: `https://docs.google.com/spreadsheets/d/${val}/edit`
+                    }).text(I18n.t('urce.prefs.CustomSpreadsheetLink')).click(function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.open(this.href, '_blank');
+                    });
+                    if ($('#urceCustomSpreadsheetLinkDiv').length === 0) {
+                        $('#urceSpreadsheetLinks').append(
+                            $('<div>', { class: 'URCE-spreadsheetLink', id: 'urceCustomSpreadsheetLinkDiv' }).append($customSsIdLink)
+                        );
+                    }
+                    else {
+                        $('#urceCustomSpreadsheetLinkDiv').empty().append($customSsIdLink);
+                    }
+                }
+                else if ($('#urceCustomSpreadsheetLinkDiv')) {
+                    $('#urceCustomSpreadsheetLinkDiv').remove();
+                }
+            }
             if ((settingName !== 'tagEmail') && (settingName !== 'customSsId'))
                 handleUrLayer('settingsToggle', null, null);
             else if ((settingName === 'tagEmail') || ((settingName === 'customSsId') && (_currentCommentList === 1001)))
@@ -5649,6 +5719,7 @@ function loadTranslations() {
                         All: 'All',
                         AutoSwitched: 'auto switched',
                         Backup: 'Backup',
+                        ClosedBy: 'Closed by',
                         CollapseAll: 'Collapse all',
                         CommentList: 'Comment List',
                         CurrentCommentListTitle: 'You can change the currently loaded comment list using this drop down.\nChanging this drop down will not be saved as a setting and '
@@ -5703,8 +5774,10 @@ function loadTranslations() {
                         CustomSsId: 'Custom Google Spreadsheet ID',
                         CustomSsIdTitle: 'Enter the Google Spreadsheet ID for the Custom comment list you would like to load when you select "Custom G Sheet" comment list.',
                         CommentListStyleTitle: 'Select the style you would like the URC-E panel to be displayed in. This only affects the look of the tab, no functionality is changed.',
-                        SpreadsheetLink: 'Spreadsheet',
+                        SpreadsheetLink: 'URC-E Master Spreadsheet',
                         SpreadsheetLinkTitle: 'Click here to view the URC-E spreadsheet.',
+                        CustomSpreadsheetLink: 'Custom Google Spreadsheet',
+                        CustomSpreadsheetLinkTitle: 'Click here to view your custom google spreadsheet.',
                         StyleDefault: 'Default',
                         StyleUrStyle: 'UR Style',
                         TagEmail: 'Tag email',
@@ -5748,7 +5821,7 @@ function loadTranslations() {
                         AutoZoomInOnNewUr: 'Auto zoom in on new UR',
                         AutoZoomInOnNewUrTitle: 'Automatically zoom in when opening new (no comments) URs.',
                         AutoZoomOutAfterComment: 'Auto zoom out after comment',
-                        AutoZoomOutAfterCommentTitle: 'Automatically zoom the map back to the previous zoom after clicking clicking send on a UR comment.',
+                        AutoZoomOutAfterCommentTitle: 'Automatically zoom the map back to the previous zoom after clicking send on a UR comment.',
                         DisableDoneNextButtons: 'Disable done / next buttons',
                         DisableDoneNextButtonsTitle: 'Disable the done / next buttons at the bottom of the UR panel.',
                         ReplaceNextWithDoneButton: 'Replace Next UR button with Done button',
@@ -5835,6 +5908,7 @@ function loadTranslations() {
                         HideByStatusClosedTitle: 'Hide/show all closed (solved and not identified) URs.',
                         HideByStatusNotIdentifiedTitle: 'Hide/show all closed as not identified URs.',
                         HideByStatusSolvedTitle: 'Hide/show all closed as solved URs.',
+                        HideByStatusClosedByTitle: 'Hide/show closed URs that were closed by any of the specified users.\nInput username(s) in text box. Separate multiple entries with a comma.',
                         HideByType: 'Hide by type',
                         HideByTypeInverted: 'Show by type',
                         HideByTypeBlockedRoadTitle: 'Hide/show all blocked road URs.',
@@ -5853,7 +5927,6 @@ function loadTranslations() {
                         HideByTypeMissingStreetNameTitle: 'Hide/show all missing street name URs.',
                         HideByTypeTurnNotAllowedTitle: 'Hide/show all turn not allowed URs.',
                         HideByTypeUndefinedTitle: 'Hide/show all undefined URs.',
-                        HideByTypeWazeAutomaticTitle: 'Hide/show all Waze automatic URs.',
                         HideByTypeWrongDrivingDirectionTitle: 'Hide/show all wrong driving direction URs.',
                         HideByTagged: 'Hide by tagged',
                         HideByTaggedInverted: 'Show by tagged',
@@ -5944,7 +6017,7 @@ function loadTranslations() {
                         CustomGoogleSheetSignIn: 'Sign In/Authorize',
                         CustomGoogleSheetSignInTitle: 'Sign into Google and authorize this app.',
                         CustomGoogleSheetSignout: 'Sign out',
-                        CustomGoogleSheetRevokeAccess: 'Revoke Access',
+                        CustomGoogleSheetRevokeAccess: 'Revoke access',
                         CustomGoogleSheetRevokeAccessTitle: 'Revoke access to your Google data for this app.',
                         CustomGoogleSpreadsheet: 'Custom Google Spreadsheet',
                         ConvertCurrentCustom: 'Convert current custom',
@@ -5955,7 +6028,7 @@ function loadTranslations() {
                         + 'Drive account.<br><br>URC-E needs access to two sets of permissions for your Google Account. The first is drive.file, which is any file created by URC-E within your Google '
                         + 'Drive. However, this does not allow URC-E to access the main "template" created to copy from. In order to see this template, a second permission of drive.readonly is asked '
                         + 'for. This permission is what causes the "unverified" warning from Google as URC-E cannot become verified due to not owning the Waze.com domain.<br><br>Once you have '
-                        + 'created / converted your own static sheet, you can click "Deauthorize" and even "Sign out" as URC-E does not need any permissions to your Google account after the initial '
+                        + 'created / converted your own static sheet, you can click "Sign out" or even "Revoke access" as URC-E does not need any permissions to your Google account after the initial '
                         + 'creation of the new spreadsheet.'
                     },
                     urPanel: {
@@ -5989,8 +6062,7 @@ function loadTranslations() {
                         NotIdentified: 'Not identified'
                     },
                     urTypes: {
-                        Undefined: 'Undefined',
-                        WazeAutomatic: 'Waze automatic'
+                        Undefined: 'Undefined'
                     },
                     prompts: {
                         CommentTooLong: 'Appending another comment to the current text will cause the comment to be longer than 2000 characters, which is too long. URC-E did not append the selected '
@@ -6001,7 +6073,7 @@ function loadTranslations() {
                         ConvertCreateSetProperPermissions: 'Set proper permissions',
                         ConvertCreateConvertCurrent: 'Convert current',
                         ConvertCreateConvertDefaultComments: 'Convert default comments',
-                        ConvertCreateConvertComments: 'Conver comments',
+                        ConvertCreateConvertComments: 'Convert comments',
                         ConvertCreateSpreadsheetURL: 'Spreadsheet URL',
                         ConvertCreateGoogleAccount: 'Google account',
                         ConvertCreateSpreadsheetID: 'Spreadsheet ID',
