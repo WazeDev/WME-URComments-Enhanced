@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.04.25.01
+// @version     2019.04.30.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -41,6 +41,7 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SCRIPT_VERSION = GM_info.script.version,
     SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Filter by closed by (comma separated list of usernames)',
         '<b>NEW:</b> Link to Custom Google Spreadsheet on settings tab.',
+        '<b>CHANGE:</b> Filter by keyword is now regex compatible.',
         '<b>REMOVED:</b> Filter by type Waze automatic (deprecated)',
         '<b>BUGFIX:</b> Check restrictions and load comment list failed to run during mode change.',
         '<b>BUGFIX:</b> Re-initialization of background tasks failed to run when returning from events mode.',
@@ -2076,18 +2077,18 @@ function updateUrceData(urIds) {
                 urceData = {};
             logDebug(`Updating urceData for urIds: ${chunk.join(', ')} (Total Count: ${chunk.length})`);
             if (_settings.hideByKeywordIncludingKeyword.length > 0) {
+                includingKeyword = _settings.hideByKeywordIncludingKeyword.trim(); // Make regex compat ... .replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
                 if (_settings.hideByKeywordCaseInsensitive)
                     keywordIncludingRegex = new RegExp(includingKeyword, 'gim');
                 else
                     keywordIncludingRegex = new RegExp(includingKeyword, 'gm');
-                includingKeyword = ` ${_settings.hideByKeywordIncludingKeyword.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')} `;
             }
             if (_settings.hideByKeywordNotIncludingKeyword.length > 0) {
+                notIncludingKeyword = _settings.hideByKeywordNotIncludingKeyword.trim(); // Make regex comapt ... .replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
                 if (_settings.hideByKeywordCaseInsensitive)
                     keywordNotIncludingRegex = new RegExp(notIncludingKeyword, 'gim');
                 else
                     keywordNotIncludingRegex = new RegExp(notIncludingKeyword, 'gm');
-                notIncludingKeyword = ` ${_settings.hideByKeywordNotIncludingKeyword.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')} `;
             }
             const urSessionsObj = await getUrSessionsAsync(chunk);
             if (urSessionsObj.error)
