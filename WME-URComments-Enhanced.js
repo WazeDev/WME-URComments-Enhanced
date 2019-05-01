@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.04.30.01
+// @version     2019.05.01.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -39,22 +39,15 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Filter by closed by (comma separated list of usernames)',
-        '<b>NEW:</b> Link to Custom Google Spreadsheet on settings tab.',
-        '<b>CHANGE:</b> Filter by keyword is now regex compatible.',
-        '<b>REMOVED:</b> Filter by type Waze automatic (deprecated)',
-        '<b>BUGFIX:</b> Check restrictions and load comment list failed to run during mode change.',
-        '<b>BUGFIX:</b> Re-initialization of background tasks failed to run when returning from events mode.',
-        '<b>BUGFIX:</b> Alignment of "Use URC-E Master Settings setting" in different locales.',
-        '<b>BUGFIX:</b> Zoom out links did not work.',
-        '<b>BUGFIX:</b> Switching comment lists could result in incorrect default comments.'],
+    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Using WazeWrap alert system.',
+        '<b>BUGFIX:</b> Restrictions not updating correctly on map move in certain situations.',
+        '<b>BUGFIX:</b> Need translation message box not displayed correctly.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
     LOAD_BEGIN_TIME = performance.now(),
     STATIC_ONLY_USERS = ['itzwolf'],
     URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c',
     URCE_SPREADSHEET_ID = '1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ',
-    _alertBoxArray = [],
     _autoSwitch = {},
     _commentLists = [],
     _defaultComments = {
@@ -203,7 +196,6 @@ let _settings = {},
     _restrictionsEnforce = {},
     _commentList = [],
     _markerStackArray = [],
-    _alertBoxInUse = false,
     _createConvert = false,
     _currentCommentList = null,
     _filtersAppliedOnZoom = false,
@@ -435,8 +427,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
         else
             outputText += `<i>${I18n.t('urce.common.None')}</i>`;
         outputText += `<br><br><b>${I18n.t('urce.prompts.RestoreSettingsConfirmation')}</b>`;
-        return showAlertBox('fa-cog', I18n.t('urce.prompts.RestoreSettings'), formatText(outputText), true, I18n.t('urce.common.Yes'), I18n.t('urce.common.No'),
-            () => { loadSettingsFromStorage(restoreSettings, true); }, () => { });
+        return WazeWrap.Alerts.confirm(SCRIPT_NAME, formatText(outputText), () => { loadSettingsFromStorage(restoreSettings, true); }, () => { }, I18n.t('urce.common.Yes'), I18n.t('urce.common.No'));
     }
     const loadedSettings = (restoreSettings === 'resetSettings') ? undefined : restoreSettings || $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
     _settings = loadedSettings || defaultSettings;
@@ -472,10 +463,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
         initTab();
         await changeCommentList(parseInt(this.value), false, true);
         await handleUrLayer('settingsToggle', null, null);
-        showAlertBox('fa-cog',
-            ((restoreSettings === 'resetSettings') ? `${I18n.t('urce.prompts.ResetSettings')}.` : `${I18n.t('urce.prompts.RestoreSettings')}.`),
-            ((restoreSettings === 'resetSettings') ? `${I18n.t('urce.prompts.ResetSettingsComplete')}.` : `${I18n.t('urce.prompts.RestoreSettingsComplete')}.`),
-            false, 'OK', null, null, null);
+        WazeWrap.Alerts.success(SCRIPT_NAME, ((restoreSettings === 'resetSettings') ? `${I18n.t('urce.prompts.ResetSettingsComplete')}.` : `${I18n.t('urce.prompts.RestoreSettingsComplete')}.`));
     }
     return true;
 }
@@ -506,100 +494,34 @@ async function saveSettingsToStorage() {
     }
 }
 
-function closeAlertBox() {
-    $('#urceAlertBoxHeader').empty();
-    $('#urceAlertBoxContent').empty();
-    $('#urceAlertTickBtn').removeClass('urceButtonDisabled');
-    $('#urceAlertTickBtnCaption').text('');
-    $('#urceAlertCrossBtnCaption').text('');
-    $('#urceAlertBox').css('visibility', 'hidden');
-    $('#urceAlertCrossBtn').css('visibility', 'hidden');
-    _alertBoxInUse = false;
-    if (_alertBoxArray.length > 0)
-        buildAlertBoxFromArray();
+function disableWme(message, remove) {
+    if (remove && ($('#urce-disableWme').length > 0)) {
+        $('#urce-disableWme').remove();
+    }
+    else if (!remove && ($('#urce-disableWme').length < 1)) {
+        $('body').append(
+            $('<div>', { id: 'urce-disableWme', style: 'position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:2000;' }).append(
+                $('<div>', {
+                    id: 'urce-disableWme-text',
+                    style: 'position:absolute; padding:8px; top:50%; left:50%; transform:translate(-50%,-50%); border:2px solid black; border-radius:5px;'
+                        + 'box-shadow:5px 5px 10px black; background-color:#2F96B4; color:white; font-weight:600; z-index:20001'
+                }).append(message)
+            )
+        );
+    }
 }
 
-function buildAlertBoxFromArray() {
-    _alertBoxInUse = true;
-    const currBoxObj = _alertBoxArray.shift();
-    let alertBoxTickAction = null;
-    let alertBoxCrossAction = null;
-    $('#urceAlertBoxHeader').append(
-        $('<span>').append(
-            $('<i>', { class: `fa ${currBoxObj.headerIcon}` })
-        ).append(` ${currBoxObj.title}`)
-    );
-    $('#urceAlertBoxContent').html(currBoxObj.content);
-    $('#urceAlertTickBtnCaption').text(currBoxObj.tickText);
-    if (currBoxObj.tickAction === 'disabled')
-        $('#urceAlertTickBtn').addClass('urceButtonDisabled');
-    if (typeof currBoxObj.tickAction === 'function')
-        alertBoxTickAction = currBoxObj.tickAction;
-    if (currBoxObj.hasCross) {
-        $('#urceAlertCrossBtnCaption').text(currBoxObj.crossText);
-        $('#urceAlertCrossBtn').css('visibility', 'visible');
-        if (typeof currBoxObj.crossAction === 'function')
-            alertBoxCrossAction = currBoxObj.crossAction;
-    }
-    else {
-        $('#urceAlertCrossBtn').css('visibility', 'hidden');
-    }
-    if (currBoxObj.tickAction === 'disabled') {
-        $('#urceAlertTickBtn').off();
-    }
-    else {
-        $('#urceAlertTickBtn').off().on('click', () => {
-            if (alertBoxTickAction !== null)
-                alertBoxTickAction();
-            closeAlertBox();
-        });
-    }
-    $('#urceAlertCrossBtn').off().on('click', () => {
-        if (alertBoxCrossAction !== null)
-            alertBoxCrossAction();
-        closeAlertBox();
-    });
-    $('#urceAlertBox').css('visibility', 'visible');
+function dismissAlertBanner(event, idx) {
+    if ((event && (event !== null) && event.data && (event.data.idx > -1) && ($(`#urceAlertPanelBox-${event.data.idx}`).length > 0))
+        || ((idx > 0) && ($(`#urceAlertPanelBox-${idx}`).length > 0))
+    )
+        $(`#urceAlertPanelBox-${((idx > -1) ? idx : event.data.idx)}`).remove();
 }
 
-function showAlertBox(headerIcon, title, content, hasCross, tickText, crossText, tickAction, crossAction) {
-    _alertBoxArray.push(
-        {
-            headerIcon, title, content, hasCross, tickText, crossText, tickAction, crossAction
-        }
-    );
-    if (!_alertBoxInUse)
-        buildAlertBoxFromArray();
-}
-
-function dismissPanelBoxMsg(event) {
-    if (event && event.data && (event.data.idx > -1))
-        showAlertBanner(null, null, null, null, null, null, event.data.idx, 'remove');
-}
-
-function showAlertBanner(message, delay, mapBanner, panelBox, panelBoxTitle, panelBoxDismiss, index, phase) {
-    if (phase === 'remove' && (index !== null)) {
-        checkTimeout({ timeout: 'alertBannerTimeout', toIndex: index });
-        if ($(`#urceAlertPanelBox-${index}`).length > 0)
-            $(`#urceAlertPanelBox-${index}`).remove();
-        return;
-    }
+function alertBanner(message, alertBox, panelBox, panelBoxTitle, panelBoxDismiss, index) {
     index = (index === null) ? getRandomId() : index;
-    if (mapBanner) {
-        if ($(`#urceAlertBanner-${index}`).length > 0)
-            $(`#urceAlertBanner-${index}`).remove();
-        $('#map').append($('<div>', { id: `urceAlertBanner-${index}`, class: 'URCE-alertBanner' }));
-        $(`#urceAlertBanner-${index}`).append(
-            $('<div>', { id: `urceAlertBannerMsg-${index}`, class: 'URCE-alertBannerMsg', style: `width:${(message.length * 10)}px;` }).text(message)
-        ).show();
-        checkTimeout({ timeout: 'alertBannerTimeout', toIndex: index });
-        _timeouts.alertBannerTimeout[index] = window.setTimeout(() => {
-            $(`#urceAlertBannerMsg-${index}`).remove();
-            if ($(`#urceAlertBanner-${index}`).children().length === 0)
-                $(`#urceAlertBanner-${index}`).remove();
-            checkTimeout({ timeout: 'alertBannerTimeout', toIndex: index });
-        }, delay);
-    }
+    if (alertBox)
+        WazeWrap.Alerts.info(SCRIPT_NAME, message);
     if (panelBox) {
         if ($(`#urceAlertPanelBox-${index}`).length > 0)
             $(`#urceAlertPanelBox-${index}`).remove();
@@ -610,7 +532,7 @@ function showAlertBanner(message, delay, mapBanner, panelBox, panelBoxTitle, pan
             $(`#urceAlertPanelBox-${index}`).append(
                 $('<div>', { class: 'URCE-divDismiss' }).append(
                     $('<i>', { class: 'fa fa-close', 'aria-hidden': 'true' })
-                ).off().on('click', { idx: index }, dismissPanelBoxMsg)
+                ).off().on('click', { idx: index }, dismissAlertBanner)
             );
         }
         $(`#urceAlertPanelBox-${index}`).append(message);
@@ -650,24 +572,24 @@ function getCollapsedGroups() {
     });
 }
 
-function checkRestrictions() {
+function checkRestrictions(event) {
     return new Promise(resolve => {
-        (function retry(tries, toIndex) {
+        (function retry(tries, toIndex, evt) {
             checkTimeout({ timeout: 'checkRestrictions', toIndex });
             let state,
                 country;
             if (tries < 301) {
-                if (this && this.objectType === 'state') {
-                    country = W.model.countries.getObjectById(Object.values(this.objects)[0].countryID).abbr;
-                    state = Object.values(this.objects)[0].name;
+                if (evt && evt[0].type === 'state') {
+                    country = W.model.countries.getObjectById(evt[0].countryID).abbr;
+                    state = evt[0].name;
                 }
-                else if (this && this.objectType === 'country') {
-                    country = Object.values(this.objects)[0].abbr;
+                else if (evt && evt[0].type === 'country') {
+                    country = evt[0].abbr;
                     state = null;
                 }
                 if (!country && !W.model.countries.top) {
                     logDebug(`Waiting on Waze model for countries to populate. Try ${tries} of 300.`);
-                    _timeouts.checkRestrictions[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex);
+                    _timeouts.checkRestrictions[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex, evt);
                 }
                 else {
                     logDebug('Setting up restrictions.');
@@ -704,12 +626,12 @@ function checkRestrictions() {
                             });
                         }
                         if (Object.values(_restrictionsEnforce).length > 0)
-                            showAlertBanner(I18n.t('urce.prompts.RestrictionsEnforced'), null, false, true, restrictionsAlertBannerTitle, false, 9997, null);
+                            alertBanner(I18n.t('urce.prompts.RestrictionsEnforced'), false, true, restrictionsAlertBannerTitle, false, 9997);
                         else
-                            showAlertBanner(null, null, false, true, null, false, 9997, 'remove');
+                            dismissAlertBanner(null, 9997);
                     }
                     else {
-                        showAlertBanner(null, null, false, true, null, false, 9997, 'remove');
+                        dismissAlertBanner(null, 9997);
                     }
                     resolve();
                 }
@@ -717,7 +639,7 @@ function checkRestrictions() {
             else {
                 resolve(logError('Unable to check for restrictions'));
             }
-        }(1, getRandomId()));
+        }(1, getRandomId(), event));
     });
 }
 
@@ -916,7 +838,7 @@ async function handleUpdateRequestContainer(urId, caller) {
                 const postUrCommentResult = await postUrComment(_commentList[commentNum].comment, false);
                 if (postUrCommentResult.error) {
                     logError(new Error(postUrCommentResult.text));
-                    showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
+                    WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentInsertTimedOut'));
                 }
             }
         }
@@ -940,7 +862,7 @@ async function handleUpdateRequestContainer(urId, caller) {
                 if (postUrCommentResult.reason === 'commentTooLong')
                     logError(new Error(postUrCommentResult.text));
                 else
-                    showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
+                    WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentInsertTimedOut'));
             }
         }
     }
@@ -1006,7 +928,7 @@ async function handleClickedComment(commentNum, doubleClick) {
     _selUr.doubleClick = doubleClick;
     if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length === 0) {
         logWarning('No comment box found after clicking a comment from the list.');
-        showAlertBanner(I18n.t('urce.prompts.NoCommentBox'), 5000, true, false, null, null, null, null);
+        alertBanner(I18n.t('urce.prompts.NoCommentBox'), true, false, null, null, null);
         return;
     }
     if (doubleClick)
@@ -1018,7 +940,7 @@ async function handleClickedComment(commentNum, doubleClick) {
         if (postUrCommentResult.reason === 'commentTooLong')
             logError(new Error(postUrCommentResult.text));
         else
-            showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentInsertTimedOut'), false, 'OK', '', null, null);
+            WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentInsertTimedOut'));
     }
 }
 
@@ -1294,11 +1216,11 @@ function handleClickedShortcut(event) {
                     $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(currVal.replace(replaceText, streetName)).change().keyup();
             }
             else {
-                showAlertBox('fa-road', I18n.t('urce.prompts.SelSegsInsertErrorHeader'), I18n.t('urce.prompts.SelSegsInsertError'), false, 'OK', '', null, null);
+                WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.SelSegsInsertError'));
             }
         }
         else {
-            showAlertBox('fa-road', I18n.t('urce.prompts.SelSegsInsertErrorHeader'), I18n.t('urce.prompts.SelSegsInsertError'), false, 'OK', '', null, null);
+            WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.SelSegsInsertError'));
         }
     }
     else {
@@ -1314,7 +1236,7 @@ function handleClickedShortcut(event) {
             newVal += currVal.slice(cursorPos);
         }
         if (newVal.length > 2000)
-            showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentTooLong'), false, 'OK', '', null, null);
+            WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
         else
             $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(newVal).selectRange((cursorPos + outputText.length + 1)).change().keyup().focus();
     }
@@ -1324,7 +1246,7 @@ function autoPostReminderComment(urId, comment) {
     return new Promise(resolve => {
         try {
             logDebug(`Automatically sending reminder comment to urId: ${urId}`);
-            showAlertBanner(`${I18n.t('urce.prompts.ReminderMessageAuto')} ${urId}`, 3000, true, false, null, null, null, null);
+            alertBanner(`${I18n.t('urce.prompts.ReminderMessageAuto')} ${urId}`, true, false, null, null, null);
             W.model.updateRequestSessions.objects[urId].addComment(comment);
             W.model.mapUpdateRequests.objects[urId].attributes.reminderSent = true;
         }
@@ -1386,7 +1308,7 @@ function postUrComment(commentStr, doubleClick) {
                     commentOutput = formatText(comment, true);
                 }
                 if (commentOutput.length > 2000) {
-                    showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.CommentTooLong'), false, 'OK', '', null, null);
+                    WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
                     resolve({ error: true, reason: 'commentTooLong', text: I18n.t('urce.prompts.CommentTooLong') });
                 }
                 else {
@@ -2372,10 +2294,10 @@ function handleUrLayer(phase, filter, urMapMarkerIdsArr) {
                     await handleUrOverflow();
             }
             else if (urMapMarkerIdsArr.length > 499) {
-                showAlertBanner(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), 5000, true, true, null, true, 9999, null);
+                alertBanner(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), true, true, null, true, 9999);
             }
             else if (urMapMarkerIdsArr.length < 500) {
-                showAlertBanner(null, null, true, true, null, true, 9999, 'remove');
+                dismissAlertBanner(null, 9999);
             }
             if (phase !== 'overflow')
                 _filtersAppliedOnZoom = filter;
@@ -2506,9 +2428,9 @@ function invokeMoveEnd() {
     )
         W.controller.reload();
     else if (!_settings.enableUrOverflowHandling && (W.model.mapUpdateRequests.getObjectArray().length > 499))
-        showAlertBanner(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), 5000, true, true, null, true, 9999, null);
+        alertBanner(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), true, true, null, true, 9999);
     else
-        showAlertBanner(null, null, true, true, null, true, 9999, 'remove');
+        dismissAlertBanner(null, 9999);
 }
 
 async function invokeZoomEnd() {
@@ -2530,10 +2452,10 @@ async function invokeZoomEnd() {
         if (_settings.enableUrOverflowHandling)
             await handleUrOverflow();
         else
-            showAlertBanner(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), 5000, true, true, null, true, 9999, null);
+            alertBanner(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), true, true, null, true, 9999);
     }
     else if (W.model.mapUpdateRequests.getObjectArray().length < 500) {
-        showAlertBanner(null, null, true, true, null, true, 9999, 'remove');
+        dismissAlertBanner(null, 9999);
     }
     if (filter !== null)
         await handleUrLayer('zoomEnd', filter, null);
@@ -2727,13 +2649,10 @@ async function createStaticToGoogleSheet(convert) {
     if (_createConvert || (await checkGapiSigninStatus() === false))
         return;
     if (convert && getCommentListInfo(_currentCommentList).type !== 'static') {
-        showAlertBox('fa-table', I18n.t('urce.prompts.ConvertToGoogleSheet'), I18n.t('urce.prompts.ConversionLoadAddonFirst'), false, 'OK', null, null, null);
+        WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.ConversionLoadAddonFirst'));
         return;
     }
-    showAlertBox('fa-table',
-        ((convert) ? I18n.t('urce.prompts.ConvertToGoogleSheet') : I18n.t('urce.prompts.CreateGoogleSheet')),
-        ((convert) ? I18n.t('urce.prompts.ConvertingToGoogleSheet') : I18n.t('urce.prompts.CreatingGoogleSheet')),
-        false, I18n.t('urce.common.PleaseWait'), null, 'disabled', null);
+    disableWme(((convert) ? I18n.t('urce.prompts.ConvertingToGoogleSheet') : I18n.t('urce.prompts.CreatingGoogleSheet')), false);
     _createConvert = true;
     const date = new Date(),
         dateTs = `${date.getFullYear()}${(date.getMonth() < 9) ? `0${(date.getMonth() + 1)}` : (date.getMonth() + 1)
@@ -2846,16 +2765,7 @@ async function createStaticToGoogleSheet(convert) {
             });
         }
     }
-    if (_alertBoxArray.length > 0) {
-        for (let idx = 0; idx < _alertBoxArray.length; idx++) {
-            if ((_alertBoxArray[idx].tickAction === 'disabled')
-                && ((_alertBoxArray[idx].title === I18n.t('urce.prompts.ConvertToGoogleSheet')) || (_alertBoxArray[idx].title === I18n.t('urce.prompts.CreateGoogleSheet')))
-            )
-                _alertBoxArray.splice(idx, 1);
-        }
-    }
-    if (_alertBoxInUse && $('#urceAlertTickBtn').hasClass('urceButtonDisabled'))
-        closeAlertBox();
+    disableWme(null, true);
     let content = '<div id="urceCreateConvertResults">'
         + `<div><div><b>${I18n.t('urce.prompts.ConvertCreateCreateCustomSpreadsheet')}:</b> <div style="display:inline-block;${(createError) ? ' color:red;' : ''}"><i>${(createError) ? I18n.t('urce.common.Failed') : I18n.t('urce.common.Success')}</i></div></div>`
         // eslint-disable-next-line no-nested-ternary
@@ -2902,7 +2812,7 @@ async function createStaticToGoogleSheet(convert) {
             + `<li>${I18n.t('urce.prompts.ConvertCreateCompletionStepsStep3')}</li></ol>`;
     }
     content += '</div>';
-    showAlertBox('fa-table', ((convert) ? I18n.t('urce.prompts.ConvertToGoogleSheet') : I18n.t('urce.prompts.CreateGoogleSheet')), content, false, 'OK', null, null, null);
+    WazeWrap.Alerts.info(SCRIPT_NAME, content, true, true);
     $('#urceCopySsId').off().on('click', () => {
         $('<input>', { id: 'copySsIdTemp' }).val(newSsId).appendTo('body').select();
         document.execCommand('copy');
@@ -3153,7 +3063,7 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
                 return $selList.val(commentListIdx).off().on('change', function () {
                     if ((parseInt(this.value) === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
                         $(this).val(_currentCommentList);
-                        showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.SetCustomSsIdFirst'), false, 'OK', '', null, null);
+                        WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
                     }
                     else {
                         changeCommentList(parseInt(this.value), false, true);
@@ -3373,7 +3283,7 @@ function handleError(obj) {
     $('#_commentList').append(
         $('<div>', { class: 'URCE-divLoading' }).html(outputText)
     );
-    showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), outputText, false, 'OK', '', null, null);
+    WazeWrap.Alerts.error(SCRIPT_NAME, outputText);
     maskBoxes(null, true, obj.phase, obj.maskUrPanel);
 }
 
@@ -3582,18 +3492,6 @@ function injectCss() {
         + '#sidepanel-urc-e .URCE-divTabs { padding:8px; padding-top:2px; }'
         // Main Tabs
         + '.URCE-tabIcon { padding-bottom:6px; width:18px; }'
-        // Alert Box and banner
-        + '.URCE-alertBanner { width:100%; font-size:15px; font-weight:bold; margin-left:auto; margin-right:auto; position:absolute; top:0px; left:10px; z-index: 20000; display:none; }'
-        + '.URCE-alertBannerMsg { text-align:center; font-size:15px; font-weight:600; margin-left:auto; margin-right:auto; color:black; background-color:red; }'
-        + '#urceAlertBox { position:fixed; visibility:hidden; top:50%; left:50%; z-index:10000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px;'
-        + '     box-shadow:5px 5px 10px silver; padding:4px; -webkit-transform:translate(-50%, -50%); transform:translate(-50%, -50%);'
-        + '}'
-        + '.URCE-alertBox-header { padding:4px; background-color:LightBlue; font-weight:bold; font-size:16px; }'
-        + '.URCE-alertBox-content { padding:4px; background-color:White; overflow:auto; max-height:500px; font-size:14px; }'
-        + '.URCE-alertBox-controls { text-align:center; padding:4px; }'
-        + '.URCE-alertBox-controls-span-urceAlertTickBtn, .URCE-alertBox-controls-span-urceAlertCrossBtn { cursor:pointer; font-size:16px; border:thin outset black; padding:2px 10px 2px 10px; }'
-        + '.URCE-alertBox-controls-span-urceAlertTickBtn.urceButtonDisabled, .URCE-alertBox-controls-span-urceAlertCrossBtn.urceButtonDisabled { cursor:default; border:thin outset gray; color:gray; }'
-        + '.URCE-alertBox-controls-span-urceAlertTickBtnCaption, .URCE-alertBox-controls-span-urceAlertCrossBtnCaption { font-weight:bold; }'
         // urceDiv
         + '#urceDiv { position:absolute; visibility:hidden; top:0; left:0; z-index:15000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px;'
         + '     box-shadow:5px 5px 10px silver; padding:4px;'
@@ -3630,6 +3528,10 @@ function initCommentsTab() {
             autoCloseUrPanel();
         W.map.setCenter(W.map.getCenter(), parseInt(this.getAttribute('zoomTo')));
     });
+    if (_needTranslation) {
+        alertBanner(`URC-E does not currently have a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>). Translations are setup on a Google Sheet, so they are simple to do.<br><br>If you would like to provide a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>), please contact ${SCRIPT_AUTHOR} via forum PM or Discord, or click reply on the forum thread:<br><a href="https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278" target="_blank">https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278</a>`,
+            false, true, null, true, 9998);
+    }
 }
 
 function initToolsTab() {
@@ -3691,8 +3593,14 @@ function initToolsTab() {
                 $('<button>', {
                     id: '_butresetSettings', urceprefs: 'tools', class: 'urceToolsButton', title: I18n.t('urce.tools.ResetSettingsTitle')
                 }).text(I18n.t('urce.common.Reset')).on('click', () => {
-                    showAlertBox('fa-cog', I18n.t('urce.prompts.ResetSettings'), I18n.t('urce.prompts.ResetSettingsConfirmation'), true,
-                        I18n.t('urce.common.Yes'), I18n.t('urce.common.No'), () => { loadSettingsFromStorage('resetSettings', true); }, () => { });
+                    WazeWrap.Alerts.confirm(
+                        SCRIPT_NAME,
+                        I18n.t('urce.prompts.ResetSettingsConfirmation'),
+                        () => { loadSettingsFromStorage('resetSettings', true); },
+                        () => { },
+                        I18n.t('urce.common.Yes'),
+                        I18n.t('urce.common.No')
+                    );
                 }),
                 $('<div>', { id: 'urceRestoreSettingsFile', style: 'display:none;' }).append(
                     $('<input>', {
@@ -3771,10 +3679,6 @@ function initSettingsTab() {
     logDebug('Initializing Settings tab.');
     const urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '',
         inverted = (_settings.invertFilters) ? 'Inverted' : '';
-    if (_needTranslation) {
-        showAlertBanner(`URC-E does not currently have a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>). Translations are setup on a Google Sheet, so they are simple to do.<br><br>If you would like to provide a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>), please contact ${SCRIPT_AUTHOR} via forum PM or Discord, or click reply on the forum thread:<br><a href="https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278" target="_blank">https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278</a>`,
-            null, false, true, null, true, 9998, null);
-    }
     $('#panel-urce-settings').empty().append(
         $('<div>', { id: 'expandCollapseAll', class: 'URCE-expandCollapseAll' }).append(
             $('<div>', { class: 'URCE-expandCollapseAllItem' }).text(I18n.t('urce.common.ExpandAll')).off().on('click', () => {
@@ -3818,7 +3722,7 @@ function initSettingsTab() {
                     return $selList.val(_settings.commentList).off().on('change', function () {
                         if ((parseInt(this.value) === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
                             $(this).val(_currentCommentList);
-                            showAlertBox('fa-exclamation-circle', I18n.t('urce.common.ErrorHeader'), I18n.t('urce.prompts.SetCustomSsIdFirst'), false, 'OK', '', null, null);
+                            WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
                         }
                         else {
                             changeCommentList(parseInt(this.value), false, false);
@@ -5320,29 +5224,7 @@ function initGui() {
     logDebug('Initializing GUI.');
     injectCss();
     $('body').append(
-        $('<div>', { id: 'urceAlertBox', class: 'urceAlertBox' }),
         $('<div>', { id: 'urceDiv' })
-    );
-    $('#urceAlertBox').append(
-        $('<div>', { id: 'urceAlertBoxHeader', class: 'URCE-alertBox-header' })
-    ).append(
-        $('<div>', { id: 'urceAlertBoxContent', class: 'URCE-alertBox-content' })
-    ).append(
-        $('<div>', { id: 'urceAlertBoxControls', class: 'URCE-alertBox-controls' }).append(
-            $('<span>', { id: 'urceAlertTickBtn', class: 'URCE-alertBox-controls-span-urceAlertTickBtn' }).append(
-                $('<i>', { class: 'fa fa-check' })
-            ).append(
-                $('<span>', { id: 'urceAlertTickBtnCaption', class: 'URCE-alertBox-controls-span-urceAlertTickBtnCaption' })
-            )
-        ).append(
-            '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
-        ).append(
-            $('<span>', { id: 'urceAlertCrossBtn', class: 'URCE-alertBox-controls-span-urceAlertCrossBtn' }).append(
-                $('<i>', { class: 'fa fa-times' })
-            ).append(
-                $('<span>', { id: 'urceAlertCrossBtnCaption', class: 'URCE-alertBox-controls-span-urceAlertCrossBtnCaption' })
-            )
-        )
     );
     const $content = $('<div>').append(
         $('<span>', { class: 'URCE-spanTitle' }).text(SCRIPT_NAME),
@@ -5971,9 +5853,9 @@ function loadTranslations() {
                         HideByAgeOfLastCommentMoreThan: 'Last comment more than',
                         HideByAgeOfLastCommentMoreThanTitle: 'Hide/show URs where the last comment is more than the days specified ago.',
                         HideByKeywordIncluding: 'Including keyword',
-                        HideByKeywordIncludingTitle: 'Hide/show URs that include the custom word / text specified.',
+                        HideByKeywordIncludingTitle: 'Hide/show URs that include the custom word / text specified. Regex compatible.',
                         HideByKeywordNotIncluding: 'Not including keyword',
-                        HideByKeywordNotIncludingTitle: 'Hide/show URs that do not include the custom word / text specified.',
+                        HideByKeywordNotIncludingTitle: 'Hide/show URs that do not include the custom word / text specified. Regex compatible.',
                         HideByKeywordCaseInsensitive: 'Case-insensitive keyword matches',
                         HideByKeywordCaseInsensitiveTitle: 'If enabled, searching for the above including or not including keywords will be done using case insensitive searching.',
                         HideWithCommentBy: 'With comment by',
