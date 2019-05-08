@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.05.04.02
+// @version     2019.05.08.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -40,6 +40,7 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
     SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Using WazeWrap alert system.',
+        '<b>BUGFIX:</b> Modified drive time casual mode to account for after midnight.',
         '<b>BUGFIX:</b> Restrictions not updating correctly on map move in certain situations.',
         '<b>BUGFIX:</b> Need translation message box not displayed correctly.',
         '<b>BUGFIX:</b> Last comment more than days old filter.'],
@@ -1080,32 +1081,41 @@ function formatText(text, replaceVars) {
                     if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData) {
                         const driveDaysAgo = W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.driveDaysOld;
                         const driveHour = new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).getHours();
-                        const dayOfWeek = new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).getDay();
-                        let casualText;
+                        let dayOfWeek = new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).getDay(),
+                            casualText;
+                        if ((driveDaysAgo < 21) && (driveHour > -1) && (driveHour < 4))
+                            dayOfWeek = (dayOfWeek > 0) ? dayOfWeek - 1 : 6;
                         if (driveDaysAgo === 0) {
-                            if ((driveHour > 20) || (driveHour < 4))
+                            if ((driveHour > 20) && (driveHour < 25))
                                 casualText = I18n.t('urce.time.Tonight');
+                            else if ((driveHour > -1) && (driveHour < 4))
+                                casualText = I18n.t('urce.time.LastNight');
                             else
                                 casualText = I18n.t('urce.time.ThisCasualTOD').replace('$THIS_CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
                         }
                         else if (driveDaysAgo === 1) {
-                            if ((driveHour > 20) || (driveHour < 4))
+                            if ((driveHour > 20) && (driveHour < 25))
                                 casualText = I18n.t('urce.time.LastNight');
+                            else if ((driveHour > -1) && (driveHour < 4))
+                                casualText = I18n.t('urce.time.ThisWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
                             else
                                 casualText = I18n.t('urce.time.YesterdayCasualTOD').replace('$YESTERDAY_CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                            casualText = casualText.replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek]);
                         }
                         else if ((driveDaysAgo > 1) && (driveDaysAgo < 21)) {
-                            if ((driveDaysAgo > 1) && (driveDaysAgo < 7))
-                                casualText = I18n.t('urce.time.ThisWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
-                            else if ((driveDaysAgo > 6) && (driveDaysAgo < 14))
+                            if ((driveDaysAgo > 1) && (driveDaysAgo < 7)) {
+                                if ((driveDaysAgo === 6) && (driveHour > -1) && (driveHour < 4))
+                                    casualText = I18n.t('urce.time.LastWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                                else
+                                    casualText = I18n.t('urce.time.ThisWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                            }
+                            else if ((driveDaysAgo > 6) && (driveDaysAgo < 14)) {
                                 casualText = I18n.t('urce.time.LastWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
-                            else if ((driveDaysAgo > 13) && (driveDaysAgo < 21))
+                            }
+                            else if ((driveDaysAgo > 13) && (driveDaysAgo < 21)) {
                                 casualText = I18n.t('urce.time.TwoWeeksAgo');
-                            casualText = casualText
-                                .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek])
-                                .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek])
-                                .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek])
-                                .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek]);
+                            }
+                            casualText = casualText.replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek]);
                         }
                         else if ((driveDaysAgo > 20) && (driveDaysAgo < 28)) {
                             casualText = I18n.t('urce.time.ThreeWeeksAgo');
