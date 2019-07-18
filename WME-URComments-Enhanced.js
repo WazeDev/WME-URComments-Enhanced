@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.05.08.01
+// @version     2019.07.18.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -39,11 +39,9 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Using WazeWrap alert system.',
-        '<b>BUGFIX:</b> Modified drive time casual mode to account for after midnight.',
-        '<b>BUGFIX:</b> Restrictions not updating correctly on map move in certain situations.',
-        '<b>BUGFIX:</b> Need translation message box not displayed correctly.',
-        '<b>BUGFIX:</b> Last comment more than days old filter.'],
+    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> WazeWrap settings storage ability.',
+        '<b>BUGFIX:</b> Per comment list settings toggles.'
+    ],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
     LOAD_BEGIN_TIME = performance.now(),
@@ -246,6 +244,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
     const invalidRestoreSettings = [],
         retainedSettings = [],
         defaultSettings = {
+            lastSaved: 0,
             lastVersion: undefined,
             wmeUserId: undefined,
             // Comment List
@@ -432,11 +431,12 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
         return WazeWrap.Alerts.confirm(SCRIPT_NAME, formatText(outputText), () => { loadSettingsFromStorage(restoreSettings, true); }, () => { }, I18n.t('urce.common.Yes'), I18n.t('urce.common.No'));
     }
     const loadedSettings = (restoreSettings === 'resetSettings') ? undefined : restoreSettings || $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
-    _settings = loadedSettings || defaultSettings;
-    Object.keys(defaultSettings).forEach(prop => {
-        if (!_settings.hasOwnProperty(prop))
-            _settings[prop] = defaultSettings[prop];
-    });
+    _settings = $.extend({}, defaultSettings, loadedSettings);
+
+    const serverSettings = await WazeWrap.Remote.RetrieveSettings(SETTINGS_STORE_NAME);
+    if (serverSettings && (serverSettings.lastSaved > _settings.lastSaved))
+        $.extend(_settings, serverSettings);
+
     if (_settings.wmeUserId !== _wmeUserId)
         _settings.wmeUserId = _wmeUserId;
     // Remove old settings
@@ -491,7 +491,9 @@ async function saveSettingsToStorage() {
             _settings.commentListCollapses = {};
         _settings.commentListCollapses[_settings.commentList] = await getCollapsedGroups();
         _settings.lastVersion = SCRIPT_VERSION;
+        _settings.lastSaved = Date.now();
         localStorage.setItem(SETTINGS_STORE_NAME, JSON.stringify(_settings));
+        WazeWrap.Remote.SaveSettings(SETTINGS_STORE_NAME, _settings);
         logDebug('Settings saved.');
     }
 }
@@ -3249,10 +3251,14 @@ function processPerCommentListSettings(commentListIdx) {
             }
         }
         if (settingName.indexOf('_useDefault') > -1) {
-            if (!isChecked(this))
+            if (!isChecked(this)) {
                 $(this).siblings().removeClass('urceDisabled').removeAttr('disabled');
-            else
+                $(this).siblings().children().removeClass('urceDisabled').removeAttr('disabled');
+            }
+            else {
                 $(this).siblings().addClass('urceDisabled').attr('disabled', true);
+                $(this).siblings().children().addClass('urceDisabled').attr('disabled', true);
+            }
             const parentSettingName = settingName.replace('_useDefault', '');
             if (_settings.perCommentListSettings[_currentCommentList][parentSettingName] !== _settings[parentSettingName]) {
                 _settings.perCommentListSettings[_currentCommentList][parentSettingName] = _settings[parentSettingName];
@@ -5467,7 +5473,7 @@ function initCheckForUrPanel(urId, tries) {
 async function init() {
     log('Initializing.');
     _wmeUserId = W.loginManager.user.id;
-    loadSettingsFromStorage(null, null);
+    await loadSettingsFromStorage(null, null);
     const urIdInUrl = parseInt(location.search.split('mapUpdateRequest=')[1]),
         loadTranslationsResult = await loadTranslations(),
         initCommentListsResult = await initCommentLists(),
