@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name        WME URComments-Enhanced
+// @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.05.04.01
+// @version     2019.07.23.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -39,12 +39,13 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Using WazeWrap alert system.',
-        '<b>BUGFIX:</b> Restrictions not updating correctly on map move in certain situations.',
-        '<b>BUGFIX:</b> Need translation message box not displayed correctly.',
-        '<b>BUGFIX:</b> Last comment more than days old filter.'],
+    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> WazeWrap settings storage ability.',
+        '<b>CHANGE:</b> Compatibility with latest WME release.',
+        '<b>CHANGE:</b> Cleanup of mutation processing.',
+        '<b>BUGFIX:</b> Per comment list settings toggles.'
+    ],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
-    DEBUG = false,
+    DEBUG = true,
     LOAD_BEGIN_TIME = performance.now(),
     STATIC_ONLY_USERS = ['itzwolf'],
     URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c',
@@ -89,93 +90,88 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
         initUrIdInUrl: undefined
     };
 const _saveButtonObserver = new MutationObserver(mutations => {
-    mutations.forEach(mutation => {
-        if ($(mutation.target).hasClass('waze-icon-save')
-                && mutation.type === 'attributes'
-                && mutation.attributeName === 'class'
-                && mutation.target.classList.contains('ItemDisabled')
-                && (mutation.oldValue.toString().indexOf('ItemDisabled') === -1)
-        )
-            handleAfterSave();
-    });
+    const saveCheck = mutations.filter(mutation => (mutation.type === 'attributes')
+        && (mutation.attributeName === 'class')
+        && mutation.target.classList.contains('ItemDisabled')
+        && (mutation.oldValue.toString().indexOf('ItemDisabled') === -1)
+        && $(mutation.target).hasClass('waze-icon-save'));
+    if (saveCheck.length > 0)
+        handleAfterSave();
 });
 const _urPanelContainerObserver = new MutationObserver(async mutations => {
-    const newUrId = await getUrId();
-    mutations.forEach(mutation => {
-        if ($(mutation.target).is('#panel-container')
-                && (mutation.type === 'childList')
-                && (mutation.addedNodes.length > 0)
-                && (mutation.addedNodes[0].className.indexOf('show') > -1)
-                && (newUrId > 0)
-        ) {
-            handleUpdateRequestContainer(newUrId, 'UR panel mutation');
-        }
-        else if (_selUr.handling
-                && $(mutation.target).is('#panel-container')
-                && (mutation.type === 'childList')
-                && (mutation.removedNodes.length > 0)
-                && (mutation.removedNodes[0].className.indexOf('show') > -1)
-        ) {
-            handleAfterCloseUpdateContainer();
-        }
-        else if (_selUr.handling
-                && $(mutation.target).hasClass('comment-list')
-                && (mutation.type === 'childList')
-                && (mutation.addedNodes.length > 0)
-                && (newUrId > 0)
-                && (newUrId === _selUr.urId)
-        ) {
-            handleAfterCommentMutation(newUrId);
-        }
-        else if (_selUr.handling
-                && (mutation.type === 'attributes')
-                && (mutation.attributeName === 'data-state')
-        ) {
-            if (mutation.target.attributes['data-state'].nodeValue === 'open')
-                _selUr.newStatus = 'open';
-            else if (mutation.target.attributes['data-state'].nodeValue === 'solved')
-                _selUr.newStatus = 'solved';
-            else if (mutation.target.attributes['data-state'].nodeValue === 'not-identified')
-                _selUr.newStatus = 'notidentified';
-            else
-                logWarning(mutation.target.attributes['data-state'].nodeValue);
-        }
-    });
+    const newUrId = await getUrId(),
+        dataStateMutations = mutations.filter(mutation => (mutation.type === 'attributes') && (mutation.attributeName === 'data-state')),
+        mutatedChildren = mutations.filter(mutation => (mutation.type === 'childList')),
+        addedChildren = mutatedChildren.filter(mutatedChild => (mutatedChild.addedNodes.length > 0)),
+        removedChildren = mutatedChildren.filter(mutatedChild => (mutatedChild.removedNodes.length > 0));
+    if ((addedChildren.length > 0)
+        && addedChildren.filter(addedChild => (addedChild.addedNodes[0].className
+            && (addedChild.addedNodes[0].className.indexOf('show') > -1)
+            && (newUrId > 0)
+            && $(addedChild.target).is('#panel-container')))
+            .length > 0)
+        return handleUpdateRequestContainer(newUrId, 'UR panel mutation');
+    if (_selUr.handling
+        && (removedChildren.length > 0)
+        && removedChildren.filter(removedChild => (removedChild.removedNodes[0].className
+            && (removedChild.removedNodes[0].className.indexOf('show') > -1)
+            && $(removedChild.target).is('#panel-container')))
+            .length > 0)
+        return handleAfterCloseUpdateContainer();
+    if (_selUr.handling
+        && (addedChildren.length > 0)
+        && addedChildren.filter(addedChild => (addedChild.addedNodes.length > 0)
+            && $(addedChild.target).hasClass('comment-list')
+            && (newUrId > 0)
+            && (newUrId === _selUr.urId))
+            .length > 0)
+        return handleAfterCommentMutation(newUrId);
+    if (_selUr.handling && (dataStateMutations.length > 0)) {
+        const dataState = dataStateMutations[0].target.attributes['data-state'].nodeValue.replace('-', '');
+        if ((dataState === 'open') || (dataState === 'solved') || (dataState === 'notidentified'))
+            _selUr.newStatus = dataState;
+        else
+            logWarning(dataStateMutations[0].target.attributes['data-state'].nodeValue);
+        return true;
+    }
+    return false;
 });
 const _urMarkerObserver = new MutationObserver(mutations => {
     const urMapMarkerIdsArr = [];
-    mutations.forEach(mutation => {
-        if (mutation.type === 'childList') {
-            for (let idx = 0; idx < mutation.addedNodes.length; idx++) {
-                const addedNode = mutation.addedNodes[idx];
-                if (mutation.addedNodes[idx].classList && addedNode.classList.contains('map-problem') && mutation.addedNodes[idx].classList.contains('user-generated')) {
-                    if ((parseInt(mutation.addedNodes[idx].attributes['data-id'].value) > 0) && (urMapMarkerIdsArr.indexOf(parseInt(mutation.addedNodes[idx].attributes['data-id'].value)) === -1))
-                        urMapMarkerIdsArr.push(parseInt(mutation.addedNodes[idx].attributes['data-id'].value));
+    if (!_selUr.handling) {
+        const clickedUrCheck = mutations.filter(mutation => (mutation.type === 'attributes')
+            && mutation.target.classList
+            && (mutation.target.classList.contains('user-generated') || mutation.target.classList.contains('has-comments'))
+            && ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList.contains('selected'))
+            && (parseInt(mutation.target.attributes['data-id'].value) > 0));
+        if (clickedUrCheck.length > 0) {
+            for (let idx = 0; idx < clickedUrCheck.length; idx++) {
+                if (!(_selUr.urId > 0) || (_selUr.urId !== parseInt(clickedUrCheck[idx].target.attributes['data-id'].value))) {
+                    _selUr = {
+                        doubleClick: false,
+                        handling: false,
+                        newStatus: undefined,
+                        urId: parseInt(clickedUrCheck[idx].target.attributes['data-id'].value),
+                        urOpen: false
+                    };
+                    logDebug(`Caught selected UR by backdoor. Firing the minions. urId: ${_selUr.urId}`);
+                    return;
                 }
             }
         }
-        else if (mutation.type === 'attributes'
-                && mutation.target.classList
-                && (mutation.target.classList.contains('user-generated') || mutation.target.classList.contains('has-comments'))
-        ) {
-            if ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList.contains('selected')) {
-                if (parseInt(mutation.target.attributes['data-id'].value) > 0) {
-                    if (!_selUr.handling) {
-                        if (!(_selUr.urId > 0) || (_selUr.urId !== parseInt(mutation.target.attributes['data-id'].value))) {
-                            _selUr = {
-                                doubleClick: false,
-                                handling: false,
-                                newStatus: undefined,
-                                urId: parseInt(mutation.target.attributes['data-id'].value),
-                                urOpen: false
-                            };
-                            logDebug(`Caught selected UR by backdoor. Firing the minions. urId: ${_selUr.urId}`);
-                        }
-                    }
+    }
+    const addedChildren = mutations.filter(mutation => (mutation.type === 'childList') && (mutation.addedNodes.length > 0));
+    if (addedChildren.length > 0) {
+        addedChildren.forEach(addedChild => {
+            for (let idx = 0; idx < addedChild.addedNodes.length; idx++) {
+                const addedNode = addedChild.addedNodes[idx];
+                if (addedNode.classList && addedNode.classList.contains('map-problem') && addedNode.classList.contains('user-generated')) {
+                    if ((parseInt(addedNode.attributes['data-id'].value) > 0) && (urMapMarkerIdsArr.indexOf(parseInt(addedNode.attributes['data-id'].value)) === -1))
+                        urMapMarkerIdsArr.push(parseInt(addedNode.attributes['data-id'].value));
                 }
             }
-        }
-    });
+        });
+    }
     const zoomLevel = W.map.getZoom();
     let filter = true;
     if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
@@ -245,6 +241,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
     const invalidRestoreSettings = [],
         retainedSettings = [],
         defaultSettings = {
+            lastSaved: 0,
             lastVersion: undefined,
             wmeUserId: undefined,
             // Comment List
@@ -431,11 +428,12 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
         return WazeWrap.Alerts.confirm(SCRIPT_NAME, formatText(outputText), () => { loadSettingsFromStorage(restoreSettings, true); }, () => { }, I18n.t('urce.common.Yes'), I18n.t('urce.common.No'));
     }
     const loadedSettings = (restoreSettings === 'resetSettings') ? undefined : restoreSettings || $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
-    _settings = loadedSettings || defaultSettings;
-    Object.keys(defaultSettings).forEach(prop => {
-        if (!_settings.hasOwnProperty(prop))
-            _settings[prop] = defaultSettings[prop];
-    });
+    _settings = $.extend({}, defaultSettings, loadedSettings);
+
+    const serverSettings = await WazeWrap.Remote.RetrieveSettings(SETTINGS_STORE_NAME);
+    if (serverSettings && (serverSettings.lastSaved > _settings.lastSaved))
+        $.extend(_settings, serverSettings);
+
     if (_settings.wmeUserId !== _wmeUserId)
         _settings.wmeUserId = _wmeUserId;
     // Remove old settings
@@ -490,7 +488,9 @@ async function saveSettingsToStorage() {
             _settings.commentListCollapses = {};
         _settings.commentListCollapses[_settings.commentList] = await getCollapsedGroups();
         _settings.lastVersion = SCRIPT_VERSION;
+        _settings.lastSaved = Date.now();
         localStorage.setItem(SETTINGS_STORE_NAME, JSON.stringify(_settings));
+        WazeWrap.Remote.SaveSettings(SETTINGS_STORE_NAME, _settings);
         logDebug('Settings saved.');
     }
 }
@@ -997,7 +997,7 @@ function autoClickOpenSolvedNi(commentNum) {
 
 function autoZoomIn(urId) {
     if (W.map.getZoom() < 5)
-        W.map.moveTo(W.map.updateRequestLayer.markers[urId].lonlat, 5);
+        W.map.moveTo(W.map.updateRequestLayer.featureMarkers[urId].marker.lonlat, 5);
 }
 
 function autoZoomOut() {
@@ -1080,32 +1080,41 @@ function formatText(text, replaceVars) {
                     if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData) {
                         const driveDaysAgo = W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.driveDaysOld;
                         const driveHour = new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).getHours();
-                        const dayOfWeek = new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).getDay();
-                        let casualText;
+                        let dayOfWeek = new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).getDay(),
+                            casualText;
+                        if ((driveDaysAgo < 21) && (driveHour > -1) && (driveHour < 4))
+                            dayOfWeek = (dayOfWeek > 0) ? dayOfWeek - 1 : 6;
                         if (driveDaysAgo === 0) {
-                            if ((driveHour > 20) || (driveHour < 4))
+                            if ((driveHour > 20) && (driveHour < 25))
                                 casualText = I18n.t('urce.time.Tonight');
+                            else if ((driveHour > -1) && (driveHour < 4))
+                                casualText = I18n.t('urce.time.LastNight');
                             else
                                 casualText = I18n.t('urce.time.ThisCasualTOD').replace('$THIS_CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
                         }
                         else if (driveDaysAgo === 1) {
-                            if ((driveHour > 20) || (driveHour < 4))
+                            if ((driveHour > 20) && (driveHour < 25))
                                 casualText = I18n.t('urce.time.LastNight');
+                            else if ((driveHour > -1) && (driveHour < 4))
+                                casualText = I18n.t('urce.time.ThisWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
                             else
                                 casualText = I18n.t('urce.time.YesterdayCasualTOD').replace('$YESTERDAY_CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                            casualText = casualText.replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek]);
                         }
                         else if ((driveDaysAgo > 1) && (driveDaysAgo < 21)) {
-                            if ((driveDaysAgo > 1) && (driveDaysAgo < 7))
-                                casualText = I18n.t('urce.time.ThisWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
-                            else if ((driveDaysAgo > 6) && (driveDaysAgo < 14))
+                            if ((driveDaysAgo > 1) && (driveDaysAgo < 7)) {
+                                if ((driveDaysAgo === 6) && (driveHour > -1) && (driveHour < 4))
+                                    casualText = I18n.t('urce.time.LastWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                                else
+                                    casualText = I18n.t('urce.time.ThisWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                            }
+                            else if ((driveDaysAgo > 6) && (driveDaysAgo < 14)) {
                                 casualText = I18n.t('urce.time.LastWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
-                            else if ((driveDaysAgo > 13) && (driveDaysAgo < 21))
+                            }
+                            else if ((driveDaysAgo > 13) && (driveDaysAgo < 21)) {
                                 casualText = I18n.t('urce.time.TwoWeeksAgo');
-                            casualText = casualText
-                                .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek])
-                                .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek])
-                                .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek])
-                                .replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek]);
+                            }
+                            casualText = casualText.replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek]);
                         }
                         else if ((driveDaysAgo > 20) && (driveDaysAgo < 28)) {
                             casualText = I18n.t('urce.time.ThreeWeeksAgo');
@@ -1382,34 +1391,43 @@ function restackMarkers() {
         || (_settings.disableFilteringBelowZoom && (W.map.getZoom() > _settings.disableFilteringBelowZoomLevel))
     )
         filter = false;
-    const markerCollection = { ...W.map.updateRequestLayer.markers };
+    const markerCollection = { ...W.map.updateRequestLayer.featureMarkers };
     if (markerCollection !== null) {
         Object.keys(markerCollection).forEach(marker => {
             if (markerCollection.hasOwnProperty(marker)) {
-                const testMarkerObj = markerCollection[marker];
-                if (testMarkerObj.model.attributes.geometry.urceRealX !== undefined) {
+                const markerMapObj = markerCollection[marker];
+                /* if (testMarkerObj.model.attributes.geometry.urceRealX !== undefined) {
                     testMarkerObj.model.attributes.geometry.x = testMarkerObj.model.attributes.geometry.urceRealX;
                     testMarkerObj.model.attributes.geometry.y = testMarkerObj.model.attributes.geometry.urceRealY;
                     delete (testMarkerObj.model.attributes.geometry.urceRealX);
                     delete (testMarkerObj.model.attributes.geometry.urceRealY);
+                } */
+                if (markerMapObj.marker.urcelonlat !== undefined) {
+                    markerMapObj.marker.lonlat = { ...markerMapObj.marker.urcelonlat };
+                    delete (markerMapObj.marker.urcelonlat);
                 }
+                const markerModelObj = W.model.mapUpdateRequests.objects[marker];
                 if (!(filter
                         && _settings.enableUrceUrFiltering
-                        && testMarkerObj.model.attributes
+                /*        && testMarkerObj.model.attributes
                         && testMarkerObj.model.attributes.urceData
                         && testMarkerObj.model.attributes.urceData.hideUr
                         && (!((_selUr.urId === testMarkerObj.id) && _settings.doNotHideSelectedUr))
-                        && (!((testMarkerObj.model.attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs)))
+                        && (!((testMarkerObj.model.attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs))) */
+                        && markerModelObj.attributes.urceData
+                        && markerModelObj.attributes.urceData.hideUr
+                        && (!((_selUr.urId === markerModelObj.attributes.id) && _settings.doNotHideSelectedUr))
+                        && (!((markerModelObj.attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs)))
                 ) {
-                    if (testMarkerObj.icon.imageDiv.style.display === 'none')
-                        $(testMarkerObj.icon.imageDiv).show();
+                    if (markerMapObj.marker.icon.imageDiv.style.display === 'none')
+                        $(markerMapObj.marker.icon.imageDiv).show();
                 }
             }
         });
         for (let idx = 0; idx < _markerStackArray.length; idx++) {
             if (markerCollection[_markerStackArray[idx].urId] !== undefined) {
-                markerCollection[_markerStackArray[idx].urId].icon.imageDiv.style.left = `${_markerStackArray[idx].x}px`;
-                markerCollection[_markerStackArray[idx].urId].icon.imageDiv.style.top = `${_markerStackArray[idx].y}px`;
+                markerCollection[_markerStackArray[idx].urId].marker.icon.imageDiv.style.left = `${_markerStackArray[idx].x}px`;
+                markerCollection[_markerStackArray[idx].urId].marker.icon.imageDiv.style.top = `${_markerStackArray[idx].y}px`;
             }
         }
         _markerStackArray = [];
@@ -1422,14 +1440,14 @@ function checkMarkerStacking(urId, unstackedX, unstackedY) {
     if (!_settings.unstackMarkers || (isIdAlreadyUnstacked(urId) === true))
         return;
     const stackList = [],
-        markerCollection = { ...W.map.updateRequestLayer.markers };
+        markerCollection = { ...W.map.updateRequestLayer.featureMarkers };
     let offset = 1000000000;
     stackList.push(urId);
     if (markerCollection !== null) {
         logDebug('Restacking markers.');
         Object.keys(markerCollection).forEach(marker => {
             if (markerCollection.hasOwnProperty(marker)) {
-                if (markerCollection[marker].model.attributes.geometry.urceRealX === undefined) {
+                /* if (markerCollection[marker].model.attributes.geometry.urceRealX === undefined) {
                     markerCollection[marker].model.attributes.geometry.urceRealX = (markerCollection[marker].model.attributes.geometry.realX)
                         ? markerCollection[marker].model.attributes.geometry.realX
                         : markerCollection[marker].model.attributes.geometry.x;
@@ -1443,16 +1461,27 @@ function checkMarkerStacking(urId, unstackedX, unstackedY) {
                         ? (markerCollection[marker].model.attributes.geometry.realY + offset)
                         : (markerCollection[marker].model.attributes.geometry.y + offset);
                     offset += 1000;
+                } */
+                if (markerCollection[marker].marker.urcelonlat === undefined) {
+                    markerCollection[marker].marker.urcelonlat = { ...markerCollection[marker].marker.lonlat };
+                    markerCollection[marker].marker.lonlat.lon = (markerCollection[marker].marker.urcelonlat.lon)
+                        ? (markerCollection[marker].marker.urcelonlat.lon + offset)
+                        : (markerCollection[marker].marker.lonlat.lon + offset);
+                    markerCollection[marker].marker.lonlat.lat = (markerCollection[marker].marker.urcelonlat.lat)
+                        ? (markerCollection[marker].marker.urcelonlat.lat + offset)
+                        : (markerCollection[marker].marker.lonlat.lat + offset);
+                    offset += 1000;
                 }
-                if (!(markerCollection[marker].icon.imageDiv.classList.contains('recently-closed') && (W.map.updateRequestLayer.showHidden === false))
-                    && ((markerCollection[marker].icon.imageDiv.style.display !== 'none') || (markerCollection[marker].icon.imageDiv.style.visibility !== 'hidden'))
+                if (!(markerCollection[marker].marker.icon.imageDiv.classList.contains('recently-closed')/* && (W.map.updateRequestLayer.showHidden === false) */)
+                    && ((markerCollection[marker].marker.icon.imageDiv.style.display !== 'none') || (markerCollection[marker].marker.icon.imageDiv.style.visibility !== 'hidden'))
                 ) {
-                    if (parseInt(markerCollection[marker].id) !== urId) {
-                        const xDiff = unstackedX - parsePxString(markerCollection[markerCollection[marker].id].icon.imageDiv.style.left),
-                            yDiff = unstackedY - parsePxString(markerCollection[markerCollection[marker].id].icon.imageDiv.style.top),
+                    // if (parseInt(markerCollection[marker].id) !== urId) {
+                    if (parseInt(marker) !== urId) {
+                        const xDiff = unstackedX - parsePxString(markerCollection[/* markerCollection[ */marker/* ].id */].marker.icon.imageDiv.style.left),
+                            yDiff = unstackedY - parsePxString(markerCollection[/* markerCollection[ */marker/* ].id */].marker.icon.imageDiv.style.top),
                             distSquared = ((xDiff * xDiff) + (yDiff * yDiff));
                         if (distSquared < (_settings.unstackSensitivity * _settings.unstackSensitivity))
-                            stackList.push(parseInt(markerCollection[marker].id));
+                            stackList.push(parseInt(/* markerCollection[ */marker/* ].id */));
                     }
                 }
             }
@@ -1471,12 +1500,12 @@ function checkMarkerStacking(urId, unstackedX, unstackedY) {
             _markerStackArray.push(new StackListObj(urId, unstackedX, unstackedY));
             for (let idx = 0; idx < stackList.length; idx++) {
                 const thisUrId = stackList[idx],
-                    x = parsePxString(markerCollection[thisUrId].icon.imageDiv.style.left),
-                    y = parsePxString(markerCollection[thisUrId].icon.imageDiv.style.top);
+                    x = parsePxString(markerCollection[thisUrId].marker.icon.imageDiv.style.left),
+                    y = parsePxString(markerCollection[thisUrId].marker.icon.imageDiv.style.top);
                 _markerStackArray.push(new StackListObj(thisUrId, x, y));
                 if (!((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
-                    markerCollection[thisUrId].icon.imageDiv.style.left = `${unstackedX}px`;
-                    markerCollection[thisUrId].icon.imageDiv.style.top = `${unstackedY}px`;
+                    markerCollection[thisUrId].marker.icon.imageDiv.style.left = `${unstackedX}px`;
+                    markerCollection[thisUrId].marker.icon.imageDiv.style.top = `${unstackedY}px`;
                     unstackedX += 10;
                     unstackedY -= 30;
                 }
@@ -1484,8 +1513,8 @@ function checkMarkerStacking(urId, unstackedX, unstackedY) {
             if (!((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
                 Object.keys(markerCollection).forEach(marker => {
                     if (markerCollection.hasOwnProperty(marker)) {
-                        if (!isIdAlreadyUnstacked(markerCollection[marker].id))
-                            $(markerCollection[markerCollection[marker].id].icon.imageDiv).hide();
+                        if (!isIdAlreadyUnstacked(parseInt(/* markerCollection[ */marker/* ].id */)))
+                            $(markerCollection[/* markerCollection[ */marker/* ].id */].marker.icon.imageDiv).hide();
                     }
                 });
             }
@@ -1509,8 +1538,8 @@ async function markerMouseOver() {
             _mousedOverMarkerId = markerId;
             const targetTab = `_urceTab_${Math.round(Math.random() * 1000000)}`,
                 popupXOffset = parsePxString($('#sidebar').css('width')),
-                unstackedX = parsePxString(W.map.updateRequestLayer.markers[markerId].icon.imageDiv.style.left),
-                unstackedY = parsePxString(W.map.updateRequestLayer.markers[markerId].icon.imageDiv.style.top);
+                unstackedX = parsePxString(W.map.updateRequestLayer.featureMarkers[markerId].marker.icon.imageDiv.style.left),
+                unstackedY = parsePxString(W.map.updateRequestLayer.featureMarkers[markerId].marker.icon.imageDiv.style.top);
             checkMarkerStacking(markerId, unstackedX, unstackedY);
             if (!_settings.disableUrMarkerPopup) {
                 if (W.model.mapUpdateRequests.objects[markerId].attributes.urceData === undefined)
@@ -1710,7 +1739,7 @@ function recenterOnUr(event, zoom) {
         return;
     if (this && this.id === '_urceRecenterSession')
         openUrPanel(urId);
-    W.map.moveTo(W.map.updateRequestLayer.markers[urId].lonlat, zoom);
+    W.map.moveTo(W.map.updateRequestLayer.featureMarkers[urId].marker.lonlat, zoom);
     hidePopup();
 }
 
@@ -2476,7 +2505,7 @@ async function invokeModeChange(event) {
 }
 
 function handleUrMarkerClick() {
-    if ($(this).hasClass('user-generated') || $(this).hasClass('has-comments')) {
+    /* if ($(this).hasClass('user-generated') || $(this).hasClass('has-comments')) {
         if (!(_selUr.urId > 0) || (_selUr.urId !== parseInt($(this).attr('data-id')))) {
             _selUr = {
                 doubleClick: false,
@@ -2485,8 +2514,9 @@ function handleUrMarkerClick() {
                 urId: parseInt($(this).attr('data-id')),
                 urOpen: false
             };
+            logDebug(`Clicked UR: ${_selUr.urId}`);
         }
-    }
+    } */
 }
 
 function getUrId() {
@@ -3239,10 +3269,14 @@ function processPerCommentListSettings(commentListIdx) {
             }
         }
         if (settingName.indexOf('_useDefault') > -1) {
-            if (!isChecked(this))
+            if (!isChecked(this)) {
                 $(this).siblings().removeClass('urceDisabled').removeAttr('disabled');
-            else
+                $(this).siblings().children().removeClass('urceDisabled').removeAttr('disabled');
+            }
+            else {
                 $(this).siblings().addClass('urceDisabled').attr('disabled', true);
+                $(this).siblings().children().addClass('urceDisabled').attr('disabled', true);
+            }
             const parentSettingName = settingName.replace('_useDefault', '');
             if (_settings.perCommentListSettings[_currentCommentList][parentSettingName] !== _settings[parentSettingName]) {
                 _settings.perCommentListSettings[_currentCommentList][parentSettingName] = _settings[parentSettingName];
@@ -5457,7 +5491,7 @@ function initCheckForUrPanel(urId, tries) {
 async function init() {
     log('Initializing.');
     _wmeUserId = W.loginManager.user.id;
-    loadSettingsFromStorage(null, null);
+    await loadSettingsFromStorage(null, null);
     const urIdInUrl = parseInt(location.search.split('mapUpdateRequest=')[1]),
         loadTranslationsResult = await loadTranslations(),
         initCommentListsResult = await initCommentLists(),
