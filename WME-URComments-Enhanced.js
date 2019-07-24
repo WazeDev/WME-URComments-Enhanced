@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.07.23.01
+// @version     2019.07.24.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -42,7 +42,9 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> WazeWrap settings storage ability.',
         '<b>CHANGE:</b> Compatibility with latest WME release.',
         '<b>CHANGE:</b> Cleanup of mutation processing.',
-        '<b>BUGFIX:</b> Per comment list settings toggles.'
+        '<b>CHANGE:</b> Future deprecation of properties for countries and states.',
+        '<b>BUGFIX:</b> Per comment list settings toggles.',
+        '<b>BUGFIX:</b> Further refinement of unstacking and selection.'
     ],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
@@ -588,15 +590,15 @@ function checkRestrictions(event) {
                     country = evt[0].abbr;
                     state = null;
                 }
-                if (!country && !W.model.countries.top) {
+                if (!country && !W.model.getTopCountry()) {
                     logDebug(`Waiting on Waze model for countries to populate. Try ${tries} of 300.`);
                     _timeouts.checkRestrictions[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex, evt);
                 }
                 else {
                     logDebug('Setting up restrictions.');
                     checkTimeout({ timeout: 'checkRestrictions', toIndex });
-                    country = country || W.model.countries.top.abbr;
-                    state = state || ((W.model.states && W.model.states.top) ? W.model.states.top.name : null);
+                    country = country || W.model.getTopCountry().abbr;
+                    state = state || (W.model.getTopState() ? W.model.getTopState().name : null);
                     _restrictionsEnforce = {};
                     let restrictionsAlertBannerTitle = `${I18n.t('urce.prompts.RestrictionsEnforcedTitle')}:\n`;
                     if (_restrictions[country]) {
@@ -792,12 +794,14 @@ async function handleUpdateRequestContainer(urId, caller) {
         }
     }
     if (_settings.autoSwitchCommentList) {
-        if (_autoSwitch[W.model.countries.top.abbr] && ((_autoSwitch[W.model.countries.top.abbr].ALL > -1) || (_autoSwitch[W.model.countries.top.abbr][W.model.states.top.name] > -1))) {
+        const topCountry = W.model.getTopCountry(),
+            topState = W.model.getTopState();
+        if (_autoSwitch[topCountry.abbr] && ((_autoSwitch[topCountry.abbr].ALL > -1) || (_autoSwitch[topCountry.abbr][topState.name] > -1))) {
             let commentList;
-            if (_autoSwitch[W.model.countries.top.abbr][W.model.states.top.name] > -1)
-                commentList = _autoSwitch[W.model.countries.top.abbr][W.model.states.top.name];
-            else if (_autoSwitch[W.model.countries.top.abbr].ALL)
-                commentList = _autoSwitch[W.model.countries.top.abbr].ALL;
+            if (_autoSwitch[topCountry.abbr][topState.name] > -1)
+                commentList = _autoSwitch[topCountry.abbr][topState.name];
+            else if (_autoSwitch[topCountry.abbr].ALL)
+                commentList = _autoSwitch[topState.abbr].ALL;
             else
                 commentList = -1;
             if ((commentList > -1) && (commentList !== _currentCommentList))
@@ -1391,29 +1395,21 @@ function restackMarkers() {
         || (_settings.disableFilteringBelowZoom && (W.map.getZoom() > _settings.disableFilteringBelowZoomLevel))
     )
         filter = false;
-    const markerCollection = { ...W.map.updateRequestLayer.featureMarkers };
-    if (markerCollection !== null) {
-        Object.keys(markerCollection).forEach(marker => {
-            if (markerCollection.hasOwnProperty(marker)) {
-                const markerMapObj = markerCollection[marker];
-                /* if (testMarkerObj.model.attributes.geometry.urceRealX !== undefined) {
-                    testMarkerObj.model.attributes.geometry.x = testMarkerObj.model.attributes.geometry.urceRealX;
-                    testMarkerObj.model.attributes.geometry.y = testMarkerObj.model.attributes.geometry.urceRealY;
-                    delete (testMarkerObj.model.attributes.geometry.urceRealX);
-                    delete (testMarkerObj.model.attributes.geometry.urceRealY);
-                } */
-                if (markerMapObj.marker.urcelonlat !== undefined) {
-                    markerMapObj.marker.lonlat = { ...markerMapObj.marker.urcelonlat };
-                    delete (markerMapObj.marker.urcelonlat);
+    const markerMapCollection = { ...W.map.updateRequestLayer.featureMarkers };
+    const markerModelCollection = { ...W.model.mapUpdateRequests.objects };
+    if (markerMapCollection !== null) {
+        Object.keys(markerMapCollection).forEach(marker => {
+            if (markerMapCollection.hasOwnProperty(marker)) {
+                const markerMapObj = markerMapCollection[marker];
+                const markerModelObj = markerModelCollection[marker];
+                if (markerModelObj.attributes.geometry.urceRealX !== undefined) {
+                    markerModelObj.attributes.geometry.x = markerModelObj.attributes.geometry.urceRealX;
+                    markerModelObj.attributes.geometry.y = markerModelObj.attributes.geometry.urceRealY;
+                    delete (markerModelObj.attributes.geometry.urceRealX);
+                    delete (markerModelObj.attributes.geometry.urceRealY);
                 }
-                const markerModelObj = W.model.mapUpdateRequests.objects[marker];
                 if (!(filter
                         && _settings.enableUrceUrFiltering
-                /*        && testMarkerObj.model.attributes
-                        && testMarkerObj.model.attributes.urceData
-                        && testMarkerObj.model.attributes.urceData.hideUr
-                        && (!((_selUr.urId === testMarkerObj.id) && _settings.doNotHideSelectedUr))
-                        && (!((testMarkerObj.model.attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs))) */
                         && markerModelObj.attributes.urceData
                         && markerModelObj.attributes.urceData.hideUr
                         && (!((_selUr.urId === markerModelObj.attributes.id) && _settings.doNotHideSelectedUr))
@@ -1425,9 +1421,9 @@ function restackMarkers() {
             }
         });
         for (let idx = 0; idx < _markerStackArray.length; idx++) {
-            if (markerCollection[_markerStackArray[idx].urId] !== undefined) {
-                markerCollection[_markerStackArray[idx].urId].marker.icon.imageDiv.style.left = `${_markerStackArray[idx].x}px`;
-                markerCollection[_markerStackArray[idx].urId].marker.icon.imageDiv.style.top = `${_markerStackArray[idx].y}px`;
+            if (markerMapCollection[_markerStackArray[idx].urId] !== undefined) {
+                markerMapCollection[_markerStackArray[idx].urId].marker.icon.imageDiv.style.left = `${_markerStackArray[idx].x}px`;
+                markerMapCollection[_markerStackArray[idx].urId].marker.icon.imageDiv.style.top = `${_markerStackArray[idx].y}px`;
             }
         }
         _markerStackArray = [];
@@ -1440,58 +1436,50 @@ function checkMarkerStacking(urId, unstackedX, unstackedY) {
     if (!_settings.unstackMarkers || (isIdAlreadyUnstacked(urId) === true))
         return;
     const stackList = [],
-        markerCollection = { ...W.map.updateRequestLayer.featureMarkers };
+        markerMapCollection = { ...W.map.updateRequestLayer.featureMarkers },
+        markerModelCollection = { ...W.model.mapUpdateRequests.objects };
     let offset = 1000000000;
     stackList.push(urId);
-    if (markerCollection !== null) {
-        logDebug('Restacking markers.');
-        Object.keys(markerCollection).forEach(marker => {
-            if (markerCollection.hasOwnProperty(marker)) {
-                /* if (markerCollection[marker].model.attributes.geometry.urceRealX === undefined) {
-                    markerCollection[marker].model.attributes.geometry.urceRealX = (markerCollection[marker].model.attributes.geometry.realX)
-                        ? markerCollection[marker].model.attributes.geometry.realX
-                        : markerCollection[marker].model.attributes.geometry.x;
-                    markerCollection[marker].model.attributes.geometry.x = (markerCollection[marker].model.attributes.geometry.realX)
-                        ? (markerCollection[marker].model.attributes.geometry.realX + offset)
-                        : (markerCollection[marker].model.attributes.geometry.x + offset);
-                    markerCollection[marker].model.attributes.geometry.urceRealY = (markerCollection[marker].model.attributes.geometry.realY)
-                        ? markerCollection[marker].model.attributes.geometry.realY
-                        : markerCollection[marker].model.attributes.geometry.y;
-                    markerCollection[marker].model.attributes.geometry.y = (markerCollection[marker].model.attributes.geometry.realY)
-                        ? (markerCollection[marker].model.attributes.geometry.realY + offset)
-                        : (markerCollection[marker].model.attributes.geometry.y + offset);
-                    offset += 1000;
-                } */
-                if (markerCollection[marker].marker.urcelonlat === undefined) {
-                    markerCollection[marker].marker.urcelonlat = { ...markerCollection[marker].marker.lonlat };
-                    markerCollection[marker].marker.lonlat.lon = (markerCollection[marker].marker.urcelonlat.lon)
-                        ? (markerCollection[marker].marker.urcelonlat.lon + offset)
-                        : (markerCollection[marker].marker.lonlat.lon + offset);
-                    markerCollection[marker].marker.lonlat.lat = (markerCollection[marker].marker.urcelonlat.lat)
-                        ? (markerCollection[marker].marker.urcelonlat.lat + offset)
-                        : (markerCollection[marker].marker.lonlat.lat + offset);
+    if (markerMapCollection !== null) {
+        Object.keys(markerMapCollection).forEach(marker => {
+            if (markerMapCollection.hasOwnProperty(marker)) {
+                if (markerModelCollection[marker].attributes.geometry.urceRealX === undefined) {
+                    markerModelCollection[marker].attributes.geometry.urceRealX = (markerModelCollection[marker].attributes.geometry.realX)
+                        ? markerModelCollection[marker].attributes.geometry.realX
+                        : markerModelCollection[marker].attributes.geometry.x;
+                    markerModelCollection[marker].attributes.geometry.x = (markerModelCollection[marker].attributes.geometry.realX)
+                        ? (markerModelCollection[marker].attributes.geometry.realX + offset)
+                        : (markerModelCollection[marker].attributes.geometry.x + offset);
+                    markerModelCollection[marker].attributes.geometry.urceRealY = (markerModelCollection[marker].attributes.geometry.realY)
+                        ? markerModelCollection[marker].attributes.geometry.realY
+                        : markerModelCollection[marker].attributes.geometry.y;
+                    markerModelCollection[marker].attributes.geometry.y = (markerModelCollection[marker].attributes.geometry.realY)
+                        ? (markerModelCollection[marker].attributes.geometry.realY + offset)
+                        : (markerModelCollection[marker].attributes.geometry.y + offset);
                     offset += 1000;
                 }
-                if (!(markerCollection[marker].marker.icon.imageDiv.classList.contains('recently-closed')/* && (W.map.updateRequestLayer.showHidden === false) */)
-                    && ((markerCollection[marker].marker.icon.imageDiv.style.display !== 'none') || (markerCollection[marker].marker.icon.imageDiv.style.visibility !== 'hidden'))
+                if (!(markerMapCollection[marker].marker.icon.imageDiv.classList.contains('recently-closed') && (W.map.updateRequestLayer.showHidden === false))
+                    && ((markerMapCollection[marker].marker.icon.imageDiv.style.display !== 'none') || (markerMapCollection[marker].marker.icon.imageDiv.style.visibility !== 'hidden'))
                 ) {
                     // if (parseInt(markerCollection[marker].id) !== urId) {
                     if (parseInt(marker) !== urId) {
-                        const xDiff = unstackedX - parsePxString(markerCollection[/* markerCollection[ */marker/* ].id */].marker.icon.imageDiv.style.left),
-                            yDiff = unstackedY - parsePxString(markerCollection[/* markerCollection[ */marker/* ].id */].marker.icon.imageDiv.style.top),
+                        const xDiff = unstackedX - parsePxString(markerMapCollection[marker].marker.icon.imageDiv.style.left),
+                            yDiff = unstackedY - parsePxString(markerMapCollection[marker].marker.icon.imageDiv.style.top),
                             distSquared = ((xDiff * xDiff) + (yDiff * yDiff));
                         if (distSquared < (_settings.unstackSensitivity * _settings.unstackSensitivity))
-                            stackList.push(parseInt(/* markerCollection[ */marker/* ].id */));
+                            stackList.push(parseInt(marker));
                     }
                 }
             }
         });
     }
     if (stackList.length > 0) {
-        if ((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))
+        if (stackList.length === 1)
             logDebug('Single marker highlighted. Adjusting geometry properties to prevent recentering.');
+        else if (W.map.getZoom() < _settings.unstackDisableAboveZoom)
+            logDebug(`Zoom level is ${W.map.getZoom()} which is less than setting for disable above zoom of ${_settings.unstackDisableAboveZoom}. Adjusting geometry properties to prevent recentering.`);
         else
-            logDebug('Markers are stacked!');
+            logDebug(`${stackList.length} markers are stacked!`);
         if (_unstackedMasterId !== urId) {
             logDebug('Unstacked ID mismatch, relocating markers.');
             restackMarkers();
@@ -1500,21 +1488,21 @@ function checkMarkerStacking(urId, unstackedX, unstackedY) {
             _markerStackArray.push(new StackListObj(urId, unstackedX, unstackedY));
             for (let idx = 0; idx < stackList.length; idx++) {
                 const thisUrId = stackList[idx],
-                    x = parsePxString(markerCollection[thisUrId].marker.icon.imageDiv.style.left),
-                    y = parsePxString(markerCollection[thisUrId].marker.icon.imageDiv.style.top);
+                    x = parsePxString(markerMapCollection[thisUrId].marker.icon.imageDiv.style.left),
+                    y = parsePxString(markerMapCollection[thisUrId].marker.icon.imageDiv.style.top);
                 _markerStackArray.push(new StackListObj(thisUrId, x, y));
                 if (!((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
-                    markerCollection[thisUrId].marker.icon.imageDiv.style.left = `${unstackedX}px`;
-                    markerCollection[thisUrId].marker.icon.imageDiv.style.top = `${unstackedY}px`;
+                    markerMapCollection[thisUrId].marker.icon.imageDiv.style.left = `${unstackedX}px`;
+                    markerMapCollection[thisUrId].marker.icon.imageDiv.style.top = `${unstackedY}px`;
                     unstackedX += 10;
                     unstackedY -= 30;
                 }
             }
             if (!((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
-                Object.keys(markerCollection).forEach(marker => {
-                    if (markerCollection.hasOwnProperty(marker)) {
-                        if (!isIdAlreadyUnstacked(parseInt(/* markerCollection[ */marker/* ].id */)))
-                            $(markerCollection[/* markerCollection[ */marker/* ].id */].marker.icon.imageDiv).hide();
+                Object.keys(markerMapCollection).forEach(marker => {
+                    if (markerMapCollection.hasOwnProperty(marker)) {
+                        if (!isIdAlreadyUnstacked(parseInt(marker)))
+                            $(markerMapCollection[marker].marker.icon.imageDiv).hide();
                     }
                 });
             }
@@ -2505,7 +2493,7 @@ async function invokeModeChange(event) {
 }
 
 function handleUrMarkerClick() {
-    /* if ($(this).hasClass('user-generated') || $(this).hasClass('has-comments')) {
+    if ($(this).hasClass('user-generated') || $(this).hasClass('has-comments')) {
         if (!(_selUr.urId > 0) || (_selUr.urId !== parseInt($(this).attr('data-id')))) {
             _selUr = {
                 doubleClick: false,
@@ -2516,7 +2504,7 @@ function handleUrMarkerClick() {
             };
             logDebug(`Clicked UR: ${_selUr.urId}`);
         }
-    } */
+    }
 }
 
 function getUrId() {
