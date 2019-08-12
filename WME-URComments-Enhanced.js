@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.07.24.01
+// @version     2019.08.12.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -39,12 +39,10 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> WazeWrap settings storage ability.',
-        '<b>CHANGE:</b> Compatibility with latest WME release.',
-        '<b>CHANGE:</b> Cleanup of mutation processing.',
-        '<b>CHANGE:</b> Future deprecation of properties for countries and states.',
-        '<b>BUGFIX:</b> Per comment list settings toggles.',
-        '<b>BUGFIX:</b> Further refinement of unstacking and selection.'
+    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Custom text replace variables via sheets.',
+        '<b>NEW:</b> Custom tagline setting. (Per comment list or "master")',
+        '<b>NEW:</b> More shortcuts: Current time, current day of week, current date, current time casual, current date casual. (Available via UR panel and variable in comments)',
+        '<b>BUGFIX:</b> Per comment list text boxes not saving correctly.'
     ],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
@@ -194,6 +192,7 @@ let _settings = {},
     },
     _restrictionsEnforce = {},
     _commentList = [],
+    _customReplaceVars = [],
     _markerStackArray = [],
     _createConvert = false,
     _currentCommentList = null,
@@ -251,6 +250,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             commentListStyle: 'default',
             commentListCollapses: {},
             customSsId: '',
+            customTagline: '',
             tagEmail: '',
             autoSwitchCommentList: false,
             enableAppendMode: false,
@@ -874,42 +874,30 @@ async function handleUpdateRequestContainer(urId, caller) {
     if (_settings.autoCenterOnUr)
         recenterOnUr({ data: { urId } }, W.map.getZoom());
     if ($('#urceShortcuts').length === 0) {
-        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend(
-            $('<div>', { id: 'urceShortcuts', style: 'text-align:center; padding-bottom:8px;' }).append(
-                $('<div>').append(
-                    $('<i>', {
-                        class: 'fa fa-road', 'aria-hidden': 'true', style: 'cursor:pointer; padding-left:4px;', title: I18n.t('urce.urPanel.InsertSelSegsTitle')
-                    }).off().on('click', { shortcut: 'selSegs' }, handleClickedShortcut),
-                    $('<i>', {
-                        class: 'fa fa-clock-o', 'aria-hidden': 'true', style: 'cursor:pointer; padding-left:4px;', title: I18n.t('urce.urPanel.InsertTimeTitle')
-                    }).off().on('click', { shortcut: 'time' }, handleClickedShortcut),
-                    $('<i>', {
-                        class: 'fa fa-sun-o', 'aria-hidden': 'true', style: 'cursor:pointer; padding-left:4px;', title: I18n.t('urce.urPanel.InsertDayOfWeekTitle')
-                    }).off().on('click', { shortcut: 'dayOfWeek' }, handleClickedShortcut),
-                    $('<i>', {
-                        class: 'fa fa-calendar-o', 'aria-hidden': 'true', style: 'cursor:pointer; padding-left:4px;', title: I18n.t('urce.urPanel.InsertDateTitle')
-                    }).off().on('click', { shortcut: 'date' }, handleClickedShortcut),
-                    $('<i>', {
-                        class: 'fa fa-paragraph', 'aria-hidden': 'true', style: 'cursor:pointer; padding-left:4px;', title: I18n.t('urce.urPanel.InsertDescriptionTitle')
-                    }).off().on('click', { shortcut: 'description' }, handleClickedShortcut),
-                    $('<i>', {
-                        class: 'fa fa-user-o', 'aria-hidden': 'true', style: 'cursor:pointer; padding-left:4px;', title: I18n.t('urce.urPanel.InsertWazeUsernameTitle')
-                    }).off().on('click', { shortcut: 'wazeUsername' }, handleClickedShortcut)
-                ).append(
-                    $('<div>', { style: 'padding-left:20px; display:inline-block;' }).append(
-                        $('<i>', {
-                            class: 'fa fa-clock-o', 'aria-hidden': 'true', style: 'cursor:pointer; padding-left:4px;', title: I18n.t('urce.urPanel.InsertTimeCasualTitle')
-                        }).off().on('click', { shortcut: 'timeCasual' }, handleClickedShortcut),
-                        $('<i>', {
-                            class: 'fa fa-calendar', 'aria-hidden': 'true', style: 'cursor:pointer; padding-left:4px;', title: I18n.t('urce.urPanel.InsertDateCasualTitle')
-                        }).off().on('click', { shortcut: 'dateCasual' }, handleClickedShortcut),
-                        $('<i>', {
-                            class: 'fa fa-calendar-plus-o', 'aria-hidden': 'true', style: 'cursor:pointer; padding-left:4px;', title: I18n.t('urce.urPanel.InsertDateTimeCasualModeTitle')
-                        }).off().on('click', { shortcut: 'dateTimeCasualMode' }, handleClickedShortcut)
-                    )
-                )
-            )
-        );
+        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend('<div id="urceShortcuts" style="text-align:left;padding-bottom:8px;font-size:12px;">'
+            + `<div>${I18n.t('urce.urPanel.Shortcuts')}:`
+            + `<i id="urceShortcuts-selSegs" class="fa fa-road" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertSelSegsTitle')}"></i>`
+            + `<i id="urceShortcuts-description" class="fa fa-paragraph" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDescriptionTitle')}"></i>`
+            + `<i id="urceShortcuts-wazeUsername" class="fa fa-user-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertWazeUsernameTitle')}"></i>`
+            + '</div>'
+            + `<div><i id="urceShortcuts-driveTime" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertTimeTitle')}"></i>`
+            + `<i id="urceShortcuts-driveDayOfWeek" class="fa fa-sun-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDayOfWeekTitle')}"></i>`
+            + `<i id="urceShortcuts-driveDate" class="fa fa-calendar-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDateTitle')}"></i>`
+            + '<div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
+            + `<i id="urceShortcuts-driveTimeCasual" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer" title="${I18n.t('urce.urPanel.InsertTimeCasualTitle')}"></i>`
+            + `<i id="urceShortcuts-driveDateCasual" class="fa fa-calendar" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDateCasualTitle')}"></i>`
+            + `<i id="urceShortcuts-driveDateTimeCasualMode" class="fa fa-calendar-plus-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDateTimeCasualModeTitle')}"></i>`
+            + `<div style="display:inline-block;padding-left:8px;">- ${I18n.t('urce.urPanel.DriveDate')}</div></div>`
+            + `<div><i id="urceShortcuts-currentTime" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentTimeTitle')}"></i>`
+            + `<i id="urceShortcuts-currentDayOfWeek" class="fa fa-sun-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentDayOfWeekTitle')}"></i>`
+            + `<i id="urceShortcuts-currentDate" class="fa fa-calendar-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentDateTitle')}"></i>`
+            + '<div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
+            + `<i id="urceShortcuts-currentTimeCasual" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;" title="${I18n.t('urce.urPanel.InsertCurrentTimeCasualTitle')}"></i>`
+            + `<i id="urceShortcuts-currentDateCasual" class="fa fa-calendar" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentDateCasualTitle')}"></i>`
+            + `<div style="display:inline-block;padding-left:24px;">- ${I18n.t('urce.urPanel.CurrentDate')}</div></div></div>`);
+        $('i[id|="urceShortcuts"]').off().on('click', function () {
+            handleClickedShortcut(this.id.substr(14));
+        });
     }
     return true;
 }
@@ -1028,6 +1016,18 @@ function convertTimeOfDayToCasual(hour) {
 
 function formatText(text, replaceVars) {
     if (replaceVars && (_selUr.urId > -1)) {
+        if (text.search(/(\$(CURRENTDATE_DAY_OF_WEEK|CURRENTDATE_DATE|CURRENTDATE_DATE_CASUAL|CURRENTDATE_TIME|CURRENTDATE_TIME_CASUAL)\$)/gm) > -1) {
+            if (text.indexOf('$CURRENTDATE_DAY_OF_WEEK$') > -1)
+                text = text.replace('$CURRENTDATE_DAY_OF_WEEK$', new Date().toLocaleDateString(I18n.currentLocale(), { weekday: 'long' }));
+            if (text.indexOf('$CURRENTDATE_DATE$') > -1)
+                text = text.replace('$CURRENTDATE_DATE$', new Date().toLocaleDateString(I18n.currentLocale(), { month: '2-digit', day: '2-digit', year: 'numeric' }));
+            if (text.indexOf('$CURRENTDATE_DATE_CASUAL$') > -1)
+                text = text.replace('$CURRENTDATE_DATE_CASUAL$', new Date().toLocaleDateString(I18n.currentLocale(), { month: 'long', day: '2-digit' }));
+            if (text.indexOf('$CURRENTDATE_TIME$') > -1)
+                text = text.replace('$CURRENTDATE_TIME$', new Date().toLocaleDateString(I18n.currentLocale(), { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }));
+            if (text.indexOf('$CURRENTDATE_TIME_CASUAL$') > -1)
+                text = text.replace('$CURRENTDATE_TIME_CASUAL$', convertTimeOfDayToCasual(new Date().getHours()));
+        }
         if (text.search(/(\$(DRIVEDATE_DAY_OF_WEEK|DRIVEDATE_DATE|DRIVEDATE_DATE_CASUAL|DRIVEDATE_DAYS_AGO|DRIVEDATE_TIME|DRIVEDATE_TIME_CASUAL|DRIVEDATE_TIME_CASUALMODE)\$)/gm) > -1) {
             if (W.model.mapUpdateRequests.objects[_selUr.urId]) {
                 if (text.indexOf('$DRIVEDATE_DAY_OF_WEEK$') > -1) {
@@ -1162,16 +1162,27 @@ function formatText(text, replaceVars) {
         else
             text = text.replace(/("?\$URD\$?"?)+/gmi, '');
     }
+    if (replaceVars && text.indexOf('$CUSTOMTAGLINE$') > -1) {
+        if (_settings.perCommentListSettings[_currentCommentList].customTagline.length > 0)
+            text = text.replace('$CUSTOMTAGLINE$', _settings.perCommentListSettings[_currentCommentList].customTagline);
+        else
+            text = text.replace('$CUSTOMTAGLINE$', '');
+    }
+    if (replaceVars) {
+        _customReplaceVars.forEach(customReplaceVar => {
+            text = text.replace(customReplaceVar.customVar, customReplaceVar.replaceText);
+        });
+    }
     return text.replace(/\\[r|n]+/gm, '\n');
 }
 
-function handleClickedShortcut(event) {
+function handleClickedShortcut(shortcut) {
     const cursorPos = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].selectionStart,
         currVal = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val();
     let newVal = currVal.slice(0, cursorPos),
         outputText,
         replaceText;
-    if (event.data.shortcut === 'selSegs') {
+    if (shortcut === 'selSegs') {
         if (currVal.indexOf('$SELSEGS$') > -1)
             replaceText = '$SELSEGS$';
         else if (currVal.indexOf('$SELSEGS') > -1)
@@ -1179,29 +1190,44 @@ function handleClickedShortcut(event) {
         else
             replaceText = '_INSERT_';
     }
-    else if (event.data.shortcut === 'time') {
+    else if (shortcut === 'driveTime') {
         replaceText = '$DRIVEDATE_TIME$';
     }
-    else if (event.data.shortcut === 'dayOfWeek') {
+    else if (shortcut === 'driveDayOfWeek') {
         replaceText = '$DRIVEDATE_DAY_OF_WEEK$';
     }
-    else if (event.data.shortcut === 'date') {
+    else if (shortcut === 'driveDate') {
         replaceText = '$DRIVEDATE_DATE$';
     }
-    else if (event.data.shortcut === 'description') {
+    else if (shortcut === 'description') {
         replaceText = '$URD$';
     }
-    else if (event.data.shortcut === 'wazeUsername') {
+    else if (shortcut === 'wazeUsername') {
         replaceText = '$USERNAME$';
     }
-    else if (event.data.shortcut === 'timeCasual') {
+    else if (shortcut === 'driveTimeCasual') {
         replaceText = '$DRIVEDATE_TIME_CASUAL$';
     }
-    else if (event.data.shortcut === 'dateCasual') {
+    else if (shortcut === 'driveDateCasual') {
         replaceText = '$DRIVEDATE_DATE_CASUAL$';
     }
-    else if (event.data.shortcut === 'dateTimeCasualMode') {
+    else if (shortcut === 'driveDateTimeCasualMode') {
         replaceText = '$DRIVEDATE_TIME_CASUALMODE$';
+    }
+    else if (shortcut === 'currentDayOfWeek') {
+        replaceText = '$CURRENTDATE_DAY_OF_WEEK$';
+    }
+    else if (shortcut === 'currentDate') {
+        replaceText = '$CURRENTDATE_DATE$';
+    }
+    else if (shortcut === 'currentDateCasual') {
+        replaceText = '$CURRENTDATE_DATE_CASUAL$';
+    }
+    else if (shortcut === 'currentTime') {
+        replaceText = '$CURRENTDATE_TIME$';
+    }
+    else if (shortcut === 'currentTimeCasual') {
+        replaceText = '$CURRENTDATE_TIME_CASUAL$';
     }
     else {
         return;
@@ -2939,7 +2965,10 @@ function processCommentList(data) {
                     if (rowObj.title !== 'URCE_REMOVED_SO_SKIP') {
                         if (rowObj.title === 'URCE_ERROR')
                             return resolve({ error: true, text: `There is an unknown error in the spreadsheet output. Please contact the list owner: ${getCommentListInfo(_settings.commentList).listOwner}` }); // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
-                        if (rowObj.urstatus === 'group title') { // Group title row. Nothing to set in the arrays, but build html.
+                        if (rowObj.urstatus === 'custom tag') {
+                            _customReplaceVars.push({ customVar: `$${rowObj.title}$`, replaceText: rowObj.comment });
+                        }
+                        else if (rowObj.urstatus === 'group title') { // Group title row. Nothing to set in the arrays, but build html.
                             groupDivId = 'urceComments-for-';
                             if (rowObj.title !== '') {
                                 groupDivId += rowObj.title.replace(/[^\w]+/gi, '').toLowerCase();
@@ -3117,6 +3146,7 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
             ),
         );
         _commentList = [];
+        _customReplaceVars = [];
         const data = (commentListInfo.type === 'static') ? await convertCommentListStatic(commentListIdx) : await commentListAsync(commentListIdx);
         if (data.error) {
             return resolve({
@@ -3151,6 +3181,8 @@ function processPerCommentListSettings(commentListIdx) {
         autoSetNewUrCommentWithDescription_useDefault: true,
         autoSetReminderUrComment: _settings.autoSetReminderUrComment,
         autoSetReminderUrComment_useDefault: true,
+        customTagline: _settings.customTagline,
+        customTagline_useDefault: true,
         tagEmail: _settings.tagEmail,
         tagEmail_useDefault: true,
         reminderDays: _settings.reminderDays,
@@ -3238,9 +3270,16 @@ function processPerCommentListSettings(commentListIdx) {
             + '      </div>'
             + `      <input type="checkbox" style="right:1px;" id="_cbperCommentList_closeDays_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.closeDays_useDefault) ? 'checked="true"' : '')}>`
             + '   </div>'
+            + '   <div>'
+            + '      <div style="width:calc(100% - 18px); display:inline-block">'
+            + `         <div style="display:inline;" title="${I18n.t('urce.prefs.CustomTaglineTitle')}" class="URCE-label${((perCListSettings.customTagline_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.CustomTagline')}:</div>`
+            + `         <textarea id="_textperCommentList_customTagline" class="URCE-textInput urceSettingsTextBox${((perCListSettings.customTagline_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList" title="${I18n.t('urce.prefs.CustomTaglineTitle')}" style="resize:none;width:230px;height:50px" ${((perCListSettings.customTagline_useDefault) ? 'disabled="true"' : '')}>${perCListSettings.customTagline}</textarea>`
+            + '      </div>'
+            + `      <input type="checkbox" style="right:1px;" id="_cbperCommentList_customTagline_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.customTagline_useDefault) ? 'checked="true"' : '')}>`
+            + '   </div>'
             + '</div>';
     $('#URCE-divPerCommentListSettings').html(htmlOut);
-    $('input[urceprefs="perCommentList"]').off().on('change', function () {
+    $('input[urceprefs="perCommentList"], textarea[urceprefs="perCommentList"]').off().on('change', function () {
         const settingName = $(this)[0].id.replace(/(_.+perCommentList_)/gmi, '');
         if (this.type === 'checkbox') {
             _settings.perCommentListSettings[_currentCommentList][settingName] = isChecked(this);
@@ -3272,6 +3311,10 @@ function processPerCommentListSettings(commentListIdx) {
                     $(`#_cbperCommentList_${parentSettingName}`).prop('checked', _settings[parentSettingName]);
                 else if ($(`input[id$="${parentSettingName}"][urceprefs!="perCommentList"]`)[0].type === 'number')
                     $(`#_numperCommentList_${parentSettingName}`).val(_settings[parentSettingName]);
+                else if ($(`input[id$="${parentSettingName}"][urceprefs!="perCommentList"]`)[0].type === 'text')
+                    $(`#_textperCommentList_${parentSettingName}`).val(_settings[parentSettingName]);
+                else if ($(`textarea[id$="${parentSettingName}"][urceprefs!="perCommentList"]`).length > 0)
+                    $(`#_textperCommentList_${parentSettingName}`).val(_settings[parentSettingName]);
             }
             saveSettingsToStorage();
         }
@@ -4067,6 +4110,15 @@ function initSettingsTab() {
                             title: formatText(I18n.t('urce.prefs.CloseDaysTitle'), false)
                         }),
                         $('<div>', { class: 'URCE-divDaysInline', urceprefs: 'urce' }).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
+                    ),
+                    $('<div>', { title: I18n.t('urce.prefs.CustomTaglineTitle'), class: 'URCE-label', urceprefs: 'commentList' }).text(`${I18n.t('urce.prefs.CustomTagline')}: `).append(
+                        $('<textarea>', {
+                            id: '_textcustomTagline',
+                            class: 'URCE-textInput urceSettingsTextBox',
+                            style: 'width:230px;height:50px;resize:none;',
+                            urceprefs: 'commentList',
+                            title: I18n.t('urce.prefs.CustomTaglineTitle')
+                        }).val(_settings.customTagline)
                     )
                 )
             )
@@ -5226,9 +5278,9 @@ function initSettingsTab() {
                     $('#urceCustomSpreadsheetLinkDiv').remove();
                 }
             }
-            if ((settingName !== 'tagEmail') && (settingName !== 'customSsId'))
+            if ((settingName !== 'tagEmail') && (settingName !== 'customSsId') && settingName !== 'customTagline')
                 handleUrLayer('settingsToggle', null, null);
-            else if ((settingName === 'tagEmail') || ((settingName === 'customSsId') && (_currentCommentList === 1001)))
+            else if ((settingName === 'tagEmail') || (settingName === 'customTagline') || ((settingName === 'customSsId') && (_currentCommentList === 1001)))
                 changeCommentList(_settings.commentList, false, true);
         }
     });
@@ -5688,6 +5740,9 @@ function loadTranslations() {
                         TagEmail: 'Tag email',
                         TagEmailTitle: 'Some comment lists have specific comments that use a replacement tag.\nThe replacement tag is used to specify an email address to send correspondence '
                             + 'to.\nIf you are setup to use one of these email addresses, please specify it here. If not, leave it blank.',
+                        CustomTagline: 'Custom tagline',
+                        CustomTaglineTitle: 'Some comments use a custom tagline variable.\nSpecify the text, if any, you would like to have put in place of this custom tagline variable in the '
+                            + 'comment.',
                         AutoSwitchCommentList: 'Automatically switch comment lists',
                         AutoSwitchCommentListTitle: 'Automatically switch to the comment list designated for the area the UR is in, if there is a list associated with the area.\nOpening a UR '
                             + 'in an area that does not have a list associated will use the "Comment List" you have selected above.',
@@ -5937,6 +5992,19 @@ function loadTranslations() {
                         + 'creation of the new spreadsheet.'
                     },
                     urPanel: {
+                        CurrentDate: 'Current date',
+                        DriveDate: 'Drive date',
+                        Shortcuts: 'Shortcuts',
+                        InsertCurrentDateCasualTitle: 'Shortcut - Current date (casual): Click this icon to insert the current date into the new comment box at the cursor position (full month name, '
+                            + '2-digit day in locale format).',
+                        InsertCurrentDateTitle: 'Shortcut - Current date: Click this icon to insert the current date into the new comment box at the cursor position (2-digit month, 2-digit day, '
+                            + '4-digit year in locale format).',
+                        InsertCurrentDayOfWeekTitle: 'Shortcut - Current day of week: Click this icon to insert the current day of the week into the new comment box at the cursor position (full day '
+                            + 'of week name in locale language).',
+                        InsertCurrentTimeCasualTitle: 'Shortcut - Current time of day (casual): Click this icon to insert the current time of day into the new comment box at the cursor position (in '
+                            + 'locale language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
+                        InsertCurrentTimeTitle: 'Shortcut - Current time of day: Click this icon to insert the current time of day into the new comment box at the cursor position (2-digit hour, '
+                            + '2-digit minute in locale format).',
                         InsertDateTimeCasualModeTitle: 'Shortcut - Drive day and time (fully casual): Click this icon to insert the drive date into the new comment box at the cursor position.\n\n'
                             + '0 days: this morning, this afternoon, this evening, tonight\n'
                             + '1 days: yesterday morning, yesterday afternoon, yesterrday evening, last night\n'
