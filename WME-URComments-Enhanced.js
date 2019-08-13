@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.08.12.01
+// @version     2019.08.13.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -41,8 +41,12 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SCRIPT_VERSION = GM_info.script.version,
     SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Custom text replace variables via sheets.',
         '<b>NEW:</b> Custom tagline setting. (Per comment list or "master")',
-        '<b>NEW:</b> More shortcuts: Current time, current day of week, current date, current time casual, current date casual. (Available via UR panel and variable in comments)',
-        '<b>BUGFIX:</b> Per comment list text boxes not saving correctly.'
+        '<b>NEW:</b> More shortcuts: current date, current date casual, current day of week, current time, current time casual, custom tagline, place address, place name, UR type. '
+        + '(Available via UR panel and variable in comments)',
+        '<b>NEW:</b> $SELSEGS$ now includes \'in CITY\' if selected segment(s) have a matching primary city, or only one has a primary city.',
+        '<b>BUGFIX:</b> Per comment list text boxes not saving correctly.',
+        '<b>BUGFIX:</b> Check for ALL $$ in comment before automatically clicking send.',
+        '<b>BUGFIX:</b> Selected segments variable replacement could show undefined.'
     ],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
@@ -427,7 +431,11 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
         else
             outputText += `<i>${I18n.t('urce.common.None')}</i>`;
         outputText += `<br><br><b>${I18n.t('urce.prompts.RestoreSettingsConfirmation')}</b>`;
-        return WazeWrap.Alerts.confirm(SCRIPT_NAME, formatText(outputText), () => { loadSettingsFromStorage(restoreSettings, true); }, () => { }, I18n.t('urce.common.Yes'), I18n.t('urce.common.No'));
+        return WazeWrap.Alerts.confirm(SCRIPT_NAME,
+            formatText(outputText, true, false),
+            () => { loadSettingsFromStorage(restoreSettings, true); },
+            () => { }, I18n.t('urce.common.Yes'),
+            I18n.t('urce.common.No'));
     }
     const loadedSettings = (restoreSettings === 'resetSettings') ? undefined : restoreSettings || $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
     _settings = $.extend({}, defaultSettings, loadedSettings);
@@ -879,6 +887,10 @@ async function handleUpdateRequestContainer(urId, caller) {
             + `<i id="urceShortcuts-selSegs" class="fa fa-road" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertSelSegsTitle')}"></i>`
             + `<i id="urceShortcuts-description" class="fa fa-paragraph" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDescriptionTitle')}"></i>`
             + `<i id="urceShortcuts-wazeUsername" class="fa fa-user-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertWazeUsernameTitle')}"></i>`
+            + `<i id="urceShortcuts-urType" class="fa fa-info-circle" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertUrTypeTitle')}"></i>`
+            + `<i id="urceShortcuts-customTagline" class="fa fa-tag" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCustomTaglineTitle')}"></i>`
+            + `<i id="urceShortcuts-placeName" class="fa fa-home" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertPlaceNameTitle')}"></i>`
+            + `<i id="urceShortcuts-placeAddress" class="fa fa-map-marker" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertPlaceAddressTitle')}"></i>`
             + '</div>'
             + `<div><i id="urceShortcuts-driveTime" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertTimeTitle')}"></i>`
             + `<i id="urceShortcuts-driveDayOfWeek" class="fa fa-sun-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDayOfWeekTitle')}"></i>`
@@ -906,7 +918,7 @@ function checkValue() {
     const varsFound = this.value.match(/(\B\$[A-Za-z0-9]*\$?)/gm);
     if (varsFound) {
         let title;
-        if ((this.value.indexOf('$SELSEGS$') > -1) || (this.value.indexOf('$SELSEGS') > -1))
+        if (this.value.indexOf('$SELSEGS') > -1)
             title = I18n.t('urce.prompts.SelSegsFound');
         else
             title = I18n.t('urce.prompts.VarFound').replace('$VARSFOUND$', varsFound.join(', '));
@@ -1014,7 +1026,52 @@ function convertTimeOfDayToCasual(hour) {
     return casualText;
 }
 
-function formatText(text, replaceVars) {
+function formatText(text, replaceVars, shortcutClicked) {
+    if (replaceVars && shortcutClicked && (text.indexOf('$SELSEGS') > -1)) {
+        const selFeatures = W.selectionManager.getSelectedFeatures();
+        let streetName = '',
+            firstCityId;
+        if (selFeatures.length > 0 && selFeatures.length < 3) {
+            for (let idx = 0; idx < selFeatures.length; idx++) {
+                if (selFeatures[idx].model.type === 'segment') {
+                    if (selFeatures.length > 1) {
+                        const streetObj = W.model.streets.getObjectById(selFeatures[idx].model.attributes.primaryStreetID);
+                        if (idx === 0) {
+                            streetName += `the intersection of ${((streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : 'NO NAME')} and `;
+                            firstCityId = streetObj.cityID;
+                        }
+                        else {
+                            streetName += ((streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : 'NO NAME');
+                            if (firstCityId !== 999940) {
+                                if ((firstCityId === streetObj.cityID) || (streetObj.cityID === 999940)) {
+                                    const cityObj = W.model.cities.getObjectById(firstCityId);
+                                    streetName += (cityObj.attributes.name !== '' ? ` in ${cityObj.attributes.name}` : '');
+                                }
+                            }
+                            else if ((firstCityId === 999940) && (streetObj.cityID !== 999940)) {
+                                const cityObj = W.model.cities.getObjectById(streetObj.cityID);
+                                streetName += (cityObj.attributes.name !== '' ? ` in ${cityObj.attributes.name}` : '');
+                            }
+                        }
+                    }
+                    else {
+                        const streetObj = W.model.streets.getObjectById(selFeatures[idx].model.attributes.primaryStreetID);
+                        streetName += ((streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : '');
+                        const cityObj = W.model.cities.getObjectById(streetObj.cityID);
+                        if ((cityObj.attributes.name !== '') && (streetName !== ''))
+                            streetName += ` in ${cityObj.attributes.name}`;
+                    }
+                }
+            }
+            if (streetName && streetName.length > 0)
+                text = text.replace(/\$SELSEGS\$?/gm, streetName);
+            else
+                WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.SelSegsInsertError'));
+        }
+        else {
+            WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.SelSegsInsertError'));
+        }
+    }
     if (replaceVars && (_selUr.urId > -1)) {
         if (text.search(/(\$(CURRENTDATE_DAY_OF_WEEK|CURRENTDATE_DATE|CURRENTDATE_DATE_CASUAL|CURRENTDATE_TIME|CURRENTDATE_TIME_CASUAL)\$)/gm) > -1) {
             if (text.indexOf('$CURRENTDATE_DAY_OF_WEEK$') > -1)
@@ -1168,7 +1225,52 @@ function formatText(text, replaceVars) {
         else
             text = text.replace('$CUSTOMTAGLINE$', '');
     }
-    if (replaceVars) {
+    if (replaceVars && text.indexOf('$URTYPE$') > -1)
+        text = text.replace('$URTYPE$', W.model.mapUpdateRequests.objects[_selUr.urId].attributes.typeText);
+    if (replaceVars && text.indexOf('$PLACE_NAME$') > -1) {
+        const placeObj = W.selectionManager.getSelectedFeatures()[0];
+        if (placeObj && (placeObj.model.type === 'venue')) {
+            if (placeObj.model.attributes.residential === true)
+                text = text.replace('$PLACE_NAME$', I18n.t('objects.venue.fields.residential'));
+            else if (placeObj.model.attributes.name.length > 0)
+                text = text.replace('$PLACE_NAME$', placeObj.model.attributes.name);
+            else
+                WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.PlaceNameInsertError'));
+        }
+        else {
+            WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.PlaceNameInsertError'));
+        }
+    }
+    if (replaceVars && text.indexOf('$PLACE_ADDRESS$') > -1) {
+        const placeObj = W.selectionManager.getSelectedFeatures()[0];
+        if (placeObj && (placeObj.model.type === 'venue') && ((placeObj.model.attributes.houseNumber.length > 0) || (placeObj.model.attributes.streetID.length > 0))) {
+            let placeAddress = '';
+            if (placeObj.model.attributes.houseNumber.length > 0)
+                placeAddress += `${placeObj.model.attributes.houseNumber} `;
+            if (placeObj.model.attributes.streetID > 0) {
+                const streetObj = W.model.streets.getObjectById(placeObj.model.attributes.streetID);
+                if (streetObj.name && (streetObj.name !== ''))
+                    placeAddress += streetObj.name;
+                if ((streetObj.cityID > 0) && (streetObj.cityID !== 999940)) {
+                    const cityObj = W.model.cities.getObjectById(streetObj.cityID);
+                    placeAddress += `, ${cityObj.attributes.name}`;
+                    if (cityObj.attributes.stateID > 0) {
+                        const stateObj = W.model.states.getObjectById(cityObj.attributes.stateID);
+                        if (stateObj.name !== '')
+                            placeAddress += `, ${stateObj.name}`;
+                    }
+                }
+            }
+            if (placeAddress !== '')
+                text = text.replace('$PLACE_ADDRESS$', placeAddress);
+            else
+                WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.PlaceAddressInsertError'));
+        }
+        else {
+            WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.PlaceAddressInsertError'));
+        }
+    }
+    if (replaceVars && _customReplaceVars && (_customReplaceVars.length > 0)) {
         _customReplaceVars.forEach(customReplaceVar => {
             text = text.replace(customReplaceVar.customVar, customReplaceVar.replaceText);
         });
@@ -1180,15 +1282,16 @@ function handleClickedShortcut(shortcut) {
     const cursorPos = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].selectionStart,
         currVal = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val();
     let newVal = currVal.slice(0, cursorPos),
-        outputText,
+        useCurrVal = false,
         replaceText;
     if (shortcut === 'selSegs') {
-        if (currVal.indexOf('$SELSEGS$') > -1)
+        if (currVal.search(/\$SELSEGS\$?/) > -1) {
+            useCurrVal = true;
+            replaceText = currVal;
+        }
+        else {
             replaceText = '$SELSEGS$';
-        else if (currVal.indexOf('$SELSEGS') > -1)
-            replaceText = '$SELSEGS';
-        else
-            replaceText = '_INSERT_';
+        }
     }
     else if (shortcut === 'driveTime') {
         replaceText = '$DRIVEDATE_TIME$';
@@ -1229,44 +1332,40 @@ function handleClickedShortcut(shortcut) {
     else if (shortcut === 'currentTimeCasual') {
         replaceText = '$CURRENTDATE_TIME_CASUAL$';
     }
+    else if (shortcut === 'urType') {
+        replaceText = '$URTYPE$';
+    }
+    else if (shortcut === 'customTagline') {
+        replaceText = '$CUSTOMTAGLINE$';
+    }
+    else if (shortcut === 'placeName') {
+        if (currVal.search(/\$PLACE_NAME\$/) > -1) {
+            useCurrVal = true;
+            replaceText = currVal;
+        }
+        else {
+            replaceText = '$PLACE_NAME$';
+        }
+    }
+    else if (shortcut === 'placeAddress') {
+        if (currVal.search(/\$PLACE_ADDRESS\$/) > -1) {
+            useCurrVal = true;
+            replaceText = currVal;
+        }
+        else {
+            replaceText = '$PLACE_ADDRESS$';
+        }
+    }
     else {
         return;
     }
-    if ((replaceText === '$SELSEGS$') || (replaceText === '$SELSEGS') || (replaceText === '_INSERT_')) {
-        const selFeatures = W.selectionManager.getSelectedFeatures();
-        let streetName;
-        if (selFeatures.length > 0 && selFeatures.length < 3) {
-            for (let idx = 0; idx < selFeatures.length; idx++) {
-                if (selFeatures[idx].model.type === 'segment') {
-                    if (selFeatures.length > 1) {
-                        if (idx === 0)
-                            streetName = `the intersection of ${W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name} and `;
-                        else
-                            streetName += W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
-                    }
-                    else {
-                        streetName = W.model.streets.objects[selFeatures[idx].model.attributes.primaryStreetID].name;
-                    }
-                }
-            }
-            if (streetName && streetName.length > 0) {
-                if (replaceText === '_INSERT_')
-                    outputText = streetName;
-                else
-                    $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(currVal.replace(replaceText, streetName)).change().keyup();
-            }
-            else {
-                WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.SelSegsInsertError'));
-            }
-        }
-        else {
-            WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.SelSegsInsertError'));
-        }
-    }
-    else {
-        outputText = formatText(replaceText, true);
-    }
-    if (outputText) {
+    const outputText = formatText(replaceText, true, true);
+    if (((shortcut === 'selSegs') && (outputText.search(/\$SELSEGS\$?/gm) > -1))
+        || ((shortcut === 'placeName') && (outputText.indexOf('$PLACE_NAME$') > -1))
+        || ((shortcut === 'placeAddress') && (outputText.indexOf('$PLACE_ADDRESS$') > -1))
+    )
+        return;
+    if (outputText && !useCurrVal) {
         if ((newVal.length > 0) && (newVal.slice(newVal.length - 1).search(/\s/) === -1))
             newVal += ' ';
         newVal += outputText;
@@ -1279,6 +1378,9 @@ function handleClickedShortcut(shortcut) {
             WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
         else
             $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(newVal).selectRange((cursorPos + outputText.length + 1)).change().keyup().focus();
+    }
+    else if (useCurrVal) {
+        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(outputText).selectRange((cursorPos + outputText.length + 1)).change().keyup().focus();
     }
 }
 
@@ -1328,7 +1430,7 @@ function postUrComment(commentStr, doubleClick) {
                         newVal += '\n\n';
                         newCursorPos += 2;
                     }
-                    newVal += formatText(comment, true);
+                    newVal += formatText(comment, true, false);
                     if (currVal.slice(cursorPos).length > 0) {
                         if (currVal.substr(cursorPos, 1).search(/[\n\r]/) > -1) {
                             if (currVal.substr(cursorPos + 1, 1).search(/[\n\r]/) === -1) {
@@ -1345,7 +1447,7 @@ function postUrComment(commentStr, doubleClick) {
                     commentOutput = newVal;
                 }
                 else {
-                    commentOutput = formatText(comment, true);
+                    commentOutput = formatText(comment, true, false);
                 }
                 if (commentOutput.length > 2000) {
                     WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
@@ -1360,7 +1462,7 @@ function postUrComment(commentStr, doubleClick) {
                     else {
                         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).change().keyup().focus();
                     }
-                    if ((commentOutput.indexOf('$SELSEGS$') === -1) && (commentOutput.indexOf('$SELSEGS') === -1))
+                    if (commentOutput.match(/(\B\$[A-Za-z0-9]*\$?)/gm) === null)
                         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').blur().focus();
                     else
                         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').focus();
@@ -2109,7 +2211,7 @@ function updateUrceData(urIds) {
                                 && (_wmeUserId === urceData.lastCommentBy)
                                 && !mapUrsObj[idx].attributes.reminderSent
                             ) {
-                                const autoPostReminderCommentResult = await autoPostReminderComment(chunk[idx], formatText(_commentList[_defaultComments.dr.commentNum].comment, true));
+                                const autoPostReminderCommentResult = await autoPostReminderComment(chunk[idx], formatText(_commentList[_defaultComments.dr.commentNum].comment, true, false));
                                 if (autoPostReminderCommentResult.error) {
                                     urceData.needsReminder = true;
                                     logWarning(autoPostReminderCommentResult.text); // Don't return here as we should go ahead and process the urceData.
@@ -2965,7 +3067,7 @@ function processCommentList(data) {
                     if (rowObj.title !== 'URCE_REMOVED_SO_SKIP') {
                         if (rowObj.title === 'URCE_ERROR')
                             return resolve({ error: true, text: `There is an unknown error in the spreadsheet output. Please contact the list owner: ${getCommentListInfo(_settings.commentList).listOwner}` }); // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
-                        if (rowObj.urstatus === 'custom tag') {
+                        if (rowObj.urstatus === 'custom var') {
                             _customReplaceVars.push({ customVar: `$${rowObj.title}$`, replaceText: rowObj.comment });
                         }
                         else if (rowObj.urstatus === 'group title') { // Group title row. Nothing to set in the arrays, but build html.
@@ -3047,13 +3149,13 @@ function processCommentList(data) {
                             $(`#${groupDivId}_body`).append(
                                 $('<div>', { class: `URCE-divComment hover expand ${linkClass}`, style: 'position:relative;' }).append(
                                     $('<div>', { style: 'width:225px; display:inline-flex;' }).append(
-                                        $('<a>', { class: `URCE-Comments ${linkClass} URCE-Comments`, id: `urce-cid-${commentId}`, title: formatText(rowObj.comment, false) }).text(rowObj.title).click(function () {
+                                        $('<a>', { class: `URCE-Comments ${linkClass} URCE-Comments`, id: `urce-cid-${commentId}`, title: formatText(rowObj.comment, false, false) }).text(rowObj.title).click(function () {
                                             handleClickedComment(parseInt(this.id.replace(/urce-cid-/, '')), false);
                                         })
                                     )
                                 ).append(
                                     $('<div>', {
-                                        class: 'URCE-divDoubleClick', id: divDoubleClickId, style: divDoubleClickStyle, title: `${I18n.t('urce.common.DoubleClickTitle')}:\n${formatText(rowObj.comment, false)}`
+                                        class: 'URCE-divDoubleClick', id: divDoubleClickId, style: divDoubleClickStyle, title: `${I18n.t('urce.common.DoubleClickTitle')}:\n${formatText(rowObj.comment, false, false)}`
                                     }).append(
                                         $('<img>', { src: DOUBLE_CLICK_ICON, class: 'URCE-doubleClickIcon', id: `urce-img-cid-${commentId}` }).dblclick(function () {
                                             handleClickedComment(parseInt(this.id.replace(/urce-img-cid-/, '')), true);
@@ -4083,7 +4185,7 @@ function initSettingsTab() {
                             title: I18n.t('urce.prefs.TagEmailTitle')
                         })
                     ),
-                    $('<div>', { title: formatText(I18n.t('urce.prefs.ReminderDaysTitle'), false), class: 'URCE-label', urceprefs: 'urce' }).append(`${I18n.t('urce.prefs.ReminderDays')}: `).append(
+                    $('<div>', { title: formatText(I18n.t('urce.prefs.ReminderDaysTitle'), false, false), class: 'URCE-label', urceprefs: 'urce' }).append(`${I18n.t('urce.prefs.ReminderDays')}: `).append(
                         $('<input>', {
                             type: 'number',
                             id: '_numreminderDays',
@@ -4093,11 +4195,11 @@ function initSettingsTab() {
                             max: '9999',
                             step: '1',
                             value: _settings.reminderDays,
-                            title: formatText(I18n.t('urce.prefs.ReminderDaysTitle'), false)
+                            title: formatText(I18n.t('urce.prefs.ReminderDaysTitle'), false, false)
                         }),
                         $('<div>', { class: 'URCE-divDaysInline', urceprefs: 'urce' }).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
                     ),
-                    $('<div>', { title: formatText(I18n.t('urce.prefs.CloseDaysTitle'), false), class: 'URCE-label', urceprefs: 'urce' }).append(`${I18n.t('urce.prefs.CloseDays')}: `).append(
+                    $('<div>', { title: formatText(I18n.t('urce.prefs.CloseDaysTitle'), false, false), class: 'URCE-label', urceprefs: 'urce' }).append(`${I18n.t('urce.prefs.CloseDays')}: `).append(
                         $('<input>', {
                             type: 'number',
                             id: '_numcloseDays',
@@ -4107,7 +4209,7 @@ function initSettingsTab() {
                             max: '9999',
                             step: '1',
                             value: _settings.closeDays,
-                            title: formatText(I18n.t('urce.prefs.CloseDaysTitle'), false)
+                            title: formatText(I18n.t('urce.prefs.CloseDaysTitle'), false, false)
                         }),
                         $('<div>', { class: 'URCE-divDaysInline', urceprefs: 'urce' }).append(I18n.translations[I18n.currentLocale()].common.time.days.replace(/%{days} /gi, ''))
                     ),
@@ -5969,32 +6071,31 @@ function loadTranslations() {
                     tools: {
                         BackupSettingsTitle: 'Download a backup copy of your URC-E settings in JSON format.\nThis backup can be used to restore your settings to another computer, or in the event you '
                             + 'lose your settings.\n\nNote: Please do not modify the JSON file in any way. The format is crucial to proper restoral of settings.',
-                        RestoreSettingsFileError: 'Invalid URC-E settings JSON file.',
-                        RestoreSettingsSelectFileTitle: 'Select the JSON file created by the URC-E "Backup" settings button.',
-                        RestoreSettingsTitle: 'Restore a backup copy of your URC-E settings from the JSON backup file created with the backup settings button.\n\nNote: Please do not modify the JSON '
-                            + 'file in any way. The format is crucial to proper restoral of settings.',
-                        ResetSettingsTitle: 'Reset all URC-E settings back to their default values.\n\nNote: Almost all settings default to disabled.',
-                        CustomGoogleSheetSignIn: 'Sign In/Authorize',
-                        CustomGoogleSheetSignInTitle: 'Sign into Google and authorize this app.',
-                        CustomGoogleSheetSignout: 'Sign out',
-                        CustomGoogleSheetRevokeAccess: 'Revoke access',
-                        CustomGoogleSheetRevokeAccessTitle: 'Revoke access to your Google data for this app.',
-                        CustomGoogleSpreadsheet: 'Custom Google Spreadsheet',
                         ConvertCurrentCustom: 'Convert current custom',
                         ConvertCurrentCustomTitle: 'Convert your current custom comment list addon to URC-E style Google Sheet for easy maintenance, sharing, etc.',
                         CreateNewCustom: 'Create new custom',
                         CreateNewCustomTitle: 'Create your own URC-E custom comment list Google sheet for easy maintenance, sharing, etc.',
+                        CustomGoogleSpreadsheet: 'Custom Google Spreadsheet',
                         CustomGoogleSheetInfoBox: 'In order for URC-E to create a new Google Spreadsheet within your Google Drive, you must first sign-in / authorize URC-E to access your Google '
                         + 'Drive account.<br><br>URC-E needs access to two sets of permissions for your Google Account. The first is drive.file, which is any file created by URC-E within your Google '
                         + 'Drive. However, this does not allow URC-E to access the main "template" created to copy from. In order to see this template, a second permission of drive.readonly is asked '
                         + 'for. This permission is what causes the "unverified" warning from Google as URC-E cannot become verified due to not owning the Waze.com domain.<br><br>Once you have '
                         + 'created / converted your own static sheet, you can click "Sign out" or even "Revoke access" as URC-E does not need any permissions to your Google account after the initial '
-                        + 'creation of the new spreadsheet.'
+                        + 'creation of the new spreadsheet.',
+                        CustomGoogleSheetRevokeAccess: 'Revoke access',
+                        CustomGoogleSheetRevokeAccessTitle: 'Revoke access to your Google data for this app.',
+                        CustomGoogleSheetSignIn: 'Sign In/Authorize',
+                        CustomGoogleSheetSignInTitle: 'Sign into Google and authorize this app.',
+                        CustomGoogleSheetSignout: 'Sign out',
+                        ResetSettingsTitle: 'Reset all URC-E settings back to their default values.\n\nNote: Almost all settings default to disabled.',
+                        RestoreSettingsFileError: 'Invalid URC-E settings JSON file.',
+                        RestoreSettingsSelectFileTitle: 'Select the JSON file created by the URC-E "Backup" settings button.',
+                        RestoreSettingsTitle: 'Restore a backup copy of your URC-E settings from the JSON backup file created with the backup settings button.\n\nNote: Please do not modify the JSON '
+                            + 'file in any way. The format is crucial to proper restoral of settings.'
                     },
                     urPanel: {
                         CurrentDate: 'Current date',
                         DriveDate: 'Drive date',
-                        Shortcuts: 'Shortcuts',
                         InsertCurrentDateCasualTitle: 'Shortcut - Current date (casual): Click this icon to insert the current date into the new comment box at the cursor position (full month name, '
                             + '2-digit day in locale format).',
                         InsertCurrentDateTitle: 'Shortcut - Current date: Click this icon to insert the current date into the new comment box at the cursor position (2-digit month, 2-digit day, '
@@ -6005,6 +6106,7 @@ function loadTranslations() {
                             + 'locale language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
                         InsertCurrentTimeTitle: 'Shortcut - Current time of day: Click this icon to insert the current time of day into the new comment box at the cursor position (2-digit hour, '
                             + '2-digit minute in locale format).',
+                        InsertCustomTaglineTitle: 'Shortcut - Custom tagline: Click this icon to insert your custom tagline into the new comment box at the cursor position.',
                         InsertDateTimeCasualModeTitle: 'Shortcut - Drive day and time (fully casual): Click this icon to insert the drive date into the new comment box at the cursor position.\n\n'
                             + '0 days: this morning, this afternoon, this evening, tonight\n'
                             + '1 days: yesterday morning, yesterday afternoon, yesterrday evening, last night\n'
@@ -6022,13 +6124,19 @@ function loadTranslations() {
                         InsertDayOfWeekTitle: 'Shortcut - Drive day of week: Click this icon to insert the drive date day of the week into the new comment box at the cursor position (full day of '
                             + 'week name in locale language).',
                         InsertDescriptionTitle: 'Shortcut - Description: Click this icon to insert the UR description into the new comment box at the cursor position.',
+                        InsertPlaceAddressTitle: 'Shortcut - Place address: Click this icon to either replace \'$PLACE_ADDRESS$\' with the address of the currently selected place, or it will insert '
+                            + 'the address of the currently selected place into the comment box at the current cursor position.',
+                        InsertPlaceNameTitle: 'Shortcut - Place name: Click this icon to either replace \'$PLACE_NAME$\' with the name of the currently selected place, or it will insert the name of '
+                            + 'the currently selected place into the comment box at the current cursor position.',
                         InsertSelSegsTitle: 'Shortcut - Segment name(s): Click this icon to either replace "$SELSEGS$" (or "$SELSEGS)" with the name of the currently selected segment(s), or\nit '
                             + 'will insert the name of the currently selected segment(s) into the comment box at the cursor position.',
                         InsertTimeCasualTitle: 'Shortcut - Drive time of day (casual): Click this icon to insert the drive date time of day into the new comment box at the cursor position (in locale '
                             + 'language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
                         InsertTimeTitle: 'Shortcut - Drive time of day: Click this icon to insert the drive date time of day into the new comment box at the cursor position (2-digit hour, 2-digit '
                             + 'minute in locale format).',
-                        InsertWazeUsernameTitle: 'Shortcut - Waze username: Click this icon to insert your Waze username into the new comment box at the cursor position.'
+                        InsertUrTypeTitle: 'Shortcut - UR type: Click this icon to insert the UR type into the new comment box at the cursor position.',
+                        InsertWazeUsernameTitle: 'Shortcut - Waze username: Click this icon to insert your Waze username into the new comment box at the cursor position.',
+                        Shortcuts: 'Shortcuts'
                     },
                     urStatus: {
                         Closed: 'Closed',
@@ -6038,21 +6146,23 @@ function loadTranslations() {
                         Undefined: 'Undefined'
                     },
                     prompts: {
+                        CommentInsertTimedOut: 'URC-E timed out waiting for the comment text box to become available.',
                         CommentTooLong: 'Appending another comment to the current text will cause the comment to be longer than 2000 characters, which is too long. URC-E did not append the selected '
                             + 'comment and left the new-comment box with the same text it had.',
+                        ConversionComplete: 'URC-E successfully converted your currently loaded custom comment list addon to a Google Sheet!<br>Please follow the following steps to start using your '
+                            + 'custom comments:',
                         ConversionLoadAddonFirst: 'In order to convert a custom comments addon script to the new URC-E style Google Sheet, you must first ensure your custom comments addon is enabled '
                             + 'in TamperMonkey and selected in URC-E\'s Comment List settings box.',
-                        ConvertCreateCreateCustomSpreadsheet: 'Create custom spreadsheet',
-                        ConvertCreateSetProperPermissions: 'Set proper permissions',
+                        ConvertCreateCompletionSteps: 'After completing the <b>next steps</b> above, follow the following steps to start using your custom comments:',
+                        ConvertCreateCompletionStepsStep1: 'Click the $COPY_ICON$ next to your <b>Spreadsheet ID</b> above to copy your spreadsheet ID.',
+                        ConvertCreateCompletionStepsStep2: 'Paste the spreadsheet ID into the <b>Custom Google Spreadsheet ID</b> box in URC-E settings.',
+                        ConvertCreateCompletionStepsStep3: 'Select <b>Custom G Sheet</b> from the available comment lists in URC-E settings.',
+                        ConvertCreateConvertComments: 'Convert comments',
                         ConvertCreateConvertCurrent: 'Convert current',
                         ConvertCreateConvertDefaultComments: 'Convert default comments',
-                        ConvertCreateConvertComments: 'Convert comments',
-                        ConvertCreateSpreadsheetURL: 'Spreadsheet URL',
+                        ConvertCreateCreateCustomSpreadsheet: 'Create custom spreadsheet',
                         ConvertCreateGoogleAccount: 'Google account',
-                        ConvertCreateSpreadsheetID: 'Spreadsheet ID',
-                        ConvertCreateSpreadsheetIDCopyTitle: 'Click here to copy the Spreadsheet ID to your clipboard.',
                         ConvertCreateNextSteps: 'Next steps',
-                        ConvertCreateNextStepsCreateError: 'Try again. If this error persists, please contact a member of the WazeDev team.',
                         ConvertCreateNextStepsCheckPermissions: 'Check permissions on your new google sheet by performing the following',
                         ConvertCreateNextStepsCheckPermissionsStep1: 'Open your spreadsheet',
                         ConvertCreateNextStepsCheckPermissionsStep2: 'Click <b>Share</b> at the top right.',
@@ -6063,26 +6173,26 @@ function loadTranslations() {
                         ConvertCreateNextStepsCheckPermissionsStep6: 'Select <i>On - Anyone with the link</i>',
                         ConvertCreateNextStepsCheckPermissionsStep7: 'Ensure <i>Access: Anyone (no sign-in required)</i> is set to <b>Can view</b>.',
                         ConvertCreateNextStepsCheckPermissionsStep8: 'Click <b>Save</b> then <b>Done</b>.',
-                        ConvertCreateNextStepsConvertDefaultsError: 'Your default comments were not set correctly in cells B5 to B22 in your spreadsheet. Check the sheet and update accordingly.',
                         ConvertCreateNextStepsConvertCommentsError: 'Your current custom comments were not correctly converted. You can try again, but if the error persists, please contact a member '
-                            + 'of the WazeDev team.',
-                        ConvertCreateCompletionSteps: 'After completing the <b>next steps</b> above, follow the following steps to start using your custom comments:',
-                        ConvertCreateCompletionStepsStep1: 'Click the $COPY_ICON$ next to your <b>Spreadsheet ID</b> above to copy your spreadsheet ID.',
-                        ConvertCreateCompletionStepsStep2: 'Paste the spreadsheet ID into the <b>Custom Google Spreadsheet ID</b> box in URC-E settings.',
-                        ConvertCreateCompletionStepsStep3: 'Select <b>Custom G Sheet</b> from the available comment lists in URC-E settings.',
+                        + 'of the WazeDev team.',
+                        ConvertCreateNextStepsConvertDefaultsError: 'Your default comments were not set correctly in cells B5 to B22 in your spreadsheet. Check the sheet and update accordingly.',
+                        ConvertCreateNextStepsCreateError: 'Try again. If this error persists, please contact a member of the WazeDev team.',
+                        ConvertCreateSetProperPermissions: 'Set proper permissions',
+                        ConvertCreateSpreadsheetID: 'Spreadsheet ID',
+                        ConvertCreateSpreadsheetIDCopyTitle: 'Click here to copy the Spreadsheet ID to your clipboard.',
+                        ConvertCreateSpreadsheetURL: 'Spreadsheet URL',
                         ConvertingToGoogleSheet: 'URC-E is converting your currently loaded custom comment list addon to a Google sheet. Please wait.',
                         ConvertToGoogleSheet: 'Convert to Google Sheet',
                         CreateGoogleSheet: 'Create Google Sheet',
                         CreatingGoogleSheet: 'URC-E is creating a custom Google sheet for you. Please wait.',
-                        ConversionComplete: 'URC-E successfully converted your currently loaded custom comment list addon to a Google Sheet!<br>Please follow the following steps to start using your '
-                            + 'custom comments:',
                         CreationComplete: 'URC-E successfully created a custom Google Sheet for you!<br>Please follow the following steps to start using your custom comments:',
                         CustomGSheetLoadError: 'An error has occurred loading your URC-E custom comment Google sheet.<br><br>Please make sure you have done the following:\n<ul><li>Used <b><i>Make a '
                             + 'copy...</i></b> on the original spreadsheet that was created for you and saved it to your own Google Drive.\n<li>Set the correct <b><i>Custom Google Spreadsheet '
                             + 'ID</i></b> (should be the ID of the copy created in the previous step) set on the settings tab.\n<li>Ensured your spreadsheet is shared to everyone with a link can '
                             + 'view.\n</ul>If all these have been done and you are still having issues, please contact a WazeDev team member.',
                         NoCommentBox: 'URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.',
-                        CommentInsertTimedOut: 'URC-E timed out waiting for the comment text box to become available.',
+                        PlaceAddressInsertError: 'In order to use the <i class="fa fa-map-marker" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
+                        PlaceNameInsertError: 'In order to use the <i class="fa fa-home" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
                         ReminderMessageAuto: 'URC-E: Automatically sending reminder message to UR:',
                         ResetSettings: 'Reset Settings',
                         ResetSettingsComplete: 'Settings reset complete',
@@ -6098,14 +6208,13 @@ function loadTranslations() {
                         SelSegsFound: 'The selected comment contains "$SELSEGS$".\n\nIn order to replace this text with the road name(s), please\nselect one or two segments and click the road button '
                             + 'in the\nUR panel.',
                         SelSegsInsertError: 'In order to use the <i class="fa fa-road" aria-hidden="true"></i> button in the UR Panel, you must first select one or two segments.',
-                        SelSegsInsertErrorHeader: 'Error Inserting Segment Names',
                         SetCustomSsIdFirst: 'Before you can select <b><i>Custom G Sheet</i></b> as your comment list, you must first set the <b><i>Custom Google Spreadsheet ID</i></b> setting on '
                             + 'the URC-E settings tab.',
-                        UrOverflowErrorWithoutOverflowEnabled: 'WME will not load more than 500 URs per screen. Some URs may be missing. You can try to enable overflow handling, or zoom in and '
-                            + 'refresh.',
                         SwitchingCommentLists: 'Switching comment lists',
                         TimedOutWaitingStatic: 'Timed out waiting for the static list to become available. Is it enabled?',
                         UpdateRequired: 'You are using an older version of URC-E, which has caused an error. Please update to at least version',
+                        UrOverflowErrorWithoutOverflowEnabled: 'WME will not load more than 500 URs per screen. Some URs may be missing. You can try to enable overflow handling, or zoom in and '
+                            + 'refresh.',
                         VarFound: 'The selected comment contains variables: $VARSFOUND$.\n\nUntil these are replaced, the send button is disabled.',
                         WaitingOnInit: 'Waiting for URC-E to fully initialize'
                     },
