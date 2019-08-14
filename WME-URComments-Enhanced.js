@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.08.13.01
+// @version     2019.08.14.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -43,7 +43,8 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
         '<b>NEW:</b> Custom tagline setting. (Per comment list or "master")',
         '<b>NEW:</b> More shortcuts: current date, current date casual, current day of week, current time, current time casual, custom tagline, place address, place name, UR type. '
         + '(Available via UR panel and variable in comments)',
-        '<b>NEW:</b> $SELSEGS$ now includes \'in CITY\' if selected segment(s) have a matching primary city, or only one has a primary city.',
+        '<b>NEW:</b> $SELSEGS_WITH_CITY$ : Same as $SELSEGS$, except includes \'in CITY\' if selected segment(s) have a matching primary city, or only one has a primary city.',
+        '<b>NEW:</b> Link to enable / disable URCE UR filtering added to comment tab.',
         '<b>BUGFIX:</b> Per comment list text boxes not saving correctly.',
         '<b>BUGFIX:</b> Check for ALL $$ in comment before automatically clicking send.',
         '<b>BUGFIX:</b> Selected segments variable replacement could show undefined.'
@@ -441,8 +442,10 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
     _settings = $.extend({}, defaultSettings, loadedSettings);
 
     const serverSettings = await WazeWrap.Remote.RetrieveSettings(SETTINGS_STORE_NAME);
-    if (serverSettings && (serverSettings.lastSaved > _settings.lastSaved))
+    if (serverSettings && (serverSettings.lastSaved > _settings.lastSaved)) {
         $.extend(_settings, serverSettings);
+        _timeouts.saveSettingsToStorage = window.setTimeout(saveSettingsToStorage, 5000);
+    }
 
     if (_settings.wmeUserId !== _wmeUserId)
         _settings.wmeUserId = _wmeUserId;
@@ -466,7 +469,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             changed = true;
         }
     });
-    if (deleted || changed || proceedWithRestore)
+    if (deleted || changed || proceedWithRestore || !localStorage.getItem(SETTINGS_STORE_NAME))
         _timeouts.saveSettingsToStorage = window.setTimeout(saveSettingsToStorage, 5000);
     if (proceedWithRestore) {
         initTab();
@@ -885,12 +888,17 @@ async function handleUpdateRequestContainer(urId, caller) {
         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend('<div id="urceShortcuts" style="text-align:left;padding-bottom:8px;font-size:12px;">'
             + `<div>${I18n.t('urce.urPanel.Shortcuts')}:`
             + `<i id="urceShortcuts-selSegs" class="fa fa-road" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertSelSegsTitle')}"></i>`
-            + `<i id="urceShortcuts-description" class="fa fa-paragraph" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDescriptionTitle')}"></i>`
+            + '<span class="fa-stack" style="width:1.8em;height:1.8em;line-height:1.8em;">'
+            + `<i id="urceShortcuts-selSegsWithCity" class="fa fa-road" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')}"></i>`
+            + `<i id="urceShortcuts-selSegsWithCity" class="fa fa-plus fa-stack-2x" "area-hidden"="true" style="font-size:xx-small;text-align:right;cursor:pointer;" title="${I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')}"></i>`
+            + '</span><div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
+            + `<i id="urceShortcuts-placeName" class="fa fa-home" "aria-hidden"="true" style="cursor:pointer;" title="${I18n.t('urce.urPanel.InsertPlaceNameTitle')}"></i>`
+            + `<i id="urceShortcuts-placeAddress" class="fa fa-map-marker" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertPlaceAddressTitle')}"></i>`
+            + '<div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
+            + `<i id="urceShortcuts-description" class="fa fa-paragraph" "aria-hidden"="true" style="cursor:pointer;" title="${I18n.t('urce.urPanel.InsertDescriptionTitle')}"></i>`
             + `<i id="urceShortcuts-wazeUsername" class="fa fa-user-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertWazeUsernameTitle')}"></i>`
             + `<i id="urceShortcuts-urType" class="fa fa-info-circle" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertUrTypeTitle')}"></i>`
             + `<i id="urceShortcuts-customTagline" class="fa fa-tag" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCustomTaglineTitle')}"></i>`
-            + `<i id="urceShortcuts-placeName" class="fa fa-home" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertPlaceNameTitle')}"></i>`
-            + `<i id="urceShortcuts-placeAddress" class="fa fa-map-marker" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertPlaceAddressTitle')}"></i>`
             + '</div>'
             + `<div><i id="urceShortcuts-driveTime" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertTimeTitle')}"></i>`
             + `<i id="urceShortcuts-driveDayOfWeek" class="fa fa-sun-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDayOfWeekTitle')}"></i>`
@@ -920,6 +928,10 @@ function checkValue() {
         let title;
         if (this.value.indexOf('$SELSEGS') > -1)
             title = I18n.t('urce.prompts.SelSegsFound');
+        else if (this.value.indexOf('$PLACE_ADDRESS$') > -1)
+            title = I18n.t('urce.prompts.PlaceAddressFound');
+        else if (this.value.indexOf('$PLACE_NAME$') > -1)
+            title = I18n.t('urce.prompts.PlaceNameFound');
         else
             title = I18n.t('urce.prompts.VarFound').replace('$VARSFOUND$', varsFound.join(', '));
         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').prop('disabled', true).attr('title', title);
@@ -1042,13 +1054,13 @@ function formatText(text, replaceVars, shortcutClicked) {
                         }
                         else {
                             streetName += ((streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : 'NO NAME');
-                            if (firstCityId !== 999940) {
+                            if ((firstCityId !== 999940) && (text.indexOf('$SELSEGS_WITH_CITY$') > -1)) {
                                 if ((firstCityId === streetObj.cityID) || (streetObj.cityID === 999940)) {
                                     const cityObj = W.model.cities.getObjectById(firstCityId);
                                     streetName += (cityObj.attributes.name !== '' ? ` in ${cityObj.attributes.name}` : '');
                                 }
                             }
-                            else if ((firstCityId === 999940) && (streetObj.cityID !== 999940)) {
+                            else if ((firstCityId === 999940) && (streetObj.cityID !== 999940) && (text.indexOf('$SELSEGS_WITH_CITY$') > -1)) {
                                 const cityObj = W.model.cities.getObjectById(streetObj.cityID);
                                 streetName += (cityObj.attributes.name !== '' ? ` in ${cityObj.attributes.name}` : '');
                             }
@@ -1058,13 +1070,13 @@ function formatText(text, replaceVars, shortcutClicked) {
                         const streetObj = W.model.streets.getObjectById(selFeatures[idx].model.attributes.primaryStreetID);
                         streetName += ((streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : '');
                         const cityObj = W.model.cities.getObjectById(streetObj.cityID);
-                        if ((cityObj.attributes.name !== '') && (streetName !== ''))
+                        if ((cityObj.attributes.name !== '') && (streetName !== '') && (text.indexOf('$SELSEGS_WITH_CITY$') > -1))
                             streetName += ` in ${cityObj.attributes.name}`;
                     }
                 }
             }
             if (streetName && streetName.length > 0)
-                text = text.replace(/\$SELSEGS\$?/gm, streetName);
+                text = text.replace(/\$SELSEGS(\$|_WITH_CITY\$)?/gm, streetName);
             else
                 WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.SelSegsInsertError'));
         }
@@ -1285,12 +1297,22 @@ function handleClickedShortcut(shortcut) {
         useCurrVal = false,
         replaceText;
     if (shortcut === 'selSegs') {
-        if (currVal.search(/\$SELSEGS\$?/) > -1) {
+        if (currVal.search(/\$SELSEGS(\$|_WITH_CITY\$)?/) > -1) {
             useCurrVal = true;
             replaceText = currVal;
         }
         else {
             replaceText = '$SELSEGS$';
+        }
+    }
+    else if (shortcut === 'selSegsWithCity') {
+        const checkVal = currVal.match(/(\$SELSEGS(\$|(?!_))|\$SELSEGS_WITH_CITY\$?)/);
+        if (checkVal && (checkVal.length > 0)) {
+            useCurrVal = true;
+            replaceText = currVal.replace(checkVal[0], '$SELSEGS_WITH_CITY$');
+        }
+        else {
+            replaceText = '$SELSEGS_WITH_CITY$';
         }
     }
     else if (shortcut === 'driveTime') {
@@ -1360,7 +1382,7 @@ function handleClickedShortcut(shortcut) {
         return;
     }
     const outputText = formatText(replaceText, true, true);
-    if (((shortcut === 'selSegs') && (outputText.search(/\$SELSEGS\$?/gm) > -1))
+    if ((((shortcut === 'selSegs') || (shortcut === 'selSegsWithCity')) && (outputText.search(/\$SELSEGS\$?/gm) > -1))
         || ((shortcut === 'placeName') && (outputText.indexOf('$PLACE_NAME$') > -1))
         || ((shortcut === 'placeAddress') && (outputText.indexOf('$PLACE_ADDRESS$') > -1))
     )
@@ -3227,7 +3249,23 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
                     _settings[$(this)[0].id.substr(3)] = this.checked;
                     saveSettingsToStorage();
                 }),
-                $('<label>', { for: '_cbenableAppendMode', title: I18n.t('urce.prefs.EnableAppendModeTitle'), class: 'URCE-label' }).text(I18n.t('urce.prefs.EnableAppendMode'))
+                $('<label>', { for: '_cbenableAppendMode', title: I18n.t('urce.prefs.EnableAppendModeTitle'), class: 'URCE-label' }).text(I18n.t('urce.prefs.EnableAppendMode')),
+                $('<br>'),
+                $('<input>', {
+                    type: 'checkbox', id: '_cbenableUrceUrFiltering_2', urceprefs: 'filteringMaster', class: 'urceSettingsCheckbox', title: I18n.t('urce.prefs.EnableUrceUrFilteringTitle')
+                }).prop('checked', _settings.enableUrceUrFiltering).off().on('change', function () {
+                    if (!this.checked)
+                        $('[urceprefs=filtering]').prop('disabled', true).addClass('urceDisabled');
+                    else
+                        $('[urceprefs=filtering]').prop('disabled', false).removeClass('urceDisabled');
+                    $('#_cbenableUrceUrFiltering').prop('checked', this.checked);
+                    _settings.enableUrceUrFiltering = this.checked;
+                    saveSettingsToStorage();
+                    handleUrLayer('settingsToggle', null, null);
+                }),
+                $('<label>', {
+                    for: '_cbenableUrceUrFiltering', urceprefs: 'filteringMaster', title: I18n.t('urce.prefs.EnableUrceUrFilteringTitle'), class: 'URCE-label'
+                }).text(I18n.t('urce.prefs.EnableUrceUrFiltering'))
             ),
             $('<div>', { id: 'expandCollapseAll', class: 'URCE-expandCollapseAll' }).append(
                 $('<div>', { class: 'URCE-expandCollapseAllItem' }).text(I18n.t('urce.common.ExpandAll')).off().on('click', () => {
@@ -5305,6 +5343,7 @@ function initSettingsTab() {
                 $('[urceprefs=filtering]').prop('disabled', true).addClass('urceDisabled');
             else
                 $('[urceprefs=filtering]').prop('disabled', false).removeClass('urceDisabled');
+            $('#_cbenableUrceUrFiltering_2').prop('checked', this.checked);
         }
         _settings[settingName] = this.checked;
         if (isChecked($(`input[id="_cbperCommentList_${settingName}_useDefault"]`)) && (isChecked($(`input[id="_cbperCommentList_${settingName}"]`)) !== this.checked))
@@ -6130,6 +6169,8 @@ function loadTranslations() {
                             + 'the currently selected place into the comment box at the current cursor position.',
                         InsertSelSegsTitle: 'Shortcut - Segment name(s): Click this icon to either replace "$SELSEGS$" (or "$SELSEGS)" with the name of the currently selected segment(s), or\nit '
                             + 'will insert the name of the currently selected segment(s) into the comment box at the cursor position.',
+                        InsertSelSegsWithCityTitle: 'Shortcut - Segment name(s) with city: Click this icon to either replace \'$SELSEGS_WITH_CITY$\' (or \'$SELSEGS$\' or \'$SELSEGS\') with the name '
+                            + 'and city of the currently selected segment(s), or\nit will insert the name and city of the currently selected segment(s) into the comment box at the cursor position.',
                         InsertTimeCasualTitle: 'Shortcut - Drive time of day (casual): Click this icon to insert the drive date time of day into the new comment box at the cursor position (in locale '
                             + 'language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
                         InsertTimeTitle: 'Shortcut - Drive time of day: Click this icon to insert the drive date time of day into the new comment box at the cursor position (2-digit hour, 2-digit '
@@ -6191,7 +6232,11 @@ function loadTranslations() {
                             + 'ID</i></b> (should be the ID of the copy created in the previous step) set on the settings tab.\n<li>Ensured your spreadsheet is shared to everyone with a link can '
                             + 'view.\n</ul>If all these have been done and you are still having issues, please contact a WazeDev team member.',
                         NoCommentBox: 'URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.',
+                        PlaceAddressFound: 'The selected comment contains "$PLACE_ADDRESS$".\n\nIn order to replace this text with the place address, please select a place and click the place '
+                            + 'address shortcut button in the UR panel.',
                         PlaceAddressInsertError: 'In order to use the <i class="fa fa-map-marker" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
+                        PlaceNameFound: 'The selected comment contains "$PLACE_NAME$".\n\nIn order to replace this text with the place address, please select a place and click the place name '
+                            + 'shortcut button in the UR panel.',
                         PlaceNameInsertError: 'In order to use the <i class="fa fa-home" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
                         ReminderMessageAuto: 'URC-E: Automatically sending reminder message to UR:',
                         ResetSettings: 'Reset Settings',
