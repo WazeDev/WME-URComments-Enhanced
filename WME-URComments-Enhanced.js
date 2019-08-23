@@ -4962,7 +4962,8 @@ function loadTranslations() {
                     RestoreSettingsFileError: 'Invalid URC-E settings JSON file.',
                     RestoreSettingsSelectFileTitle: 'Select the JSON file created by the URC-E "Backup" settings button.',
                     RestoreSettingsTitle: 'Restore a backup copy of your URC-E settings from the JSON backup file created with the backup settings button.\n\nNote: Please do not modify the JSON '
-                            + 'file in any way. The format is crucial to proper restoral of settings.'
+                            + 'file in any way. The format is crucial to proper restoral of settings.',
+                    SegmentWithCity: '$SEG1NAME$ in $SEGCITY$'
                 },
                 urPanel: {
                     CurrentDate: 'Current date',
