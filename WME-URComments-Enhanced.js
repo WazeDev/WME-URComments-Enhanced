@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.08.24.01
+// @version     2019.08.26.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -44,7 +44,11 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
         '<b>CHANGE:</b> Added manual custom sheet creation / conversion (conversion will still work).',
         '<b>CHANGE:</b> Alert box completely removed in favor of WazeWrap alerts (missed one or two).',
         '<b>CHANGE:</b> Ability to translate intersection / segment naming to locales.',
+        '<b>CHANGE:</b> Catch if row 25 is not set to "GROUP TITLE" and report gracefully.',
+        '<b>CHANGE:</b> Queue auto-sent reminders info box and display after completion of routine.',
         '<b>BUGFIX:</b> Restoring settings would inadvertantly get overwritten by WazeWrap backups.',
+        '<b>BUGFIX:</b> Better handling of errors in processing so mask boxes get removed.',
+        '<b>BUGFIX:</b> Improper handling of mouse events in some browsers.',
         '<b>BUGFIX:</b> Autosend reminders (in beta only).',
         '<b>BUGFIX:</b> Double-click icon inconsistency (in beta only).'
     ],
@@ -147,7 +151,7 @@ const _urMarkerObserver = new MutationObserver(mutations => {
             && (mutation.target.classList.contains('user-generated') || mutation.target.classList.contains('has-comments'))
             && ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList.contains('selected'))
             && (parseInt(mutation.target.attributes['data-id'].value) > 0));
-        if (clickedUrCheck.length > 0) {
+        if (_commentListLoaded && (clickedUrCheck.length > 0)) {
             for (let idx = 0; idx < clickedUrCheck.length; idx++) {
                 if (!(_selUr.urId > 0) || (_selUr.urId !== parseInt(clickedUrCheck[idx].target.attributes['data-id'].value))) {
                     _selUr = {
@@ -195,6 +199,7 @@ let _settings = {},
     },
     _restrictionsEnforce = {},
     _commentList = [],
+    _commentListLoaded = false,
     _customReplaceVars = [],
     _markerStackArray = [],
     _currentCommentList = null,
@@ -744,6 +749,8 @@ async function handleAfterSave() {
 }
 
 async function handleUpdateRequestContainer(urId, caller) {
+    if (!_commentListLoaded)
+        return false;
     if (_settings.replaceNextWithDoneButton && ($('#panel-container .mapUpdateRequest.panel .section .content .navigation .done').length === 0))
         return W.reqres.request('problems:browse', _.extend({ showNext: false, nextButtonString: I18n.t('problems.panel.done') }, { problem: W.model.mapUpdateRequests.objects[urId] }));
     _selUr.handling = true;
@@ -1392,8 +1399,6 @@ function handleClickedShortcut(shortcut) {
 function autoPostReminderComment(urId, comment) {
     return new Promise(resolve => {
         try {
-            logDebug(`Automatically sending reminder comment to urId: ${urId}`);
-            WazeWrap.Alerts.info(SCRIPT_NAME, `${I18n.t('urce.prompts.ReminderMessageAuto')} ${urId}`);
             W.model.updateRequestSessions.objects[urId].addComment(comment);
             W.model.mapUpdateRequests.objects[urId].attributes.reminderSent = true;
         }
@@ -1780,9 +1785,9 @@ async function markerMouseOver() {
 }
 
 function markerMouseOut(event) {
-    const newUrId = ((event.toElement) && (parseInt($(event.toElement).attr('data-id')) > -1)) ? parseInt($(event.toElement).attr('data-id')) : null;
+    const newUrId = ((event.relatedTarget) && (parseInt($(event.relatedTarget).attr('data-id')) > -1)) ? parseInt($(event.relatedTarget).attr('data-id')) : null;
     if ((newUrId > 0 && isIdAlreadyUnstacked(newUrId))
-        || (event.toElement && ((event.toElement.id === 'urceDiv') || (event.toElement.id.indexOf('urceCounts') > -1) || (event.toElement.parentNode.id.indexOf('urce') > -1)))
+        || (event.relatedTarget && ((event.relatedTarget.id === 'urceDiv') || (event.relatedTarget.id.indexOf('urceCounts') > -1) || (event.relatedTarget.parentNode.id.indexOf('urce') > -1)))
     )
         return;
     if (!newUrId)
@@ -1820,13 +1825,13 @@ function handlePopup(popupObj) {
 }
 
 function hidePopup(event) {
-    const newUrId = (event && event.toElement && (parseInt($(event.toElement).attr('data-id')) > -1)) ? parseInt($(event.toElement).attr('data-id')) : null;
+    const newUrId = (event && event.relatedTarget && (parseInt($(event.relatedTarget).attr('data-id')) > -1)) ? parseInt($(event.relatedTarget).attr('data-id')) : null;
     checkTimeout({ timeout: 'popup' });
     if ($('#urceDiv').css('visibility') !== 'hidden')
         $('#urceDiv').css({ visibility: 'hidden' });
     $('#urceDiv').off();
     if ((newUrId > 0 && isIdAlreadyUnstacked(newUrId))
-        || (event && event.toElement && ((event.toElement.id === 'urceDiv') || (event.toElement.id.indexOf('urceCounts') > -1) || (event.toElement.parentNode.id.indexOf('urce') > -1)))
+        || (event && event.relatedTarget && ((event.relatedTarget.id === 'urceDiv') || (event.relatedTarget.id.indexOf('urceCounts') > -1) || (event.relatedTarget.parentNode.id.indexOf('urce') > -1)))
     ) {
         if (event.data && !event.data.doubleClick)
             return;
@@ -2135,7 +2140,8 @@ function updateUrceData(urIds) {
         };
     return new Promise(async resolve => {
         while (processUrIds.length > 0) {
-            const chunk = processUrIds.splice(0, 500),
+            const autoSentRemindersFor = [],
+                chunk = processUrIds.splice(0, 500),
                 tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim,
                 tagUsernameRegex = new RegExp(` ${W.model.loginManager.user.userName} `, 'gi');
             let includingKeyword = null,
@@ -2217,6 +2223,7 @@ function updateUrceData(urIds) {
                                     logWarning(autoPostReminderCommentResult.text); // Don't return here as we should go ahead and process the urceData.
                                 }
                                 else {
+                                    autoSentRemindersFor.push(chunk[idx]);
                                     if (_settings.unfollowAfterSend)
                                         unfollowUrAfterSend(chunk[idx]);
                                     urceData.waiting = true;
@@ -2382,6 +2389,10 @@ function updateUrceData(urIds) {
                 }
                 W.model.mapUpdateRequests.objects[chunk[idx]].attributes.urceData = urceData;
             }
+            if (autoSentRemindersFor.length > 0) {
+                logDebug(`Automatically sent reminder comments to urId(s): ${autoSentRemindersFor.join(', ')} (${autoSentRemindersFor.length})`);
+                WazeWrap.Alerts.info(SCRIPT_NAME, `${I18n.t('urce.prompts.ReminderMessageAuto')}: ${autoSentRemindersFor.join(', ')} (${autoSentRemindersFor.length})`);
+            }
         }
         return resolve();
     });
@@ -2448,7 +2459,7 @@ function handleUrLayer(phase, filter, urMapMarkerIdsArr) {
             if (phase !== 'overflow')
                 _filtersAppliedOnZoom = filter;
         }
-        resolve();
+        return resolve();
     });
 }
 
@@ -2621,6 +2632,8 @@ async function invokeModeChange(event) {
 }
 
 function handleUrMarkerClick() {
+    if (!_commentListLoaded)
+        return;
     if ($(this).hasClass('user-generated') || $(this).hasClass('has-comments')) {
         if (!(_selUr.urId > 0) || (_selUr.urId !== parseInt($(this).attr('data-id')))) {
             _selUr = {
@@ -2940,6 +2953,9 @@ function processCommentList(data) {
                         if (rowObj.urstatus === 'custom var') {
                             _customReplaceVars.push({ customVar: `$${rowObj.title}$`, replaceText: rowObj.comment });
                         }
+                        else if ((entryIdx === 3) && (rowObj.urstatus !== 'group title')) {
+                            return resolve({ error: true, text: `Row 25 on the spreadsheet must be set to "GROUP TITLE" for the URSTATUS column. Please contact the list owner: ${getCommentListInfo(_settings.commentList).listOwner}` });
+                        }
                         else if (rowObj.urstatus === 'group title') { // Group title row. Nothing to set in the arrays, but build html.
                             groupDivId = 'urceComments-for-';
                             if (rowObj.title !== '') {
@@ -3088,6 +3104,8 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
     return new Promise(async resolve => {
         commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
         const commentListInfo = getCommentListInfo(commentListIdx);
+        let data,
+            processCommentListResult;
         Object.values(_defaultComments).forEach(a => { a.commentNum = null; });
         logDebug(`Building comment list for: ${commentListInfo.name}`);
         if (phase !== 'init')
@@ -3111,6 +3129,15 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
             + `     <div id="URCE-collapseAllComments" class="URCE-expandCollapseAllItem">${I18n.t('urce.common.CollapseAll')}</div>`
             + '</div>';
         $('#_commentList').empty().append(htmlOut);
+        $('#_selcurrentCommentList').off().on('change', function () {
+            if ((parseInt(this.value) === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
+                $(this).val(_currentCommentList);
+                WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
+            }
+            else {
+                changeCommentList(parseInt(this.value), false, true);
+            }
+        });
         $('#_cbenableAppendMode').off().on('change', function () {
             _settings[$(this)[0].id.substr(3)] = this.checked;
             if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length > 0)
@@ -3142,20 +3169,31 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
         });
         _commentList = [];
         _customReplaceVars = [];
-        const data = (commentListInfo.type === 'static') ? await convertCommentListStatic(commentListIdx) : await commentListAsync(commentListIdx);
+        _currentCommentList = commentListIdx;
+        processPerCommentListSettings(commentListIdx);
+        try {
+            data = (commentListInfo.type === 'static') ? await convertCommentListStatic(commentListIdx) : await commentListAsync(commentListIdx);
+        }
+        catch (error) {
+            data.error = { error: true, text: error.message };
+        }
         if (data.error) {
             return resolve({
                 error: true, text: data.text, staticList: (commentListInfo.type === 'static'), phase, maskUrPanel: (_selUr.urId > 0), commentList: commentListIdx
             });
         }
-        const processCommentListResult = await processCommentList(data);
+        try {
+            processCommentListResult = await processCommentList(data);
+        }
+        catch (error) {
+            processCommentListResult = { error: true, text: error.message };
+        }
         if (processCommentListResult.error) {
             return resolve({
                 error: true, text: processCommentListResult.text, staticList: (commentListInfo.type === 'static'), phase, maskUrPanel: (_selUr.urId > 0), commentList: commentListIdx
             });
         }
-        _currentCommentList = commentListIdx;
-        processPerCommentListSettings(_currentCommentList);
+        _commentListLoaded = true;
         if (phase !== 'init')
             maskBoxes(null, true, phase, (_selUr.urId > 0));
         return resolve({
@@ -3318,7 +3356,7 @@ function processPerCommentListSettings(commentListIdx) {
 
 function handleError(obj) {
     let errorText,
-        htmlOut = '<div class="URCE-divLoading';
+        htmlOut = '<div class="URCE-divLoading">';
     if (obj.text && obj.text.indexOf('|') > -1) {
         if (obj.text.split('|')[0] === 'updateRequired')
             errorText = `${I18n.t('urce.prompts.UpdateRequired')}: ${obj.text.split('|')[1]}`;
@@ -3329,7 +3367,7 @@ function handleError(obj) {
         htmlOut += (obj.commentList === 1001) ? I18n.t('urce.prompts.CustomGSheetLoadError') : I18n.t('urce.common.ErrorGeneric');
     }
     logError(new Error(errorText));
-    _currentCommentList = null;
+    _commentListLoaded = false;
     if (obj.phase === 'changeList') {
         if (obj.staticList) {
             htmlOut += `\n\n${I18n.t('urce.common.Type')}: ${I18n.t('urce.common.Static')}`;
@@ -4503,9 +4541,8 @@ async function init() {
             buildCommentListResult.maskUrPanel = (urIdInUrl > 0);
             handleError(buildCommentListResult);
         }
-        else if (!urIdInUrl) {
+        if (!urIdInUrl)
             await initBackgroundTasks('enable', 'init');
-        }
         window.addEventListener('beforeunload', () => { saveSettingsToStorage(); }, false);
         log(`Fully initialized in ${Math.round(performance.now() - LOAD_BEGIN_TIME)} ms.`);
         if (urIdInUrl > 0) {
