@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.08.27.01
+// @version     2019.08.28.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -38,7 +38,11 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> New comment box will have a peachish background color if append mode is enabled.',
+    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Shortcuts in UR are now collapsible, with state retained in settings.',
+        '<b>BUGFIX:</b> Shortcuts not correctly initiating other events.',
+        '<b>BUGFIX:</b> Country and state being re-added multiple times by WME. (workaround)',
+        '<b>PREVIOUS RELEASE - 2019.08.27.01 - BELOW</b>',
+        '<b>NEW:</b> New comment box will have a peachish background color if append mode is enabled.',
         '<b>CHANGE:</b> Major overhaul of output text to limit number of jQuery operations. BIG speed increase.',
         '<b>CHANGE:</b> Removed automated custom sheet creation / conversion.',
         '<b>CHANGE:</b> Added manual custom sheet creation / conversion (conversion will still work).',
@@ -59,6 +63,7 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     URCE_SPREADSHEET_ID = '1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ',
     _autoSwitch = {},
     _commentLists = [],
+    _currentArea = { country: undefined, state: undefined },
     _defaultComments = {
         dr: { commentNum: null, urNum: 98 }, // Default reminder
         dc: { commentNum: null, urNum: 99 }, // Default closed / not identified
@@ -249,6 +254,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             lastSaved: 0,
             lastVersion: undefined,
             wmeUserId: undefined,
+            expandShortcuts: true,
             // Comment List
             commentList: 0,
             commentListStyle: 'default',
@@ -568,14 +574,15 @@ function checkRestrictions(event) {
     return new Promise(resolve => {
         (function retry(tries, toIndex, evt) {
             checkTimeout({ timeout: 'checkRestrictions', toIndex });
-            let state,
+            let moved = false,
+                state,
                 country;
             if (tries < 301) {
-                if (evt && evt[0].type === 'state') {
+                if (evt && (evt[0].type === 'state')) {
                     country = W.model.countries.getObjectById(evt[0].countryID).abbr;
                     state = evt[0].name;
                 }
-                else if (evt && evt[0].type === 'country') {
+                else if (evt && (evt[0].type === 'country')) {
                     country = evt[0].abbr;
                     state = null;
                 }
@@ -584,48 +591,61 @@ function checkRestrictions(event) {
                     _timeouts.checkRestrictions[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex, evt);
                 }
                 else {
-                    logDebug('Setting up restrictions.');
                     checkTimeout({ timeout: 'checkRestrictions', toIndex });
                     country = country || W.model.getTopCountry().abbr;
                     state = state || (W.model.getTopState() ? W.model.getTopState().name : null);
-                    _restrictionsEnforce = {};
-                    let restrictionsAlertBannerTitle = `${I18n.t('urce.prompts.RestrictionsEnforcedTitle')}:\n`;
-                    if (_restrictions[country]) {
-                        if (state && _restrictions[country][state]) {
-                            restrictionsAlertBannerTitle += `\n${W.model.countries.getByAttributes({ abbr: country })[0].name} - ${state}:`;
-                            Object.keys(_restrictions[country][state]).forEach(restriction => {
-                                _restrictionsEnforce[restriction] = _restrictions[country][state][restriction];
-                                restrictionsAlertBannerTitle += `\n${I18n.t(`urce.prefs.${restriction.charAt(0).toUpperCase()}${restriction.slice(1)}`)}: `;
-                                if (_restrictionsEnforce[restriction] === true)
-                                    restrictionsAlertBannerTitle += I18n.t('urce.common.Enabled');
-                                else if (_restrictionsEnforce[restriction] === false)
-                                    restrictionsAlertBannerTitle += I18n.t('urce.common.Disabled');
-                                else
-                                    restrictionsAlertBannerTitle += I18n.t('common.time.days', { days: _restrictionsEnforce[restriction] });
-                            });
+                    if (state !== _currentArea.state) {
+                        _currentArea.state = state;
+                        moved = true;
+                    }
+                    if (country !== _currentArea.country) {
+                        _currentArea.country = country;
+                        moved = true;
+                    }
+                    if (moved) {
+                        logDebug(((evt && ((evt[0].type === 'init') || (evt[0].type === 'modeChange'))) ? 'Setting up restrictions.' : 'Checking restrictions.'));
+                        _restrictionsEnforce = {};
+                        let restrictionsAlertBannerTitle = `${I18n.t('urce.prompts.RestrictionsEnforcedTitle')}:\n`;
+                        if (_restrictions[country]) {
+                            if (state && _restrictions[country][state]) {
+                                restrictionsAlertBannerTitle += `\n${W.model.countries.getByAttributes({ abbr: country })[0].name} - ${state}:`;
+                                Object.keys(_restrictions[country][state]).forEach(restriction => {
+                                    _restrictionsEnforce[restriction] = _restrictions[country][state][restriction];
+                                    restrictionsAlertBannerTitle += `\n${I18n.t(`urce.prefs.${restriction.charAt(0).toUpperCase()}${restriction.slice(1)}`)}: `;
+                                    if (_restrictionsEnforce[restriction] === true)
+                                        restrictionsAlertBannerTitle += I18n.t('urce.common.Enabled');
+                                    else if (_restrictionsEnforce[restriction] === false)
+                                        restrictionsAlertBannerTitle += I18n.t('urce.common.Disabled');
+                                    else
+                                        restrictionsAlertBannerTitle += I18n.t('common.time.days', { days: _restrictionsEnforce[restriction] });
+                                });
+                            }
+                            else if (_restrictions[country].ALL && (Object.keys(_restrictions[country].ALL).length > 0)) {
+                                restrictionsAlertBannerTitle += `\n${W.model.countries.getByAttributes({ abbr: country })[0].name} - ${I18n.t('urce.common.All')}:`;
+                                Object.keys(_restrictions[country].ALL).forEach(restriction => {
+                                    _restrictionsEnforce[restriction] = _restrictions[country].ALL[restriction];
+                                    restrictionsAlertBannerTitle += `\n${I18n.t(`urce.prefs.${restriction.charAt(0).toUpperCase()}${restriction.slice(1)}`)}: `;
+                                    if (_restrictionsEnforce[restriction] === true)
+                                        restrictionsAlertBannerTitle += I18n.t('urce.common.Enabled');
+                                    else if (_restrictionsEnforce[restriction] === false)
+                                        restrictionsAlertBannerTitle += I18n.t('urce.common.Disabled');
+                                    else
+                                        restrictionsAlertBannerTitle += I18n.t('common.time.days', { days: _restrictionsEnforce[restriction] });
+                                });
+                            }
+                            if (Object.values(_restrictionsEnforce).length > 0)
+                                alertBoxInPanel(I18n.t('urce.prompts.RestrictionsEnforced'), restrictionsAlertBannerTitle, false, 9997);
+                            else
+                                dismissAlertBoxInPanel(null, 9997);
                         }
-                        else if (_restrictions[country].ALL && (Object.keys(_restrictions[country].ALL).length > 0)) {
-                            restrictionsAlertBannerTitle += `\n${W.model.countries.getByAttributes({ abbr: country })[0].name} - ${I18n.t('urce.common.All')}:`;
-                            Object.keys(_restrictions[country].ALL).forEach(restriction => {
-                                _restrictionsEnforce[restriction] = _restrictions[country].ALL[restriction];
-                                restrictionsAlertBannerTitle += `\n${I18n.t(`urce.prefs.${restriction.charAt(0).toUpperCase()}${restriction.slice(1)}`)}: `;
-                                if (_restrictionsEnforce[restriction] === true)
-                                    restrictionsAlertBannerTitle += I18n.t('urce.common.Enabled');
-                                else if (_restrictionsEnforce[restriction] === false)
-                                    restrictionsAlertBannerTitle += I18n.t('urce.common.Disabled');
-                                else
-                                    restrictionsAlertBannerTitle += I18n.t('common.time.days', { days: _restrictionsEnforce[restriction] });
-                            });
-                        }
-                        if (Object.values(_restrictionsEnforce).length > 0)
-                            alertBoxInPanel(I18n.t('urce.prompts.RestrictionsEnforced'), restrictionsAlertBannerTitle, false, 9997);
-                        else
+                        else {
                             dismissAlertBoxInPanel(null, 9997);
+                        }
+                        resolve();
                     }
                     else {
-                        dismissAlertBoxInPanel(null, 9997);
+                        resolve();
                     }
-                    resolve();
                 }
             }
             else {
@@ -799,9 +819,57 @@ async function handleUpdateRequestContainer(urId, caller) {
     if (_settings.disableDoneNextButtons)
         $('#panel-container .mapUpdateRequest .actions .content .navigation').css({ display: 'none' });
     $('#panel-container .mapUpdateRequest .top-section .header .title .focus').off('click', recenterOnUr).on('click', { urId }, recenterOnUr);
-    $('#panel-container .mapUpdateRequest .top-section').scrollTop($('#panel-container .mapUpdateRequest .top-section')[0].scrollHeight);
     $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').css('background-color', (_settings.enableAppendMode ? 'peachpuff' : ''))
         .off('keyup', checkValue).on('keyup', checkValue);
+    if ($('#urceShortcuts').length === 0) {
+        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend('<div id="urceShortcuts" style="text-align:left;padding-bottom:8px;font-size:12px;">'
+            + `<div id="urceShortcutsExpand" style="padding-bottom:4px;font-size:13px;cursor:pointer;border-bottom:1px solid darkgray;">${I18n.t('urce.urPanel.Shortcuts')}`
+            + `<div style="display:inline;float:right;padding-right:8px;font-size:11px;"><i class="fa fa-fw ${(_settings.expandShortcuts ? 'fa-chevron-down' : 'fa-chevron-up')} URCE-chevron"></i></div></div>`
+            + `<div id="urceShortcutsExpandDiv" style="${(_settings.expandShortcuts ? '' : 'display:none;')}border-bottom:1px solid darkgray;padding: 5px 0 5px 0;"><div><i id="urceShortcuts-selSegs" class="fa fa-road" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertSelSegsTitle')}"></i>`
+            + '<span class="fa-stack" style="width:1.8em;height:1.8em;line-height:1.8em;">'
+            + `<i id="urceShortcuts-selSegsWithCity" class="fa fa-road" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')}"></i>`
+            + `<i id="urceShortcuts-selSegsWithCity" class="fa fa-plus fa-stack-2x" "area-hidden"="true" style="font-size:xx-small;text-align:right;cursor:pointer;" title="${I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')}"></i>`
+            + '</span><div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
+            + `<i id="urceShortcuts-placeName" class="fa fa-home" "aria-hidden"="true" style="cursor:pointer;" title="${I18n.t('urce.urPanel.InsertPlaceNameTitle')}"></i>`
+            + `<i id="urceShortcuts-placeAddress" class="fa fa-map-marker" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertPlaceAddressTitle')}"></i>`
+            + '<div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
+            + `<i id="urceShortcuts-description" class="fa fa-paragraph" "aria-hidden"="true" style="cursor:pointer;" title="${I18n.t('urce.urPanel.InsertDescriptionTitle')}"></i>`
+            + `<i id="urceShortcuts-wazeUsername" class="fa fa-user-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertWazeUsernameTitle')}"></i>`
+            + `<i id="urceShortcuts-urType" class="fa fa-info-circle" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertUrTypeTitle')}"></i>`
+            + `<i id="urceShortcuts-customTagline" class="fa fa-tag" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCustomTaglineTitle')}"></i>`
+            + '</div>'
+            + `<div><i id="urceShortcuts-driveTime" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertTimeTitle')}"></i>`
+            + `<i id="urceShortcuts-driveDayOfWeek" class="fa fa-sun-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDayOfWeekTitle')}"></i>`
+            + `<i id="urceShortcuts-driveDate" class="fa fa-calendar-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDateTitle')}"></i>`
+            + '<div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
+            + `<i id="urceShortcuts-driveTimeCasual" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer" title="${I18n.t('urce.urPanel.InsertTimeCasualTitle')}"></i>`
+            + `<i id="urceShortcuts-driveDateCasual" class="fa fa-calendar" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDateCasualTitle')}"></i>`
+            + `<i id="urceShortcuts-driveDateTimeCasualMode" class="fa fa-calendar-plus-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDateTimeCasualModeTitle')}"></i>`
+            + `<div style="display:inline-block;padding-left:8px;">- ${I18n.t('urce.urPanel.DriveDate')}</div></div>`
+            + `<div><i id="urceShortcuts-currentTime" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentTimeTitle')}"></i>`
+            + `<i id="urceShortcuts-currentDayOfWeek" class="fa fa-sun-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentDayOfWeekTitle')}"></i>`
+            + `<i id="urceShortcuts-currentDate" class="fa fa-calendar-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentDateTitle')}"></i>`
+            + '<div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
+            + `<i id="urceShortcuts-currentTimeCasual" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;" title="${I18n.t('urce.urPanel.InsertCurrentTimeCasualTitle')}"></i>`
+            + `<i id="urceShortcuts-currentDateCasual" class="fa fa-calendar" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentDateCasualTitle')}"></i>`
+            + `<div style="display:inline-block;padding-left:24px;">- ${I18n.t('urce.urPanel.CurrentDate')}</div></div></div></div>`);
+        $('i[id|="urceShortcuts"]').off().on('click', function () {
+            handleClickedShortcut(this.id.substr(14));
+        });
+        $('#urceShortcutsExpand').off().on('click', function () {
+            if ($($(this).find('i')[0]).hasClass('fa-chevron-down'))
+                _settings.expandShortcuts = false;
+            else
+                _settings.expandShortcuts = true;
+            $($(this).find('i')[0]).toggleClass('fa-chevron-down fa-chevron-up');
+            if (_settings.expandShortcuts)
+                $('#urceShortcutsExpandDiv').show();
+            else
+                $('#urceShortcutsExpandDiv').hide();
+            saveSettingsToStorage();
+        });
+    }
+    $('#panel-container .mapUpdateRequest .top-section').scrollTop($('#panel-container .mapUpdateRequest .top-section')[0].scrollHeight);
     if (W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount === 0) {
         if (_settings.autoZoomInOnNewUr)
             autoZoomIn(urId);
@@ -854,41 +922,6 @@ async function handleUpdateRequestContainer(urId, caller) {
     }
     if (_settings.autoCenterOnUr)
         recenterOnUr({ data: { urId } }, W.map.getZoom());
-    if ($('#urceShortcuts').length === 0) {
-        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend('<div id="urceShortcuts" style="text-align:left;padding-bottom:8px;font-size:12px;">'
-            + `<div>${I18n.t('urce.urPanel.Shortcuts')}:`
-            + `<i id="urceShortcuts-selSegs" class="fa fa-road" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertSelSegsTitle')}"></i>`
-            + '<span class="fa-stack" style="width:1.8em;height:1.8em;line-height:1.8em;">'
-            + `<i id="urceShortcuts-selSegsWithCity" class="fa fa-road" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')}"></i>`
-            + `<i id="urceShortcuts-selSegsWithCity" class="fa fa-plus fa-stack-2x" "area-hidden"="true" style="font-size:xx-small;text-align:right;cursor:pointer;" title="${I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')}"></i>`
-            + '</span><div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
-            + `<i id="urceShortcuts-placeName" class="fa fa-home" "aria-hidden"="true" style="cursor:pointer;" title="${I18n.t('urce.urPanel.InsertPlaceNameTitle')}"></i>`
-            + `<i id="urceShortcuts-placeAddress" class="fa fa-map-marker" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertPlaceAddressTitle')}"></i>`
-            + '<div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
-            + `<i id="urceShortcuts-description" class="fa fa-paragraph" "aria-hidden"="true" style="cursor:pointer;" title="${I18n.t('urce.urPanel.InsertDescriptionTitle')}"></i>`
-            + `<i id="urceShortcuts-wazeUsername" class="fa fa-user-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertWazeUsernameTitle')}"></i>`
-            + `<i id="urceShortcuts-urType" class="fa fa-info-circle" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertUrTypeTitle')}"></i>`
-            + `<i id="urceShortcuts-customTagline" class="fa fa-tag" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCustomTaglineTitle')}"></i>`
-            + '</div>'
-            + `<div><i id="urceShortcuts-driveTime" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertTimeTitle')}"></i>`
-            + `<i id="urceShortcuts-driveDayOfWeek" class="fa fa-sun-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDayOfWeekTitle')}"></i>`
-            + `<i id="urceShortcuts-driveDate" class="fa fa-calendar-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDateTitle')}"></i>`
-            + '<div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
-            + `<i id="urceShortcuts-driveTimeCasual" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer" title="${I18n.t('urce.urPanel.InsertTimeCasualTitle')}"></i>`
-            + `<i id="urceShortcuts-driveDateCasual" class="fa fa-calendar" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDateCasualTitle')}"></i>`
-            + `<i id="urceShortcuts-driveDateTimeCasualMode" class="fa fa-calendar-plus-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDateTimeCasualModeTitle')}"></i>`
-            + `<div style="display:inline-block;padding-left:8px;">- ${I18n.t('urce.urPanel.DriveDate')}</div></div>`
-            + `<div><i id="urceShortcuts-currentTime" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentTimeTitle')}"></i>`
-            + `<i id="urceShortcuts-currentDayOfWeek" class="fa fa-sun-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentDayOfWeekTitle')}"></i>`
-            + `<i id="urceShortcuts-currentDate" class="fa fa-calendar-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentDateTitle')}"></i>`
-            + '<div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
-            + `<i id="urceShortcuts-currentTimeCasual" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;" title="${I18n.t('urce.urPanel.InsertCurrentTimeCasualTitle')}"></i>`
-            + `<i id="urceShortcuts-currentDateCasual" class="fa fa-calendar" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentDateCasualTitle')}"></i>`
-            + `<div style="display:inline-block;padding-left:24px;">- ${I18n.t('urce.urPanel.CurrentDate')}</div></div></div>`);
-        $('i[id|="urceShortcuts"]').off().on('click', function () {
-            handleClickedShortcut(this.id.substr(14));
-        });
-    }
     return true;
 }
 
@@ -1387,10 +1420,10 @@ function handleClickedShortcut(shortcut) {
         if (newVal.length > 2000)
             WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
         else
-            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(newVal).selectRange((cursorPos + outputText.length)).change().key().focus();
+            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(newVal).selectRange((cursorPos + outputText.length)).change().keyup().focus();
     }
     else if (useCurrVal) {
-        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(outputText).selectRange((cursorPos + outputText.length)).change().key().focus();
+        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(outputText).selectRange((cursorPos + outputText.length)).change().keyup().focus();
     }
 }
 
@@ -2624,7 +2657,7 @@ async function invokeModeChange(event) {
         await initBackgroundTasks('enable', 'invokeModeChange');
     if (event && event.changed && ((event.changed.mode === 0) || (event.changed.isImperial === true) || (event.changed.isImperial === false))) {
         handleUrLayer('modeChange', null, null);
-        await checkRestrictions();
+        await checkRestrictions([{ type: 'modeChange' }]);
         await changeCommentList(_currentCommentList, false, true);
     }
 }
@@ -3061,8 +3094,7 @@ function processCommentList(data) {
                 });
                 $('#_commentList').append(htmlOut);
                 $('legend[id$="_legend"]').off().on('click', function () {
-                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
-                    $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
+                    $($(this).children()[0]).toggleClass('fa-chevron-down fa-chevron-right');
                     $($(this).siblings()[0]).toggleClass('collapse');
                     saveSettingsToStorage();
                 });
@@ -3707,8 +3739,7 @@ function initToolsTab() {
         }
     });
     $('legend[id^="urce-tools-legend-"]').off().on('click', function () {
-        $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
-        $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
+        $($(this).children()[0]).toggleClass('fa-chevron-down fa-chevron-right');
         $($(this).siblings()[0]).toggleClass('collapse');
     });
     $('#_butconvertCurrentCustom').off().on('click', () => createStaticToGoogleSheet(true));
@@ -4040,8 +4071,7 @@ function initSettingsTab() {
         }
     });
     $('legend[id^="urce-prefs-legend-"]').off().on('click', function () {
-        $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-down');
-        $($(this).children()[0]).toggleClass('fa fa-fw fa-chevron-right');
+        $($(this).children()[0]).toggleClass('fa-chevron-down fa-chevron-right');
         $($(this).siblings()[0]).toggleClass('collapse');
     });
     $('#_selCommentList').off().on('change', function () {
@@ -4533,7 +4563,7 @@ async function init() {
     maskBoxes(`${I18n.t('urce.prompts.WaitingOnInit')}.<br>${I18n.t('urce.common.PleaseWait')}.`, false, 'init', (urIdInUrl > 0));
     const error = loadTranslationsResult.error || initCommentListsResult.error || initAutoSwitchArraysResult.error || initRestrictionsResult.error || false;
     if (!error) {
-        await checkRestrictions();
+        await checkRestrictions([{ type: 'init' }]);
         const buildCommentListResult = await buildCommentList(undefined, 'init', false);
         if (buildCommentListResult.error) {
             buildCommentListResult.maskUrPanel = (urIdInUrl > 0);
