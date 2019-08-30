@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.08.28.01
+// @version     2019.08.30.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -38,10 +38,12 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Shortcuts in UR are now collapsible, with state retained in settings.',
+    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Changed restrictions applied to be a warning icon in settings and comment list.',
+        '<b>BUGFIX:</b> Another fix for the restrictions alert.',
+        '<b>PREVIOUS RELEASES - 2019.08.27.01 2019.08.28.01 - BELOW</b>',
+        '<b>CHANGE:</b> Shortcuts in UR are now collapsible, with state retained in settings.',
         '<b>BUGFIX:</b> Shortcuts not correctly initiating other events.',
         '<b>BUGFIX:</b> Country and state being re-added multiple times by WME. (workaround)',
-        '<b>PREVIOUS RELEASE - 2019.08.27.01 - BELOW</b>',
         '<b>NEW:</b> New comment box will have a peachish background color if append mode is enabled.',
         '<b>CHANGE:</b> Major overhaul of output text to limit number of jQuery operations. BIG speed increase.',
         '<b>CHANGE:</b> Removed automated custom sheet creation / conversion.',
@@ -202,6 +204,7 @@ let _settings = {},
         urOpen: false
     },
     _restrictionsEnforce = {},
+    _restrictionsEnforcedTitle,
     _commentList = [],
     _commentListLoaded = false,
     _customReplaceVars = [],
@@ -526,7 +529,6 @@ function dismissAlertBoxInPanel(event, idx) {
 }
 
 function alertBoxInPanel(message, panelBoxTitle, panelBoxDismiss, index) {
-    WazeWrap.Alerts.info(SCRIPT_NAME, message);
     if ($(`#urceAlertPanelBox-${index}`).length > 0)
         $(`#urceAlertPanelBox-${index}`).remove();
     const htmlOut = `<div id="urceAlertPanelBox-${index}" class="URCE-divWarningBox" title="${(panelBoxTitle || '')}">`
@@ -574,15 +576,31 @@ function checkRestrictions(event) {
     return new Promise(resolve => {
         (function retry(tries, toIndex, evt) {
             checkTimeout({ timeout: 'checkRestrictions', toIndex });
+            const displayWarning = (content, remove) => {
+                if (remove) {
+                    $('#restrictionsEnforcedWarning, #restrictionsEnforcedWarning-Settings').hide();
+                }
+                else if ((evt && ((evt[0].type === 'init') || (evt[0].type === 'modeChange')))
+                    || ($('#restrictionsEnforcedWarning').length === 0)) {
+                    _restrictionsEnforcedTitle = content;
+                }
+                else {
+                    $('#restrictionsEnforcedWarning, #restrictionsEnforcedWarning-Settings').children()[0].setAttribute('title', content);
+                    $('#restrictionsEnforcedWarning, #restrictionsEnforcedWarning-Settings').show();
+                }
+            };
             let moved = false,
                 state,
                 country;
-            if (tries < 301) {
-                if (evt && (evt[0].type === 'state')) {
+            if (evt && (tries === 1) && (evt[0].type !== 'init') && (evt[0].type !== 'modeChange')) {
+                _timeouts.checkRestrictions[toIndex] = window.setTimeout(retry, 500, ++tries, toIndex, evt);
+            }
+            else if (tries < 301) {
+                if (evt && (evt[0].type === 'state') && (evt[0].name === W.model.getTopState().name)) {
                     country = W.model.countries.getObjectById(evt[0].countryID).abbr;
                     state = evt[0].name;
                 }
-                else if (evt && (evt[0].type === 'country')) {
+                else if (evt && (evt[0].type === 'country') && (evt[0].abbr === W.model.getTopCountry().abbr)) {
                     country = evt[0].abbr;
                     state = null;
                 }
@@ -605,7 +623,7 @@ function checkRestrictions(event) {
                     if (moved) {
                         logDebug(((evt && ((evt[0].type === 'init') || (evt[0].type === 'modeChange'))) ? 'Setting up restrictions.' : 'Checking restrictions.'));
                         _restrictionsEnforce = {};
-                        let restrictionsAlertBannerTitle = `${I18n.t('urce.prompts.RestrictionsEnforcedTitle')}:\n`;
+                        let restrictionsAlertBannerTitle = `${I18n.t('urce.prompts.RestrictionsEnforced')}\n\n${I18n.t('urce.prompts.RestrictionsEnforcedTitle')}:\n`;
                         if (_restrictions[country]) {
                             if (state && _restrictions[country][state]) {
                                 restrictionsAlertBannerTitle += `\n${W.model.countries.getByAttributes({ abbr: country })[0].name} - ${state}:`;
@@ -634,12 +652,12 @@ function checkRestrictions(event) {
                                 });
                             }
                             if (Object.values(_restrictionsEnforce).length > 0)
-                                alertBoxInPanel(I18n.t('urce.prompts.RestrictionsEnforced'), restrictionsAlertBannerTitle, false, 9997);
+                                displayWarning(restrictionsAlertBannerTitle, false);
                             else
-                                dismissAlertBoxInPanel(null, 9997);
+                                displayWarning(null, true);
                         }
                         else {
-                            dismissAlertBoxInPanel(null, 9997);
+                            displayWarning(null, true);
                         }
                         resolve();
                     }
@@ -3146,7 +3164,10 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
             if (cList.status !== 'disabled')
                 htmlOut += `<option value="${cList.idx}"${((cList.idx === commentListIdx) ? ' selected' : '')}>${(!autoSwitch ? cList.name : `${cList.name} (${I18n.t('urce.common.AutoSwitched')})`)}`;
         });
-        htmlOut += '</select></div>'
+        htmlOut += '</select>'
+            + `<div id="restrictionsEnforcedWarning" style="float:right;padding-top:8px;color:red;font-size:16px;${(_restrictionsEnforcedTitle ? '' : 'display:none;')}">`
+            + `     <i class="fa fa-exclamation-triangle" aria-hidden="true"${(_restrictionsEnforcedTitle ? ` title="${_restrictionsEnforcedTitle}"` : '')}></i>`
+            + '</div></div>'
             + '<div class="URCE-commentListName URCE-controls URCE-divCC">'
             + `     <input type="checkbox" id="_cbenableAppendMode" class="urceSettingsCheckbox2" title="${I18n.t('urce.prefs.EnableAppendModeTitle')}"${(_settings.enableAppendMode ? ' checked' : '')}>`
             + `     <label for="_cbenableAppendMode" title="${I18n.t('urce.prefs.EnableAppendModeTitle')}" class="URCE-label">${I18n.t('urce.prefs.EnableAppendMode')}</label><br>`
@@ -3159,6 +3180,7 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
             + `     <div id="URCE-collapseAllComments" class="URCE-expandCollapseAllItem">${I18n.t('urce.common.CollapseAll')}</div>`
             + '</div>';
         $('#_commentList').empty().append(htmlOut);
+        _restrictionsEnforcedTitle = undefined;
         $('#_selcurrentCommentList').off().on('change', function () {
             if ((parseInt(this.value) === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
                 $(this).val(_currentCommentList);
@@ -3912,7 +3934,10 @@ function initSettingsTab() {
             htmlOut += `<option value="${cList.idx}"${((cList.idx === _settings.commentList) ? ' selected="true"' : '')}>${cList.name}</option>`;
     });
     htmlOut += ''
-        + '         </select></div>'
+        + '             </select>'
+        + `             <div id="restrictionsEnforcedWarning-Settings" style="float:right;padding-right:4px;color:red;font-size:16px;${(_restrictionsEnforcedTitle ? '' : 'display:none;')}">`
+        + `                 <i class="fa fa-exclamation-triangle" aria-hidden="true"${(_restrictionsEnforcedTitle ? ` title="${_restrictionsEnforcedTitle}"` : '')}></i>`
+        + '         </div></div>'
         + `         <div>${I18n.t('urce.prefs.CustomSsId')}: <input type="text" id="_textcustomSsId" class="URCE-textInput urceSettingsTextBox" urceprefs="commentList" value="${_settings.customSsId}" title="${I18n.t('urce.prefs.CustomSsIdTitle')}" style="width:100px;margin-left:5px;"></div>`
         + `         <div>${I18n.t('urce.common.Style')}: <select id="_selCommentListStyle" title="${I18n.t('urce.prefs.CommentListStyleTitle')}" urceprefs="commentList">`
         + `             <option value="default"${((_settings.commentListStyle === 'default') ? ' selected="true"' : '')}>${I18n.t('urce.prefs.StyleDefault')}</option>`
