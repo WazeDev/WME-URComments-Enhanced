@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.08.30.01
+// @version     2019.09.18.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -38,24 +38,10 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Changed restrictions applied to be a warning icon in settings and comment list.',
-        '<b>BUGFIX:</b> Another fix for the restrictions alert.',
-        '<b>PREVIOUS RELEASES - 2019.08.27.01 2019.08.28.01 - BELOW</b>',
-        '<b>CHANGE:</b> Shortcuts in UR are now collapsible, with state retained in settings.',
-        '<b>BUGFIX:</b> Shortcuts not correctly initiating other events.',
-        '<b>BUGFIX:</b> Country and state being re-added multiple times by WME. (workaround)',
-        '<b>NEW:</b> New comment box will have a peachish background color if append mode is enabled.',
-        '<b>CHANGE:</b> Major overhaul of output text to limit number of jQuery operations. BIG speed increase.',
-        '<b>CHANGE:</b> Removed automated custom sheet creation / conversion.',
-        '<b>CHANGE:</b> Added manual custom sheet creation / conversion (conversion will still work).',
-        '<b>CHANGE:</b> Alert box completely removed in favor of WazeWrap alerts (missed one or two).',
-        '<b>CHANGE:</b> Ability to translate intersection / segment naming to locales.',
-        '<b>CHANGE:</b> Catch if row 25 is not set to "GROUP TITLE" and report gracefully.',
-        '<b>CHANGE:</b> Queue auto-sent reminders info box and display after completion of routine.',
-        '<b>CHANGE:</b> Better handle carriage returns during shortcut insertion.',
-        '<b>BUGFIX:</b> Restoring settings would inadvertantly get overwritten by WazeWrap backups.',
-        '<b>BUGFIX:</b> Better handling of errors in processing so mask boxes get removed.',
-        '<b>BUGFIX:</b> Improper handling of mouse events in some browsers.'
+    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Remember collapsed state of <i>More Information</i> box in UR Panel.',
+        '<b>NEW:</b> Unknown venue name (no name on venue / place) is now translatable to locale(s).',
+        '<b>NEW:</b> Unknown road name (no name on road / segment) is now translatable to locale(s).',
+        '<b>BUGFIX:</b> Translations not loading correctly in certain situations.'
     ],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
@@ -257,6 +243,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             lastSaved: 0,
             lastVersion: undefined,
             wmeUserId: undefined,
+            expandMoreInfo: false,
             expandShortcuts: true,
             // Comment List
             commentList: 0,
@@ -447,11 +434,11 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             I18n.t('urce.common.No'));
     }
     const loadedSettings = (restoreSettings === 'resetSettings') ? undefined : restoreSettings || $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
-    _settings = $.extend({}, defaultSettings, loadedSettings);
+    _settings = $.extend(true, {}, defaultSettings, loadedSettings);
 
     const serverSettings = await WazeWrap.Remote.RetrieveSettings(SETTINGS_STORE_NAME);
     if (!restoreSettings && serverSettings && (serverSettings.lastSaved > _settings.lastSaved)) {
-        $.extend(_settings, serverSettings);
+        $.extend(true, _settings, serverSettings);
         _timeouts.saveSettingsToStorage = window.setTimeout(saveSettingsToStorage, 5000);
     }
 
@@ -874,6 +861,15 @@ async function handleUpdateRequestContainer(urId, caller) {
         $('i[id|="urceShortcuts"]').off().on('click', function () {
             handleClickedShortcut(this.id.substr(14));
         });
+        if (_settings.expandMoreInfo && $('#panel-container .mapUpdateRequest .top-section .body .more-info').hasClass('collapsed'))
+            $('#panel-container .mapUpdateRequest .top-section .body .more-info .title').click();
+        $('#panel-container .mapUpdateRequest .top-section .body .more-info .title').on('click', function () {
+            if (this.parentElement.classList.contains('collapsed'))
+                _settings.expandMoreInfo = true;
+            else
+                _settings.expandMoreInfo = false;
+            saveSettingsToStorage();
+        });
         $('#urceShortcutsExpand').off().on('click', function () {
             if ($($(this).find('i')[0]).hasClass('fa-chevron-down'))
                 _settings.expandShortcuts = false;
@@ -1073,11 +1069,11 @@ function formatText(text, replaceVars, shortcutClicked) {
                     if (selFeatures.length > 1) {
                         const streetObj = W.model.streets.getObjectById(selFeatures[idx].model.attributes.primaryStreetID);
                         if (idx === 0) {
-                            street1Name = (streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : 'NO NAME';
+                            street1Name = (streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : I18n.t('urce.tools.UnknownRoadName');
                             firstCityId = streetObj.cityID;
                         }
                         else {
-                            street2Name = (streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : 'NO NAME';
+                            street2Name = (streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : I18n.t('urce.tools.UnknownRoadName');
                             if ((firstCityId !== 999940) && (text.indexOf('$SELSEGS_WITH_CITY$') > -1)) {
                                 if ((firstCityId === streetObj.cityID) || (streetObj.cityID === 999940)) {
                                     const cityObj = W.model.cities.getObjectById(firstCityId);
@@ -1283,10 +1279,8 @@ function formatText(text, replaceVars, shortcutClicked) {
         if (placeObj && (placeObj.model.type === 'venue')) {
             if (placeObj.model.attributes.residential === true)
                 text = text.replace('$PLACE_NAME$', I18n.t('objects.venue.fields.residential'));
-            else if (placeObj.model.attributes.name.length > 0)
-                text = text.replace('$PLACE_NAME$', placeObj.model.attributes.name);
             else
-                WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.PlaceNameInsertError'));
+                text = text.replace('$PLACE_NAME$', ((placeObj.model.attributes.name.length > 0) ? placeObj.model.attributes.name : I18n.t('urce.tools.UnknownVenueName')));
         }
         else {
             WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.PlaceNameInsertError'));
@@ -2844,7 +2838,7 @@ function createCommentListCSV(section) {
                 urstatus = entry.urstatus.toUpperCase();
             else
                 urstatus = '';
-            return [`${entry.title}|${entry.comment}|${urstatus}`];
+            return [`"${entry.title.replace(/"/gmi, '\\"')}"|"${entry.comment.replace(/"/gmi, '\\"')}"|${urstatus}`];
         });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([commentsArr.join('\n')], { type: 'text/csv' }));
@@ -5058,7 +5052,9 @@ function loadTranslations() {
                     RestoreSettingsSelectFileTitle: 'Select the JSON file created by the URC-E "Backup" settings button.',
                     RestoreSettingsTitle: 'Restore a backup copy of your URC-E settings from the JSON backup file created with the backup settings button.\n\nNote: Please do not modify the JSON '
                             + 'file in any way. The format is crucial to proper restoral of settings.',
-                    SegmentWithCity: '$SEG1NAME$ in $SEGCITY$'
+                    SegmentWithCity: '$SEG1NAME$ in $SEGCITY$',
+                    UnknownRoadName: 'unnamed road',
+                    UnknownVenueName: 'unnamed venue'
                 },
                 urPanel: {
                     CurrentDate: 'Current date',
@@ -5177,7 +5173,18 @@ function loadTranslations() {
         };
         translations['en-US'] = { ...translations.en };
         const locale = I18n.currentLocale();
-        I18n.translations[locale].urce = $.extend({}, translations.en, translations[locale]);
+        Object.keys(translations[locale]).forEach(obj1 => {
+            if (typeof translations[locale][obj1] === 'object') {
+                Object.keys(translations[locale][obj1]).forEach(obj2 => {
+                    if (translations[locale][obj1][obj2].length === 0)
+                        delete (translations[locale][obj1][obj2]);
+                });
+            }
+            else if ((typeof translations[locale][obj1] === 'string') && (translations[locale][obj1].length === 0)) {
+                delete (translations[locale][obj1]);
+            }
+        });
+        I18n.translations[locale].urce = $.extend(true, {}, translations.en, translations[locale]);
         if (Object.keys(translations).indexOf(locale) === -1)
             _needTranslation = true;
         if (errorText)
