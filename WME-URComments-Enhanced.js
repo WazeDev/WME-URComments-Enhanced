@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.08.30.01
+// @version     2019.09.25.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -38,24 +38,12 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Changed restrictions applied to be a warning icon in settings and comment list.',
-        '<b>BUGFIX:</b> Another fix for the restrictions alert.',
-        '<b>PREVIOUS RELEASES - 2019.08.27.01 2019.08.28.01 - BELOW</b>',
-        '<b>CHANGE:</b> Shortcuts in UR are now collapsible, with state retained in settings.',
-        '<b>BUGFIX:</b> Shortcuts not correctly initiating other events.',
-        '<b>BUGFIX:</b> Country and state being re-added multiple times by WME. (workaround)',
-        '<b>NEW:</b> New comment box will have a peachish background color if append mode is enabled.',
-        '<b>CHANGE:</b> Major overhaul of output text to limit number of jQuery operations. BIG speed increase.',
-        '<b>CHANGE:</b> Removed automated custom sheet creation / conversion.',
-        '<b>CHANGE:</b> Added manual custom sheet creation / conversion (conversion will still work).',
-        '<b>CHANGE:</b> Alert box completely removed in favor of WazeWrap alerts (missed one or two).',
-        '<b>CHANGE:</b> Ability to translate intersection / segment naming to locales.',
-        '<b>CHANGE:</b> Catch if row 25 is not set to "GROUP TITLE" and report gracefully.',
-        '<b>CHANGE:</b> Queue auto-sent reminders info box and display after completion of routine.',
-        '<b>CHANGE:</b> Better handle carriage returns during shortcut insertion.',
-        '<b>BUGFIX:</b> Restoring settings would inadvertantly get overwritten by WazeWrap backups.',
-        '<b>BUGFIX:</b> Better handling of errors in processing so mask boxes get removed.',
-        '<b>BUGFIX:</b> Improper handling of mouse events in some browsers.'
+    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Remember collapsed state of <i>More Information</i> box in UR Panel.',
+        '<b>NEW:</b> Unknown venue name (no name on venue / place) is now translatable to locale(s).',
+        '<b>NEW:</b> Unknown road name (no name on road / segment) is now translatable to locale(s).',
+        '<b>BUGFIX:</b> Translations not loading correctly in certain situations.',
+        '<b>BUGFIX:</b> Variable detection improvement.',
+        '<b>BUGFIX:</b> Variables slipping through auto-post reminder routine in certain situations.'
     ],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = false,
@@ -257,6 +245,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             lastSaved: 0,
             lastVersion: undefined,
             wmeUserId: undefined,
+            expandMoreInfo: false,
             expandShortcuts: true,
             // Comment List
             commentList: 0,
@@ -441,17 +430,17 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             outputText += `<i>${I18n.t('urce.common.None')}</i>`;
         outputText += `<br><br><b>${I18n.t('urce.prompts.RestoreSettingsConfirmation')}</b>`;
         return WazeWrap.Alerts.confirm(SCRIPT_NAME,
-            formatText(outputText, true, false),
+            formatText(outputText, true, false, undefined),
             () => { loadSettingsFromStorage(restoreSettings, true); },
             () => { }, I18n.t('urce.common.Yes'),
             I18n.t('urce.common.No'));
     }
     const loadedSettings = (restoreSettings === 'resetSettings') ? undefined : restoreSettings || $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
-    _settings = $.extend({}, defaultSettings, loadedSettings);
+    _settings = $.extend(true, {}, defaultSettings, loadedSettings);
 
     const serverSettings = await WazeWrap.Remote.RetrieveSettings(SETTINGS_STORE_NAME);
     if (!restoreSettings && serverSettings && (serverSettings.lastSaved > _settings.lastSaved)) {
-        $.extend(_settings, serverSettings);
+        $.extend(true, _settings, serverSettings);
         _timeouts.saveSettingsToStorage = window.setTimeout(saveSettingsToStorage, 5000);
     }
 
@@ -874,6 +863,15 @@ async function handleUpdateRequestContainer(urId, caller) {
         $('i[id|="urceShortcuts"]').off().on('click', function () {
             handleClickedShortcut(this.id.substr(14));
         });
+        if (_settings.expandMoreInfo && $('#panel-container .mapUpdateRequest .top-section .body .more-info').hasClass('collapsed'))
+            $('#panel-container .mapUpdateRequest .top-section .body .more-info .title').click();
+        $('#panel-container .mapUpdateRequest .top-section .body .more-info .title').on('click', function () {
+            if (this.parentElement.classList.contains('collapsed'))
+                _settings.expandMoreInfo = true;
+            else
+                _settings.expandMoreInfo = false;
+            saveSettingsToStorage();
+        });
         $('#urceShortcutsExpand').off().on('click', function () {
             if ($($(this).find('i')[0]).hasClass('fa-chevron-down'))
                 _settings.expandShortcuts = false;
@@ -944,7 +942,7 @@ async function handleUpdateRequestContainer(urId, caller) {
 }
 
 function checkValue() {
-    const varsFound = this.value.match(/(\B\$[A-Za-z0-9]*\$?)/gm);
+    const varsFound = this.value.match(/\B\$\S*\$\B/gm) || this.value.match(/(\$SELSEGS|\$USERNAME|\$URD)/gm);
     if (varsFound) {
         let title;
         if (this.value.indexOf('$SELSEGS') > -1)
@@ -1059,7 +1057,9 @@ function convertTimeOfDayToCasual(hour) {
     return casualText;
 }
 
-function formatText(text, replaceVars, shortcutClicked) {
+function formatText(text, replaceVars, shortcutClicked, urId) {
+    if (!urId && _selUr && _selUr.urId)
+        ({ urId } = _selUr);
     if (replaceVars && shortcutClicked && (text.indexOf('$SELSEGS') > -1)) {
         const selFeatures = W.selectionManager.getSelectedFeatures();
         let output = '';
@@ -1073,11 +1073,11 @@ function formatText(text, replaceVars, shortcutClicked) {
                     if (selFeatures.length > 1) {
                         const streetObj = W.model.streets.getObjectById(selFeatures[idx].model.attributes.primaryStreetID);
                         if (idx === 0) {
-                            street1Name = (streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : 'NO NAME';
+                            street1Name = (streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : I18n.t('urce.tools.UnknownRoadName');
                             firstCityId = streetObj.cityID;
                         }
                         else {
-                            street2Name = (streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : 'NO NAME';
+                            street2Name = (streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : I18n.t('urce.tools.UnknownRoadName');
                             if ((firstCityId !== 999940) && (text.indexOf('$SELSEGS_WITH_CITY$') > -1)) {
                                 if ((firstCityId === streetObj.cityID) || (streetObj.cityID === 999940)) {
                                     const cityObj = W.model.cities.getObjectById(firstCityId);
@@ -1123,7 +1123,7 @@ function formatText(text, replaceVars, shortcutClicked) {
             WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.SelSegsInsertError'));
         }
     }
-    if (replaceVars && (_selUr.urId > -1)) {
+    if (replaceVars && (urId > -1)) {
         if (text.search(/(\$(CURRENTDATE_DAY_OF_WEEK|CURRENTDATE_DATE|CURRENTDATE_DATE_CASUAL|CURRENTDATE_TIME|CURRENTDATE_TIME_CASUAL)\$)/gm) > -1) {
             if (text.indexOf('$CURRENTDATE_DAY_OF_WEEK$') > -1)
                 text = text.replace('$CURRENTDATE_DAY_OF_WEEK$', new Date().toLocaleDateString(I18n.currentLocale(), { weekday: 'long' }));
@@ -1137,20 +1137,20 @@ function formatText(text, replaceVars, shortcutClicked) {
                 text = text.replace('$CURRENTDATE_TIME_CASUAL$', convertTimeOfDayToCasual(new Date().getHours()));
         }
         if (text.search(/(\$(DRIVEDATE_DAY_OF_WEEK|DRIVEDATE_DATE|DRIVEDATE_DATE_CASUAL|DRIVEDATE_DAYS_AGO|DRIVEDATE_TIME|DRIVEDATE_TIME_CASUAL|DRIVEDATE_TIME_CASUALMODE)\$)/gm) > -1) {
-            if (W.model.mapUpdateRequests.objects[_selUr.urId]) {
+            if (W.model.mapUpdateRequests.objects[urId]) {
                 if (text.indexOf('$DRIVEDATE_DAY_OF_WEEK$') > -1) {
-                    if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate > -1)) {
+                    if (W.model.mapUpdateRequests.objects[urId].attributes && (W.model.mapUpdateRequests.objects[urId].attributes.driveDate > -1)) {
                         text = text.replace('$DRIVEDATE_DAY_OF_WEEK$',
-                            new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).toLocaleDateString(I18n.currentLocale(), { weekday: 'long' }));
+                            new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).toLocaleDateString(I18n.currentLocale(), { weekday: 'long' }));
                     }
                     else {
                         text = text.replace('$DRIVEDATE_DAY_OF_WEEK$', '');
                     }
                 }
                 if (text.indexOf('$DRIVEDATE_DATE$') > -1) {
-                    if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate > -1)) {
+                    if (W.model.mapUpdateRequests.objects[urId].attributes && (W.model.mapUpdateRequests.objects[urId].attributes.driveDate > -1)) {
                         text = text.replace('$DRIVEDATE_DATE$',
-                            new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).toLocaleDateString(I18n.currentLocale(),
+                            new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).toLocaleDateString(I18n.currentLocale(),
                                 { month: '2-digit', day: '2-digit', year: 'numeric' }));
                     }
                     else {
@@ -1158,24 +1158,24 @@ function formatText(text, replaceVars, shortcutClicked) {
                     }
                 }
                 if (text.indexOf('$DRIVEDATE_DATE_CASUAL$') > -1) {
-                    if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate > -1)) {
+                    if (W.model.mapUpdateRequests.objects[urId].attributes && (W.model.mapUpdateRequests.objects[urId].attributes.driveDate > -1)) {
                         text = text.replace('$DRIVEDATE_DATE_CASUAL$',
-                            new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).toLocaleDateString(I18n.currentLocale(), { month: 'long', day: '2-digit' }));
+                            new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).toLocaleDateString(I18n.currentLocale(), { month: 'long', day: '2-digit' }));
                     }
                     else {
                         text = text.replace('$DRIVEDATE_DATE_CASUAL$', '');
                     }
                 }
                 if (text.indexOf('$DRIVEDATE_DAYS_AGO$') > -1) {
-                    if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.driveDaysOld > -1))
-                        text = text.replace('$DRIVEDATE_DAYS_AGO$', parseDaysAgo(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.driveDaysOld));
+                    if (W.model.mapUpdateRequests.objects[urId].attributes.urceData && (W.model.mapUpdateRequests.objects[urId].attributes.urceData.driveDaysOld > -1))
+                        text = text.replace('$DRIVEDATE_DAYS_AGO$', parseDaysAgo(W.model.mapUpdateRequests.objects[urId].attributes.urceData.driveDaysOld));
                     else
                         text = text.replace('$DRIVEDATE_DAYS_AGO$', '');
                 }
                 if (text.indexOf('$DRIVEDATE_TIME$') > -1) {
-                    if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate > -1)) {
+                    if (W.model.mapUpdateRequests.objects[urId].attributes && (W.model.mapUpdateRequests.objects[urId].attributes.driveDate > -1)) {
                         text = text.replace('$DRIVEDATE_TIME$',
-                            new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).toLocaleTimeString(I18n.currentLocale(),
+                            new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).toLocaleTimeString(I18n.currentLocale(),
                                 { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }));
                     }
                     else {
@@ -1183,16 +1183,16 @@ function formatText(text, replaceVars, shortcutClicked) {
                     }
                 }
                 if (text.indexOf('$DRIVEDATE_TIME_CASUAL$') > -1) {
-                    if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate > -1))
-                        text = text.replace('$DRIVEDATE_TIME_CASUAL$', convertTimeOfDayToCasual(new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).getHours()));
+                    if (W.model.mapUpdateRequests.objects[urId].attributes && (W.model.mapUpdateRequests.objects[urId].attributes.driveDate > -1))
+                        text = text.replace('$DRIVEDATE_TIME_CASUAL$', convertTimeOfDayToCasual(new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).getHours()));
                     else
                         text = text.replace('$DRIVEDATE_TIME_CASUAL$', '');
                 }
                 if (text.indexOf('$DRIVEDATE_TIME_CASUALMODE$') > -1) {
-                    if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData) {
-                        const driveDaysAgo = W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.driveDaysOld;
-                        const driveHour = new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).getHours();
-                        let dayOfWeek = new Date(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.driveDate).getDay(),
+                    if (W.model.mapUpdateRequests.objects[urId].attributes.urceData) {
+                        const driveDaysAgo = W.model.mapUpdateRequests.objects[urId].attributes.urceData.driveDaysOld;
+                        const driveHour = new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).getHours();
+                        let dayOfWeek = new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).getDay(),
                             casualText;
                         if ((driveDaysAgo < 21) && (driveHour > -1) && (driveHour < 4))
                             dayOfWeek = (dayOfWeek > 0) ? dayOfWeek - 1 : 6;
@@ -1265,28 +1265,26 @@ function formatText(text, replaceVars, shortcutClicked) {
             text = text.replace(/(\$USERNAME\$?)+/gmi, '');
     }
     if (replaceVars && (text.indexOf('$URD') > -1)) {
-        if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.description)
-            text = text.replace(/("?\$URD\$?"?)+/gmi, `"${W.model.mapUpdateRequests.objects[_selUr.urId].attributes.description}"`).replace(/\n+/gmi, '');
+        if (W.model.mapUpdateRequests.objects[urId].attributes.description)
+            text = text.replace(/("?\$URD\$?"?)+/gmi, `"${W.model.mapUpdateRequests.objects[urId].attributes.description}"`).replace(/\n+/gmi, '');
         else
             text = text.replace(/("?\$URD\$?"?)+/gmi, '');
     }
     if (replaceVars && text.indexOf('$CUSTOMTAGLINE$') > -1) {
         if (_settings.perCommentListSettings[_currentCommentList].customTagline.length > 0)
-            text = text.replace('$CUSTOMTAGLINE$', formatText(_settings.perCommentListSettings[_currentCommentList].customTagline, true));
+            text = text.replace('$CUSTOMTAGLINE$', formatText(_settings.perCommentListSettings[_currentCommentList].customTagline, true, shortcutClicked, urId));
         else
             text = text.replace('$CUSTOMTAGLINE$', '');
     }
     if (replaceVars && text.indexOf('$URTYPE$') > -1)
-        text = text.replace('$URTYPE$', W.model.mapUpdateRequests.objects[_selUr.urId].attributes.typeText);
+        text = text.replace('$URTYPE$', W.model.mapUpdateRequests.objects[urId].attributes.typeText);
     if (replaceVars && text.indexOf('$PLACE_NAME$') > -1) {
         const placeObj = W.selectionManager.getSelectedFeatures()[0];
         if (placeObj && (placeObj.model.type === 'venue')) {
             if (placeObj.model.attributes.residential === true)
                 text = text.replace('$PLACE_NAME$', I18n.t('objects.venue.fields.residential'));
-            else if (placeObj.model.attributes.name.length > 0)
-                text = text.replace('$PLACE_NAME$', placeObj.model.attributes.name);
             else
-                WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.PlaceNameInsertError'));
+                text = text.replace('$PLACE_NAME$', ((placeObj.model.attributes.name.length > 0) ? placeObj.model.attributes.name : I18n.t('urce.tools.UnknownVenueName')));
         }
         else {
             WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.PlaceNameInsertError'));
@@ -1324,7 +1322,7 @@ function formatText(text, replaceVars, shortcutClicked) {
     if (replaceVars && _customReplaceVars && (_customReplaceVars.length > 0)) {
         _customReplaceVars.forEach(customReplaceVar => {
             if (text.indexOf(customReplaceVar.customVar) > -1)
-                text = text.replace(customReplaceVar.customVar, formatText(customReplaceVar.replaceText, true));
+                text = text.replace(customReplaceVar.customVar, formatText(customReplaceVar.replaceText, true, shortcutClicked, urId));
         });
     }
     return text.replace(/\\[r|n]+/gm, '\n');
@@ -1421,7 +1419,7 @@ function handleClickedShortcut(shortcut) {
     else {
         return;
     }
-    let outputText = formatText(replaceText, true, true);
+    let outputText = formatText(replaceText, true, true, undefined);
     if ((((shortcut === 'selSegs') || (shortcut === 'selSegsWithCity')) && (outputText.search(/\$SELSEGS\$?/gm) > -1))
         || ((shortcut === 'placeName') && (outputText.indexOf('$PLACE_NAME$') > -1))
         || ((shortcut === 'placeAddress') && (outputText.indexOf('$PLACE_ADDRESS$') > -1))
@@ -1448,6 +1446,8 @@ function handleClickedShortcut(shortcut) {
 function autoPostReminderComment(urId, comment) {
     return new Promise(resolve => {
         try {
+            if ((comment.search(/\B\$\S*\$\B/gm) > -1) || (comment.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) > -1))
+                throw new Error(`Did not auto-post reminder comment for urId ${urId} because a variable was not replaced.`);
             W.model.updateRequestSessions.objects[urId].addComment(comment);
             W.model.mapUpdateRequests.objects[urId].attributes.reminderSent = true;
         }
@@ -1489,7 +1489,7 @@ function postUrComment(commentStr, doubleClick) {
                         newVal += '\n\n';
                         newCursorPos += 2;
                     }
-                    newVal += formatText(comment, true, false);
+                    newVal += formatText(comment, true, false, undefined);
                     if (currVal.slice(cursorPos).length > 0) {
                         if (currVal.substr(cursorPos, 1).search(/[\n\r]/) > -1) {
                             if (currVal.substr(cursorPos + 1, 1).search(/[\n\r]/) === -1) {
@@ -1506,7 +1506,7 @@ function postUrComment(commentStr, doubleClick) {
                     commentOutput = newVal;
                 }
                 else {
-                    commentOutput = formatText(comment, true, false);
+                    commentOutput = formatText(comment, true, false, undefined);
                 }
                 if (commentOutput.length > 2000) {
                     WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
@@ -1521,7 +1521,7 @@ function postUrComment(commentStr, doubleClick) {
                     else {
                         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).change().keyup().focus();
                     }
-                    if (commentOutput.match(/(\B\$[A-Za-z0-9]*\$?)/gm) === null)
+                    if ((commentOutput.search(/\B\$\S*\$\B/gm) === -1) && (commentOutput.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) === -1))
                         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').blur().focus();
                     else
                         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').focus();
@@ -2266,7 +2266,8 @@ function updateUrceData(urIds) {
                                 && (_wmeUserId === urceData.lastCommentBy)
                                 && !mapUrsObj[idx].attributes.reminderSent
                             ) {
-                                const autoPostReminderCommentResult = await autoPostReminderComment(chunk[idx], formatText(_commentList[_defaultComments.dr.commentNum].comment, true, false));
+                                const autoPostReminderCommentResult = await autoPostReminderComment(chunk[idx],
+                                    formatText(_commentList[_defaultComments.dr.commentNum].comment, true, false, urSessionsObj[idx].id));
                                 if (autoPostReminderCommentResult.error) {
                                     urceData.needsReminder = true;
                                     logWarning(autoPostReminderCommentResult.text); // Don't return here as we should go ahead and process the urceData.
@@ -2844,7 +2845,7 @@ function createCommentListCSV(section) {
                 urstatus = entry.urstatus.toUpperCase();
             else
                 urstatus = '';
-            return [`${entry.title}|${entry.comment}|${urstatus}`];
+            return [`"${entry.title.replace(/"/gmi, '\\"')}"|"${entry.comment.replace(/"/gmi, '\\"')}"|${urstatus}`];
         });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([commentsArr.join('\n')], { type: 'text/csv' }));
@@ -3077,11 +3078,11 @@ function processCommentList(data) {
                             outputItems[idx].items.push({
                                 linkClass,
                                 commentId,
-                                title: formatText(rowObj.comment, false, false),
+                                title: formatText(rowObj.comment, false, false, undefined),
                                 name: rowObj.title,
                                 divDoubleClickId,
                                 divDoubleClickStyle,
-                                divDoubleClickTitle: `${I18n.t('urce.common.DoubleClickTitle')}:\n${formatText(rowObj.comment, false, false)}`
+                                divDoubleClickTitle: `${I18n.t('urce.common.DoubleClickTitle')}:\n${formatText(rowObj.comment, false, false, undefined)}`
                             });
                             commentId++;
                         }
@@ -3856,7 +3857,7 @@ function initSettingsTab() {
         },
         buildTextFirstNumSetting = (setting, urceprefs, min, max, step, postText) => {
             const translationName = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}`),
-                translationTitle = formatText(I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`), false, false);
+                translationTitle = formatText(I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`), false, false, undefined);
             let rVal = `<div title="${translationTitle}" class="URCE-label" urceprefs="${urceprefs}">${translationName} <input type="number" id="_num${setting}" class="URCE-daysInput urceSettingsNumberBox" urceprefs="${urceprefs}" value="${_settings[setting]}" title="${translationTitle}" min="${min}" max="${max}" step="${step}">`;
             if (postText !== undefined)
                 rVal += `<div class="URCE-divDaysInline" urceprefs="${urceprefs}">${postText}</div>`;
@@ -5058,7 +5059,9 @@ function loadTranslations() {
                     RestoreSettingsSelectFileTitle: 'Select the JSON file created by the URC-E "Backup" settings button.',
                     RestoreSettingsTitle: 'Restore a backup copy of your URC-E settings from the JSON backup file created with the backup settings button.\n\nNote: Please do not modify the JSON '
                             + 'file in any way. The format is crucial to proper restoral of settings.',
-                    SegmentWithCity: '$SEG1NAME$ in $SEGCITY$'
+                    SegmentWithCity: '$SEG1NAME$ in $SEGCITY$',
+                    UnknownRoadName: 'unnamed road',
+                    UnknownVenueName: 'unnamed venue'
                 },
                 urPanel: {
                     CurrentDate: 'Current date',
@@ -5177,7 +5180,18 @@ function loadTranslations() {
         };
         translations['en-US'] = { ...translations.en };
         const locale = I18n.currentLocale();
-        I18n.translations[locale].urce = $.extend({}, translations.en, translations[locale]);
+        Object.keys(translations[locale]).forEach(obj1 => {
+            if (typeof translations[locale][obj1] === 'object') {
+                Object.keys(translations[locale][obj1]).forEach(obj2 => {
+                    if (translations[locale][obj1][obj2].length === 0)
+                        delete (translations[locale][obj1][obj2]);
+                });
+            }
+            else if ((typeof translations[locale][obj1] === 'string') && (translations[locale][obj1].length === 0)) {
+                delete (translations[locale][obj1]);
+            }
+        });
+        I18n.translations[locale].urce = $.extend(true, {}, translations.en, translations[locale]);
         if (Object.keys(translations).indexOf(locale) === -1)
             _needTranslation = true;
         if (errorText)
