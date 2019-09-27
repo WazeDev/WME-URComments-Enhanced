@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.09.26.01
+// @version     2019.09.27.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -95,11 +95,26 @@ const _saveButtonObserver = new MutationObserver(mutations => {
         handleAfterSave();
 });
 const _urPanelContainerObserver = new MutationObserver(async mutations => {
-    const newUrId = await getUrId(),
-        dataStateMutations = mutations.filter(mutation => (mutation.type === 'attributes') && (mutation.attributeName === 'data-state')),
+    const dataStateMutations = mutations.filter(mutation => (mutation.type === 'attributes') && (mutation.attributeName === 'data-state')),
         mutatedChildren = mutations.filter(mutation => (mutation.type === 'childList')),
         addedChildren = mutatedChildren.filter(mutatedChild => (mutatedChild.addedNodes.length > 0)),
         removedChildren = mutatedChildren.filter(mutatedChild => (mutatedChild.removedNodes.length > 0));
+    if (_selUr.handling
+        && (removedChildren.length > 0)
+        && removedChildren.filter(removedChild => (removedChild.removedNodes[0].className
+            && (removedChild.removedNodes[0].className.indexOf('show') > -1)
+            && $(removedChild.target).is('#panel-container')))
+            .length > 0)
+        return handleAfterCloseUpdateContainer();
+    if (_selUr.handling && (dataStateMutations.length > 0)) {
+        const dataState = dataStateMutations[0].target.attributes['data-state'].nodeValue.replace('-', '');
+        if ((dataState === 'open') || (dataState === 'solved') || (dataState === 'notidentified'))
+            _selUr.newStatus = dataState;
+        else
+            logWarning(`INVALID DATA STATE CHANGE: ${dataStateMutations[0].target.attributes['data-state'].nodeValue}`);
+        return true;
+    }
+    const newUrId = await getUrId();
     if ((addedChildren.length > 0)
         && addedChildren.filter(addedChild => (addedChild.addedNodes[0].className
             && (addedChild.addedNodes[0].className.indexOf('show') > -1)
@@ -108,13 +123,6 @@ const _urPanelContainerObserver = new MutationObserver(async mutations => {
             .length > 0)
         return handleUpdateRequestContainer(newUrId, 'UR panel mutation');
     if (_selUr.handling
-        && (removedChildren.length > 0)
-        && removedChildren.filter(removedChild => (removedChild.removedNodes[0].className
-            && (removedChild.removedNodes[0].className.indexOf('show') > -1)
-            && $(removedChild.target).is('#panel-container')))
-            .length > 0)
-        return handleAfterCloseUpdateContainer();
-    if (_selUr.handling
         && (addedChildren.length > 0)
         && addedChildren.filter(addedChild => (addedChild.addedNodes.length > 0)
             && $(addedChild.target).hasClass('comment-list')
@@ -122,14 +130,6 @@ const _urPanelContainerObserver = new MutationObserver(async mutations => {
             && (newUrId === _selUr.urId))
             .length > 0)
         return handleAfterCommentMutation(newUrId);
-    if (_selUr.handling && (dataStateMutations.length > 0)) {
-        const dataState = dataStateMutations[0].target.attributes['data-state'].nodeValue.replace('-', '');
-        if ((dataState === 'open') || (dataState === 'solved') || (dataState === 'notidentified'))
-            _selUr.newStatus = dataState;
-        else
-            logWarning(dataStateMutations[0].target.attributes['data-state'].nodeValue);
-        return true;
-    }
     return false;
 });
 const _urMarkerObserver = new MutationObserver(mutations => {
