@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.09.28.01
+// @version     2019.09.29.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -38,11 +38,10 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> URC-E tab icon is now the toggle to quickly enable / disable UR filtering.',
+    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Filter icon in tab title bar to quickly toggle UR filtering.',
         '<b>BUGFIX:</b> UR ID not being detected correctly in certain situations.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
-    DISABLE_FILTERING_ICON = 'data:image/png;base64,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',
     LOAD_BEGIN_TIME = performance.now(),
     STATIC_ONLY_USERS = ['itzwolf'],
     URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c',
@@ -3621,7 +3620,8 @@ function injectCss() {
         + '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:11px; color:#000000; }'
         + '#sidepanel-urc-e .URCE-divTabs { padding:8px; padding-top:2px; }'
         // Main Tabs
-        + '.URCE-tabIcon { padding-bottom:6px; width:18px; }'
+        + '.URCE-tabIcon { margin-top:1px; width:18px; vertical-align:top; }'
+        + '.URCE-urFilteringToggleBtn { margin-left:3px; cursor:pointer; font-size:14px; vertical-align:top; padding-top:5px; }'
         // urceDiv
         + '#urceDiv { position:absolute; visibility:hidden; top:0; left:0; z-index:15000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px;'
         + '     box-shadow:5px 5px 10px silver; padding:4px;'
@@ -4244,11 +4244,11 @@ function initSettingsTab() {
         if (urcePrefs === 'filteringMaster') {
             if (!this.checked) {
                 $('[urceprefs=filtering]').prop('disabled', true).addClass('urceDisabled');
-                $('img[id=urceIcon]').attr('src', DISABLE_FILTERING_ICON);
+                $('#urceUrFilteringToggleBtn').css('color', '#ccc');
             }
             else {
                 $('[urceprefs=filtering]').prop('disabled', false).removeClass('urceDisabled');
-                $('img[id=urceIcon]').attr('src', GM_info.script.icon);
+                $('#urceUrFilteringToggleBtn').css('color', '#00bd00');
             }
         }
         _settings[settingName] = this.checked;
@@ -4340,9 +4340,14 @@ function initTab() {
     initToolsTab();
     if ($('img#urceIcon').length === 0) {
         $('a[href="#sidepanel-urc-e"]').prepend(
-            $('<img>', {
-                id: 'urceIcon', class: 'URCE-tabIcon', style: 'cursor:pointer;', src: (_settings.enableUrceUrFiltering ? GM_info.script.icon : DISABLE_FILTERING_ICON)
-            }).on('click', evt => {
+            `<img id="urceIcon" class="URCE-tabIcon" src="${GM_info.script.icon}">`
+        ).append(
+            $('<span>', {
+                class: 'fa fa-filter URCE-urFilteringToggleBtn',
+                id: 'urceUrFilteringToggleBtn',
+                style: `color:${(_settings.enableUrceUrFiltering ? '#00bd00' : '#ccc')};`,
+                title: 'Toggle URC-E UR Filtering'
+            }).click(evt => {
                 evt.stopPropagation();
                 $('#_cbenableUrceUrFiltering').click();
             })
