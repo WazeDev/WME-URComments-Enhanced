@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.10.04.01
+// @version     2019.10.04.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -39,7 +39,7 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
     SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Filter icon in tab title bar to quickly toggle UR filtering.',
-        '<b>NEW:</b> Ability to enable / disable UR Overflow handling from tab titlebar. Also displays status of overflow activity.',
+        '<b>NEW:</b> New spinner icon in URC-E tab title bar to indicate when URC-E is actively processing UR markers.',
         '<b>BUGFIX:</b> UR ID not being detected correctly in certain situations.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
@@ -2447,7 +2447,12 @@ function updateUrceData(urIds) {
 
 function handleUrLayer(phase, filter, urMapMarkerIdsArr) {
     return new Promise(async resolve => {
-        const zoomLevel = W.map.getZoom();
+        const zoomLevel = W.map.getZoom(),
+            $btn = $('#urceUrMarkerProcessingSpinner');
+        if (!$btn.hasClass('fa-spin')) {
+            $btn.css({ color: 'gray' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingActive'));
+            $btn.addClass('fa-spin');
+        }
         if (filter === undefined || filter === null) {
             filter = true;
             if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
@@ -2506,6 +2511,7 @@ function handleUrLayer(phase, filter, urMapMarkerIdsArr) {
             if (phase !== 'overflow')
                 _filtersAppliedOnZoom = filter;
         }
+        $btn.removeClass('fa-spin').css({ color: 'lightgray' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingInactive'));
         return resolve();
     });
 }
@@ -2548,11 +2554,6 @@ function getOverflowUrsFromUrl(urlStr) {
 
 function handleUrOverflow() {
     return new Promise(async resolve => {
-        const $btn = $('#urceUrOverflowSpinner');
-        if (!$btn.hasClass('fa-spin')) {
-            $btn.css({ cursor: 'auto', color: 'gray', title: I18n.t('urce.mouseOver.UROverflowActive') });
-            $btn.addClass('fa-spin');
-        }
         const baseUrl = `https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=`
             + `${(($('#layer-switcher-item_closed_update_requests').is(':checked')) ? '3' : '1')}%2C0&bbox=`,
             overflowUrsToPut = [],
@@ -2617,7 +2618,6 @@ function handleUrOverflow() {
         else {
             logDebug('All URs submitted for overflow processing already exist on map.');
         }
-        $btn.removeClass('fa-spin').css({ cursor: 'pointer', color: 'lightgray', title: I18n.t('urce.mouseOver.UROverflowEnabled') });
         resolve({ error: false });
     });
 }
@@ -4242,13 +4242,6 @@ function initSettingsTab() {
                 $('div#URCE-divDoubleClickSolved').show();
             }
         }
-        if (settingName === 'enableUrOverflowHandling') {
-            _settings.enableUrOverflowHandling = isChecked(this);
-            if (!_settings.enableUrOverflowHandling)
-                $('#urceUrOverflowSpinnerDisabled').css('display', '');
-            else
-                $('#urceUrOverflowSpinnerDisabled').css('display', 'none');
-        }
         if (urcePrefs === 'markerMaster') {
             if (!this.checked)
                 $('[urceprefs=marker]').prop('disabled', true).addClass('urceDisabled');
@@ -4366,18 +4359,7 @@ function initTab() {
                 evt.stopPropagation();
                 $('#_cbenableUrceUrFiltering').click();
             }),
-            $('<span>', {
-                id: 'urceUrOverflowSpinnerSpan',
-                class: 'fa-stack fa-2x',
-                style: 'margin-left:2px; width:1.8em; font-size:13px; vertical-align:top;'
-            }).append(
-                `<i class="fa fa-spinner fa-stack-1x URCE-urOverflow" id="urceUrOverflowSpinner" title="${I18n.t('urce.mouseOver.UROverflowEnabled')}" style="color:lightgray; cursor:pointer;"></i>`
-                + `<i id="urceUrOverflowSpinnerDisabled" class="fa fa-exclamation fa-stack-2x" title="${I18n.t('urce.mouseOver.UROverflowDisabled')}" style="color:palevioletred; font-size:13px; margin-top:5px; cursor:pointer;${(_settings.enableUrOverflowHandling ? ' display:none;' : '')}"></i>`
-                + '</span>'
-            ).on('click', evt => {
-                evt.stopPropagation();
-                $('#_cbenableUrOverflowHandling').click();
-            })
+            `<span id="urceUrMarkerProcessingSpinner" class="fa fa-spinner" title="${I18n.t('urce.mouseOver.URMarkerProcessingInactive')}" style="margin-left:5px; font-size:13px; vertical-align:top; padding-top:5px; color:lightgray;"></span>`
         );
     }
 }
@@ -4809,9 +4791,8 @@ function loadTranslations() {
                     OpenInNewTab: 'Open in new tab',
                     ReporterHasCommented: 'Reporter has commented',
                     ToggleUrceURFiltering: 'Toggle URC-E UR filtering.',
-                    UROverflowActive: 'Overflow handling is currently active... please wait.',
-                    UROverflowDisabled: 'Overflow handling is currently disabled. Click to enable.',
-                    UROverflowEnabled: 'Overflow handling is currently enabled, but inactive. Click to disable.',
+                    URMarkerProcessingActive: 'URC-E is currently processing UR markers... Please wait.',
+                    URMarkerProcessingInactive: 'URC-E is not currently processing any UR markers.',
                     ViaLivemap: 'via Livemap'
                 },
                 prefs: {
