@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.10.04.02
+// @version     2019.10.08.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -39,7 +39,7 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
     SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Filter icon in tab title bar to quickly toggle UR filtering.',
-        '<b>NEW:</b> New spinner icon in URC-E tab title bar to indicate when URC-E is actively processing UR markers.',
+        '<b>NEW:</b> New spinner icon in URC-E tab title bar to indicate when URC-E is actively processing something.',
         '<b>BUGFIX:</b> UR ID not being detected correctly in certain situations.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
@@ -202,6 +202,7 @@ let _settings = {},
     _mouseIsDown = false,
     _needTranslation = false,
     _unstackedMasterId = null,
+    _spinners = 0,
     _restoreZoom,
     _$restoreTab,
     _restoreTabPosition,
@@ -558,10 +559,30 @@ function getCollapsedGroups() {
     });
 }
 
+function doSpinner(stop) {
+    const $btn = $('#urceUrMarkerProcessingSpinner');
+    if ($btn.length === 0) {
+        _spinners = 0;
+        return;
+    }
+    if (stop) {
+        _spinners--;
+        if (_spinners === 0)
+            $btn.removeClass('fa-spin').css({ color: 'lightgray' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingInactive'));
+        return;
+    }
+    _spinners++;
+    if (!$btn.hasClass('fa-spin')) {
+        $btn.css({ color: 'black' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingActive'));
+        $btn.addClass('fa-spin');
+    }
+}
+
 function checkRestrictions(event) {
     return new Promise(resolve => {
         (function retry(tries, toIndex, evt) {
             checkTimeout({ timeout: 'checkRestrictions', toIndex });
+            doSpinner(false);
             const displayWarning = (content, remove) => {
                 if (remove) {
                     $('#restrictionsEnforcedWarning, #restrictionsEnforcedWarning-Settings').hide();
@@ -655,6 +676,7 @@ function checkRestrictions(event) {
             else {
                 resolve(logError('Unable to check for restrictions'));
             }
+            doSpinner(true);
         }(1, getRandomId(), event));
     });
 }
@@ -719,6 +741,7 @@ function getMapUrsAsync(urIdsArr) {
 
 async function handleAfterCommentMutation(urId) {
     logDebug(`Handling new comment mutation for urId: ${urId}`);
+    doSpinner(false);
     if (_settings.unfollowUrAfterSend)
         unfollowUrAfterSend(urId);
     if (_settings.autoCloseUrPanel || _selUr.doubleClick) {
@@ -738,6 +761,7 @@ async function handleAfterCommentMutation(urId) {
         else
             await handleUrLayer('sendComment', null, [urId]);
     }
+    doSpinner(true);
 }
 
 async function handleAfterCloseUpdateContainer() {
@@ -776,6 +800,7 @@ async function handleUpdateRequestContainer(urId, caller) {
         return false;
     if (_settings.replaceNextWithDoneButton && ($('#panel-container .mapUpdateRequest.panel .section .content .navigation .done').length === 0))
         return W.reqres.request('problems:browse', _.extend({ showNext: false, nextButtonString: I18n.t('problems.panel.done') }, { problem: W.model.mapUpdateRequests.objects[urId] }));
+    doSpinner(false);
     _selUr.handling = true;
     _restoreZoom = W.map.getZoom();
     if (_timeouts.popup !== undefined)
@@ -935,6 +960,7 @@ async function handleUpdateRequestContainer(urId, caller) {
     }
     if (_settings.autoCenterOnUr)
         recenterOnUr({ data: { urId } }, W.map.getZoom());
+    doSpinner(true);
     return true;
 }
 
@@ -1326,6 +1352,7 @@ function formatText(text, replaceVars, shortcutClicked, urId) {
 }
 
 function handleClickedShortcut(shortcut) {
+    doSpinner(false);
     const cursorPos = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].selectionStart,
         currVal = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val();
     let newVal = currVal.slice(0, cursorPos),
@@ -1438,6 +1465,7 @@ function handleClickedShortcut(shortcut) {
     else if (useCurrVal) {
         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(outputText).selectRange((cursorPos + outputText.length)).change().keyup().focus();
     }
+    doSpinner(true);
 }
 
 function autoPostReminderComment(urId, comment) {
@@ -1459,6 +1487,7 @@ function autoPostReminderComment(urId, comment) {
 function postUrComment(commentStr, doubleClick) {
     return new Promise(resolve => {
         (function retry(comment, tries) {
+            doSpinner(false);
             let commentOutput,
                 cursorPos,
                 newCursorPos,
@@ -1525,6 +1554,7 @@ function postUrComment(commentStr, doubleClick) {
                     resolve({ error: false });
                 }
             }
+            doSpinner(true);
         }(commentStr, 1));
     });
 }
@@ -1619,6 +1649,7 @@ function checkMarkerStacking(urId, unstackedX, unstackedY) {
     urId = parseInt(urId);
     if (!_settings.unstackMarkers || (isIdAlreadyUnstacked(urId) === true))
         return;
+    doSpinner(false);
     const stackList = [],
         markerMapCollection = { ...W.map.updateRequestLayer.featureMarkers },
         markerModelCollection = { ...W.model.mapUpdateRequests.objects };
@@ -1694,6 +1725,7 @@ function checkMarkerStacking(urId, unstackedX, unstackedY) {
     else {
         restackMarkers();
     }
+    doSpinner(true);
 }
 
 async function markerMouseOver() {
@@ -1713,6 +1745,7 @@ async function markerMouseOver() {
                 unstackedY = parsePxString(W.map.updateRequestLayer.featureMarkers[markerId].marker.icon.imageDiv.style.top);
             checkMarkerStacking(markerId, unstackedX, unstackedY);
             if (!_settings.disableUrMarkerPopup) {
+                doSpinner(false);
                 if (W.model.mapUpdateRequests.objects[markerId].attributes.urceData === undefined)
                     await updateUrceData([markerId]);
                 popupX = unstackedX - parsePxString(W.map.segmentLayer.div.style.left) + popupXOffset + 10;
@@ -1825,6 +1858,7 @@ async function markerMouseOver() {
                         popupContent, popupX, popupY, urId: markerId
                     });
                 }
+                doSpinner(true);
             }
         }
     }
@@ -2447,12 +2481,8 @@ function updateUrceData(urIds) {
 
 function handleUrLayer(phase, filter, urMapMarkerIdsArr) {
     return new Promise(async resolve => {
-        const zoomLevel = W.map.getZoom(),
-            $btn = $('#urceUrMarkerProcessingSpinner');
-        if (!$btn.hasClass('fa-spin')) {
-            $btn.css({ color: 'gray' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingActive'));
-            $btn.addClass('fa-spin');
-        }
+        const zoomLevel = W.map.getZoom();
+        doSpinner(false);
         if (filter === undefined || filter === null) {
             filter = true;
             if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
@@ -2511,7 +2541,7 @@ function handleUrLayer(phase, filter, urMapMarkerIdsArr) {
             if (phase !== 'overflow')
                 _filtersAppliedOnZoom = filter;
         }
-        $btn.removeClass('fa-spin').css({ color: 'lightgray' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingInactive'));
+        doSpinner(true);
         return resolve();
     });
 }
@@ -2554,6 +2584,7 @@ function getOverflowUrsFromUrl(urlStr) {
 
 function handleUrOverflow() {
     return new Promise(async resolve => {
+        doSpinner(false);
         const baseUrl = `https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=`
             + `${(($('#layer-switcher-item_closed_update_requests').is(':checked')) ? '3' : '1')}%2C0&bbox=`,
             overflowUrsToPut = [],
@@ -2618,6 +2649,7 @@ function handleUrOverflow() {
         else {
             logDebug('All URs submitted for overflow processing already exist on map.');
         }
+        doSpinner(true);
         resolve({ error: false });
     });
 }
@@ -2784,6 +2816,7 @@ function changeCommentListStyle(settingVal) {
 }
 
 async function changeCommentList(commentListIdx, autoSwitch, refresh) {
+    doSpinner(false);
     refresh = (refresh === true);
     commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
     if (refresh || (!autoSwitch && ((commentListIdx !== _settings.commentList) || (commentListIdx !== _currentCommentList))) || (autoSwitch && (commentListIdx !== _currentCommentList))) {
@@ -2809,6 +2842,7 @@ async function changeCommentList(commentListIdx, autoSwitch, refresh) {
         if (!autoSwitch && !refresh)
             saveSettingsToStorage();
     }
+    doSpinner(true);
     return new Promise(resolve => { resolve(); });
 }
 
@@ -3164,6 +3198,7 @@ function commentListAsync(commentListIdx) {
 
 function buildCommentList(commentListIdx, phase, autoSwitch) {
     return new Promise(async resolve => {
+        doSpinner(false);
         commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
         const commentListInfo = getCommentListInfo(commentListIdx);
         let data,
@@ -3243,11 +3278,13 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
             processCommentListResult = { error: true, text: error.message };
         }
         if (processCommentListResult.error) {
+            doSpinner(true);
             return resolve({
                 error: true, text: processCommentListResult.text, staticList: (commentListInfo.type === 'static'), phase, maskUrPanel: (_selUr.urId > 0), commentList: commentListIdx
             });
         }
         _commentListLoaded = true;
+        doSpinner(true);
         if (phase !== 'init')
             maskBoxes(null, true, phase, (_selUr.urId > 0));
         return resolve({
@@ -3627,8 +3664,9 @@ function injectCss() {
         + '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:11px; color:#000000; }'
         + '#sidepanel-urc-e .URCE-divTabs { padding:8px; padding-top:2px; }'
         // Main Tabs
-        + '.URCE-tabIcon { margin-top:1px; width:18px; vertical-align:top; }'
-        + '.URCE-urFilteringToggleBtn { margin-left:3px; cursor:pointer; font-size:14px; vertical-align:top; padding-top:5px; }'
+        + '.URCE-tabIcon { margin-bottom:3px; width:18px; }'
+        + '.URCE-urFilteringToggleBtn { margin-left:4px; cursor:pointer; font-size:13px; }'
+        + '.URCE-spinner { margin-left:2px; color:lightgray; }'
         // urceDiv
         + '#urceDiv { position:absolute; visibility:hidden; top:0; left:0; z-index:15000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px;'
         + '     box-shadow:5px 5px 10px silver; padding:4px;'
@@ -4350,6 +4388,7 @@ function initTab() {
         $('a[href="#sidepanel-urc-e"]').text('').attr('title', 'URC-E').prepend(
             `<img id="urceIcon" class="URCE-tabIcon" src="${GM_info.script.icon}">`
         ).append(
+            `<span id="urceUrMarkerProcessingSpinner" class="fa fa-spinner URCE-spinner" title="${I18n.t('urce.mouseOver.URMarkerProcessingInactive')}"></span>`,
             $('<span>', {
                 class: 'fa fa-filter URCE-urFilteringToggleBtn',
                 id: 'urceUrFilteringToggleBtn',
@@ -4358,8 +4397,7 @@ function initTab() {
             }).on('click', evt => {
                 evt.stopPropagation();
                 $('#_cbenableUrceUrFiltering').click();
-            }),
-            `<span id="urceUrMarkerProcessingSpinner" class="fa fa-spinner" title="${I18n.t('urce.mouseOver.URMarkerProcessingInactive')}" style="margin-left:5px; font-size:13px; vertical-align:top; padding-top:5px; color:lightgray;"></span>`
+            })
         );
     }
 }
@@ -4606,6 +4644,7 @@ async function init() {
         initAutoSwitchArraysResult = await initAutoSwitchArrays(),
         initRestrictionsResult = await initRestrictions();
     await initGui();
+    doSpinner(false);
     maskBoxes(`${I18n.t('urce.prompts.WaitingOnInit')}.<br>${I18n.t('urce.common.PleaseWait')}.`, false, 'init', (urIdInUrl > 0));
     const error = loadTranslationsResult.error || initCommentListsResult.error || initAutoSwitchArraysResult.error || initRestrictionsResult.error || false;
     if (!error) {
@@ -4658,6 +4697,7 @@ async function init() {
             commentList: null
         });
     }
+    doSpinner(true);
 }
 
 function bootstrap(tries) {
