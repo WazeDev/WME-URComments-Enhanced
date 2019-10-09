@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.10.08.01
+// @version     2019.10.09.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -1447,8 +1447,10 @@ function handleClickedShortcut(shortcut) {
     if ((((shortcut === 'selSegs') || (shortcut === 'selSegsWithCity')) && (outputText.search(/\$SELSEGS\$?/gm) > -1))
         || ((shortcut === 'placeName') && (outputText.indexOf('$PLACE_NAME$') > -1))
         || ((shortcut === 'placeAddress') && (outputText.indexOf('$PLACE_ADDRESS$') > -1))
-    )
+    ) {
+        doSpinner(true);
         return;
+    }
     if (outputText && !useCurrVal) {
         if ((newVal.length > 0) && (newVal.slice(-1).search(/\s/) === -1))
             outputText = ` ${outputText}`;
@@ -3267,6 +3269,7 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
             data.error = { error: true, text: error.message };
         }
         if (data.error) {
+            doSpinner(true);
             return resolve({
                 error: true, text: data.text, staticList: (commentListInfo.type === 'static'), phase, maskUrPanel: (_selUr.urId > 0), commentList: commentListIdx
             });
