@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.09.25.01
+// @version     2019.10.11.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -38,13 +38,9 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Remember collapsed state of <i>More Information</i> box in UR Panel.',
-        '<b>NEW:</b> Unknown venue name (no name on venue / place) is now translatable to locale(s).',
-        '<b>NEW:</b> Unknown road name (no name on road / segment) is now translatable to locale(s).',
-        '<b>BUGFIX:</b> Translations not loading correctly in certain situations.',
-        '<b>BUGFIX:</b> Variable detection improvement.',
-        '<b>BUGFIX:</b> Variables slipping through auto-post reminder routine in certain situations.'
-    ],
+    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Filter icon in tab title bar to quickly toggle UR filtering.',
+        '<b>NEW:</b> New spinner icon in URC-E tab title bar to indicate when URC-E is actively processing something.',
+        '<b>BUGFIX:</b> UR ID not being detected correctly in certain situations.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = false,
     LOAD_BEGIN_TIME = performance.now(),
@@ -80,6 +76,7 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
         getUrSessionAsync: {},
         getMapUrsAsync: {},
         getOverflowUrsFromUrl: {},
+        getUrId: {},
         urceTabLightbox: {},
         urPanelLightbox: {},
         bootstrap: undefined,
@@ -100,11 +97,26 @@ const _saveButtonObserver = new MutationObserver(mutations => {
         handleAfterSave();
 });
 const _urPanelContainerObserver = new MutationObserver(async mutations => {
-    const newUrId = await getUrId(),
-        dataStateMutations = mutations.filter(mutation => (mutation.type === 'attributes') && (mutation.attributeName === 'data-state')),
+    const dataStateMutations = mutations.filter(mutation => (mutation.type === 'attributes') && (mutation.attributeName === 'data-state')),
         mutatedChildren = mutations.filter(mutation => (mutation.type === 'childList')),
         addedChildren = mutatedChildren.filter(mutatedChild => (mutatedChild.addedNodes.length > 0)),
         removedChildren = mutatedChildren.filter(mutatedChild => (mutatedChild.removedNodes.length > 0));
+    if (_selUr.handling
+        && (removedChildren.length > 0)
+        && removedChildren.filter(removedChild => (removedChild.removedNodes[0].className
+            && (removedChild.removedNodes[0].className.indexOf('show') > -1)
+            && $(removedChild.target).is('#panel-container')))
+            .length > 0)
+        return handleAfterCloseUpdateContainer();
+    if (_selUr.handling && (dataStateMutations.length > 0)) {
+        const dataState = dataStateMutations[0].target.attributes['data-state'].nodeValue.replace('-', '');
+        if ((dataState === 'open') || (dataState === 'solved') || (dataState === 'notidentified'))
+            _selUr.newStatus = dataState;
+        else
+            logWarning(`INVALID DATA STATE CHANGE: ${dataStateMutations[0].target.attributes['data-state'].nodeValue}`);
+        return true;
+    }
+    const newUrId = await getUrId();
     if ((addedChildren.length > 0)
         && addedChildren.filter(addedChild => (addedChild.addedNodes[0].className
             && (addedChild.addedNodes[0].className.indexOf('show') > -1)
@@ -113,13 +125,6 @@ const _urPanelContainerObserver = new MutationObserver(async mutations => {
             .length > 0)
         return handleUpdateRequestContainer(newUrId, 'UR panel mutation');
     if (_selUr.handling
-        && (removedChildren.length > 0)
-        && removedChildren.filter(removedChild => (removedChild.removedNodes[0].className
-            && (removedChild.removedNodes[0].className.indexOf('show') > -1)
-            && $(removedChild.target).is('#panel-container')))
-            .length > 0)
-        return handleAfterCloseUpdateContainer();
-    if (_selUr.handling
         && (addedChildren.length > 0)
         && addedChildren.filter(addedChild => (addedChild.addedNodes.length > 0)
             && $(addedChild.target).hasClass('comment-list')
@@ -127,14 +132,6 @@ const _urPanelContainerObserver = new MutationObserver(async mutations => {
             && (newUrId === _selUr.urId))
             .length > 0)
         return handleAfterCommentMutation(newUrId);
-    if (_selUr.handling && (dataStateMutations.length > 0)) {
-        const dataState = dataStateMutations[0].target.attributes['data-state'].nodeValue.replace('-', '');
-        if ((dataState === 'open') || (dataState === 'solved') || (dataState === 'notidentified'))
-            _selUr.newStatus = dataState;
-        else
-            logWarning(dataStateMutations[0].target.attributes['data-state'].nodeValue);
-        return true;
-    }
     return false;
 });
 const _urMarkerObserver = new MutationObserver(mutations => {
@@ -205,6 +202,7 @@ let _settings = {},
     _mouseIsDown = false,
     _needTranslation = false,
     _unstackedMasterId = null,
+    _spinners = 0,
     _restoreZoom,
     _$restoreTab,
     _restoreTabPosition,
@@ -561,10 +559,28 @@ function getCollapsedGroups() {
     });
 }
 
+function doSpinner(stop) {
+    const $btn = $('#urceUrMarkerProcessingSpinner');
+    if ($btn.length === 0) {
+        _spinners = 0;
+        return;
+    }
+    if (stop) {
+        _spinners--;
+        if (_spinners === 0)
+            $btn.removeClass('fa-spin').css({ color: 'lightgray' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingInactive'));
+        return;
+    }
+    _spinners++;
+    if (!$btn.hasClass('fa-spin'))
+        $btn.css({ color: 'black' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingActive')).addClass('fa-spin');
+}
+
 function checkRestrictions(event) {
     return new Promise(resolve => {
         (function retry(tries, toIndex, evt) {
             checkTimeout({ timeout: 'checkRestrictions', toIndex });
+            doSpinner(false);
             const displayWarning = (content, remove) => {
                 if (remove) {
                     $('#restrictionsEnforcedWarning, #restrictionsEnforcedWarning-Settings').hide();
@@ -658,6 +674,7 @@ function checkRestrictions(event) {
             else {
                 resolve(logError('Unable to check for restrictions'));
             }
+            doSpinner(true);
         }(1, getRandomId(), event));
     });
 }
@@ -709,7 +726,7 @@ function getMapUrsAsync(urIdsArr) {
             if (tries > 49 && !mapUrsObj) {
                 resolve({ error: true, text: '50 tries at getting mapUpdateRequests async have elapsed. Stopping loop.' });
             }
-            else if (!mapUrsObj) {
+            else if (!mapUrsObj || (mapUrsObj.length === 0)) {
                 _timeouts.getMapUrsAsync[toIndex] = window.setTimeout(retry, 100, urIds, ++tries, toIndex);
             }
             else {
@@ -722,6 +739,7 @@ function getMapUrsAsync(urIdsArr) {
 
 async function handleAfterCommentMutation(urId) {
     logDebug(`Handling new comment mutation for urId: ${urId}`);
+    doSpinner(false);
     if (_settings.unfollowUrAfterSend)
         unfollowUrAfterSend(urId);
     if (_settings.autoCloseUrPanel || _selUr.doubleClick) {
@@ -741,6 +759,7 @@ async function handleAfterCommentMutation(urId) {
         else
             await handleUrLayer('sendComment', null, [urId]);
     }
+    doSpinner(true);
 }
 
 async function handleAfterCloseUpdateContainer() {
@@ -779,6 +798,7 @@ async function handleUpdateRequestContainer(urId, caller) {
         return false;
     if (_settings.replaceNextWithDoneButton && ($('#panel-container .mapUpdateRequest.panel .section .content .navigation .done').length === 0))
         return W.reqres.request('problems:browse', _.extend({ showNext: false, nextButtonString: I18n.t('problems.panel.done') }, { problem: W.model.mapUpdateRequests.objects[urId] }));
+    doSpinner(false);
     _selUr.handling = true;
     _restoreZoom = W.map.getZoom();
     if (_timeouts.popup !== undefined)
@@ -938,6 +958,7 @@ async function handleUpdateRequestContainer(urId, caller) {
     }
     if (_settings.autoCenterOnUr)
         recenterOnUr({ data: { urId } }, W.map.getZoom());
+    doSpinner(true);
     return true;
 }
 
@@ -1329,6 +1350,7 @@ function formatText(text, replaceVars, shortcutClicked, urId) {
 }
 
 function handleClickedShortcut(shortcut) {
+    doSpinner(false);
     const cursorPos = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].selectionStart,
         currVal = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val();
     let newVal = currVal.slice(0, cursorPos),
@@ -1423,8 +1445,10 @@ function handleClickedShortcut(shortcut) {
     if ((((shortcut === 'selSegs') || (shortcut === 'selSegsWithCity')) && (outputText.search(/\$SELSEGS\$?/gm) > -1))
         || ((shortcut === 'placeName') && (outputText.indexOf('$PLACE_NAME$') > -1))
         || ((shortcut === 'placeAddress') && (outputText.indexOf('$PLACE_ADDRESS$') > -1))
-    )
+    ) {
+        doSpinner(true);
         return;
+    }
     if (outputText && !useCurrVal) {
         if ((newVal.length > 0) && (newVal.slice(-1).search(/\s/) === -1))
             outputText = ` ${outputText}`;
@@ -1441,6 +1465,7 @@ function handleClickedShortcut(shortcut) {
     else if (useCurrVal) {
         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(outputText).selectRange((cursorPos + outputText.length)).change().keyup().focus();
     }
+    doSpinner(true);
 }
 
 function autoPostReminderComment(urId, comment) {
@@ -1462,6 +1487,7 @@ function autoPostReminderComment(urId, comment) {
 function postUrComment(commentStr, doubleClick) {
     return new Promise(resolve => {
         (function retry(comment, tries) {
+            doSpinner(false);
             let commentOutput,
                 cursorPos,
                 newCursorPos,
@@ -1528,6 +1554,7 @@ function postUrComment(commentStr, doubleClick) {
                     resolve({ error: false });
                 }
             }
+            doSpinner(true);
         }(commentStr, 1));
     });
 }
@@ -1622,6 +1649,7 @@ function checkMarkerStacking(urId, unstackedX, unstackedY) {
     urId = parseInt(urId);
     if (!_settings.unstackMarkers || (isIdAlreadyUnstacked(urId) === true))
         return;
+    doSpinner(false);
     const stackList = [],
         markerMapCollection = { ...W.map.updateRequestLayer.featureMarkers },
         markerModelCollection = { ...W.model.mapUpdateRequests.objects };
@@ -1697,6 +1725,7 @@ function checkMarkerStacking(urId, unstackedX, unstackedY) {
     else {
         restackMarkers();
     }
+    doSpinner(true);
 }
 
 async function markerMouseOver() {
@@ -1716,6 +1745,7 @@ async function markerMouseOver() {
                 unstackedY = parsePxString(W.map.updateRequestLayer.featureMarkers[markerId].marker.icon.imageDiv.style.top);
             checkMarkerStacking(markerId, unstackedX, unstackedY);
             if (!_settings.disableUrMarkerPopup) {
+                doSpinner(false);
                 if (W.model.mapUpdateRequests.objects[markerId].attributes.urceData === undefined)
                     await updateUrceData([markerId]);
                 popupX = unstackedX - parsePxString(W.map.segmentLayer.div.style.left) + popupXOffset + 10;
@@ -1828,6 +1858,7 @@ async function markerMouseOver() {
                         popupContent, popupX, popupY, urId: markerId
                     });
                 }
+                doSpinner(true);
             }
         }
     }
@@ -2451,6 +2482,7 @@ function updateUrceData(urIds) {
 function handleUrLayer(phase, filter, urMapMarkerIdsArr) {
     return new Promise(async resolve => {
         const zoomLevel = W.map.getZoom();
+        doSpinner(false);
         if (filter === undefined || filter === null) {
             filter = true;
             if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
@@ -2509,6 +2541,7 @@ function handleUrLayer(phase, filter, urMapMarkerIdsArr) {
             if (phase !== 'overflow')
                 _filtersAppliedOnZoom = filter;
         }
+        doSpinner(true);
         return resolve();
     });
 }
@@ -2551,6 +2584,7 @@ function getOverflowUrsFromUrl(urlStr) {
 
 function handleUrOverflow() {
     return new Promise(async resolve => {
+        doSpinner(false);
         const baseUrl = `https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=`
             + `${(($('#layer-switcher-item_closed_update_requests').is(':checked')) ? '3' : '1')}%2C0&bbox=`,
             overflowUrsToPut = [],
@@ -2615,6 +2649,7 @@ function handleUrOverflow() {
         else {
             logDebug('All URs submitted for overflow processing already exist on map.');
         }
+        doSpinner(true);
         resolve({ error: false });
     });
 }
@@ -2700,10 +2735,20 @@ function handleUrMarkerClick() {
 
 function getUrId() {
     return new Promise(resolve => {
-        const newUrId = parseInt($('.update-requests .selected').data('id'));
-        if (newUrId && newUrId !== undefined && newUrId !== null && newUrId > 0)
-            resolve(parseInt($('.update-requests .selected').data('id')));
-        resolve(undefined);
+        (function retry(tries, toIndex) {
+            checkTimeout({ timeout: 'getUrId', toIndex });
+            const newUrId = parseInt($('.update-requests .selected').data('id'));
+            if (tries > 100) {
+                logError('Timed out trying to retrieve UR ID.');
+                resolve(undefined);
+            }
+            else if (!newUrId || (newUrId === undefined) || (newUrId === null) || (newUrId < 1)) {
+                _timeouts.urceTabLightbox[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex);
+            }
+            else {
+                resolve(parseInt($('.update-requests .selected').data('id')));
+            }
+        }(1, getRandomId()));
     });
 }
 
@@ -2771,6 +2816,7 @@ function changeCommentListStyle(settingVal) {
 }
 
 async function changeCommentList(commentListIdx, autoSwitch, refresh) {
+    doSpinner(false);
     refresh = (refresh === true);
     commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
     if (refresh || (!autoSwitch && ((commentListIdx !== _settings.commentList) || (commentListIdx !== _currentCommentList))) || (autoSwitch && (commentListIdx !== _currentCommentList))) {
@@ -2796,6 +2842,7 @@ async function changeCommentList(commentListIdx, autoSwitch, refresh) {
         if (!autoSwitch && !refresh)
             saveSettingsToStorage();
     }
+    doSpinner(true);
     return new Promise(resolve => { resolve(); });
 }
 
@@ -3151,6 +3198,7 @@ function commentListAsync(commentListIdx) {
 
 function buildCommentList(commentListIdx, phase, autoSwitch) {
     return new Promise(async resolve => {
+        doSpinner(false);
         commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
         const commentListInfo = getCommentListInfo(commentListIdx);
         let data,
@@ -3172,8 +3220,6 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
             + '<div class="URCE-commentListName URCE-controls URCE-divCC">'
             + `     <input type="checkbox" id="_cbenableAppendMode" class="urceSettingsCheckbox2" title="${I18n.t('urce.prefs.EnableAppendModeTitle')}"${(_settings.enableAppendMode ? ' checked' : '')}>`
             + `     <label for="_cbenableAppendMode" title="${I18n.t('urce.prefs.EnableAppendModeTitle')}" class="URCE-label">${I18n.t('urce.prefs.EnableAppendMode')}</label><br>`
-            + `     <input type="checkbox" id="_cbenableUrceUrFiltering_2" urceprefs="filteringMaster" class="urceSettingsCheckbox2" title="${I18n.t('urce.prefs.EnableUrceUrFilteringTitle')}"${(_settings.enableUrceUrFiltering ? ' checked' : '')}>`
-            + `     <label for="_cbenableUrceUrFiltering_2" urceprefs="filteringmaster" class="URCE-label" title="${I18n.t('urce.prefs.EnableUrceUrFilteringTitle')}">${I18n.t('urce.prefs.EnableUrceUrFiltering')}</label>`
             + '</div>'
             + '<div id="expandCollapseAllComments" class="URCE-expandCollapseAll">'
             + `     <div id="URCE-expandAllComments" class="URCE-expandCollapseAllItem">${I18n.t('urce.common.ExpandAll')}</div>`
@@ -3196,16 +3242,6 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
             if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length > 0)
                 $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').css('background-color', (this.checked ? 'peachpuff' : ''));
             saveSettingsToStorage();
-        });
-        $('#_cbenableUrceUrFiltering_2').off().on('change', function () {
-            if (!this.checked)
-                $('[urceprefs=filtering]').prop('disabled', true).addClass('urceDisabled');
-            else
-                $('[urceprefs=filtering]').prop('disabled', false).removeClass('urceDisabled');
-            $('#_cbenableUrceUrFiltering').prop('checked', this.checked);
-            _settings.enableUrceUrFiltering = this.checked;
-            saveSettingsToStorage();
-            handleUrLayer('settingsToggle', null, null);
         });
         $('#URCE-expandAllComments, #URCE-collapseAllComments').off().on('click', function () {
             const $legends = $('legend[id^="urceComments-for"');
@@ -3231,6 +3267,7 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
             data.error = { error: true, text: error.message };
         }
         if (data.error) {
+            doSpinner(true);
             return resolve({
                 error: true, text: data.text, staticList: (commentListInfo.type === 'static'), phase, maskUrPanel: (_selUr.urId > 0), commentList: commentListIdx
             });
@@ -3242,11 +3279,13 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
             processCommentListResult = { error: true, text: error.message };
         }
         if (processCommentListResult.error) {
+            doSpinner(true);
             return resolve({
                 error: true, text: processCommentListResult.text, staticList: (commentListInfo.type === 'static'), phase, maskUrPanel: (_selUr.urId > 0), commentList: commentListIdx
             });
         }
         _commentListLoaded = true;
+        doSpinner(true);
         if (phase !== 'init')
             maskBoxes(null, true, phase, (_selUr.urId > 0));
         return resolve({
@@ -3626,7 +3665,9 @@ function injectCss() {
         + '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:11px; color:#000000; }'
         + '#sidepanel-urc-e .URCE-divTabs { padding:8px; padding-top:2px; }'
         // Main Tabs
-        + '.URCE-tabIcon { padding-bottom:6px; width:18px; }'
+        + '.URCE-tabIcon { margin-bottom:3px; width:18px; }'
+        + '.URCE-urFilteringToggleBtn { margin-left:4px; cursor:pointer; font-size:13px; }'
+        + '.URCE-spinner { margin-left:2px; color:lightgray; }'
         // urceDiv
         + '#urceDiv { position:absolute; visibility:hidden; top:0; left:0; z-index:15000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px;'
         + '     box-shadow:5px 5px 10px silver; padding:4px;'
@@ -4247,11 +4288,14 @@ function initSettingsTab() {
                 $('[urceprefs=marker]').prop('disabled', false).removeClass('urceDisabled');
         }
         if (urcePrefs === 'filteringMaster') {
-            if (!this.checked)
+            if (!this.checked) {
                 $('[urceprefs=filtering]').prop('disabled', true).addClass('urceDisabled');
-            else
+                $('#urceUrFilteringToggleBtn').css('color', '#ccc');
+            }
+            else {
                 $('[urceprefs=filtering]').prop('disabled', false).removeClass('urceDisabled');
-            $('#_cbenableUrceUrFiltering_2').prop('checked', this.checked);
+                $('#urceUrFilteringToggleBtn').css('color', '#00bd00');
+            }
         }
         _settings[settingName] = this.checked;
         if (isChecked($(`input[id="_cbperCommentList_${settingName}_useDefault"]`)) && (isChecked($(`input[id="_cbperCommentList_${settingName}"]`)) !== this.checked))
@@ -4265,7 +4309,8 @@ function initSettingsTab() {
         saveSettingsToStorage();
         if (settingName === 'invertFilters')
             initSettingsTab();
-        if (((urcePrefs.indexOf('marker') > -1) || (urcePrefs.indexOf('filtering') > -1)) && (settingName.indexOf('unstack') === -1))
+        if ((((urcePrefs.indexOf('marker') > -1) || (urcePrefs.indexOf('filtering') > -1)) && (settingName.indexOf('unstack') === -1))
+            || (settingName === 'enableUrOverflowHandling'))
             handleUrLayer('settingsToggle', null, null);
     });
     $('.urceSettingsNumberBox').off().on('change', function () {
@@ -4309,7 +4354,7 @@ function initSettingsTab() {
                 if (val && (val.length > 0)) {
                     const $customSsIdLink = $('<a>', {
                         class: 'URCE-Controls URCE-spreadsheetLink', id: 'urce-customSpreadsheet-link', title: I18n.t('urce.prefs.CustomSpreadsheetLinkTitle'), href: `https://docs.google.com/spreadsheets/d/${val}/edit`
-                    }).text(I18n.t('urce.prefs.CustomSpreadsheetLink')).click(function (e) {
+                    }).text(I18n.t('urce.prefs.CustomSpreadsheetLink')).on('click', function (e) {
                         e.preventDefault();
                         e.stopPropagation();
                         window.open(this.href, '_blank');
@@ -4340,8 +4385,22 @@ function initTab() {
     initSettingsTab();
     initCommentsTab();
     initToolsTab();
-    if ($('img#urceIcon').length === 0)
-        $('a[href="#sidepanel-urc-e"]').prepend($('<img>', { id: 'urceIcon', class: 'URCE-tabIcon', src: GM_info.script.icon }));
+    if ($('img#urceIcon').length === 0) {
+        $('a[href="#sidepanel-urc-e"]').text('').attr('title', 'URC-E').prepend(
+            `<img id="urceIcon" class="URCE-tabIcon" src="${GM_info.script.icon}">`
+        ).append(
+            `<span id="urceUrMarkerProcessingSpinner" class="fa fa-spinner URCE-spinner" title="${I18n.t('urce.mouseOver.URMarkerProcessingInactive')}"></span>`,
+            $('<span>', {
+                class: 'fa fa-filter URCE-urFilteringToggleBtn',
+                id: 'urceUrFilteringToggleBtn',
+                style: `color:${(_settings.enableUrceUrFiltering ? '#00bd00' : '#ccc')};`,
+                title: I18n.t('urce.mouseOver.ToggleUrceURFiltering')
+            }).on('click', evt => {
+                evt.stopPropagation();
+                $('#_cbenableUrceUrFiltering').click();
+            })
+        );
+    }
 }
 
 function initGui() {
@@ -4586,6 +4645,7 @@ async function init() {
         initAutoSwitchArraysResult = await initAutoSwitchArrays(),
         initRestrictionsResult = await initRestrictions();
     await initGui();
+    doSpinner(false);
     maskBoxes(`${I18n.t('urce.prompts.WaitingOnInit')}.<br>${I18n.t('urce.common.PleaseWait')}.`, false, 'init', (urIdInUrl > 0));
     const error = loadTranslationsResult.error || initCommentListsResult.error || initAutoSwitchArraysResult.error || initRestrictionsResult.error || false;
     if (!error) {
@@ -4638,6 +4698,7 @@ async function init() {
             commentList: null
         });
     }
+    doSpinner(true);
 }
 
 function bootstrap(tries) {
@@ -4770,6 +4831,9 @@ function loadTranslations() {
                     OpenInNewLivemapTab: 'Open in new Livemap tab',
                     OpenInNewTab: 'Open in new tab',
                     ReporterHasCommented: 'Reporter has commented',
+                    ToggleUrceURFiltering: 'Toggle URC-E UR filtering.',
+                    URMarkerProcessingActive: 'URC-E is currently processing UR markers... Please wait.',
+                    URMarkerProcessingInactive: 'URC-E is not currently processing any UR markers.',
                     ViaLivemap: 'via Livemap'
                 },
                 prefs: {
