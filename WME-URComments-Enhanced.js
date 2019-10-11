@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.10.09.01
+// @version     2019.10.11.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -572,10 +572,8 @@ function doSpinner(stop) {
         return;
     }
     _spinners++;
-    if (!$btn.hasClass('fa-spin')) {
-        $btn.css({ color: 'black' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingActive'));
-        $btn.addClass('fa-spin');
-    }
+    if (!$btn.hasClass('fa-spin'))
+        $btn.css({ color: 'black' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingActive')).addClass('fa-spin');
 }
 
 function checkRestrictions(event) {
