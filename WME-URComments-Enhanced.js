@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.10.11.01
+// @version     2019.10.30.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -38,9 +38,7 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Filter icon in tab title bar to quickly toggle UR filtering.',
-        '<b>NEW:</b> New spinner icon in URC-E tab title bar to indicate when URC-E is actively processing something.',
-        '<b>BUGFIX:</b> UR ID not being detected correctly in certain situations.'],
+    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> WME beta compatibility.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
     LOAD_BEGIN_TIME = performance.now(),
@@ -3519,9 +3517,12 @@ async function initBackgroundTasks(status, phase) {
             }
         }
         logDebug('Registering event hooks.');
+        if (W.map.events)
+            W.map.events.registerPriority('mousedown', null, mouseDown);
+        else
+            W.map.getMapEventsListener().registerPriority('mousedown', null, mouseDown);
         WazeWrap.Events.register('zoomend', null, invokeZoomEnd);
         WazeWrap.Events.register('moveend', null, invokeMoveEnd);
-        W.map.events.registerPriority('mousedown', null, mouseDown);
         WazeWrap.Events.register('mouseup', null, mouseUp);
         WazeWrap.Events.register('change:mode', null, invokeModeChange);
         WazeWrap.Events.register('change:isImperial', null, invokeModeChange);
@@ -3550,9 +3551,12 @@ async function initBackgroundTasks(status, phase) {
             .off('mouseover', '.map-problem.user-generated', markerMouseOver)
             .off('mouseout', '.map-problem.user-generated', markerMouseOut);
         logDebug('Unregistering map.events event hook.');
+        if (W.map.events)
+            W.map.events.unregister('mousedown', null, mouseDown);
+        else
+            W.map.getMapEventsListener().unregister('mousedown', null, mouseDown);
         WazeWrap.Events.unregister('zoomend', null, invokeZoomEnd);
         WazeWrap.Events.unregister('moveend', null, invokeMoveEnd);
-        W.map.events.unregister('mousedown', null, mouseDown);
         WazeWrap.Events.unregister('mouseup', null, mouseUp);
         W.model.states.off('objectsadded', checkRestrictions);
         W.model.countries.off('objectsadded', checkRestrictions);
