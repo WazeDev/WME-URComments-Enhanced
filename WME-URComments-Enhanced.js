@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2020.06.04.01
+// @version     2020.06.09.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -38,7 +38,8 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Latest WME compatibility.',
+    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Added a setting to exclude auto-send reminders on tagged URs.',
+        '<b>CHANGE:</b> Latest WME compatibility.',
         '<b>CHANGE:</b> Major under-the-hood work to enhance performance.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
@@ -258,6 +259,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             autoCloseUrPanel: (_settings.autoCloseCommentWindow),
             autoSaveAfterSolvedOrNiComment: false,
             autoSendReminders: false,
+            autoSendRemindersExceptTagged: false,
             autoSetNewUrComment: false,
             autoSetNewUrCommentSlur: false,
             autoSetNewUrCommentWithDescription: false,
@@ -2232,6 +2234,7 @@ async function updateUrceData(mUrsObjArr) {
             return logError(new Error(`Chunk.length: ${chunk.length}\r\nurSessionsObj.length: ${getUrSessionsObj.updateRequestSessions.objects}\r\nurIds: ${urIds.join(',')}`));
         const urSessionsObj = getUrSessionsObj.updateRequestSessions.objects.sort((a, b) => a.id - b.id);
         for (let idx = 0; idx < chunk.length; idx++) {
+            let autoSendReminder = false;
             urceData = {
                 commentCount: urSessionsObj[idx].comments.length,
                 commentsByMe: false,
@@ -2277,23 +2280,10 @@ async function updateUrceData(mUrsObjArr) {
                             && (urceData.lastCommentBy > 1)
                             && (_wmeUserId === urceData.lastCommentBy)
                             && !chunk[idx].attributes.reminderSent
-                        ) {
-                            const autoPostReminderCommentResult = await autoPostReminderComment(chunk[idx],
-                                formatText(_commentList[_defaultComments.dr.commentNum].comment, true, false, urSessionsObj[idx].id));
-                            if (autoPostReminderCommentResult.error) {
-                                urceData.needsReminder = true;
-                                logWarning(autoPostReminderCommentResult.text); // Don't return here as we should go ahead and process the urceData.
-                            }
-                            else {
-                                autoSentRemindersFor.push(chunk[idx]);
-                                if (_settings.unfollowAfterSend)
-                                    unfollowUrAfterSend(chunk[idx]);
-                                urceData.waiting = true;
-                            }
-                        }
-                        else {
+                        )
+                            autoSendReminder = true;
+                        else
                             urceData.needsReminder = true;
-                        }
                     }
                     else if (((reminderDays === 0) || (_settings.perCommentListSettings[_currentCommentList].reminderDays === '')) && (urceData.lastCommentDaysOld > (closeDays - 1))) {
                         urceData.needsClosed = true;
@@ -2372,6 +2362,33 @@ async function updateUrceData(mUrsObjArr) {
                     urceData.tagType = W.loginManager.user.userName;
                 else if (!urceData.tagType)
                     urceData.tagType = -1;
+            }
+            if (autoSendReminder) {
+                if (((urceData.customType > -1) && !_settings.perCommentListSettings[_currentCommentList].autoSendRemindersExceptTagged)
+                    || (urceData.customType === -1)) {
+                    const autoPostReminderCommentResult = await autoPostReminderComment(chunk[idx],
+                        formatText(_commentList[_defaultComments.dr.commentNum].comment, true, false, urSessionsObj[idx].id));
+                    if (autoPostReminderCommentResult.error) {
+                        urceData.needsReminder = true;
+                        logWarning(autoPostReminderCommentResult.text); // Don't return here as we should go ahead and process the urceData.
+                    }
+                    else {
+                        autoSentRemindersFor.push(chunk[idx]);
+                        if (_settings.unfollowAfterSend)
+                            unfollowUrAfterSend(chunk[idx]);
+                        urceData = $.extend({}, urceData, {
+                            commentCount: urceData.commentCount + 1,
+                            commentsByMe: true,
+                            lastCommentDaysOld: 0,
+                            lastCommentBy: _wmeUserId,
+                            needsReminder: false,
+                            waiting: true
+                        });
+                    }
+                }
+                else {
+                    urceData.needsReminder = true;
+                }
             }
             if ((_settings.hideWaiting && urceData.waiting)
                 || (_settings.needsClosed && urceData.needsClosed)
@@ -3219,9 +3236,9 @@ async function buildCommentList(commentListIdx, phase, autoSwitch) {
         }
     });
     $('#_cbenableAppendMode').off().on('change', function () {
-        _settings[$(this)[0].id.substr(3)] = this.checked;
+        _settings[$(this)[0].id.substr(3)] = isChecked(this);
         if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length > 0)
-            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').css('background-color', (this.checked ? 'peachpuff' : ''));
+            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').css('background-color', (isChecked(this) ? 'peachpuff' : ''));
         saveSettingsToStorage();
     });
     $('#URCE-expandAllComments, #URCE-collapseAllComments').off().on('click', function () {
@@ -3278,6 +3295,8 @@ function processPerCommentListSettings(commentListIdx) {
     const defaultPerCommentListSettings = {
         autoSendReminders: _settings.autoSendReminders,
         autoSendReminders_useDefault: true,
+        autoSendRemindersExceptTagged: _settings.autoSendRemindersExceptTagged,
+        autoSendRemindersExceptTagged_useDefault: true,
         autoSetNewUrComment: _settings.autoSetNewUrComment,
         autoSetNewUrComment_useDefault: true,
         autoSetNewUrCommentSlur: _settings.autoSetNewUrCommentSlur,
@@ -3321,6 +3340,13 @@ function processPerCommentListSettings(commentListIdx) {
             + `         <div class="URCE-divWarning URCE-divWarningPre">(<div class="URCE-divWarning URCE-divWarningTitle" title="${I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}">${I18n.t('urce.prefs.AutoSendRemindersWarning')}</div><div class="URCE-divWarning">)</div></div>`
             + '      </div>'
             + `      <input type="checkbox" style="right:1px;" id="_cbperCommentList_autoSendReminders_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSendReminders_useDefault) ? 'checked="true"' : '')}>`
+            + '   </div>'
+            + '   <div>'
+            + '      <div style="width:calc(100% - 18px); display:inline-block; padding-left:15px; font-style:italic;">'
+            + `         <input type="checkbox" id="_cbperCommentList_autoSendRemindersExceptTagged" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSendRemindersExceptTagged_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle')}" ${((perCListSettings.autoSendRemindersExceptTagged) ? 'checked="true"' : '')} ${((perCListSettings.autoSendRemindersExceptTagged_useDefault) ? 'disabled="true"' : '')}>`
+            + `         <label for="_cbperCommentList_autoSendRemindersExceptTagged" title="${I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSendRemindersExceptTagged_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSendRemindersExceptTagged')}</label>`
+            + '      </div>'
+            + `      <input type="checkbox" style="right:1px;" id="_cbperCommentList_autoSendRemindersExceptTagged_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSendRemindersExceptTagged_useDefault) ? 'checked="true"' : '')}>`
             + '   </div>'
             + '   <div>'
             + '      <div style="width:calc(100% - 18px); display:inline-block">'
@@ -3862,15 +3888,19 @@ function initSettingsTab() {
             }
             let rVal = `<input type="checkbox" id="_cb${setting}" urceprefs="${urceprefs}" class="urceSettingsCheckbox" title="${translationTitle}"${((_settings[setting] === true) ? ' checked' : '')}>`
                 + `<label for="_cb${setting}" urceprefs="${urceprefs}" title="${translationTitle}" class="URCE-label">${translationName}</label>`;
-            if (setting === 'autoSendReminders')
-                rVal += `<div class="URCE-divWarning URCE-divWarningPre">(<div class="URCE-divWarning URCE-divWarningTitle" title="${I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}">${I18n.t('urce.prefs.AutoSendRemindersWarning')}</div><div class="URCE-divWarning">)</div></div>`;
+            if (setting === 'autoSendReminders') {
+                rVal += `<div class="URCE-divWarning URCE-divWarningPre">(<div class="URCE-divWarning URCE-divWarningTitle" title="${I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}">${I18n.t('urce.prefs.AutoSendRemindersWarning')}</div><div class="URCE-divWarning">)</div></div>`
+                + `<div style="padding-left:15px; font-style:italic;"><input type="checkbox" id="_cbautoSendRemindersExceptTagged" urceprefs="${urceprefs}" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle')}"${((_settings.autoSendRemindersExceptTagged === true) ? ' checked' : '')}>`
+                + `<label for="_cbautoSendRemindersExceptTagged" urceprefs="${urceprefs}" title="${I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle')}" class="URCE-label">${I18n.t('urce.prefs.AutoSendRemindersExceptTagged')}</label></div>`;
+            }
             if (setting === 'disableFilteringAboveZoom')
                 rVal += `<div class="URCE-divDaysInline"><input type="number" id="_numdisableFilteringAboveZoomLevel" class="URCE-daysInput urceSettingsNumberBox" urceprefs="filtering" min="0" max="10" step="1" value="${_settings.disableFilteringAboveZoomLevel}" title=${translationTitle}"></div>`;
             if (setting === 'disableFilteringBelowZoom')
                 rVal += `<div class="URCE-divDaysInline"><input type="number" id="_numdisableFilteringBelowZoomLevel" class="URCE-daysInput urceSettingsNumberBox" urceprefs="filtering" min="0" max="10" step="1" value="${_settings.disableFilteringBelowZoomLevel}" title=${translationTitle}"></div>`;
             if (setting === 'hideByStatusClosedBy')
                 rVal += `<div class="URCE-divDaysInline"><input type="text" id="_texthideByStatusClosedByUsers" class="urceSettingsTextBox" style="width:150px;height:20px" urceprefs="filtering" value="${_settings.hideByStatusClosedByUsers}" title="${translationTitle}"></div>`;
-            rVal += '<br>';
+            if (setting !== 'autoSendReminders')
+                rVal += '<br>';
             return rVal;
         },
         // eslint-disable-next-line arrow-body-style
@@ -4178,25 +4208,25 @@ function initSettingsTab() {
         if (settingName === 'disableDoneNextButtons')
             otherSettingName = 'replaceNextWithDoneButton';
         if (otherSettingName !== null) {
-            if (this.checked && isChecked(`#_cb${otherSettingName}`)) {
+            if (isChecked(this) && isChecked(`#_cb${otherSettingName}`)) {
                 _settings[otherSettingName] = false;
                 $(`#_cb${otherSettingName}`).prop('checked', false);
             }
         }
         if (settingName === 'disableDoneNextButtons') {
-            if (this.checked)
+            if (isChecked(this))
                 $('#panel-container .content .navigation').css({ display: 'none' });
             else
                 $('#panel-container .content .navigation').css({ display: 'block' });
         }
         if (settingName === 'hideZoomOutLinks') {
-            if (this.checked)
+            if (isChecked(this))
                 $('div#_divZoomOutLinks').hide();
             else
                 $('div#_divZoomOutLinks').show();
         }
         if (settingName === 'unstackMarkers') {
-            if (this.checked)
+            if (isChecked(this))
                 $('[urceprefs$="-unstack"]').prop('disabled', false).removeClass('urceDisabled');
             else
                 $('[urceprefs$="-unstack"]').prop('disabled', true).addClass('urceDisabled');
@@ -4269,13 +4299,13 @@ function initSettingsTab() {
             }
         }
         if (urcePrefs === 'markerMaster') {
-            if (!this.checked)
+            if (!isChecked(this))
                 $('[urceprefs=marker]').prop('disabled', true).addClass('urceDisabled');
             else
                 $('[urceprefs=marker]').prop('disabled', false).removeClass('urceDisabled');
         }
         if (urcePrefs === 'filteringMaster') {
-            if (!this.checked) {
+            if (!isChecked(this)) {
                 $('[urceprefs=filtering]').prop('disabled', true).addClass('urceDisabled');
                 $('#urceUrFilteringToggleBtn').css('color', '#ccc');
             }
@@ -4284,13 +4314,13 @@ function initSettingsTab() {
                 $('#urceUrFilteringToggleBtn').css('color', '#00bd00');
             }
         }
-        _settings[settingName] = this.checked;
-        if (isChecked($(`input[id="_cbperCommentList_${settingName}_useDefault"]`)) && (isChecked($(`input[id="_cbperCommentList_${settingName}"]`)) !== this.checked))
-            $(`input[id="_cbperCommentList_${settingName}"]`).prop('checked', this.checked);
+        _settings[settingName] = isChecked(this);
+        if (isChecked($(`input[id="_cbperCommentList_${settingName}_useDefault"]`)) && (isChecked($(`input[id="_cbperCommentList_${settingName}"]`)) !== isChecked(this)))
+            $(`input[id="_cbperCommentList_${settingName}"]`).prop('checked', isChecked(this));
         Object.values(_settings.perCommentListSettings).forEach(arr => {
             if (arr[`${settingName}_useDefault`]) {
-                if (arr[settingName] !== this.checked)
-                    arr[settingName] = this.checked;
+                if (arr[settingName] !== isChecked(this))
+                    arr[settingName] = isChecked(this);
             }
         });
         saveSettingsToStorage();
@@ -4859,6 +4889,8 @@ async function loadTranslations() {
                 AutoSendRemindersWarningTitle: 'AUTOMATICALLY SEND REMINDERS at the reminder days setting.\nThis only happens when they are visible on your screen.\n\nNOTE: When using '
                             + 'this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to all open '
                             + 'URs\nafter "Reminder days".',
+                AutoSendRemindersExceptTagged: 'Except tagged',
+                AutoSendRemindersExceptTaggedTitle: 'Enabling this setting will prevent the \'Auto send reminders\' setting (if enabled as well) from automatically sending a reminder comment to a tagged UR.',
                 AutoSetNewUrComment: 'Auto set new UR comment (without description)',
                 AutoSetNewUrCommentTitle: 'Automatically set the default UR comment for the UR type on new (do not already have comments) URs that do not have a description.',
                 AutoSetNewUrCommentSlur: 'Auto set new UR comment (SLURs)',
