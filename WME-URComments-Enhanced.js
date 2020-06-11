@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2020.06.09.01
+// @version     2020.06.11.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -40,7 +40,8 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SCRIPT_VERSION = GM_info.script.version,
     SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Added a setting to exclude tagged URs from auto-send reminders',
         '<b>CHANGE:</b> Latest WME compatibility.',
-        '<b>CHANGE:</b> Major under-the-hood work to enhance performance.'],
+        '<b>CHANGE:</b> Major under-the-hood work to enhance performance.',
+        '<b>BUGFIX:</b> Further refinement for latest WME compatibility.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
     LOAD_BEGIN_TIME = performance.now(),
@@ -73,7 +74,6 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     _restrictions = {},
     _timeouts = {
         checkRestrictions: {},
-        getUrSessionAsync: {},
         getMapUrsAsync: {},
         getOverflowUrsFromUrl: {},
         getUrId: {},
@@ -704,6 +704,17 @@ function getMapUrsAsync(urIdsArr) {
     });
 }
 
+async function mergeUpdateRequestModel(urIds = []) {
+    for (let i = 0; i < urIds.length; i++) {
+        if (W.model.updateRequestSessions.objects[urIds[i]])
+            urIds.splice(i, 1);
+    }
+    if (urIds.length > 0) {
+        const getUrSessionsObjs = await W.controller.descartesClient.getUpdateRequestSessionsByIds(urIds);
+        W.model.updateRequestSessions.mergeObjects(getUrSessionsObjs.updateRequestSessions);
+    }
+}
+
 async function handleAfterCommentMutation(urId) {
     logDebug(`Handling new comment mutation for urId: ${urId}`);
     doSpinner(false);
@@ -985,7 +996,9 @@ function autoSwitchToPrevTab() {
     }
 }
 
-function unfollowUrAfterSend(urId) {
+async function unfollowUrAfterSend(urId) {
+    if (!W.model.updateRequestSessions.objects[urId])
+        await mergeUpdateRequestModel([urId]);
     W.model.updateRequestSessions.objects[urId].setFollowing('false');
 }
 
@@ -2227,244 +2240,242 @@ async function updateUrceData(mUrsObjArr) {
             else
                 keywordNotIncludingRegex = new RegExp(notIncludingKeyword, 'gm');
         }
-        const getUrSessionsObj = await W.controller.descartesClient.getUpdateRequestSessionsByIds(urIds);
-        if (!getUrSessionsObj
-            || !getUrSessionsObj.updateRequestSessions
-            || (getUrSessionsObj.updateRequestSessions.objects.length !== chunk.length))
-            return logError(new Error(`Chunk.length: ${chunk.length}\r\nurSessionsObj.length: ${getUrSessionsObj.updateRequestSessions.objects}\r\nurIds: ${urIds.join(',')}`));
-        const urSessionsObj = getUrSessionsObj.updateRequestSessions.objects.sort((a, b) => a.id - b.id);
+        await mergeUpdateRequestModel(urIds);
         for (let idx = 0; idx < chunk.length; idx++) {
-            let autoSendReminder = false;
-            urceData = {
-                commentCount: urSessionsObj[idx].comments.length,
-                commentsByMe: false,
-                commentUserIds: [],
-                customType: -1,
-                driveDaysOld: (chunk[idx].attributes.driveDate) ? uroDateToDays(chunk[idx].attributes.driveDate) : -1,
-                firstCommentBy: -2,
-                firstCommentDaysOld: -1,
-                fullText: '',
-                hideByStatusClosedBy: false,
-                hideUr: false,
-                hideWithCommentBy: false,
-                hideWithoutCommentBy: false,
-                keywordIncluding: false,
-                keywordNotIncluding: false,
-                lastCommentBy: -2,
-                lastCommentDaysOld: -1,
-                needsClosed: false,
-                needsReminder: false,
-                reporterHasCommented: false,
-                resolveDaysAgo: (chunk[idx].attributes.resolvedOn !== null) ? uroDateToDays(chunk[idx].attributes.resolvedOn) : undefined,
-                tagType: -1,
-                waiting: false
-            };
-            if (urceData.commentCount > 0) {
-                urceData.firstCommentDaysOld = uroDateToDays(urSessionsObj[idx].comments[0].createdOn);
-                urceData.firstCommentBy = parseInt(urSessionsObj[idx].comments[0].userID);
-                urceData.lastCommentDaysOld = uroDateToDays(urSessionsObj[idx].comments[(urceData.commentCount - 1)].createdOn);
-                urceData.lastCommentBy = parseInt(urSessionsObj[idx].comments[(urceData.commentCount - 1)].userID);
-                urceData.fullText += (chunk[idx].attributes.description) ? `${chunk[idx].attributes.description} ` : '';
-                for (let commentIdx = 0; commentIdx < urceData.commentCount; commentIdx++) {
-                    urceData.fullText += `${urSessionsObj[idx].comments[commentIdx].text} `;
-                    urceData.commentUserIds.push(urSessionsObj[idx].comments[commentIdx].userID);
-                }
-                if (urceData.commentUserIds.indexOf(_wmeUserId) > -1)
-                    urceData.commentsByMe = true;
-                if (urceData.commentUserIds.indexOf(-1) > -1)
-                    urceData.reporterHasCommented = true;
-                if (chunk[idx].attributes.open && urceData.commentCount === 1) {
-                    if ((reminderDays !== 0) && (urceData.lastCommentDaysOld > (reminderDays - 1))) {
-                        if ((_settings.perCommentListSettings[_currentCommentList].autoSendReminders || _restrictionsEnforce.autoSendReminders === true)
-                            && (_restrictionsEnforce.autoSendReminders !== false)
-                            && (urceData.lastCommentBy > 1)
-                            && (_wmeUserId === urceData.lastCommentBy)
-                            && !chunk[idx].attributes.reminderSent
-                        )
-                            autoSendReminder = true;
-                        else
-                            urceData.needsReminder = true;
+            const urSessionsObj = W.model.updateRequestSessions.objects[chunk[idx].attributes.id];
+            if (urSessionsObj) {
+                let autoSendReminder = false;
+                urceData = {
+                    commentCount: urSessionsObj.comments.length,
+                    commentsByMe: false,
+                    commentUserIds: [],
+                    customType: -1,
+                    driveDaysOld: (chunk[idx].attributes.driveDate) ? uroDateToDays(chunk[idx].attributes.driveDate) : -1,
+                    firstCommentBy: -2,
+                    firstCommentDaysOld: -1,
+                    fullText: '',
+                    hideByStatusClosedBy: false,
+                    hideUr: false,
+                    hideWithCommentBy: false,
+                    hideWithoutCommentBy: false,
+                    keywordIncluding: false,
+                    keywordNotIncluding: false,
+                    lastCommentBy: -2,
+                    lastCommentDaysOld: -1,
+                    needsClosed: false,
+                    needsReminder: false,
+                    reporterHasCommented: false,
+                    resolveDaysAgo: (chunk[idx].attributes.resolvedOn !== null) ? uroDateToDays(chunk[idx].attributes.resolvedOn) : undefined,
+                    tagType: -1,
+                    waiting: false
+                };
+                if (urceData.commentCount > 0) {
+                    urceData.firstCommentDaysOld = uroDateToDays(urSessionsObj.comments[0].createdOn);
+                    urceData.firstCommentBy = parseInt(urSessionsObj.comments[0].userID);
+                    urceData.lastCommentDaysOld = uroDateToDays(urSessionsObj.comments[(urceData.commentCount - 1)].createdOn);
+                    urceData.lastCommentBy = parseInt(urSessionsObj.comments[(urceData.commentCount - 1)].userID);
+                    urceData.fullText += (chunk[idx].attributes.description) ? `${chunk[idx].attributes.description} ` : '';
+                    for (let commentIdx = 0; commentIdx < urceData.commentCount; commentIdx++) {
+                        urceData.fullText += `${urSessionsObj.comments[commentIdx].text} `;
+                        urceData.commentUserIds.push(urSessionsObj.comments[commentIdx].userID);
                     }
-                    else if (((reminderDays === 0) || (_settings.perCommentListSettings[_currentCommentList].reminderDays === '')) && (urceData.lastCommentDaysOld > (closeDays - 1))) {
-                        urceData.needsClosed = true;
-                    }
-                    else {
-                        urceData.waiting = true;
-                    }
-                }
-                if (chunk[idx].attributes.open && urceData.commentCount > 1) {
-                    if (urceData.lastCommentBy > 1) {
-                        if ((closeDays > 0) && (urceData.lastCommentDaysOld > (closeDays - 1))) {
-                            if (_wmeUserId === urceData.lastCommentBy)
-                                urceData.needsClosed = true;
-                            else if (urceData.lastCommentDaysOld < (reminderDays + closeDays))
-                                urceData.waiting = true;
-                            else if (urceData.lastCommentDaysOld > (reminderDays + closeDays - 1))
-                                urceData.needsClosed = true;
+                    if (urceData.commentUserIds.indexOf(_wmeUserId) > -1)
+                        urceData.commentsByMe = true;
+                    if (urceData.commentUserIds.indexOf(-1) > -1)
+                        urceData.reporterHasCommented = true;
+                    if (chunk[idx].attributes.open && urceData.commentCount === 1) {
+                        if ((urceData.lastCommentDaysOld > (reminderDays - 1))) {
+                            if ((_settings.perCommentListSettings[_currentCommentList].autoSendReminders || _restrictionsEnforce.autoSendReminders === true)
+                                && (_restrictionsEnforce.autoSendReminders !== false)
+                                && (urceData.lastCommentBy > 1)
+                                && (_wmeUserId === urceData.lastCommentBy)
+                                && !chunk[idx].attributes.reminderSent
+                            )
+                                autoSendReminder = true;
+                            else
+                                urceData.needsReminder = true;
+                        }
+                        else if (((reminderDays === 0) || (_settings.perCommentListSettings[_currentCommentList].reminderDays === '')) && (urceData.lastCommentDaysOld > (closeDays - 1))) {
+                            urceData.needsClosed = true;
                         }
                         else {
                             urceData.waiting = true;
                         }
                     }
-                }
-            }
-            else {
-                urceData.fullText += (chunk[idx].attributes.description) ? chunk[idx].attributes.description : '';
-            }
-            if (!chunk[idx].attributes.open && _settings.hideByStatusClosedBy && (_settings.hideByStatusClosedByUsers.length > 0)) {
-                const userIdsToCheck = getUserIdsToCheck(_settings.hideByStatusClosedByUsers);
-                if ((userIdsToCheck.length > 0) && (userIdsToCheck.indexOf(chunk[idx].attributes.resolvedBy) > -1))
-                    urceData.hideByStatusClosedBy = true;
-            }
-            if (_settings.hideWithCommentBy && (_settings.hideWithCommentByUsers.length > 0)) {
-                const userIdsToCheck = getUserIdsToCheck(_settings.hideWithCommentByUsers);
-                if ((userIdsToCheck.length > 0) && (urceData.commentUserIds.length > 0)) {
-                    if (checkCommentedUsers(userIdsToCheck, urceData.commentUserIds) === true)
-                        urceData.hideWithCommentBy = true;
-                }
-            }
-            if (_settings.hideWithoutCommentBy && (_settings.hideWithoutCommentByUsers.length > 0)) {
-                const userIdsToCheck = getUserIdsToCheck(_settings.hideWithoutCommentByUsers);
-                if ((userIdsToCheck.length > 0) && (urceData.commentUserIds.length > 0)) {
-                    if (checkCommentedUsers(userIdsToCheck, urceData.commentUserIds) !== true)
-                        urceData.hideWithoutCommentBy = true;
-                }
-                else if (urceData.commentUserIds.length === 0) {
-                    urceData.hideWithoutCommentBy = true;
-                }
-            }
-            // eslint-disable-next-line no-control-regex
-            urceData.fullText = urceData.fullText.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, ' ');
-            urceData.tagType = (urceData.fullText.search(tagRegex) > -1) ? urceData.fullText.replace(tagRegex, '$1') : -1;
-            if (urceData.tagType !== -1) {
-                urceData.customType = convertTagToCustomType(urceData.tagType);
-            }
-            else if (chunk[idx].attributes.type === 23) {
-                urceData.customType = 98;
-            }
-            else if (_settings.customMarkersCustom && (_settings.customMarkersCustomText.length > 0) && (urceData.fullText.search(new RegExp(`\\[${_settings.customMarkersCustomText.replace(/[[\]]+/gim, '')}\\]`)) > -1)) {
-                urceData.tagType = 99;
-                urceData.customType = 99;
-            }
-            else {
-                urceData.customType = -1;
-            }
-            if ((keywordIncludingRegex !== null) && (urceData.fullText.search(keywordIncludingRegex) > -1))
-                urceData.keywordIncluding = true;
-            if ((keywordNotIncludingRegex !== null) && (urceData.fullText.search(keywordNotIncludingRegex) === -1))
-                urceData.keywordNotIncluding = true;
-            if ((urceData.tagType === -1) && (chunk[idx].attributes.type === 23))
-                urceData.customType = 98;
-            else if (urceData.tagType === -1)
-                urceData.customType = -1;
-            if ((urceData.tagType === -1) || _settings.replaceTagNameWithEditorName) {
-                if (_settings.replaceTagNameWithEditorName && (urceData.fullText.search(tagUsernameRegex) > -1))
-                    urceData.tagType = W.loginManager.user.userName;
-                else if (!urceData.tagType)
-                    urceData.tagType = -1;
-            }
-            if (autoSendReminder) {
-                if (((urceData.customType > -1) && !_settings.perCommentListSettings[_currentCommentList].autoSendRemindersExceptTagged)
-                    || (urceData.customType === -1)) {
-                    const autoPostReminderCommentResult = await autoPostReminderComment(chunk[idx],
-                        formatText(_commentList[_defaultComments.dr.commentNum].comment, true, false, urSessionsObj[idx].id));
-                    if (autoPostReminderCommentResult.error) {
-                        urceData.needsReminder = true;
-                        logWarning(autoPostReminderCommentResult.text); // Don't return here as we should go ahead and process the urceData.
-                    }
-                    else {
-                        autoSentRemindersFor.push(chunk[idx]);
-                        if (_settings.unfollowAfterSend)
-                            unfollowUrAfterSend(chunk[idx]);
-                        urceData = $.extend({}, urceData, {
-                            commentCount: urceData.commentCount + 1,
-                            commentsByMe: true,
-                            lastCommentDaysOld: 0,
-                            lastCommentBy: _wmeUserId,
-                            needsReminder: false,
-                            waiting: true
-                        });
+                    if (chunk[idx].attributes.open && urceData.commentCount > 1) {
+                        if (urceData.lastCommentBy > 1) {
+                            if ((closeDays > 0) && (urceData.lastCommentDaysOld > (closeDays - 1))) {
+                                if (_wmeUserId === urceData.lastCommentBy)
+                                    urceData.needsClosed = true;
+                                else if (urceData.lastCommentDaysOld < (reminderDays + closeDays))
+                                    urceData.waiting = true;
+                                else if (urceData.lastCommentDaysOld > (reminderDays + closeDays - 1))
+                                    urceData.needsClosed = true;
+                            }
+                            else {
+                                urceData.waiting = true;
+                            }
+                        }
                     }
                 }
                 else {
-                    urceData.needsReminder = true;
+                    urceData.fullText += (chunk[idx].attributes.description) ? chunk[idx].attributes.description : '';
                 }
-            }
-            if ((_settings.hideWaiting && urceData.waiting)
-                || (_settings.needsClosed && urceData.needsClosed)
-                || (_settings.hideUrsReminderNeeded && urceData.needsReminder)
-                || (_settings.hideByStatusOpen && chunk[idx].attributes.open)
-                || (_settings.hideByStatusClosed && !chunk[idx].attributes.open)
-                || (_settings.hideByStatusNotIdentified && (chunk[idx].attributes.resolution === 1))
-                || (_settings.hideByStatusSolved && (chunk[idx].attributes.resolution === 0))
-                || (_settings.hideByStatusClosedBy && urceData.hideByStatusClosedBy)
-                // Types
-                || (_settings.hideByTypeBlockedRoad && (chunk[idx].attributes.type === 19))
-                || (_settings.hideByTypeGeneralError && (chunk[idx].attributes.type === 10))
-                || (_settings.hideByTypeIncorrectAddress && (chunk[idx].attributes.type === 7))
-                || (_settings.hideByTypeIncorrectJunction && (chunk[idx].attributes.type === 12))
-                || (_settings.hideByTypeIncorrectRoute && (chunk[idx].attributes.type === 8))
-                || (_settings.hideByTypeIncorrectStreetPrefixOrSuffix && (chunk[idx].attributes.type === 22))
-                || (_settings.hideByTypeIncorrectTurn && (chunk[idx].attributes.type === 6))
-                || (_settings.hideByTypeMissingBridgeOverpass && (chunk[idx].attributes.type === 13))
-                || (_settings.hideByTypeMissingExit && (chunk[idx].attributes.type === 15))
-                || (_settings.hideByTypeMissingLandmark && (chunk[idx].attributes.type === 18))
-                || (_settings.hideByTypeMissingOrInvalidSpeedLimit && (chunk[idx].attributes.type === 23))
-                || (_settings.hideByTypeMissingRoad && (chunk[idx].attributes.type === 16))
-                || (_settings.hideByTypeMissingRoundabout && (chunk[idx].attributes.type === 9))
-                || (_settings.hideByTypeMissingStreetName && (chunk[idx].attributes.type === 21))
-                || (_settings.hideByTypeTurnNotAllowed && (chunk[idx].attributes.type === 11))
-                || (_settings.hideByTypeUndefined
-                    && (!chunk[idx].attributes.type
-                        || (chunk[idx].attributes.type > 23)
-                        || (chunk[idx].attributes.type < 6)
-                        || (chunk[idx].attributes.type === 17)
-                        || (chunk[idx].attributes.type === 20)))
-                || (_settings.hideByTypeWrongDrivingDirection && (chunk[idx].attributes.type === 14))
-                // Tags
-                || (_settings.hideByTaggedBog && (urceData.customType === 6))
-                || (_settings.hideByTaggedClosure && (urceData.customType === 2))
-                || (_settings.hideByTaggedConstruction && (urceData.customType === 1))
-                || (_settings.hideByTaggedDifficult && (urceData.customType === 7))
-                || (_settings.hideByTaggedEvent && (urceData.customType === 3))
-                || (_settings.hideByTaggedNote && (urceData.customType === 4))
-                || (_settings.hideByTaggedRoadworks && (urceData.customType === 0))
-                || (_settings.hideByTaggedWslm && (urceData.customType === 5))
-                // Age of submission
-                || (_settings.hideByAgeOfSubmissionLessThan && (urceData.driveDaysOld < _settings.hideByAgeOfSubmissionLessThanDaysOld))
-                || (_settings.hideByAgeOfSubmissionMoreThan && (urceData.driveDaysOld > _settings.hideByAgeOfSubmissionMoreThanDaysOld))
-                // Following, description, comments
-                || (_settings.hideFollowing && urSessionsObj[idx].isFollowing)
-                || (_settings.hideNotFollowing && !urSessionsObj[idx].isFollowing)
-                || (_settings.hideDescription
-                    && chunk[idx].attributes.description && (chunk[idx].attributes.description.length > 0) && (chunk[idx].attributes.description !== ''))
-                || (_settings.hideWithoutDescription
-                    && (!chunk[idx].attributes.description || (chunk[idx].attributes.description.length === 0) || (chunk[idx].attributes.description === '')))
-                || (_settings.hideWithCommentsFromMe && (urceData.commentsByMe))
-                || (_settings.hideWithoutCommentsFromMe && (!urceData.commentsByMe))
-                || (_settings.hideLastCommentByMe && (urceData.lastCommentBy === _wmeUserId))
-                || (_settings.hideLastCommentNotByMe && (urceData.lastCommentBy !== _wmeUserId))
-                || (_settings.hideLastCommentByReporter && (urceData.lastCommentBy === -1))
-                || (_settings.hideLastCommentNotByReporter && (urceData.lastCommentBy > 0))
-                || (_settings.hideByCommentCountLessThan && (urceData.commentCount < _settings.hideByCommentCountLessThanNumber))
-                || (_settings.hideByCommentCountMoreThan && (urceData.commentCount > _settings.hideByCommentCountMoreThanNumber))
-                || (_settings.hideByAgeOfFirstCommentLessThan && (urceData.commentCount > 0) && (urceData.firstCommentDaysOld < _settings.hideByAgeOfFirstCommentLessThanDaysOld))
-                || (_settings.hideByAgeOfFirstCommentMoreThan && (urceData.commentCount > 0) && (urceData.firstCommentDaysOld > _settings.hideByAgeOfFirstCommentMoreThanDaysOld))
-                || (_settings.hideByAgeOfLastCommentLessThan && (urceData.commentCount > 0) && (urceData.lastCommentDaysOld < _settings.hideByAgeOfLastCommentLessThanDaysOld))
-                || (_settings.hideByAgeOfLastCommentMoreThan && (urceData.commentCount > 0) && (urceData.lastCommentDaysOld > _settings.hideByAgeOfLastCommentMoreThanDaysOld))
-                || (_settings.hideByKeywordIncluding && urceData.keywordIncluding)
-                || (_settings.hideByKeywordNotIncluding && urceData.keywordNotIncluding)
-                || (_settings.hideWithCommentBy && urceData.hideWithCommentBy)
-                || (_settings.hideWithoutCommentBy && urceData.hideWithoutCommentBy)
-            )
-                urceData.hideUr = true;
-            if (_settings.invertFilters) {
-                if (urceData.hideUr)
-                    urceData.hideUr = false;
-                else
+                if (!chunk[idx].attributes.open && _settings.hideByStatusClosedBy && (_settings.hideByStatusClosedByUsers.length > 0)) {
+                    const userIdsToCheck = getUserIdsToCheck(_settings.hideByStatusClosedByUsers);
+                    if ((userIdsToCheck.length > 0) && (userIdsToCheck.indexOf(chunk[idx].attributes.resolvedBy) > -1))
+                        urceData.hideByStatusClosedBy = true;
+                }
+                if (_settings.hideWithCommentBy && (_settings.hideWithCommentByUsers.length > 0)) {
+                    const userIdsToCheck = getUserIdsToCheck(_settings.hideWithCommentByUsers);
+                    if ((userIdsToCheck.length > 0) && (urceData.commentUserIds.length > 0)) {
+                        if (checkCommentedUsers(userIdsToCheck, urceData.commentUserIds) === true)
+                            urceData.hideWithCommentBy = true;
+                    }
+                }
+                if (_settings.hideWithoutCommentBy && (_settings.hideWithoutCommentByUsers.length > 0)) {
+                    const userIdsToCheck = getUserIdsToCheck(_settings.hideWithoutCommentByUsers);
+                    if ((userIdsToCheck.length > 0) && (urceData.commentUserIds.length > 0)) {
+                        if (checkCommentedUsers(userIdsToCheck, urceData.commentUserIds) !== true)
+                            urceData.hideWithoutCommentBy = true;
+                    }
+                    else if (urceData.commentUserIds.length === 0) {
+                        urceData.hideWithoutCommentBy = true;
+                    }
+                }
+                // eslint-disable-next-line no-control-regex
+                urceData.fullText = urceData.fullText.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, ' ');
+                urceData.tagType = (urceData.fullText.search(tagRegex) > -1) ? urceData.fullText.replace(tagRegex, '$1') : -1;
+                if (urceData.tagType !== -1) {
+                    urceData.customType = convertTagToCustomType(urceData.tagType);
+                }
+                else if (chunk[idx].attributes.type === 23) {
+                    urceData.customType = 98;
+                }
+                else if (_settings.customMarkersCustom && (_settings.customMarkersCustomText.length > 0) && (urceData.fullText.search(new RegExp(`\\[${_settings.customMarkersCustomText.replace(/[[\]]+/gim, '')}\\]`)) > -1)) {
+                    urceData.tagType = 99;
+                    urceData.customType = 99;
+                }
+                else {
+                    urceData.customType = -1;
+                }
+                if ((keywordIncludingRegex !== null) && (urceData.fullText.search(keywordIncludingRegex) > -1))
+                    urceData.keywordIncluding = true;
+                if ((keywordNotIncludingRegex !== null) && (urceData.fullText.search(keywordNotIncludingRegex) === -1))
+                    urceData.keywordNotIncluding = true;
+                if ((urceData.tagType === -1) && (chunk[idx].attributes.type === 23))
+                    urceData.customType = 98;
+                else if (urceData.tagType === -1)
+                    urceData.customType = -1;
+                if ((urceData.tagType === -1) || _settings.replaceTagNameWithEditorName) {
+                    if (_settings.replaceTagNameWithEditorName && (urceData.fullText.search(tagUsernameRegex) > -1))
+                        urceData.tagType = W.loginManager.user.userName;
+                    else if (!urceData.tagType)
+                        urceData.tagType = -1;
+                }
+                if (autoSendReminder) {
+                    if (((urceData.customType > -1) && !_settings.perCommentListSettings[_currentCommentList].autoSendRemindersExceptTagged)
+                        || (urceData.customType === -1)) {
+                        const autoPostReminderCommentResult = await autoPostReminderComment(chunk[idx].attributes.id,
+                            formatText(_commentList[_defaultComments.dr.commentNum].comment, true, false, chunk[idx].attributes.id));
+                        if (autoPostReminderCommentResult.error) {
+                            urceData.needsReminder = true;
+                            logWarning(autoPostReminderCommentResult.text); // Don't return here as we should go ahead and process the urceData.
+                        }
+                        else {
+                            autoSentRemindersFor.push(chunk[idx].attributes.id);
+                            if (_settings.unfollowAfterSend)
+                                unfollowUrAfterSend(chunk[idx].attributes.id);
+                            urceData = $.extend({}, urceData, {
+                                commentCount: urceData.commentCount + 1,
+                                commentsByMe: true,
+                                lastCommentDaysOld: 0,
+                                lastCommentBy: _wmeUserId,
+                                needsReminder: false,
+                                waiting: true
+                            });
+                        }
+                    }
+                    else {
+                        urceData.needsReminder = true;
+                    }
+                }
+                if ((_settings.hideWaiting && urceData.waiting)
+                    || (_settings.needsClosed && urceData.needsClosed)
+                    || (_settings.hideUrsReminderNeeded && urceData.needsReminder)
+                    || (_settings.hideByStatusOpen && chunk[idx].attributes.open)
+                    || (_settings.hideByStatusClosed && !chunk[idx].attributes.open)
+                    || (_settings.hideByStatusNotIdentified && (chunk[idx].attributes.resolution === 1))
+                    || (_settings.hideByStatusSolved && (chunk[idx].attributes.resolution === 0))
+                    || (_settings.hideByStatusClosedBy && urceData.hideByStatusClosedBy)
+                    // Types
+                    || (_settings.hideByTypeBlockedRoad && (chunk[idx].attributes.type === 19))
+                    || (_settings.hideByTypeGeneralError && (chunk[idx].attributes.type === 10))
+                    || (_settings.hideByTypeIncorrectAddress && (chunk[idx].attributes.type === 7))
+                    || (_settings.hideByTypeIncorrectJunction && (chunk[idx].attributes.type === 12))
+                    || (_settings.hideByTypeIncorrectRoute && (chunk[idx].attributes.type === 8))
+                    || (_settings.hideByTypeIncorrectStreetPrefixOrSuffix && (chunk[idx].attributes.type === 22))
+                    || (_settings.hideByTypeIncorrectTurn && (chunk[idx].attributes.type === 6))
+                    || (_settings.hideByTypeMissingBridgeOverpass && (chunk[idx].attributes.type === 13))
+                    || (_settings.hideByTypeMissingExit && (chunk[idx].attributes.type === 15))
+                    || (_settings.hideByTypeMissingLandmark && (chunk[idx].attributes.type === 18))
+                    || (_settings.hideByTypeMissingOrInvalidSpeedLimit && (chunk[idx].attributes.type === 23))
+                    || (_settings.hideByTypeMissingRoad && (chunk[idx].attributes.type === 16))
+                    || (_settings.hideByTypeMissingRoundabout && (chunk[idx].attributes.type === 9))
+                    || (_settings.hideByTypeMissingStreetName && (chunk[idx].attributes.type === 21))
+                    || (_settings.hideByTypeTurnNotAllowed && (chunk[idx].attributes.type === 11))
+                    || (_settings.hideByTypeUndefined
+                        && (!chunk[idx].attributes.type
+                            || (chunk[idx].attributes.type > 23)
+                            || (chunk[idx].attributes.type < 6)
+                            || (chunk[idx].attributes.type === 17)
+                            || (chunk[idx].attributes.type === 20)))
+                    || (_settings.hideByTypeWrongDrivingDirection && (chunk[idx].attributes.type === 14))
+                    // Tags
+                    || (_settings.hideByTaggedBog && (urceData.customType === 6))
+                    || (_settings.hideByTaggedClosure && (urceData.customType === 2))
+                    || (_settings.hideByTaggedConstruction && (urceData.customType === 1))
+                    || (_settings.hideByTaggedDifficult && (urceData.customType === 7))
+                    || (_settings.hideByTaggedEvent && (urceData.customType === 3))
+                    || (_settings.hideByTaggedNote && (urceData.customType === 4))
+                    || (_settings.hideByTaggedRoadworks && (urceData.customType === 0))
+                    || (_settings.hideByTaggedWslm && (urceData.customType === 5))
+                    // Age of submission
+                    || (_settings.hideByAgeOfSubmissionLessThan && (urceData.driveDaysOld < _settings.hideByAgeOfSubmissionLessThanDaysOld))
+                    || (_settings.hideByAgeOfSubmissionMoreThan && (urceData.driveDaysOld > _settings.hideByAgeOfSubmissionMoreThanDaysOld))
+                    // Following, description, comments
+                    || (_settings.hideFollowing && urSessionsObj.isFollowing)
+                    || (_settings.hideNotFollowing && !urSessionsObj.isFollowing)
+                    || (_settings.hideDescription
+                        && chunk[idx].attributes.description && (chunk[idx].attributes.description.length > 0) && (chunk[idx].attributes.description !== ''))
+                    || (_settings.hideWithoutDescription
+                        && (!chunk[idx].attributes.description || (chunk[idx].attributes.description.length === 0) || (chunk[idx].attributes.description === '')))
+                    || (_settings.hideWithCommentsFromMe && (urceData.commentsByMe))
+                    || (_settings.hideWithoutCommentsFromMe && (!urceData.commentsByMe))
+                    || (_settings.hideLastCommentByMe && (urceData.lastCommentBy === _wmeUserId))
+                    || (_settings.hideLastCommentNotByMe && (urceData.lastCommentBy !== _wmeUserId))
+                    || (_settings.hideLastCommentByReporter && (urceData.lastCommentBy === -1))
+                    || (_settings.hideLastCommentNotByReporter && (urceData.lastCommentBy > 0))
+                    || (_settings.hideByCommentCountLessThan && (urceData.commentCount < _settings.hideByCommentCountLessThanNumber))
+                    || (_settings.hideByCommentCountMoreThan && (urceData.commentCount > _settings.hideByCommentCountMoreThanNumber))
+                    || (_settings.hideByAgeOfFirstCommentLessThan && (urceData.commentCount > 0) && (urceData.firstCommentDaysOld < _settings.hideByAgeOfFirstCommentLessThanDaysOld))
+                    || (_settings.hideByAgeOfFirstCommentMoreThan && (urceData.commentCount > 0) && (urceData.firstCommentDaysOld > _settings.hideByAgeOfFirstCommentMoreThanDaysOld))
+                    || (_settings.hideByAgeOfLastCommentLessThan && (urceData.commentCount > 0) && (urceData.lastCommentDaysOld < _settings.hideByAgeOfLastCommentLessThanDaysOld))
+                    || (_settings.hideByAgeOfLastCommentMoreThan && (urceData.commentCount > 0) && (urceData.lastCommentDaysOld > _settings.hideByAgeOfLastCommentMoreThanDaysOld))
+                    || (_settings.hideByKeywordIncluding && urceData.keywordIncluding)
+                    || (_settings.hideByKeywordNotIncluding && urceData.keywordNotIncluding)
+                    || (_settings.hideWithCommentBy && urceData.hideWithCommentBy)
+                    || (_settings.hideWithoutCommentBy && urceData.hideWithoutCommentBy)
+                )
                     urceData.hideUr = true;
+                if (_settings.invertFilters) {
+                    if (urceData.hideUr)
+                        urceData.hideUr = false;
+                    else
+                        urceData.hideUr = true;
+                }
+                W.model.mapUpdateRequests.objects[chunk[idx].attributes.id].attributes.urceData = urceData;
             }
-            W.model.mapUpdateRequests.objects[chunk[idx].attributes.id].attributes.urceData = urceData;
         }
         if (autoSentRemindersFor.length > 0) {
             logDebug(`Automatically sent reminder comments to urId(s): ${autoSentRemindersFor.join(', ')} (${autoSentRemindersFor.length})`);
