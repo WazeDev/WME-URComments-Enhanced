@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2020.06.11.02
+// @version     2020.06.11.03
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -780,7 +780,6 @@ async function handleUpdateRequestContainer(urId, caller) {
         return false;
     if (_settings.replaceNextWithDoneButton && ($('#panel-container .mapUpdateRequest.panel .section .content .navigation .done').length === 0))
         return W.reqres.request('problems:browse', _.extend({ showNext: false, nextButtonString: I18n.t('problems.panel.done') }, { problem: W.model.mapUpdateRequests.objects[urId] }));
-    debugger;
     doSpinner(false);
     _selUr.handling = true;
     _restoreZoom = W.map.getOLMap().getZoom();
@@ -788,6 +787,7 @@ async function handleUpdateRequestContainer(urId, caller) {
         hidePopup();
     logDebug(`Handling update request container after ${caller} for urId: ${urId}`);
     await updateUrceData([urId]);
+    await sleep(1000);
     if ($('#panel-container .top-section .header .main-title').html().indexOf(urId) === -1)
         $('#panel-container .top-section .header .main-title').append(` (${urId}) `);
     if ($('#panel-container .top-section .header .reported').length === 1)
