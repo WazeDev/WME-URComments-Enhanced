@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2020.06.11.01
+// @version     2020.06.11.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -771,11 +771,16 @@ async function handleAfterSave() {
     await handleUrLayer('save', null, null);
 }
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function handleUpdateRequestContainer(urId, caller) {
     if (!_commentListLoaded)
         return false;
     if (_settings.replaceNextWithDoneButton && ($('#panel-container .mapUpdateRequest.panel .section .content .navigation .done').length === 0))
         return W.reqres.request('problems:browse', _.extend({ showNext: false, nextButtonString: I18n.t('problems.panel.done') }, { problem: W.model.mapUpdateRequests.objects[urId] }));
+    debugger;
     doSpinner(false);
     _selUr.handling = true;
     _restoreZoom = W.map.getOLMap().getZoom();
@@ -826,6 +831,7 @@ async function handleUpdateRequestContainer(urId, caller) {
     $('#panel-container .mapUpdateRequest .top-section .header .title .focus').off('click', recenterOnUr).on('click', { urId }, recenterOnUr);
     $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').css('background-color', (_settings.enableAppendMode ? 'peachpuff' : ''))
         .off('keyup', checkValue).on('keyup', checkValue);
+    await sleep(1000);
     if ($('#urceShortcuts').length === 0) {
         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend('<div id="urceShortcuts" style="text-align:left;padding-bottom:8px;font-size:12px;">'
             + `<div id="urceShortcutsExpand" style="padding-bottom:4px;font-size:13px;cursor:pointer;border-bottom:1px solid darkgray;">${I18n.t('urce.urPanel.Shortcuts')}`
