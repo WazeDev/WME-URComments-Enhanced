@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2020.06.12.01
+// @version     2020.06.15.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -76,13 +76,13 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
         checkRestrictions: {},
         getMapUrsAsync: {},
         getOverflowUrsFromUrl: {},
+        isDomElementReady: {},
         bootstrap: undefined,
         saveSettingsToStorage: undefined,
         popupDelay: undefined,
         popup: undefined,
         checkForStaticListArray: undefined,
-        initUrIdInUrl: undefined,
-        isDomElementReady: undefined
+        initUrIdInUrl: undefined
     },
     _saveButtonObserver = new MutationObserver(mutations => {
         const saveCheck = mutations.filter(mutation => (mutation.type === 'attributes')
@@ -532,19 +532,19 @@ function isChecked(obj) {
 
 function isDomElementReady(element, retryInterval = 10, maxTries = 200) {
     return new Promise(resolve => {
-        (function retry(elementStr, tries, retryInt, maxNumTries) {
-            checkTimeout({ timeout: 'isDomElementReady' });
+        (function retry(elementStr, tries, toIndex, retryInt, maxNumTries) {
+            checkTimeout({ timeout: 'isDomElementReady', toIndex });
             if (tries > maxNumTries) {
-                logError(`Timed out waiting for DOM element to appear: ${element}`);
+                logError(`Timed out waiting for DOM element to appear: ${elementStr}`);
                 resolve({ error: true });
             }
-            else if ($(element).length === 0) {
-                _timeouts.isDomElementReady = window.setTimeout(retry, retryInt, element, ++tries, retryInt, maxNumTries);
+            else if ($(elementStr).length === 0) {
+                _timeouts.isDomElementReady = window.setTimeout(retry, retryInt, elementStr, ++tries, toIndex, retryInt, maxNumTries);
             }
             else {
                 resolve({ error: false });
             }
-        }(element, 1, retryInterval, maxTries));
+        }(element, 1, getRandomId(), retryInterval, maxTries));
     });
 }
 
@@ -4695,6 +4695,7 @@ async function init() {
             commentList: null
         });
     }
+    window._timeouts = _timeouts;
     doSpinner(true);
 }
 
