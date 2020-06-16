@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2019.12.06.01
+// @version     2020.06.16.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -14,7 +14,7 @@
 // @contributionURL https://github.com/WazeDev/Thank-The-Authors
 // ==/UserScript==
 
-/* global _, $, Blob, document, FileReader, GM_info, I18n, localStorage, location, MutationObserver, OL, performance, W, WazeWrap, window */
+/* global $, Blob, document, FileReader, GM_info, I18n, localStorage, location, MutationObserver, OpenLayers, performance, W, WazeWrap, window */
 
 /*
  * Original concept and code for URComments (URC) was written by rickzabel and licensed under MIT/BSD/X11.
@@ -38,7 +38,13 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> WME v2.43-40-gf367bffa4 compatibility.'],
+    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Added a setting to exclude tagged URs from auto-send reminders',
+        '<b>CHANGE:</b> Latest WME compatibility.',
+        '<b>CHANGE:</b> Major under-the-hood work to enhance performance.',
+        '<b>BUGFIX:</b> Further refinement for latest WME compatibility.',
+        '<b>BUGFIX:</b> Error loading in non-translated language locales.',
+        '<b>BUGFIX:</b> Restrictions causing errors in certain countries.',
+        '<b>BUGFIX:</b> Shortcuts chevron upside down.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = false,
     LOAD_BEGIN_TIME = performance.now(),
@@ -71,112 +77,93 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     _restrictions = {},
     _timeouts = {
         checkRestrictions: {},
-        getUrSessionAsync: {},
         getMapUrsAsync: {},
         getOverflowUrsFromUrl: {},
-        getUrId: {},
-        urceTabLightbox: {},
-        urPanelLightbox: {},
+        isDomElementReady: {},
         bootstrap: undefined,
         saveSettingsToStorage: undefined,
-        postUrComment: undefined,
         popupDelay: undefined,
         popup: undefined,
         checkForStaticListArray: undefined,
         initUrIdInUrl: undefined
-    };
-const _saveButtonObserver = new MutationObserver(mutations => {
-    const saveCheck = mutations.filter(mutation => (mutation.type === 'attributes')
-        && (mutation.attributeName === 'class')
-        && mutation.target.classList.contains('ItemDisabled')
-        && (mutation.oldValue.toString().indexOf('ItemDisabled') === -1)
-        && $(mutation.target).hasClass('waze-icon-save'));
-    if (saveCheck.length > 0)
-        handleAfterSave();
-});
-const _urPanelContainerObserver = new MutationObserver(async mutations => {
-    const dataStateMutations = mutations.filter(mutation => (mutation.type === 'attributes') && (mutation.attributeName === 'data-state')),
-        mutatedChildren = mutations.filter(mutation => (mutation.type === 'childList')),
-        addedChildren = mutatedChildren.filter(mutatedChild => (mutatedChild.addedNodes.length > 0)),
-        removedChildren = mutatedChildren.filter(mutatedChild => (mutatedChild.removedNodes.length > 0));
-    if (_selUr.handling
-        && (removedChildren.length > 0)
-        && removedChildren.filter(removedChild => (removedChild.removedNodes[0].className
-            && (removedChild.removedNodes[0].className.indexOf('show') > -1)
-            && $(removedChild.target).is('#panel-container')))
-            .length > 0)
-        return handleAfterCloseUpdateContainer();
-    if (_selUr.handling && (dataStateMutations.length > 0)) {
-        const dataState = dataStateMutations[0].target.attributes['data-state'].nodeValue.replace('-', '');
-        if ((dataState === 'open') || (dataState === 'solved') || (dataState === 'notidentified'))
-            _selUr.newStatus = dataState;
-        else
-            logWarning(`INVALID DATA STATE CHANGE: ${dataStateMutations[0].target.attributes['data-state'].nodeValue}`);
-        return true;
-    }
-    const newUrId = await getUrId();
-    if ((addedChildren.length > 0)
-        && addedChildren.filter(addedChild => (addedChild.addedNodes[0].className
-            && (addedChild.addedNodes[0].className.indexOf('show') > -1)
-            && (newUrId > 0)
-            && $(addedChild.target).is('#panel-container')))
-            .length > 0)
-        return handleUpdateRequestContainer(newUrId, 'UR panel mutation');
-    if (_selUr.handling
-        && (addedChildren.length > 0)
-        && addedChildren.filter(addedChild => (addedChild.addedNodes.length > 0)
-            && $(addedChild.target).hasClass('comment-list')
-            && (newUrId > 0)
-            && (newUrId === _selUr.urId))
-            .length > 0)
-        return handleAfterCommentMutation(newUrId);
-    return false;
-});
-const _urMarkerObserver = new MutationObserver(mutations => {
-    const urMapMarkerIdsArr = [];
-    if (!_selUr.handling) {
-        const clickedUrCheck = mutations.filter(mutation => (mutation.type === 'attributes')
-            && mutation.target.classList
-            && (mutation.target.classList.contains('user-generated') || mutation.target.classList.contains('has-comments'))
-            && ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList.contains('selected'))
-            && (parseInt(mutation.target.attributes['data-id'].value) > 0));
-        if (_commentListLoaded && (clickedUrCheck.length > 0)) {
-            for (let idx = 0; idx < clickedUrCheck.length; idx++) {
-                if (!(_selUr.urId > 0) || (_selUr.urId !== parseInt(clickedUrCheck[idx].target.attributes['data-id'].value))) {
-                    _selUr = {
-                        doubleClick: false,
-                        handling: false,
-                        newStatus: undefined,
-                        urId: parseInt(clickedUrCheck[idx].target.attributes['data-id'].value),
-                        urOpen: false
-                    };
-                    logDebug(`Caught selected UR by backdoor. Firing the minions. urId: ${_selUr.urId}`);
-                    return;
+    },
+    _saveButtonObserver = new MutationObserver(mutations => {
+        const saveCheck = mutations.filter(mutation => (mutation.type === 'attributes')
+            && (mutation.attributeName === 'class')
+            && mutation.target.classList.contains('ItemDisabled')
+            && (mutation.oldValue.toString().indexOf('ItemDisabled') === -1)
+            && $(mutation.target).hasClass('waze-icon-save'));
+        if (saveCheck.length > 0)
+            handleAfterSave();
+    }),
+    _urPanelContainerObserver = new MutationObserver(async mutations => {
+        const dataStateMutations = mutations.filter(mutation => (mutation.type === 'attributes') && (mutation.attributeName === 'data-state')),
+            mutatedChildren = mutations.filter(mutation => (mutation.type === 'childList')),
+            addedChildren = mutatedChildren.filter(mutatedChild => (mutatedChild.addedNodes.length > 0)),
+            removedChildren = mutatedChildren.filter(mutatedChild => (mutatedChild.removedNodes.length > 0));
+        if (_selUr.handling
+            && (removedChildren.length > 0)
+            && removedChildren.filter(removedChild => (removedChild.removedNodes[0].className
+                && (removedChild.removedNodes[0].className.indexOf('show') > -1)
+                && $(removedChild.target).is('#panel-container')))
+                .length > 0)
+            return handleAfterCloseUpdateContainer();
+        if (_selUr.handling && (dataStateMutations.length > 0)) {
+            const dataState = dataStateMutations[0].target.attributes['data-state'].nodeValue.replace('-', '');
+            if ((dataState === 'open') || (dataState === 'solved') || (dataState === 'notidentified'))
+                _selUr.newStatus = dataState;
+            else
+                logWarning(`INVALID DATA STATE CHANGE: ${dataStateMutations[0].target.attributes['data-state'].nodeValue}`);
+            return true;
+        }
+        if (addedChildren.length === 0)
+            return false;
+        const newUrId = await getUrId();
+        if (addedChildren.filter(
+            addedChild => (
+                addedChild.addedNodes[0].className
+                && (addedChild.addedNodes[0].className.indexOf('show') > -1)
+                && (newUrId > 0)
+                && $(addedChild.target).is('#panel-container')
+            )
+        ).length > 0)
+            return handleUpdateRequestContainer(newUrId, 'UR panel mutation');
+        if (_selUr.handling
+            && addedChildren.filter(
+                addedChild => (
+                    addedChild.addedNodes.length > 0)
+                    && $(addedChild.target).hasClass('comment-list')
+                    && (newUrId > 0)
+                    && (newUrId === _selUr.urId)
+            ).length > 0
+        )
+            return handleAfterCommentMutation(newUrId);
+        return false;
+    }),
+    _urMarkerObserver = new MutationObserver(mutations => {
+        if (!_selUr.handling) {
+            const clickedUrCheck = mutations.filter(mutation => (mutation.type === 'attributes')
+                && mutation.target.classList
+                && (mutation.target.classList.contains('user-generated') || mutation.target.classList.contains('has-comments'))
+                && ((!mutation.oldValue || !mutation.oldValue.match(/\bselected\b/)) && mutation.target.classList.contains('selected'))
+                && (parseInt(mutation.target.attributes['data-id'].value) > 0));
+            if (_commentListLoaded && (clickedUrCheck.length > 0)) {
+                for (let idx = 0; idx < clickedUrCheck.length; idx++) {
+                    if (!(_selUr.urId > 0) || (_selUr.urId !== parseInt(clickedUrCheck[idx].target.attributes['data-id'].value))) {
+                        _selUr = {
+                            doubleClick: false,
+                            handling: false,
+                            newStatus: undefined,
+                            urId: parseInt(clickedUrCheck[idx].target.attributes['data-id'].value),
+                            urOpen: false
+                        };
+                        logDebug(`Caught selected UR by backdoor. Firing the minions. urId: ${_selUr.urId}`);
+                        return;
+                    }
                 }
             }
         }
-    }
-    const addedChildren = mutations.filter(mutation => (mutation.type === 'childList') && (mutation.addedNodes.length > 0));
-    if (addedChildren.length > 0) {
-        addedChildren.forEach(addedChild => {
-            for (let idx = 0; idx < addedChild.addedNodes.length; idx++) {
-                const addedNode = addedChild.addedNodes[idx];
-                if (addedNode.classList && addedNode.classList.contains('map-problem') && addedNode.classList.contains('user-generated')) {
-                    if ((parseInt(addedNode.attributes['data-id'].value) > 0) && (urMapMarkerIdsArr.indexOf(parseInt(addedNode.attributes['data-id'].value)) === -1))
-                        urMapMarkerIdsArr.push(parseInt(addedNode.attributes['data-id'].value));
-                }
-            }
-        });
-    }
-    const zoomLevel = W.map.getOLMap().getZoom();
-    let filter = true;
-    if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
-            || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))
-    )
-        filter = false;
-    if (urMapMarkerIdsArr.length > 0)
-        handleUrLayer('markersAdded', filter, [...urMapMarkerIdsArr]);
-});
+    });
 
 let _settings = {},
     _selUr = {
@@ -260,6 +247,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             autoCloseUrPanel: (_settings.autoCloseCommentWindow),
             autoSaveAfterSolvedOrNiComment: false,
             autoSendReminders: false,
+            autoSendRemindersExceptTagged: false,
             autoSetNewUrComment: false,
             autoSetNewUrCommentSlur: false,
             autoSetNewUrCommentWithDescription: false,
@@ -467,17 +455,20 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
     return true;
 }
 
-function checkTimeout(obj) {
-    if (obj.toIndex) {
-        if (_timeouts[obj.timeout] && (_timeouts[obj.timeout][obj.toIndex] !== undefined)) {
-            window.clearTimeout(_timeouts[obj.timeout][obj.toIndex]);
-            _timeouts[obj.timeout][obj.toIndex] = undefined;
+function showScriptInfoAlert() {
+    if (ALERT_UPDATE && SCRIPT_VERSION !== _settings.lastVersion) {
+        let releaseNotes = '';
+        releaseNotes += '<p>What\'s New:</p>';
+        if (SCRIPT_VERSION_CHANGES.length > 0) {
+            releaseNotes += '<ul>';
+            for (let idx = 0; idx < SCRIPT_VERSION_CHANGES.length; idx++)
+                releaseNotes += `<li>${SCRIPT_VERSION_CHANGES[idx]}`;
+            releaseNotes += '</ul>';
         }
-    }
-    else {
-        if (_timeouts[obj.timeout] !== undefined)
-            window.clearTimeout(_timeouts[obj.timeout]);
-        _timeouts[obj.timeout] = undefined;
+        else {
+            releaseNotes += '<ul><li>Nothing major.</ul>';
+        }
+        WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, releaseNotes, SCRIPT_GF_URL, SCRIPT_FORUM_URL);
     }
 }
 
@@ -492,6 +483,20 @@ async function saveSettingsToStorage() {
         localStorage.setItem(SETTINGS_STORE_NAME, JSON.stringify(_settings));
         WazeWrap.Remote.SaveSettings(SETTINGS_STORE_NAME, _settings);
         logDebug('Settings saved.');
+    }
+}
+
+function checkTimeout(obj) {
+    if (obj.toIndex) {
+        if (_timeouts[obj.timeout] && (_timeouts[obj.timeout][obj.toIndex] !== undefined)) {
+            window.clearTimeout(_timeouts[obj.timeout][obj.toIndex]);
+            _timeouts[obj.timeout][obj.toIndex] = undefined;
+        }
+    }
+    else {
+        if (_timeouts[obj.timeout] !== undefined)
+            window.clearTimeout(_timeouts[obj.timeout]);
+        _timeouts[obj.timeout] = undefined;
     }
 }
 
@@ -524,37 +529,36 @@ function alertBoxInPanel(message, panelBoxTitle, panelBoxDismiss, index) {
         $(`#urceAlertPanelBox-${index}-dismiss`).off().on('click', { idx: index }, dismissAlertBoxInPanel);
 }
 
-function showScriptInfoAlert() {
-    if (ALERT_UPDATE && SCRIPT_VERSION !== _settings.lastVersion) {
-        let releaseNotes = '';
-        releaseNotes += '<p>What\'s New:</p>';
-        if (SCRIPT_VERSION_CHANGES.length > 0) {
-            releaseNotes += '<ul>';
-            for (let idx = 0; idx < SCRIPT_VERSION_CHANGES.length; idx++)
-                releaseNotes += `<li>${SCRIPT_VERSION_CHANGES[idx]}`;
-            releaseNotes += '</ul>';
-        }
-        else {
-            releaseNotes += '<ul><li>Nothing major.</ul>';
-        }
-        WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, releaseNotes, SCRIPT_GF_URL, SCRIPT_FORUM_URL);
-    }
-}
-
 function isChecked(obj) {
     return $(obj).is(':checked');
 }
 
-function getCollapsedGroups() {
+function isDomElementReady(element, retryInterval = 10, maxTries = 200) {
     return new Promise(resolve => {
-        const $getDivs = $('div[id$="_body"]'),
-            rObj = {};
-        for (let idx = 0; idx < $getDivs.length; idx++) {
-            if ($getDivs[idx].id.indexOf('urceComments-for-') > -1)
-                rObj[$getDivs[idx].id] = $($getDivs[idx]).hasClass('collapse');
-        }
-        resolve(rObj);
+        (function retry(elementStr, tries, toIndex, retryInt, maxNumTries) {
+            checkTimeout({ timeout: 'isDomElementReady', toIndex });
+            if (tries > maxNumTries) {
+                logError(`Timed out waiting for DOM element to appear: ${elementStr}`);
+                resolve({ error: true });
+            }
+            else if ($(elementStr).length === 0) {
+                _timeouts.isDomElementReady = window.setTimeout(retry, retryInt, elementStr, ++tries, toIndex, retryInt, maxNumTries);
+            }
+            else {
+                resolve({ error: false });
+            }
+        }(element, 1, getRandomId(), retryInterval, maxTries));
     });
+}
+
+function getCollapsedGroups() {
+    const $getDivs = $('div[id$="_body"]'),
+        rObj = {};
+    for (let idx = 0; idx < $getDivs.length; idx++) {
+        if ($getDivs[idx].id.indexOf('urceComments-for-') > -1)
+            rObj[$getDivs[idx].id] = $($getDivs[idx]).hasClass('collapse');
+    }
+    return Promise.resolve(rObj);
 }
 
 function doSpinner(stop) {
@@ -600,7 +604,7 @@ function checkRestrictions(event) {
             }
             else if (tries < 301) {
                 if (evt && (evt[0].type === 'state') && (evt[0].name === W.model.getTopState().name)) {
-                    country = W.model.countries.getObjectById(evt[0].countryID).abbr;
+                    country = (evt[0].countryID !== 0) ? W.model.countries.getObjectById(evt[0].countryID).abbr : W.model.getTopCountry().abbr;
                     state = evt[0].name;
                 }
                 else if (evt && (evt[0].type === 'country') && (evt[0].abbr === W.model.getTopCountry().abbr)) {
@@ -670,39 +674,10 @@ function checkRestrictions(event) {
                 }
             }
             else {
-                resolve(logError('Unable to check for restrictions'));
+                resolve(logError(new Error('Unable to check for restrictions')));
             }
             doSpinner(true);
         }(1, getRandomId(), event));
-    });
-}
-
-function getUrSessionsAsync(urIdsArr) {
-    return new Promise(resolve => {
-        (async function retry(urIds, tries, toIndex) {
-            let urSessionsObj;
-            checkTimeout({ timeout: 'getUrSessionAsync', toIndex });
-            try {
-                urSessionsObj = await W.model.updateRequestSessions.getAsync(urIds);
-                urSessionsObj.sort((a, b) => a.id - b.id);
-            }
-            catch (error) {
-                let debugMsg = `Error retreiving urSessions async for urIds: ${urIds.join(', ')} on try ${tries}.`;
-                if (tries < 50)
-                    debugMsg += ' Retrying.';
-                logDebug(debugMsg);
-            }
-            if (tries > 49 && !urSessionsObj) {
-                resolve({ error: true, text: '50 tries at getting urSessions async have elapsed. Stopping loop.' });
-            }
-            else if (!urSessionsObj) {
-                _timeouts.getUrSessionAsync[toIndex] = window.setTimeout(retry, 100, urIds, ++tries, toIndex);
-            }
-            else {
-                checkTimeout({ timeout: 'getUrSessionAsync', toIndex });
-                resolve(urSessionsObj);
-            }
-        }(urIdsArr, 1, getRandomId()));
     });
 }
 
@@ -733,6 +708,29 @@ function getMapUrsAsync(urIdsArr) {
             }
         }(urIdsArr, 1, getRandomId()));
     });
+}
+
+function mUrsAdded(objectsArr) {
+    if (objectsArr && (objectsArr.length === 0))
+        return;
+    const zoomLevel = W.map.getOLMap().getZoom();
+    let filter = true;
+    if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
+            || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))
+    )
+        filter = false;
+    handleUrLayer('mUrsAdded', filter, objectsArr.sort((a, b) => a.attributes.id - b.attributes.id));
+}
+
+async function mergeUpdateRequestModel(urIds = []) {
+    for (let i = 0; i < urIds.length; i++) {
+        if (W.model.updateRequestSessions.objects[urIds[i]])
+            urIds.splice(i, 1);
+    }
+    if (urIds.length > 0) {
+        const getUrSessionsObjs = await W.controller.descartesClient.getUpdateRequestSessionsByIds(urIds);
+        W.model.updateRequestSessions.mergeObjects(getUrSessionsObjs.updateRequestSessions);
+    }
 }
 
 async function handleAfterCommentMutation(urId) {
@@ -795,7 +793,7 @@ async function handleUpdateRequestContainer(urId, caller) {
     if (!_commentListLoaded)
         return false;
     if (_settings.replaceNextWithDoneButton && ($('#panel-container .mapUpdateRequest.panel .section .content .navigation .done').length === 0))
-        return W.reqres.request('problems:browse', _.extend({ showNext: false, nextButtonString: I18n.t('problems.panel.done') }, { problem: W.model.mapUpdateRequests.objects[urId] }));
+        return openUrPanel(urId);
     doSpinner(false);
     _selUr.handling = true;
     _restoreZoom = W.map.getOLMap().getZoom();
@@ -803,12 +801,15 @@ async function handleUpdateRequestContainer(urId, caller) {
         hidePopup();
     logDebug(`Handling update request container after ${caller} for urId: ${urId}`);
     await updateUrceData([urId]);
+    await isDomElementReady('#panel-container .top-section .header .main-title');
     if ($('#panel-container .top-section .header .main-title').html().indexOf(urId) === -1)
         $('#panel-container .top-section .header .main-title').append(` (${urId}) `);
+    await isDomElementReady('#panel-container .top-section .header .reported');
     if ($('#panel-container .top-section .header .reported').length === 1)
         $('#panel-container .top-section .header').append(`<div class="reported">${I18n.t('mte.edit.submitted')} ${parseDaysAgo(W.model.mapUpdateRequests.objects[urId].attributes.urceData.driveDaysOld)}</div>`);
     if (W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount > 0) {
         for (let idx = 0; idx < W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount; idx++) {
+            await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title');
             if ($($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).has('#urceDaysAgo').length === 0) {
                 $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).children().filter('span.date').css('float', 'right');
                 $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).append(''
@@ -839,17 +840,19 @@ async function handleUpdateRequestContainer(urId, caller) {
     _selUr.urOpen = W.model.mapUpdateRequests.objects[urId].attributes.open;
     if (_settings.autoSwitchToUrCommentsTab)
         autoSwitchToUrceTab();
+    await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation');
     if ($('#panel-container .mapUpdateRequest .top-section .body .conversation').hasClass('collapsed'))
         $('#panel-container .mapUpdateRequest .top-section .body .conversation').removeClass('collapsed');
     if (_settings.disableDoneNextButtons)
         $('#panel-container .mapUpdateRequest .actions .content .navigation').css({ display: 'none' });
     $('#panel-container .mapUpdateRequest .top-section .header .title .focus').off('click', recenterOnUr).on('click', { urId }, recenterOnUr);
+    await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
     $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').css('background-color', (_settings.enableAppendMode ? 'peachpuff' : ''))
         .off('keyup', checkValue).on('keyup', checkValue);
     if ($('#urceShortcuts').length === 0) {
         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend('<div id="urceShortcuts" style="text-align:left;padding-bottom:8px;font-size:12px;">'
             + `<div id="urceShortcutsExpand" style="padding-bottom:4px;font-size:13px;cursor:pointer;border-bottom:1px solid darkgray;">${I18n.t('urce.urPanel.Shortcuts')}`
-            + `<div style="display:inline;float:right;padding-right:8px;font-size:11px;"><i class="fa fa-fw ${(_settings.expandShortcuts ? 'fa-chevron-down' : 'fa-chevron-up')} URCE-chevron"></i></div></div>`
+            + `<div style="display:inline;float:right;padding-right:8px;font-size:11px;"><i class="fa fa-fw ${(_settings.expandShortcuts ? 'fa-chevron-up' : 'fa-chevron-down')} URCE-chevron"></i></div></div>`
             + `<div id="urceShortcutsExpandDiv" style="${(_settings.expandShortcuts ? '' : 'display:none;')}border-bottom:1px solid darkgray;padding: 5px 0 5px 0;"><div><i id="urceShortcuts-selSegs" class="fa fa-road" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertSelSegsTitle')}"></i>`
             + '<span class="fa-stack" style="width:1.8em;height:1.8em;line-height:1.8em;">'
             + `<i id="urceShortcuts-selSegsWithCity" class="fa fa-road" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')}"></i>`
@@ -891,7 +894,7 @@ async function handleUpdateRequestContainer(urId, caller) {
             saveSettingsToStorage();
         });
         $('#urceShortcutsExpand').off().on('click', function () {
-            if ($($(this).find('i')[0]).hasClass('fa-chevron-down'))
+            if ($($(this).find('i')[0]).hasClass('fa-chevron-up'))
                 _settings.expandShortcuts = false;
             else
                 _settings.expandShortcuts = true;
@@ -923,11 +926,7 @@ async function handleUpdateRequestContainer(urId, caller) {
             ) {
                 if (_settings.autoClickOpenSolvedNi)
                     autoClickOpenSolvedNi(commentNum);
-                const postUrCommentResult = await postUrComment(_commentList[commentNum].comment, false);
-                if (postUrCommentResult.error) {
-                    logError(new Error(postUrCommentResult.text));
-                    WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentInsertTimedOut'));
-                }
+                await postUrComment(_commentList[commentNum].comment, false);
             }
         }
     }
@@ -945,13 +944,7 @@ async function handleUpdateRequestContainer(urId, caller) {
         ) {
             if (_settings.autoClickOpenSolvedNi)
                 autoClickOpenSolvedNi(_defaultComments.dr.commentNum);
-            const postUrCommentResult = await postUrComment(_commentList[_defaultComments.dr.commentNum].comment, false);
-            if (postUrCommentResult.error) {
-                if (postUrCommentResult.reason === 'commentTooLong')
-                    logError(new Error(postUrCommentResult.text));
-                else
-                    WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentInsertTimedOut'));
-            }
+            await postUrComment(_commentList[_defaultComments.dr.commentNum].comment, false);
         }
     }
     if (_settings.autoCenterOnUr)
@@ -984,18 +977,13 @@ async function handleClickedComment(commentNum, doubleClick) {
     if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length === 0) {
         logWarning('No comment box found after clicking a comment from the list.');
         WazeWrap.Alerts.info(SCRIPT_NAME, I18n.t('urce.prompts.NoCommentBox'));
-        return;
     }
-    if (doubleClick)
-        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').off('blur', autoClickSendButton).on('blur', autoClickSendButton);
-    if (_settings.autoClickOpenSolvedNi && _selUr.urOpen)
-        autoClickOpenSolvedNi(commentNum);
-    const postUrCommentResult = await postUrComment(_commentList[commentNum].comment, doubleClick);
-    if (postUrCommentResult.error) {
-        if (postUrCommentResult.reason === 'commentTooLong')
-            logError(new Error(postUrCommentResult.text));
-        else
-            WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentInsertTimedOut'));
+    else {
+        if (doubleClick)
+            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').off('blur', autoClickSendButton).on('blur', autoClickSendButton);
+        if (_settings.autoClickOpenSolvedNi && _selUr.urOpen)
+            autoClickOpenSolvedNi(commentNum);
+        await postUrComment(_commentList[commentNum].comment, doubleClick);
     }
 }
 
@@ -1016,7 +1004,9 @@ function autoSwitchToPrevTab() {
     }
 }
 
-function unfollowUrAfterSend(urId) {
+async function unfollowUrAfterSend(urId) {
+    if (!W.model.updateRequestSessions.objects[urId])
+        await mergeUpdateRequestModel([urId]);
     W.model.updateRequestSessions.objects[urId].setFollowing('false');
 }
 
@@ -1443,6 +1433,7 @@ function handleClickedShortcut(shortcut) {
         }
     }
     else {
+        doSpinner(true);
         return;
     }
     let outputText = formatText(replaceText, true, true, undefined);
@@ -1473,94 +1464,87 @@ function handleClickedShortcut(shortcut) {
 }
 
 function autoPostReminderComment(urId, comment) {
-    return new Promise(resolve => {
-        try {
-            if ((comment.search(/\B\$\S*\$\B/gm) > -1) || (comment.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) > -1))
-                throw new Error(`Did not auto-post reminder comment for urId ${urId} because a variable was not replaced.`);
-            W.model.updateRequestSessions.objects[urId].addComment(comment);
-            W.model.mapUpdateRequests.objects[urId].attributes.reminderSent = true;
-        }
-        catch (error) {
-            delete (W.model.mapUpdateRequests.objects[urId].attributes.reminderSent);
-            return resolve({ error: true, text: error });
-        }
-        return resolve({ error: false });
-    });
+    try {
+        if ((comment.search(/\B\$\S*\$\B/gm) > -1) || (comment.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) > -1))
+            throw new Error(`Did not auto-post reminder comment for urId ${urId} because a variable was not replaced.`);
+        W.model.updateRequestSessions.objects[urId].addComment(comment);
+        W.model.mapUpdateRequests.objects[urId].attributes.reminderSent = true;
+    }
+    catch (error) {
+        delete (W.model.mapUpdateRequests.objects[urId].attributes.reminderSent);
+        logWarning(error);
+        return Promise.resolve({ error: true });
+    }
+    return Promise.resolve({ error: false });
 }
 
-function postUrComment(commentStr, doubleClick) {
-    return new Promise(resolve => {
-        (function retry(comment, tries) {
-            doSpinner(false);
-            let commentOutput,
-                cursorPos,
-                newCursorPos,
-                postNls = 0;
-            checkTimeout({ timeout: 'postUrComment' });
-            if (tries > 100) {
-                resolve({ error: true, reason: 'timeOut', text: 'Timed out waiting for the comment text box to become available.' });
-            }
-            else if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length === 0) {
-                _timeouts.postUrComment = window.setTimeout(retry, 100, comment, ++tries);
+async function postUrComment(comment, doubleClick) {
+    doSpinner(false);
+    const testDomElement = await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text', 100, 100);
+    if (testDomElement.error) {
+        WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentInsertTimedOut'));
+        logError(new Error('Timed out waiting for the comment text box to become available.'));
+    }
+    else {
+        let commentOutput,
+            cursorPos,
+            newCursorPos,
+            postNls = 0;
+        if (_settings.enableAppendMode && $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val() !== '' && !doubleClick) {
+            cursorPos = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].selectionStart;
+            newCursorPos = cursorPos;
+            const currVal = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val();
+            let newVal = currVal.slice(0, cursorPos);
+            if ((newVal.length > 0) && (newVal.slice(-1).search(/[\n\r]/) > -1)) {
+                if (newVal.slice(-2, -1).search(/[\n\r]/) === -1) {
+                    newVal += '\n';
+                    newCursorPos++;
+                }
             }
             else {
-                if (_settings.enableAppendMode && $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val() !== '' && !doubleClick) {
-                    cursorPos = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].selectionStart;
-                    newCursorPos = cursorPos;
-                    const currVal = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val();
-                    let newVal = currVal.slice(0, cursorPos);
-                    if ((newVal.length > 0) && (newVal.slice(-1).search(/[\n\r]/) > -1)) {
-                        if (newVal.slice(-2, -1).search(/[\n\r]/) === -1) {
-                            newVal += '\n';
-                            newCursorPos++;
-                        }
-                    }
-                    else {
-                        newVal += '\n\n';
-                        newCursorPos += 2;
-                    }
-                    newVal += formatText(comment, true, false, undefined);
-                    if (currVal.slice(cursorPos).length > 0) {
-                        if (currVal.substr(cursorPos, 1).search(/[\n\r]/) > -1) {
-                            if (currVal.substr(cursorPos + 1, 1).search(/[\n\r]/) === -1) {
-                                newVal += '\n';
-                                postNls++;
-                            }
-                        }
-                        else {
-                            newVal += '\n\n';
-                            postNls += 2;
-                        }
-                        newVal += currVal.slice(cursorPos);
-                    }
-                    commentOutput = newVal;
-                }
-                else {
-                    commentOutput = formatText(comment, true, false, undefined);
-                }
-                if (commentOutput.length > 2000) {
-                    WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
-                    resolve({ error: true, reason: 'commentTooLong', text: I18n.t('urce.prompts.CommentTooLong') });
-                }
-                else {
-                    if (cursorPos !== undefined) {
-                        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).selectRange(
-                            (newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls)
-                        ).change().keyup().focus();
-                    }
-                    else {
-                        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).change().keyup().focus();
-                    }
-                    if ((commentOutput.search(/\B\$\S*\$\B/gm) === -1) && (commentOutput.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) === -1))
-                        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').blur().focus();
-                    else
-                        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').focus();
-                    resolve({ error: false });
-                }
+                newVal += '\n\n';
+                newCursorPos += 2;
             }
-            doSpinner(true);
-        }(commentStr, 1));
-    });
+            newVal += formatText(comment, true, false, undefined);
+            if (currVal.slice(cursorPos).length > 0) {
+                if (currVal.substr(cursorPos, 1).search(/[\n\r]/) > -1) {
+                    if (currVal.substr(cursorPos + 1, 1).search(/[\n\r]/) === -1) {
+                        newVal += '\n';
+                        postNls++;
+                    }
+                }
+                else {
+                    newVal += '\n\n';
+                    postNls += 2;
+                }
+                newVal += currVal.slice(cursorPos);
+            }
+            commentOutput = newVal;
+        }
+        else {
+            commentOutput = formatText(comment, true, false, undefined);
+        }
+        if (commentOutput.length > 2000) {
+            WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
+            logError(new Error(I18n.t('urce.prompts.CommentTooLong')));
+        }
+        else {
+            if (cursorPos !== undefined) {
+                $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).selectRange(
+                    (newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls)
+                ).change().keyup().focus();
+            }
+            else {
+                $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).change().keyup().focus();
+            }
+            if ((commentOutput.search(/\B\$\S*\$\B/gm) === -1) && (commentOutput.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) === -1))
+                $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').blur().focus();
+            else
+                $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').focus();
+        }
+    }
+    doSpinner(true);
+    return Promise.resolve();
 }
 
 function getUsernameAndRank(userId) {
@@ -1927,7 +1911,9 @@ function hidePopup(event) {
 }
 
 function openUrPanel(urId) {
-    const t = { showNext: false, nextButtonString: I18n.t('problems.panel.done') };
+    const t = (_settings.replaceNextWithDoneButton)
+        ? { showNext: false, nextButtonString: I18n.t('problems.panel.done') }
+        : { showNext: true, nextButtonString: I18n.t('problems.panel.next') };
     if (urId !== _selUr.urId) {
         _selUr = {
             doubleClick: false,
@@ -1937,7 +1923,7 @@ function openUrPanel(urId) {
             urOpen: false
         };
     }
-    W.reqres.request('problems:browse', _.extend(t, { problem: W.model.mapUpdateRequests.objects[urId] }));
+    W.reqres.request('problems:browse', $.extend(t, { problem: W.model.mapUpdateRequests.objects[urId] }));
 }
 
 function recenterOnUr(event, zoom) {
@@ -2198,10 +2184,25 @@ function updateUrMapMarkers(urIds, filter) {
         logDebug(`Removed custom markers for UR(s): ${markerChanges.customMarkers.removed.join(', ')} (Total: ${markerChanges.customMarkers.removed.length})`);
 }
 
-function updateUrceData(urIds) {
-    const processUrIds = [...urIds],
+async function updateUrceData(mUrsObjArr) {
+    if (!mUrsObjArr)
+        return false;
+    if (typeof mUrsObjArr[0] === 'number') {
+        const urIdsArr = [...mUrsObjArr];
+        mUrsObjArr = [];
+        while (urIdsArr.length > 0) {
+            const chunk = urIdsArr.splice(0, 500),
+                mapUrsObj = await getMapUrsAsync(chunk);
+            if (mapUrsObj.error)
+                return logError(new Error(mapUrsObj.text));
+            mUrsObjArr = mUrsObjArr.concat(mapUrsObj);
+        }
+    }
+    const processMUrObjs = [...mUrsObjArr],
         reminderDays = _restrictionsEnforce.reminderDays || _settings.perCommentListSettings[_currentCommentList].reminderDays || 0,
         closeDays = _restrictionsEnforce.closeDays || _settings.perCommentListSettings[_currentCommentList].closeDays || 7,
+        tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim,
+        tagUsernameRegex = new RegExp(` ${W.model.loginManager.user.userName} `, 'gi'),
         getUserIdsToCheck = usersToCheck => {
             if (usersToCheck.length > 0) {
                 // eslint-disable-next-line array-callback-return, consistent-return
@@ -2214,7 +2215,6 @@ function updateUrceData(urIds) {
             return [];
         },
         checkCommentedUsers = (userIdsToCheck, userIds) => {
-            // eslint-disable-next-line array-callback-return, consistent-return
             let retVal = false;
             userIdsToCheck.forEach(userId => {
                 if (userIds.indexOf(parseInt(userId)) > -1)
@@ -2222,45 +2222,41 @@ function updateUrceData(urIds) {
             });
             return retVal;
         };
-    return new Promise(async resolve => {
-        while (processUrIds.length > 0) {
-            const autoSentRemindersFor = [],
-                chunk = processUrIds.splice(0, 500),
-                tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim,
-                tagUsernameRegex = new RegExp(` ${W.model.loginManager.user.userName} `, 'gi');
-            let includingKeyword = null,
-                keywordIncludingRegex = null,
-                notIncludingKeyword = null,
-                keywordNotIncludingRegex = null,
-                urceData = {};
-            logDebug(`Updating urceData for urIds: ${chunk.join(', ')} (Total Count: ${chunk.length})`);
-            if (_settings.hideByKeywordIncludingKeyword.length > 0) {
-                includingKeyword = _settings.hideByKeywordIncludingKeyword.trim(); // Make regex compat ... .replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-                if (_settings.hideByKeywordCaseInsensitive)
-                    keywordIncludingRegex = new RegExp(includingKeyword, 'gim');
-                else
-                    keywordIncludingRegex = new RegExp(includingKeyword, 'gm');
-            }
-            if (_settings.hideByKeywordNotIncludingKeyword.length > 0) {
-                notIncludingKeyword = _settings.hideByKeywordNotIncludingKeyword.trim(); // Make regex compat ... .replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-                if (_settings.hideByKeywordCaseInsensitive)
-                    keywordNotIncludingRegex = new RegExp(notIncludingKeyword, 'gim');
-                else
-                    keywordNotIncludingRegex = new RegExp(notIncludingKeyword, 'gm');
-            }
-            const urSessionsObj = await getUrSessionsAsync(chunk);
-            if (urSessionsObj.error)
-                return logError(new Error(urSessionsObj.text));
-            const mapUrsObj = await getMapUrsAsync(chunk);
-            if (mapUrsObj.error)
-                return logError(new Error(mapUrsObj.text));
-            for (let idx = 0; idx < chunk.length; idx++) {
+    while (processMUrObjs.length > 0) {
+        const autoSentRemindersFor = [],
+            chunk = processMUrObjs.splice(0, 500),
+            urIds = chunk.map(a => a.attributes.id);
+        let includingKeyword = null,
+            keywordIncludingRegex = null,
+            notIncludingKeyword = null,
+            keywordNotIncludingRegex = null,
+            urceData = {};
+        logDebug(`Updating urceData for urIds: ${urIds.join(', ')} (Total Count: ${urIds.length})`);
+        if (_settings.hideByKeywordIncludingKeyword.length > 0) {
+            includingKeyword = _settings.hideByKeywordIncludingKeyword.trim(); // Make regex compat ... .replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+            if (_settings.hideByKeywordCaseInsensitive)
+                keywordIncludingRegex = new RegExp(includingKeyword, 'gim');
+            else
+                keywordIncludingRegex = new RegExp(includingKeyword, 'gm');
+        }
+        if (_settings.hideByKeywordNotIncludingKeyword.length > 0) {
+            notIncludingKeyword = _settings.hideByKeywordNotIncludingKeyword.trim(); // Make regex compat ... .replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+            if (_settings.hideByKeywordCaseInsensitive)
+                keywordNotIncludingRegex = new RegExp(notIncludingKeyword, 'gim');
+            else
+                keywordNotIncludingRegex = new RegExp(notIncludingKeyword, 'gm');
+        }
+        await mergeUpdateRequestModel(urIds);
+        for (let idx = 0; idx < chunk.length; idx++) {
+            const urSessionsObj = W.model.updateRequestSessions.objects[chunk[idx].attributes.id];
+            if (urSessionsObj) {
+                let autoSendReminder = false;
                 urceData = {
-                    commentCount: urSessionsObj[idx].comments.length,
+                    commentCount: urSessionsObj.comments.length,
                     commentsByMe: false,
                     commentUserIds: [],
                     customType: -1,
-                    driveDaysOld: (mapUrsObj[idx].attributes.driveDate) ? uroDateToDays(mapUrsObj[idx].attributes.driveDate) : -1,
+                    driveDaysOld: (chunk[idx].attributes.driveDate) ? uroDateToDays(chunk[idx].attributes.driveDate) : -1,
                     firstCommentBy: -2,
                     firstCommentDaysOld: -1,
                     fullText: '',
@@ -2275,48 +2271,35 @@ function updateUrceData(urIds) {
                     needsClosed: false,
                     needsReminder: false,
                     reporterHasCommented: false,
-                    resolveDaysAgo: (mapUrsObj[idx].attributes.resolvedOn !== null) ? uroDateToDays(mapUrsObj[idx].attributes.resolvedOn) : undefined,
+                    resolveDaysAgo: (chunk[idx].attributes.resolvedOn !== null) ? uroDateToDays(chunk[idx].attributes.resolvedOn) : undefined,
                     tagType: -1,
                     waiting: false
                 };
                 if (urceData.commentCount > 0) {
-                    urceData.firstCommentDaysOld = uroDateToDays(urSessionsObj[idx].comments[0].createdOn);
-                    urceData.firstCommentBy = parseInt(urSessionsObj[idx].comments[0].userID);
-                    urceData.lastCommentDaysOld = uroDateToDays(urSessionsObj[idx].comments[(urceData.commentCount - 1)].createdOn);
-                    urceData.lastCommentBy = parseInt(urSessionsObj[idx].comments[(urceData.commentCount - 1)].userID);
-                    urceData.fullText += (mapUrsObj[idx].attributes.description) ? `${mapUrsObj[idx].attributes.description} ` : '';
+                    urceData.firstCommentDaysOld = uroDateToDays(urSessionsObj.comments[0].createdOn);
+                    urceData.firstCommentBy = parseInt(urSessionsObj.comments[0].userID);
+                    urceData.lastCommentDaysOld = uroDateToDays(urSessionsObj.comments[(urceData.commentCount - 1)].createdOn);
+                    urceData.lastCommentBy = parseInt(urSessionsObj.comments[(urceData.commentCount - 1)].userID);
+                    urceData.fullText += (chunk[idx].attributes.description) ? `${chunk[idx].attributes.description} ` : '';
                     for (let commentIdx = 0; commentIdx < urceData.commentCount; commentIdx++) {
-                        urceData.fullText += `${urSessionsObj[idx].comments[commentIdx].text} `;
-                        urceData.commentUserIds.push(urSessionsObj[idx].comments[commentIdx].userID);
+                        urceData.fullText += `${urSessionsObj.comments[commentIdx].text} `;
+                        urceData.commentUserIds.push(urSessionsObj.comments[commentIdx].userID);
                     }
                     if (urceData.commentUserIds.indexOf(_wmeUserId) > -1)
                         urceData.commentsByMe = true;
                     if (urceData.commentUserIds.indexOf(-1) > -1)
                         urceData.reporterHasCommented = true;
-                    if (mapUrsObj[idx].attributes.open && urceData.commentCount === 1) {
-                        if ((reminderDays !== 0) && (urceData.lastCommentDaysOld > (reminderDays - 1))) {
+                    if (chunk[idx].attributes.open && urceData.commentCount === 1) {
+                        if ((urceData.lastCommentDaysOld > (reminderDays - 1))) {
                             if ((_settings.perCommentListSettings[_currentCommentList].autoSendReminders || _restrictionsEnforce.autoSendReminders === true)
                                 && (_restrictionsEnforce.autoSendReminders !== false)
                                 && (urceData.lastCommentBy > 1)
                                 && (_wmeUserId === urceData.lastCommentBy)
-                                && !mapUrsObj[idx].attributes.reminderSent
-                            ) {
-                                const autoPostReminderCommentResult = await autoPostReminderComment(chunk[idx],
-                                    formatText(_commentList[_defaultComments.dr.commentNum].comment, true, false, urSessionsObj[idx].id));
-                                if (autoPostReminderCommentResult.error) {
-                                    urceData.needsReminder = true;
-                                    logWarning(autoPostReminderCommentResult.text); // Don't return here as we should go ahead and process the urceData.
-                                }
-                                else {
-                                    autoSentRemindersFor.push(chunk[idx]);
-                                    if (_settings.unfollowAfterSend)
-                                        unfollowUrAfterSend(chunk[idx]);
-                                    urceData.waiting = true;
-                                }
-                            }
-                            else {
+                                && !chunk[idx].attributes.reminderSent
+                            )
+                                autoSendReminder = true;
+                            else
                                 urceData.needsReminder = true;
-                            }
                         }
                         else if (((reminderDays === 0) || (_settings.perCommentListSettings[_currentCommentList].reminderDays === '')) && (urceData.lastCommentDaysOld > (closeDays - 1))) {
                             urceData.needsClosed = true;
@@ -2325,7 +2308,7 @@ function updateUrceData(urIds) {
                             urceData.waiting = true;
                         }
                     }
-                    if (mapUrsObj[idx].attributes.open && urceData.commentCount > 1) {
+                    if (chunk[idx].attributes.open && urceData.commentCount > 1) {
                         if (urceData.lastCommentBy > 1) {
                             if ((closeDays > 0) && (urceData.lastCommentDaysOld > (closeDays - 1))) {
                                 if (_wmeUserId === urceData.lastCommentBy)
@@ -2342,11 +2325,11 @@ function updateUrceData(urIds) {
                     }
                 }
                 else {
-                    urceData.fullText += (mapUrsObj[idx].attributes.description) ? mapUrsObj[idx].attributes.description : '';
+                    urceData.fullText += (chunk[idx].attributes.description) ? chunk[idx].attributes.description : '';
                 }
-                if (!mapUrsObj[idx].attributes.open && _settings.hideByStatusClosedBy && (_settings.hideByStatusClosedByUsers.length > 0)) {
+                if (!chunk[idx].attributes.open && _settings.hideByStatusClosedBy && (_settings.hideByStatusClosedByUsers.length > 0)) {
                     const userIdsToCheck = getUserIdsToCheck(_settings.hideByStatusClosedByUsers);
-                    if ((userIdsToCheck.length > 0) && (userIdsToCheck.indexOf(mapUrsObj[idx].attributes.resolvedBy) > -1))
+                    if ((userIdsToCheck.length > 0) && (userIdsToCheck.indexOf(chunk[idx].attributes.resolvedBy) > -1))
                         urceData.hideByStatusClosedBy = true;
                 }
                 if (_settings.hideWithCommentBy && (_settings.hideWithCommentByUsers.length > 0)) {
@@ -2372,7 +2355,7 @@ function updateUrceData(urIds) {
                 if (urceData.tagType !== -1) {
                     urceData.customType = convertTagToCustomType(urceData.tagType);
                 }
-                else if (mapUrsObj[idx].attributes.type === 23) {
+                else if (chunk[idx].attributes.type === 23) {
                     urceData.customType = 98;
                 }
                 else if (_settings.customMarkersCustom && (_settings.customMarkersCustomText.length > 0) && (urceData.fullText.search(new RegExp(`\\[${_settings.customMarkersCustomText.replace(/[[\]]+/gim, '')}\\]`)) > -1)) {
@@ -2386,7 +2369,7 @@ function updateUrceData(urIds) {
                     urceData.keywordIncluding = true;
                 if ((keywordNotIncludingRegex !== null) && (urceData.fullText.search(keywordNotIncludingRegex) === -1))
                     urceData.keywordNotIncluding = true;
-                if ((urceData.tagType === -1) && (mapUrsObj[idx].attributes.type === 23))
+                if ((urceData.tagType === -1) && (chunk[idx].attributes.type === 23))
                     urceData.customType = 98;
                 else if (urceData.tagType === -1)
                     urceData.customType = -1;
@@ -2396,37 +2379,63 @@ function updateUrceData(urIds) {
                     else if (!urceData.tagType)
                         urceData.tagType = -1;
                 }
+                if (autoSendReminder) {
+                    if (((urceData.customType > -1) && !_settings.perCommentListSettings[_currentCommentList].autoSendRemindersExceptTagged)
+                        || (urceData.customType === -1)) {
+                        const autoPostReminderResult = await autoPostReminderComment(chunk[idx].attributes.id,
+                            formatText(_commentList[_defaultComments.dr.commentNum].comment, true, false, chunk[idx].attributes.id));
+                        if (autoPostReminderResult.error) {
+                            urceData.needsReminder = true;
+                        }
+                        else {
+                            autoSentRemindersFor.push(chunk[idx].attributes.id);
+                            if (_settings.unfollowAfterSend)
+                                unfollowUrAfterSend(chunk[idx].attributes.id);
+                            urceData = $.extend({}, urceData, {
+                                commentCount: urceData.commentCount + 1,
+                                commentsByMe: true,
+                                lastCommentDaysOld: 0,
+                                lastCommentBy: _wmeUserId,
+                                needsReminder: false,
+                                waiting: true
+                            });
+                        }
+                    }
+                    else {
+                        urceData.needsReminder = true;
+                    }
+                }
                 if ((_settings.hideWaiting && urceData.waiting)
                     || (_settings.needsClosed && urceData.needsClosed)
                     || (_settings.hideUrsReminderNeeded && urceData.needsReminder)
-                    || (_settings.hideByStatusOpen && mapUrsObj[idx].attributes.open)
-                    || (_settings.hideByStatusClosed && !mapUrsObj[idx].attributes.open)
-                    || (_settings.hideByStatusNotIdentified && (mapUrsObj[idx].attributes.resolution === 1))
-                    || (_settings.hideByStatusSolved && (mapUrsObj[idx].attributes.resolution === 0))
+                    || (_settings.hideByStatusOpen && chunk[idx].attributes.open)
+                    || (_settings.hideByStatusClosed && !chunk[idx].attributes.open)
+                    || (_settings.hideByStatusNotIdentified && (chunk[idx].attributes.resolution === 1))
+                    || (_settings.hideByStatusSolved && (chunk[idx].attributes.resolution === 0))
                     || (_settings.hideByStatusClosedBy && urceData.hideByStatusClosedBy)
                     // Types
-                    || (_settings.hideByTypeBlockedRoad && (mapUrsObj[idx].attributes.type === 19))
-                    || (_settings.hideByTypeGeneralError && (mapUrsObj[idx].attributes.type === 10))
-                    || (_settings.hideByTypeIncorrectAddress && (mapUrsObj[idx].attributes.type === 7))
-                    || (_settings.hideByTypeIncorrectJunction && (mapUrsObj[idx].attributes.type === 12))
-                    || (_settings.hideByTypeIncorrectRoute && (mapUrsObj[idx].attributes.type === 8))
-                    || (_settings.hideByTypeIncorrectStreetPrefixOrSuffix && (mapUrsObj[idx].attributes.type === 22))
-                    || (_settings.hideByTypeIncorrectTurn && (mapUrsObj[idx].attributes.type === 6))
-                    || (_settings.hideByTypeMissingBridgeOverpass && (mapUrsObj[idx].attributes.type === 13))
-                    || (_settings.hideByTypeMissingExit && (mapUrsObj[idx].attributes.type === 15))
-                    || (_settings.hideByTypeMissingLandmark && (mapUrsObj[idx].attributes.type === 18))
-                    || (_settings.hideByTypeMissingOrInvalidSpeedLimit && (mapUrsObj[idx].attributes.type === 23))
-                    || (_settings.hideByTypeMissingRoad && (mapUrsObj[idx].attributes.type === 16))
-                    || (_settings.hideByTypeMissingRoundabout && (mapUrsObj[idx].attributes.type === 9))
-                    || (_settings.hideByTypeMissingStreetName && (mapUrsObj[idx].attributes.type === 21))
-                    || (_settings.hideByTypeTurnNotAllowed && (mapUrsObj[idx].attributes.type === 11))
+                    || (_settings.hideByTypeBlockedRoad && (chunk[idx].attributes.type === 19))
+                    || (_settings.hideByTypeGeneralError && (chunk[idx].attributes.type === 10))
+                    || (_settings.hideByTypeIncorrectAddress && (chunk[idx].attributes.type === 7))
+                    || (_settings.hideByTypeIncorrectJunction && (chunk[idx].attributes.type === 12))
+                    || (_settings.hideByTypeIncorrectRoute && (chunk[idx].attributes.type === 8))
+                    || (_settings.hideByTypeIncorrectStreetPrefixOrSuffix && (chunk[idx].attributes.type === 22))
+                    || (_settings.hideByTypeIncorrectTurn && (chunk[idx].attributes.type === 6))
+                    || (_settings.hideByTypeMissingBridgeOverpass && (chunk[idx].attributes.type === 13))
+                    || (_settings.hideByTypeMissingExit && (chunk[idx].attributes.type === 15))
+                    || (_settings.hideByTypeMissingLandmark && (chunk[idx].attributes.type === 18))
+                    || (_settings.hideByTypeMissingOrInvalidSpeedLimit && (chunk[idx].attributes.type === 23))
+                    || (_settings.hideByTypeMissingRoad && (chunk[idx].attributes.type === 16))
+                    || (_settings.hideByTypeMissingRoundabout && (chunk[idx].attributes.type === 9))
+                    || (_settings.hideByTypeMissingStreetName && (chunk[idx].attributes.type === 21))
+                    || (_settings.hideByTypeTurnNotAllowed && (chunk[idx].attributes.type === 11))
                     || (_settings.hideByTypeUndefined
-                        && (!mapUrsObj[idx].attributes.type
-                            || (mapUrsObj[idx].attributes.type > 23)
-                            || (mapUrsObj[idx].attributes.type < 6)
-                            || (mapUrsObj[idx].attributes.type === 17)
-                            || (mapUrsObj[idx].attributes.type === 20)))
-                    || (_settings.hideByTypeWrongDrivingDirection && (mapUrsObj[idx].attributes.type === 14))
+                        && (!chunk[idx].attributes.type
+                            || (chunk[idx].attributes.type > 23)
+                            || (chunk[idx].attributes.type < 6)
+                            || (chunk[idx].attributes.type === 17)
+                            || (chunk[idx].attributes.type === 20)))
+                    || (_settings.hideByTypeWrongDrivingDirection && (chunk[idx].attributes.type === 14))
                     // Tags
                     || (_settings.hideByTaggedBog && (urceData.customType === 6))
                     || (_settings.hideByTaggedClosure && (urceData.customType === 2))
@@ -2440,12 +2449,12 @@ function updateUrceData(urIds) {
                     || (_settings.hideByAgeOfSubmissionLessThan && (urceData.driveDaysOld < _settings.hideByAgeOfSubmissionLessThanDaysOld))
                     || (_settings.hideByAgeOfSubmissionMoreThan && (urceData.driveDaysOld > _settings.hideByAgeOfSubmissionMoreThanDaysOld))
                     // Following, description, comments
-                    || (_settings.hideFollowing && urSessionsObj[idx].isFollowing)
-                    || (_settings.hideNotFollowing && !urSessionsObj[idx].isFollowing)
+                    || (_settings.hideFollowing && urSessionsObj.isFollowing)
+                    || (_settings.hideNotFollowing && !urSessionsObj.isFollowing)
                     || (_settings.hideDescription
-                        && mapUrsObj[idx].attributes.description && (mapUrsObj[idx].attributes.description.length > 0) && (mapUrsObj[idx].attributes.description !== ''))
+                        && chunk[idx].attributes.description && (chunk[idx].attributes.description.length > 0) && (chunk[idx].attributes.description !== ''))
                     || (_settings.hideWithoutDescription
-                        && (!mapUrsObj[idx].attributes.description || (mapUrsObj[idx].attributes.description.length === 0) || (mapUrsObj[idx].attributes.description === '')))
+                        && (!chunk[idx].attributes.description || (chunk[idx].attributes.description.length === 0) || (chunk[idx].attributes.description === '')))
                     || (_settings.hideWithCommentsFromMe && (urceData.commentsByMe))
                     || (_settings.hideWithoutCommentsFromMe && (!urceData.commentsByMe))
                     || (_settings.hideLastCommentByMe && (urceData.lastCommentBy === _wmeUserId))
@@ -2470,82 +2479,94 @@ function updateUrceData(urIds) {
                     else
                         urceData.hideUr = true;
                 }
-                W.model.mapUpdateRequests.objects[chunk[idx]].attributes.urceData = urceData;
-            }
-            if (autoSentRemindersFor.length > 0) {
-                logDebug(`Automatically sent reminder comments to urId(s): ${autoSentRemindersFor.join(', ')} (${autoSentRemindersFor.length})`);
-                WazeWrap.Alerts.info(SCRIPT_NAME, `${I18n.t('urce.prompts.ReminderMessageAuto')}: ${autoSentRemindersFor.join(', ')} (${autoSentRemindersFor.length})`);
+                W.model.mapUpdateRequests.objects[chunk[idx].attributes.id].attributes.urceData = urceData;
             }
         }
-        return resolve();
-    });
+        if (autoSentRemindersFor.length > 0) {
+            logDebug(`Automatically sent reminder comments to urId(s): ${autoSentRemindersFor.join(', ')} (${autoSentRemindersFor.length})`);
+            WazeWrap.Alerts.info(SCRIPT_NAME, `${I18n.t('urce.prompts.ReminderMessageAuto')}: ${autoSentRemindersFor.join(', ')} (${autoSentRemindersFor.length})`);
+        }
+    }
+    return Promise.resolve();
 }
 
-function handleUrLayer(phase, filter, urMapMarkerIdsArr) {
-    return new Promise(async resolve => {
-        const zoomLevel = W.map.getOLMap().getZoom();
-        doSpinner(false);
-        if (filter === undefined || filter === null) {
-            filter = true;
-            if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
-                || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))
-            )
-                filter = false;
+async function handleUrLayer(phase, filter, mUrsObjArr) {
+    const zoomLevel = W.map.getOLMap().getZoom();
+    doSpinner(false);
+    if (filter === undefined || filter === null) {
+        filter = true;
+        if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
+            || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))
+        )
+            filter = false;
+    }
+    if (phase === 'init')
+        logDebug('Checking for UR markers already present before URC-E completed initialization.');
+    else if (phase === 'init_end')
+        logDebug('Updating UR markers that appeared after initialization completed.');
+    else if (phase === 'close')
+        logDebug('Updating UR markers after closing UR panel.');
+    else if (phase === 'settingsToggle')
+        logDebug('Updating UR markers after a setting toggle.');
+    else if (phase === 'sendComment')
+        logDebug('Updating UR markers after sending a comment.');
+    else if (phase === 'overflow')
+        logDebug('Updating UR markers from being added through UR overflow handling.');
+    else
+        logDebug(`Updating UR markers that appeared after a ${phase} event.`);
+    /* mUrsObjArr will be null for phases: init, init_end, settingsToggle, modeChange, zoomEnd */
+    if (!mUrsObjArr) {
+        mUrsObjArr = [];
+        W.model.mapUpdateRequests.getObjectArray().forEach(urObj => {
+            if (mUrsObjArr.indexOf(urObj.attributes.id) === -1)
+                mUrsObjArr.push(urObj);
+        });
+    }
+    /* mUrsObjArr will be an array of numbers for phases: overflow, sendComment, close */
+    else if (typeof mUrsObjArr[0] === 'number') {
+        const urIdsArr = [...mUrsObjArr];
+        mUrsObjArr = [];
+        while (urIdsArr.length > 0) {
+            const chunk = urIdsArr.splice(0, 500),
+                mapUrsObj = await getMapUrsAsync(chunk);
+            if (mapUrsObj.error)
+                return logError(new Error(mapUrsObj.text));
+            mUrsObjArr = mUrsObjArr.concat(mapUrsObj);
         }
+    }
+    /* mUrsObjArr will already be an array of objects for phases: mUrsAdded */
+    if (mUrsObjArr.length > 0) {
+        mUrsObjArr.sort((a, b) => a.attributes.id - b.attributes.id);
         if (phase === 'init')
-            logDebug('Checking for UR markers already present before URC-E completed initialization.');
-        else if (phase === 'init_end')
-            logDebug('Updating UR markers that appeared after initialization completed.');
-        else if (phase === 'close')
-            logDebug('Updating UR markers after closing UR panel.');
-        else if (phase === 'settingsToggle')
-            logDebug('Updating UR markers after a setting toggle.');
-        else if (phase === 'sendComment')
-            logDebug('Updating UR markers after sending a comment.');
-        else if (phase === 'overflow')
-            logDebug('Updating UR markers from being added through UR overflow handling.');
-        else
-            logDebug(`Updating UR markers that appeared after a ${phase} event.`);
-        if (!urMapMarkerIdsArr) {
-            urMapMarkerIdsArr = [];
-            W.model.mapUpdateRequests.getObjectArray().forEach(urObj => {
-                if (urMapMarkerIdsArr.indexOf(urObj.attributes.id) === -1)
-                    urMapMarkerIdsArr.push(urObj.attributes.id);
-            });
+            _markerCountOnInit = mUrsObjArr.length;
+        if (phase === 'overflow' && _initialUrLayerScan) {
+            if (_markerCountOnInit > -1)
+                _markerCountOnInit += mUrsObjArr.length;
+            else
+                _markerCountOnInit = mUrsObjArr.length;
         }
-        if (urMapMarkerIdsArr.length > 0) {
-            urMapMarkerIdsArr.sort();
-            if (phase === 'init')
-                _markerCountOnInit = urMapMarkerIdsArr.length;
-            if (phase === 'overflow' && _initialUrLayerScan) {
-                if (_markerCountOnInit > -1)
-                    _markerCountOnInit += urMapMarkerIdsArr.length;
-                else
-                    _markerCountOnInit = urMapMarkerIdsArr.length;
-            }
-            try {
-                await updateUrceData(urMapMarkerIdsArr);
-            }
-            catch (error) {
-                logWarning(error);
-            }
-            updateUrMapMarkers(urMapMarkerIdsArr, filter);
-            if (_settings.enableUrOverflowHandling && (urMapMarkerIdsArr.length > 499)) {
-                if (phase !== 'overflow')
-                    await handleUrOverflow();
-            }
-            else if (urMapMarkerIdsArr.length > 499) {
-                alertBoxInPanel(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), null, true, 9999);
-            }
-            else if (urMapMarkerIdsArr.length < 500) {
-                dismissAlertBoxInPanel(null, 9999);
-            }
+        try {
+            await updateUrceData(mUrsObjArr);
+        }
+        catch (error) {
+            logWarning(error);
+        }
+        updateUrMapMarkers(mUrsObjArr.map(obj => obj.attributes.id), filter);
+        if (_settings.enableUrOverflowHandling && (mUrsObjArr.length > 499)) {
             if (phase !== 'overflow')
-                _filtersAppliedOnZoom = filter;
+                await handleUrOverflow();
         }
-        doSpinner(true);
-        return resolve();
-    });
+        else if (mUrsObjArr.length > 499) {
+            alertBoxInPanel(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), null, true, 9999);
+        }
+        else if (mUrsObjArr.length < 500) {
+            dismissAlertBoxInPanel(null, 9999);
+        }
+        if (phase !== 'overflow')
+            _filtersAppliedOnZoom = filter;
+    }
+    doSpinner(true);
+    return Promise.resolve();
 }
 
 function getOverflowUrsFromUrl(urlStr) {
@@ -2584,77 +2605,75 @@ function getOverflowUrsFromUrl(urlStr) {
     });
 }
 
-function handleUrOverflow() {
-    return new Promise(async resolve => {
-        doSpinner(false);
-        const baseUrl = `https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=`
+async function handleUrOverflow() {
+    doSpinner(false);
+    const baseUrl = `https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=`
             + `${(($('#layer-switcher-item_closed_update_requests').is(':checked')) ? '3' : '1')}%2C0&bbox=`,
-            overflowUrsToPut = [],
-            vpBounds = W.map.getOLMap().getExtent().transform(W.map.getOLMap().projection, W.map.getOLMap().displayProjection),
-            vpBoundsFrom = { lon: vpBounds.left, lat: vpBounds.bottom },
-            vpBoundsTo = { lon: vpBounds.right, lat: vpBounds.top },
-            vpCenter = W.map.getOLMap().getCenter().transform(W.map.getOLMap().projection, W.map.getOLMap().displayProjection),
-            overflowUrlsToCheck = [
-                `${baseUrl}${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
-                `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
-                `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpBoundsFrom.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)}`,
-                `${baseUrl}${vpCenter.lon.toFixed(6)},${vpBoundsFrom.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpCenter.lat.toFixed(6)}`
-            ];
-        while (overflowUrlsToCheck.length > 0) {
-            const overflowUrl = overflowUrlsToCheck.shift(),
-                data = await getOverflowUrsFromUrl(overflowUrl);
-            let respUrObjs = [];
-            if (data.error) {
-                logWarning(data.error);
-            }
-            else if (data.mapUpdateRequests && data.mapUpdateRequests.objects && data.mapUpdateRequests.objects.length > 499) {
-                logDebug('More than 499 objects returned in overflow request, queueing sub quadrants for further checking.');
-                const bbox = overflowUrl.split('bbox=')[1].split(','),
-                    bboxFrom = WazeWrap.Geometry.ConvertTo900913(bbox[0], bbox[1]),
-                    bboxTo = WazeWrap.Geometry.ConvertTo900913(bbox[2], bbox[3]),
-                    subQuadCenter = WazeWrap.Geometry.ConvertTo4326((bboxFrom.lon - ((bboxFrom.lon - bboxTo.lon) / 2)), (bboxTo.lat - ((bboxTo.lat - bboxFrom.lat) / 2)));
-                overflowUrlsToCheck.push(`${baseUrl}${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)},${bbox[2]},${bbox[3]}`);
-                overflowUrlsToCheck.push(`${baseUrl}${bbox[0]},${subQuadCenter.lat.toFixed(6)},${subQuadCenter.lon.toFixed(6)},${bbox[3]}`);
-                overflowUrlsToCheck.push(`${baseUrl}${bbox[0]},${bbox[1]},${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)}`);
-                overflowUrlsToCheck.push(`${baseUrl}${subQuadCenter.lon.toFixed(6)},${bbox[1]},${bbox[2]},${subQuadCenter.lat.toFixed(6)}`);
-            }
-            else if (data.mapUpdateRequests && data.mapUpdateRequests.objects.length > 0) {
-                respUrObjs = respUrObjs.concat(data.mapUpdateRequests.objects);
-            }
-            respUrObjs.forEach(respUrObj => {
-                if (W.model.mapUpdateRequests.objects[respUrObj.id] === undefined) {
-                    const NewUr = require('Waze/Feature/Vector/UpdateRequest'),
-                        toPutUr = new NewUr(respUrObj),
-                        toPutPoint = new OL.Geometry.Point(respUrObj.geometry.coordinates[0], respUrObj.geometry.coordinates[1])
-                            .transform(W.map.getOLMap().displayProjection, W.map.getOLMap().projection);
-                    toPutUr.geometry = toPutPoint;
-                    const toPutReqBounds = new OL.Geometry.Polygon(),
-                        toPutBounds = new OL.Bounds(toPutPoint.x, toPutPoint.y, toPutPoint.x, toPutPoint.y);
-                    toPutReqBounds.bounds = toPutBounds;
-                    toPutUr.requestBounds = toPutReqBounds;
-                    overflowUrsToPut.push(toPutUr);
-                }
-            });
+        overflowUrsToPut = [],
+        vpBounds = W.map.getOLMap().getExtent().transform(W.map.getOLMap().projection, W.map.getOLMap().displayProjection),
+        vpBoundsFrom = { lon: vpBounds.left, lat: vpBounds.bottom },
+        vpBoundsTo = { lon: vpBounds.right, lat: vpBounds.top },
+        vpCenter = W.map.getOLMap().getCenter().transform(W.map.getOLMap().projection, W.map.getOLMap().displayProjection),
+        overflowUrlsToCheck = [
+            `${baseUrl}${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
+            `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
+            `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpBoundsFrom.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)}`,
+            `${baseUrl}${vpCenter.lon.toFixed(6)},${vpBoundsFrom.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpCenter.lat.toFixed(6)}`
+        ];
+    while (overflowUrlsToCheck.length > 0) {
+        const overflowUrl = overflowUrlsToCheck.shift(),
+            data = await getOverflowUrsFromUrl(overflowUrl);
+        let respUrObjs = [];
+        if (data.error) {
+            logWarning(data.error);
         }
-        if (overflowUrsToPut.length > 0) {
-            const urIdsArr = overflowUrsToPut.map(obj => obj.attributes.id);
-            while (overflowUrsToPut.length > 0) {
-                const chunk = overflowUrsToPut.splice(0, 500);
-                W.model.mapUpdateRequests.put(chunk);
-                logDebug(`${chunk.length} URs added from overflow.`);
+        else if (data.mapUpdateRequests && data.mapUpdateRequests.objects && data.mapUpdateRequests.objects.length > 499) {
+            logDebug('More than 499 objects returned in overflow request, queueing sub quadrants for further checking.');
+            const bbox = overflowUrl.split('bbox=')[1].split(','),
+                bboxFrom = WazeWrap.Geometry.ConvertTo900913(bbox[0], bbox[1]),
+                bboxTo = WazeWrap.Geometry.ConvertTo900913(bbox[2], bbox[3]),
+                subQuadCenter = WazeWrap.Geometry.ConvertTo4326((bboxFrom.lon - ((bboxFrom.lon - bboxTo.lon) / 2)), (bboxTo.lat - ((bboxTo.lat - bboxFrom.lat) / 2)));
+            overflowUrlsToCheck.push(`${baseUrl}${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)},${bbox[2]},${bbox[3]}`);
+            overflowUrlsToCheck.push(`${baseUrl}${bbox[0]},${subQuadCenter.lat.toFixed(6)},${subQuadCenter.lon.toFixed(6)},${bbox[3]}`);
+            overflowUrlsToCheck.push(`${baseUrl}${bbox[0]},${bbox[1]},${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)}`);
+            overflowUrlsToCheck.push(`${baseUrl}${subQuadCenter.lon.toFixed(6)},${bbox[1]},${bbox[2]},${subQuadCenter.lat.toFixed(6)}`);
+        }
+        else if (data.mapUpdateRequests && data.mapUpdateRequests.objects.length > 0) {
+            respUrObjs = respUrObjs.concat(data.mapUpdateRequests.objects);
+        }
+        respUrObjs.forEach(respUrObj => {
+            if (W.model.mapUpdateRequests.objects[respUrObj.id] === undefined) {
+                const NewUr = require('Waze/Feature/Vector/UpdateRequest'),
+                    toPutUr = new NewUr(respUrObj),
+                    toPutPoint = new OpenLayers.Geometry.Point(respUrObj.geometry.coordinates[0], respUrObj.geometry.coordinates[1])
+                        .transform(W.map.getOLMap().displayProjection, W.map.getOLMap().projection);
+                toPutUr.geometry = toPutPoint;
+                const toPutReqBounds = new OpenLayers.Geometry.Polygon(),
+                    toPutBounds = new OpenLayers.Bounds(toPutPoint.x, toPutPoint.y, toPutPoint.x, toPutPoint.y);
+                toPutReqBounds.bounds = toPutBounds;
+                toPutUr.requestBounds = toPutReqBounds;
+                overflowUrsToPut.push(toPutUr);
             }
-            if (!_initialUrLayerScan)
-                await initBackgroundTasks('disable', 'overflow');
-            await handleUrLayer('overflow', null, urIdsArr);
-            if (!_initialUrLayerScan)
-                await initBackgroundTasks('enable', 'overflow');
+        });
+    }
+    if (overflowUrsToPut.length > 0) {
+        const urIdsArr = overflowUrsToPut.map(obj => obj.attributes.id);
+        while (overflowUrsToPut.length > 0) {
+            const chunk = overflowUrsToPut.splice(0, 500);
+            W.model.mapUpdateRequests.put(chunk);
+            logDebug(`${chunk.length} URs added from overflow.`);
         }
-        else {
-            logDebug('All URs submitted for overflow processing already exist on map.');
-        }
-        doSpinner(true);
-        resolve({ error: false });
-    });
+        if (!_initialUrLayerScan)
+            await initBackgroundTasks('disable', 'overflow');
+        await handleUrLayer('overflow', null, urIdsArr);
+        if (!_initialUrLayerScan)
+            await initBackgroundTasks('enable', 'overflow');
+    }
+    else {
+        logDebug('All URs submitted for overflow processing already exist on map.');
+    }
+    doSpinner(true);
+    return Promise.resolve({ error: false });
 }
 
 function mouseDown() {
@@ -2736,26 +2755,17 @@ function handleUrMarkerClick() {
     }
 }
 
-function getUrId() {
-    return new Promise(resolve => {
-        (function retry(tries, toIndex) {
-            checkTimeout({ timeout: 'getUrId', toIndex });
-            const newUrId = parseInt($('.update-requests .selected').data('id'));
-            if (tries > 100) {
-                logError('Timed out trying to retrieve UR ID.');
-                resolve(undefined);
-            }
-            else if (!newUrId || (newUrId === undefined) || (newUrId === null) || (newUrId < 1)) {
-                _timeouts.urceTabLightbox[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex);
-            }
-            else {
-                resolve(parseInt($('.update-requests .selected').data('id')));
-            }
-        }(1, getRandomId()));
-    });
+async function getUrId() {
+    const testDomElement = await isDomElementReady('.update-requests .selected', 100, 100),
+        newUrId = parseInt($('.update-requests .selected').data('id'));
+    if (testDomElement.error || !newUrId || (newUrId === undefined) || (newUrId === null) || (newUrId < 1)) {
+        logError(new Error('Timed out trying to retrieve UR ID.'));
+        return Promise.resolve(undefined);
+    }
+    return Promise.resolve(parseInt($('.update-requests .selected').data('id')));
 }
 
-function maskBoxes(message, unmask, phase, maskUrPanel) {
+async function maskBoxes(message, unmask, phase, maskUrPanel) {
     const zIndex = (phase === 'init') ? 19999 : 10000;
     if (unmask) {
         $(`#urceTabLightbox-${phase}`).remove();
@@ -2766,39 +2776,21 @@ function maskBoxes(message, unmask, phase, maskUrPanel) {
             $('#sidepanel-urc-e').css('position', 'relative');
             const $urceTabDisabled = $('<div>', { id: `urceTabLightbox-${phase}`, style: `position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.75); color:white; z-index:${zIndex};` });
             $urceTabDisabled.html(`<div style="text-align:center; padding-top:200px; width:290px; position:fixed; font-weight:800;">${message}</div>`);
-            (function retry(tries, toIndex) {
-                checkTimeout({ timeout: 'urceTabLightbox', toIndex });
-                const $urceSidePanel = $('#sidepanel-urc-e');
-                if ((tries > 100) && ($urceSidePanel.length === 0)) {
-                    logError('Timed out trying to add mask to URCE side panel.');
-                }
-                else if ($urceSidePanel.length === 0) {
-                    _timeouts.urceTabLightbox[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex);
-                }
-                else {
-                    checkTimeout({ timeout: 'urceTabLightbox', toIndex });
-                    $urceSidePanel.prepend($urceTabDisabled);
-                }
-            }(1, getRandomId()));
+            const testDomElement = await isDomElementReady('#sidepanel-urc-e');
+            if (testDomElement.error)
+                logError(new Error('Timed out trying to add mask to URCE side panel.'));
+            else
+                $('#sidepanel-urc-e').prepend($urceTabDisabled);
         }
         if (maskUrPanel && ($(`#urPanelLightbox-${phase}`).length === 0)) {
             $($('#panel-container .mapUpdateRequest.panel.show').children()[0]).css('position', 'relative');
             const $urPanelDisabled = $('<div>', { id: `urPanelLightbox-${phase}`, style: `position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.75); color:white; z-index:${zIndex};` });
             $urPanelDisabled.html(`<div style="text-align:center; padding-top:200px; width:290px; position:fixed; font-weight:800;">${message}</div>`);
-            (function retry(tries, toIndex) {
-                checkTimeout({ timeout: 'urPanelLightbox', toIndex });
-                const $urPanel = $('#panel-container .mapUpdateRequest.panel.show');
-                if ((tries > 100) && ($urPanel.length === 0)) {
-                    logWarning('Timed out trying to add mask to UR panel.');
-                }
-                else if ($urPanel.length === 0) {
-                    _timeouts.urPanelLightbox[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex);
-                }
-                else {
-                    checkTimeout({ timeout: 'urPanelLightbox', toIndex });
-                    $($urPanel.children()[0]).prepend($urPanelDisabled);
-                }
-            }(1, getRandomId()));
+            const testDomElement = await isDomElementReady('#panel-container .mapUpdateRequest.panel.show');
+            if (testDomElement.error)
+                logWarning('Timed out trying to add mask to UR panel.');
+            else
+                $($('#panel-container .mapUpdateRequest.panel.show').children()[0]).prepend($urPanelDisabled);
         }
     }
 }
@@ -2846,7 +2838,7 @@ async function changeCommentList(commentListIdx, autoSwitch, refresh) {
             saveSettingsToStorage();
     }
     doSpinner(true);
-    return new Promise(resolve => { resolve(); });
+    return Promise.resolve();
 }
 
 function getCommentListInfo(commentListIdx) {
@@ -2963,193 +2955,190 @@ function checkForStaticListArray(oldVarNameStr) {
     });
 }
 
-function convertCommentListStatic(commentListIdx) {
-    return new Promise(async resolve => {
-        commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
-        const { oldVarName } = getCommentListInfo(commentListIdx);
-        const checkForStaticListArrayResult = await checkForStaticListArray(oldVarName);
-        if (checkForStaticListArrayResult.error)
-            return resolve(checkForStaticListArrayResult);
-        const oldUrcArr = window[`Urcomments${oldVarName}Array2`],
-            defaultReminderIdx = parseInt(window[`Urcomments${oldVarName}ReminderPosistion`]),
-            closedNiIdx = parseInt(window[`Urcomments${oldVarName}CloseNotIdentifiedPosistion`]),
-            data = [];
-        let entryIdx;
-        logDebug(`Converting static comment list to URC-E format for comment list: ${oldVarName}`);
-        data[0] = ['URCE'];
-        data[1] = ['2018.11.28.01'];
-        data[2] = ['TITLE|COMMENT|URSTATUS|DR|DC|IT|IA|IR|MRA|GE|TNA|IJ|MBO|WDD|ME|MR|ML|BR|MSN|ISPS|SL'];
-        if ((oldUrcArr[0].search(/<br>/gi) === -1) && (oldUrcArr[2] !== '')) {
-            data[3] = ['||GROUP TITLE||||||||||||||||||'];
-            entryIdx = 4;
+async function convertCommentListStatic(commentListIdx) {
+    commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
+    const { oldVarName } = getCommentListInfo(commentListIdx);
+    const checkForStaticListArrayResult = await checkForStaticListArray(oldVarName);
+    if (checkForStaticListArrayResult.error)
+        return Promise.resolve(checkForStaticListArrayResult);
+    const oldUrcArr = window[`Urcomments${oldVarName}Array2`],
+        defaultReminderIdx = parseInt(window[`Urcomments${oldVarName}ReminderPosistion`]),
+        closedNiIdx = parseInt(window[`Urcomments${oldVarName}CloseNotIdentifiedPosistion`]),
+        data = [];
+    let entryIdx;
+    logDebug(`Converting static comment list to URC-E format for comment list: ${oldVarName}`);
+    data[0] = ['URCE'];
+    data[1] = ['2018.11.28.01'];
+    data[2] = ['TITLE|COMMENT|URSTATUS|DR|DC|IT|IA|IR|MRA|GE|TNA|IJ|MBO|WDD|ME|MR|ML|BR|MSN|ISPS|SL'];
+    if ((oldUrcArr[0].search(/<br>/gi) === -1) && (oldUrcArr[2] !== '')) {
+        data[3] = ['||GROUP TITLE||||||||||||||||||'];
+        entryIdx = 4;
+    }
+    else {
+        entryIdx = 3;
+    }
+    for (let oldUrcArrIdx = 0; oldUrcArrIdx < oldUrcArr.length; oldUrcArrIdx += 3) {
+        if ((oldUrcArr[oldUrcArrIdx].search(/<br>/gi) > -1) || (oldUrcArr[oldUrcArrIdx + 2] === '')) {
+            oldUrcArr[oldUrcArrIdx + 2] = 'GROUP TITLE';
+            oldUrcArr[oldUrcArrIdx] = $('<div>').html(oldUrcArr[oldUrcArrIdx]).text();
         }
-        else {
-            entryIdx = 3;
-        }
-        for (let oldUrcArrIdx = 0; oldUrcArrIdx < oldUrcArr.length; oldUrcArrIdx += 3) {
-            if ((oldUrcArr[oldUrcArrIdx].search(/<br>/gi) > -1) || (oldUrcArr[oldUrcArrIdx + 2] === '')) {
-                oldUrcArr[oldUrcArrIdx + 2] = 'GROUP TITLE';
-                oldUrcArr[oldUrcArrIdx] = $('<div>').html(oldUrcArr[oldUrcArrIdx]).text();
-            }
-            let temp = `${oldUrcArr[oldUrcArrIdx]}|${oldUrcArr[oldUrcArrIdx + 1]}|`
+        let temp = `${oldUrcArr[oldUrcArrIdx]}|${oldUrcArr[oldUrcArrIdx + 1]}|`
                 + `${((oldUrcArr[oldUrcArrIdx + 2] !== '') ? oldUrcArr[oldUrcArrIdx + 2].toLowerCase() : '')}`
                 + `${((oldUrcArrIdx === defaultReminderIdx) ? '|default_is_true' : '|')}`
                 + `${((oldUrcArrIdx === closedNiIdx) ? '|default_is_true' : '|')}`;
-            for (let i = 6; i < 24; i++) {
-                if ((i !== 17) && (i !== 20))
-                    temp += ((window[`Urcomments${oldVarName}def_names`][i]) && (window[`Urcomments${oldVarName}def_names`][i].toLowerCase() === oldUrcArr[oldUrcArrIdx].toLowerCase())) ? '|default_is_true' : '|';
-            }
-            data[entryIdx] = [temp];
-            entryIdx++;
+        for (let i = 6; i < 24; i++) {
+            if ((i !== 17) && (i !== 20))
+                temp += ((window[`Urcomments${oldVarName}def_names`][i]) && (window[`Urcomments${oldVarName}def_names`][i].toLowerCase() === oldUrcArr[oldUrcArrIdx].toLowerCase())) ? '|default_is_true' : '|';
         }
-        return resolve(data);
-    });
+        data[entryIdx] = [temp];
+        entryIdx++;
+    }
+    return Promise.resolve(data);
 }
 
-function processCommentList(data) {
-    return new Promise(resolve => {
-        logDebug('Processing comment list data.');
-        if (data) {
-            const EXPECTED_FIELD_NAMES = ['TITLE', 'COMMENT', 'URSTATUS', 'DR', 'DC', 'IT', 'IA', 'IR', 'MRA', 'GE', 'TNA', 'IJ', 'MBO', 'WDD', 'ME', 'MR', 'ML', 'BR', 'MSN', 'ISPS', 'SL'],
-                outputItems = [],
-                rowObj = {},
-                findObjIndex = (array, fldName, value) => array.map(a => a[fldName]).indexOf(value),
-                checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1,
-                createRowObj = (entry, i) => {
-                    i = i || 0;
-                    if (ssFieldNames[i].trim().toLowerCase() === 'comment')
-                        rowObj[ssFieldNames[i].trim().toLowerCase()] = entry;
-                    else if (ssFieldNames[i].trim().toLowerCase() === 'title')
-                        rowObj[ssFieldNames[i].trim().toLowerCase()] = entry.trim();
-                    else
-                        rowObj[ssFieldNames[i].trim().toLowerCase()] = entry.trim().toLowerCase();
-                    i++;
-                };
-            let ssFieldNames,
-                groupDivId,
-                commentId = 0,
-                blankGroup = 0;
-            for (let entryIdx = 0; entryIdx < data.length; entryIdx++) {
-                if (entryIdx === 0) {
-                    if (data[entryIdx][0] !== 'URCE')
-                        return resolve({ error: true, text: 'Incorrect format in spreadsheet data received.' });
-                }
-                else if (entryIdx === 1) {
-                    if (SCRIPT_VERSION < data[entryIdx][0])
-                        return resolve({ error: true, text: `updateRequired|${data[entryIdx][0]}` });
-                }
-                else if (entryIdx === 2) {
-                    ssFieldNames = data[entryIdx][0].split('|').map(fldName => fldName.trim());
-                    if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length)
-                        return resolve({ error: true, text: `Expected ${EXPECTED_FIELD_NAMES.length} columns in comment definition data. Spreadsheet returned ${ssFieldNames.length}.` });
-                    if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName)))
-                        return resolve({ error: true, text: `Script expected to see the following column names in the comment definition spreadsheet:\n${EXPECTED_FIELD_NAMES.join(', ')}\nHowever, the spreadsheet returned these:\n${ssFieldNames.join(', ')}` });
-                }
-                else if (data[entryIdx][0]) {
-                    data[entryIdx][0].split('|').forEach((entry, i) => createRowObj(entry, i));
-                    if (rowObj.title !== 'URCE_REMOVED_SO_SKIP') {
-                        if (rowObj.title === 'URCE_ERROR')
-                            return resolve({ error: true, text: `There is an unknown error in the spreadsheet output. Please contact the list owner: ${getCommentListInfo(_settings.commentList).listOwner}` }); // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
-                        if (rowObj.urstatus === 'custom var') {
-                            _customReplaceVars.push({ customVar: `$${rowObj.title}$`, replaceText: rowObj.comment });
-                        }
-                        else if ((entryIdx === 3) && (rowObj.urstatus !== 'group title')) {
-                            return resolve({ error: true, text: `Row 25 on the spreadsheet must be set to "GROUP TITLE" for the URSTATUS column. Please contact the list owner: ${getCommentListInfo(_settings.commentList).listOwner}` });
-                        }
-                        else if (rowObj.urstatus === 'group title') { // Group title row. Nothing to set in the arrays, but build html.
-                            groupDivId = 'urceComments-for-';
-                            if (rowObj.title !== '') {
-                                groupDivId += rowObj.title.replace(/[^\w]+/gi, '').toLowerCase();
-                                if (rowObj.title === rowObj.title.toUpperCase()) {
-                                    if (rowObj.title.length > 30) {
-                                        rowObj.titleMouseOver = rowObj.title;
-                                        rowObj.title = `${rowObj.title.substring(0, 30)}...`;
-                                    }
-                                }
-                                else if (rowObj.title.length > 35) {
+async function processCommentList(data) {
+    logDebug('Processing comment list data.');
+    if (data) {
+        const EXPECTED_FIELD_NAMES = ['TITLE', 'COMMENT', 'URSTATUS', 'DR', 'DC', 'IT', 'IA', 'IR', 'MRA', 'GE', 'TNA', 'IJ', 'MBO', 'WDD', 'ME', 'MR', 'ML', 'BR', 'MSN', 'ISPS', 'SL'],
+            outputItems = [],
+            rowObj = {},
+            findObjIndex = (array, fldName, value) => array.map(a => a[fldName]).indexOf(value),
+            checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1,
+            createRowObj = (entry, i) => {
+                i = i || 0;
+                if (ssFieldNames[i].trim().toLowerCase() === 'comment')
+                    rowObj[ssFieldNames[i].trim().toLowerCase()] = entry;
+                else if (ssFieldNames[i].trim().toLowerCase() === 'title')
+                    rowObj[ssFieldNames[i].trim().toLowerCase()] = entry.trim();
+                else
+                    rowObj[ssFieldNames[i].trim().toLowerCase()] = entry.trim().toLowerCase();
+                i++;
+            };
+        let ssFieldNames,
+            groupDivId,
+            commentId = 0,
+            blankGroup = 0;
+        for (let entryIdx = 0; entryIdx < data.length; entryIdx++) {
+            if (entryIdx === 0) {
+                if (data[entryIdx][0] !== 'URCE')
+                    return Promise.resolve({ error: true, text: 'Incorrect format in spreadsheet data received.' });
+            }
+            else if (entryIdx === 1) {
+                if (SCRIPT_VERSION < data[entryIdx][0])
+                    return Promise.resolve({ error: true, text: `updateRequired|${data[entryIdx][0]}` });
+            }
+            else if (entryIdx === 2) {
+                ssFieldNames = data[entryIdx][0].split('|').map(fldName => fldName.trim());
+                if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length)
+                    return Promise.resolve({ error: true, text: `Expected ${EXPECTED_FIELD_NAMES.length} columns in comment definition data. Spreadsheet returned ${ssFieldNames.length}.` });
+                if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName)))
+                    return Promise.resolve({ error: true, text: `Script expected to see the following column names in the comment definition spreadsheet:\n${EXPECTED_FIELD_NAMES.join(', ')}\nHowever, the spreadsheet returned these:\n${ssFieldNames.join(', ')}` });
+            }
+            else if (data[entryIdx][0]) {
+                data[entryIdx][0].split('|').forEach((entry, i) => createRowObj(entry, i));
+                if (rowObj.title !== 'URCE_REMOVED_SO_SKIP') {
+                    if (rowObj.title === 'URCE_ERROR')
+                        return Promise.resolve({ error: true, text: `There is an unknown error in the spreadsheet output. Please contact the list owner: ${getCommentListInfo(_settings.commentList).listOwner}` }); // UH OH . This is bad. Something broke in the arrayformula on the spradsheet.
+                    if (rowObj.urstatus === 'custom var') {
+                        _customReplaceVars.push({ customVar: `$${rowObj.title}$`, replaceText: rowObj.comment });
+                    }
+                    else if ((entryIdx === 3) && (rowObj.urstatus !== 'group title')) {
+                        return Promise.resolve({ error: true, text: `Row 25 on the spreadsheet must be set to "GROUP TITLE" for the URSTATUS column. Please contact the list owner: ${getCommentListInfo(_settings.commentList).listOwner}` });
+                    }
+                    else if (rowObj.urstatus === 'group title') { // Group title row. Nothing to set in the arrays, but build html.
+                        groupDivId = 'urceComments-for-';
+                        if (rowObj.title !== '') {
+                            groupDivId += rowObj.title.replace(/[^\w]+/gi, '').toLowerCase();
+                            if (rowObj.title === rowObj.title.toUpperCase()) {
+                                if (rowObj.title.length > 30) {
                                     rowObj.titleMouseOver = rowObj.title;
-                                    rowObj.title = `${rowObj.title.substring(0, 35)}...`;
+                                    rowObj.title = `${rowObj.title.substring(0, 30)}...`;
                                 }
                             }
-                            else {
-                                groupDivId += `blankGroup${(++blankGroup)}`;
+                            else if (rowObj.title.length > 35) {
+                                rowObj.titleMouseOver = rowObj.title;
+                                rowObj.title = `${rowObj.title.substring(0, 35)}...`;
                             }
-                            const collapsed = (_settings.commentListCollapses.hasOwnProperty(_settings.commentList)
+                        }
+                        else {
+                            groupDivId += `blankGroup${(++blankGroup)}`;
+                        }
+                        const collapsed = (_settings.commentListCollapses.hasOwnProperty(_settings.commentList)
                                 && _settings.commentListCollapses[_settings.commentList].hasOwnProperty(`${groupDivId}_body`)
                                 && (_settings.commentListCollapses[_settings.commentList][`${groupDivId}_body`] === true))
-                                    ? 'collapse'
-                                    : '',
-                                chevron = (collapsed === 'collapse') ? 'fa-chevron-right' : 'fa-chevron-down';
-                            outputItems.push({
-                                chevron,
-                                collapsed,
-                                groupDivId,
-                                items: [],
-                                name: rowObj.title,
-                                title: rowObj.titleMouseOver
-                            });
-                            _commentList[commentId] = { title: rowObj.title, comment: '', urstatus: 'GROUP TITLE' };
-                            commentId++;
+                                ? 'collapse'
+                                : '',
+                            chevron = (collapsed === 'collapse') ? 'fa-chevron-right' : 'fa-chevron-down';
+                        outputItems.push({
+                            chevron,
+                            collapsed,
+                            groupDivId,
+                            items: [],
+                            name: rowObj.title,
+                            title: rowObj.titleMouseOver
+                        });
+                        _commentList[commentId] = { title: rowObj.title, comment: '', urstatus: 'GROUP TITLE' };
+                        commentId++;
+                    }
+                    else { // SHOULD be a normal comments row, push values to arrays and build html.
+                        if ((rowObj.urstatus !== 'solved') && (rowObj.urstatus !== 'notidentified') && (rowObj.urstatus !== 'open') && (rowObj.urstatus !== 'blank line'))
+                            return Promise.resolve({ error: true, text: `Your current selected list does not have a status set for ${rowObj.title}. Please contact list owner: ${getCommentListInfo(_settings.commentList).listOwner}` });
+                        _commentList[commentId] = { title: rowObj.title, comment: rowObj.comment, urstatus: rowObj.urstatus };
+                        if (Object.values(rowObj).indexOf('default_is_true') > -1) {
+                            const drIdx = ssFieldNames.indexOf('DR'),
+                                splitRowDefaultCommentsBoolean = Object.values(rowObj).slice(drIdx);
+                            for (let boolIdx = 0; boolIdx < splitRowDefaultCommentsBoolean.length; boolIdx++) {
+                                if (splitRowDefaultCommentsBoolean[boolIdx].toLowerCase() === 'default_is_true')
+                                    _defaultComments[ssFieldNames[(boolIdx + drIdx)].toLowerCase()].commentNum = commentId;
+                            }
                         }
-                        else { // SHOULD be a normal comments row, push values to arrays and build html.
-                            if ((rowObj.urstatus !== 'solved') && (rowObj.urstatus !== 'notidentified') && (rowObj.urstatus !== 'open') && (rowObj.urstatus !== 'blank line'))
-                                return resolve({ error: true, text: `Your current selected list does not have a status set for ${rowObj.title}. Please contact list owner: ${getCommentListInfo(_settings.commentList).listOwner}` });
-                            _commentList[commentId] = { title: rowObj.title, comment: rowObj.comment, urstatus: rowObj.urstatus };
-                            if (Object.values(rowObj).indexOf('default_is_true') > -1) {
-                                const drIdx = ssFieldNames.indexOf('DR'),
-                                    splitRowDefaultCommentsBoolean = Object.values(rowObj).slice(drIdx);
-                                for (let boolIdx = 0; boolIdx < splitRowDefaultCommentsBoolean.length; boolIdx++) {
-                                    if (splitRowDefaultCommentsBoolean[boolIdx].toLowerCase() === 'default_is_true')
-                                        _defaultComments[ssFieldNames[(boolIdx + drIdx)].toLowerCase()].commentNum = commentId;
-                                }
-                            }
-                            let linkClass;
-                            let divDoubleClickId;
-                            let divDoubleClickStyle = 'display:initial;';
-                            if (rowObj.urstatus === 'solved') {
-                                linkClass = 'URCE-solvedLink';
-                                divDoubleClickId = 'URCE-divDoubleClickSolved';
-                                if (!_settings.doubleClickLinkSolvedComments)
-                                    divDoubleClickStyle = 'display:none;';
-                            }
-                            else if (rowObj.urstatus === 'notidentified') {
-                                linkClass = 'URCE-niLink';
-                                divDoubleClickId = 'URCE-divDoubleClickNi';
-                                if (!_settings.doubleClickLinkNiComments)
-                                    divDoubleClickStyle = 'display:none;';
-                            }
-                            else {
-                                linkClass = (rowObj.urstatus === 'blank line') ? 'URCE-blankLine' : 'URCE-openLink';
-                                divDoubleClickId = (rowObj.title !== '') ? 'URCE-divDoubleClickOpen' : 'URCE-divDoubleClickOpen-Hidden';
-                                if (!_settings.doubleClickLinkOpenComments || (rowObj.urstatus === 'blank line'))
-                                    divDoubleClickStyle = 'display:none;';
-                            }
-                            const idx = findObjIndex(outputItems, 'groupDivId', groupDivId);
-                            outputItems[idx].items.push({
-                                linkClass,
-                                commentId,
-                                title: formatText(rowObj.comment, false, false, undefined),
-                                name: rowObj.title,
-                                divDoubleClickId,
-                                divDoubleClickStyle,
-                                divDoubleClickTitle: `${I18n.t('urce.common.DoubleClickTitle')}:\n${formatText(rowObj.comment, false, false, undefined)}`
-                            });
-                            commentId++;
+                        let linkClass;
+                        let divDoubleClickId;
+                        let divDoubleClickStyle = 'display:initial;';
+                        if (rowObj.urstatus === 'solved') {
+                            linkClass = 'URCE-solvedLink';
+                            divDoubleClickId = 'URCE-divDoubleClickSolved';
+                            if (!_settings.doubleClickLinkSolvedComments)
+                                divDoubleClickStyle = 'display:none;';
                         }
+                        else if (rowObj.urstatus === 'notidentified') {
+                            linkClass = 'URCE-niLink';
+                            divDoubleClickId = 'URCE-divDoubleClickNi';
+                            if (!_settings.doubleClickLinkNiComments)
+                                divDoubleClickStyle = 'display:none;';
+                        }
+                        else {
+                            linkClass = (rowObj.urstatus === 'blank line') ? 'URCE-blankLine' : 'URCE-openLink';
+                            divDoubleClickId = (rowObj.title !== '') ? 'URCE-divDoubleClickOpen' : 'URCE-divDoubleClickOpen-Hidden';
+                            if (!_settings.doubleClickLinkOpenComments || (rowObj.urstatus === 'blank line'))
+                                divDoubleClickStyle = 'display:none;';
+                        }
+                        const idx = findObjIndex(outputItems, 'groupDivId', groupDivId);
+                        outputItems[idx].items.push({
+                            linkClass,
+                            commentId,
+                            title: formatText(rowObj.comment, false, false, undefined),
+                            name: rowObj.title,
+                            divDoubleClickId,
+                            divDoubleClickStyle,
+                            divDoubleClickTitle: `${I18n.t('urce.common.DoubleClickTitle')}:\n${formatText(rowObj.comment, false, false, undefined)}`
+                        });
+                        commentId++;
                     }
                 }
             }
-            if (outputItems.length > 0) {
-                const urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '';
-                let htmlOut = '';
-                outputItems.forEach(item => {
-                    htmlOut += `<fieldset id="${item.groupDivId}" class="URCE-field ${urStyle}">`
+        }
+        if (outputItems.length > 0) {
+            const urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '';
+            let htmlOut = '';
+            outputItems.forEach(item => {
+                htmlOut += `<fieldset id="${item.groupDivId}" class="URCE-field ${urStyle}">`
                     + `<legend id="${item.groupDivId}_legend" class="URCE-legend ${urStyle}"><i class="fa fa-fw ${item.chevron} URCE-chevron"></i>`
                     + `<span class="URCE-span"${(item.title ? ` title="${item.title}` : '')}">${item.name}</span></legend>`
                     + `<div id="${groupDivId}_body" class="${item.collapsed} URCE-group_body ${urStyle}">`;
-                    if (item.items.length > 0) {
-                        for (let idx = 0; idx < item.items.length; idx++) {
-                            htmlOut += `<div class="URCE-divComment hover expand ${item.items[idx].linkClass}" style="position:relative;">`
+                if (item.items.length > 0) {
+                    for (let idx = 0; idx < item.items.length; idx++) {
+                        htmlOut += `<div class="URCE-divComment hover expand ${item.items[idx].linkClass}" style="position:relative;">`
                                 + '         <div style="width:225px;display:inline-flex;">'
                                 + `             <a id="urce-cid-${item.items[idx].commentId}" class="URCE-Comments ${item.items[idx].linkClass} URCE-Comments" title="${item.items[idx].title}">${item.items[idx].name}</a>`
                                 + '         </div>'
@@ -3157,66 +3146,61 @@ function processCommentList(data) {
                                 + `             <img id="urce-img-cid-${item.items[idx].commentId}" src="${DOUBLE_CLICK_ICON}" class="URCE-doubleClickIcon"></img>`
                                 + '         </div>'
                                 + '</div>';
-                        }
                     }
-                    htmlOut += '</div></fieldset>';
-                });
-                $('#_commentList').append(htmlOut);
-                $('legend[id$="_legend"]').off().on('click', function () {
-                    $($(this).children()[0]).toggleClass('fa-chevron-down fa-chevron-right');
-                    $($(this).siblings()[0]).toggleClass('collapse');
-                    saveSettingsToStorage();
-                });
-                $('a[id^="urce-cid-"]').off().on('click', function () {
-                    handleClickedComment(parseInt(this.id.replace('urce-cid-', '')), false);
-                });
-                $('img[id^="urce-img-cid-"]').off().on('dblclick', function () {
-                    handleClickedComment(parseInt(this.id.replace('urce-img-cid-', '')), true);
-                });
-            }
-            else {
-                return resolve({ error: true, text: `There is an error in the output. Please contact the list owner: ${getCommentListInfo(_settings.commentList).listOwner}` });
-            }
+                }
+                htmlOut += '</div></fieldset>';
+            });
+            $('#_commentList').append(htmlOut);
+            $('legend[id$="_legend"]').off().on('click', function () {
+                $($(this).children()[0]).toggleClass('fa-chevron-down fa-chevron-right');
+                $($(this).siblings()[0]).toggleClass('collapse');
+                saveSettingsToStorage();
+            });
+            $('a[id^="urce-cid-"]').off().on('click', function () {
+                handleClickedComment(parseInt(this.id.replace('urce-cid-', '')), false);
+            });
+            $('img[id^="urce-img-cid-"]').off().on('dblclick', function () {
+                handleClickedComment(parseInt(this.id.replace('urce-img-cid-', '')), true);
+            });
         }
         else {
-            return resolve({ error: true, text: 'No data passed to the JSON processing function.' });
+            return Promise.resolve({ error: true, text: `There is an error in the output. Please contact the list owner: ${getCommentListInfo(_settings.commentList).listOwner}` });
         }
-        return resolve({ error: false });
-    });
+    }
+    else {
+        return Promise.resolve({ error: true, text: 'No data passed to the JSON processing function.' });
+    }
+    return Promise.resolve({ error: false });
 }
 
-function commentListAsync(commentListIdx) {
-    return new Promise(async resolve => {
-        commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
-        const commentListInfo = getCommentListInfo(commentListIdx);
-        logDebug(`Beginning comment list async for comment list: ${commentListInfo.name}`);
-        const data = await $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${((commentListIdx === 1001) ? _settings.customSsId : URCE_SPREADSHEET_ID)}/values/${commentListInfo.gSheetRange}?key=${URCE_API_KEY}`)
-            .fail(response => resolve({ error: true, text: `Spreadsheet call failed. Code: ${response.status} - Text: ${response.statusText}` }));
-        if (data.values.length > 0)
-            resolve(data.values);
-        else
-            resolve({ error: true, text: 'No comments found in spreadsheet sheet.' });
-    });
+async function commentListAsync(commentListIdx) {
+    commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
+    const commentListInfo = getCommentListInfo(commentListIdx);
+    logDebug(`Beginning comment list async for comment list: ${commentListInfo.name}`);
+    const data = await $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${((commentListIdx === 1001) ? _settings.customSsId : URCE_SPREADSHEET_ID)}/values/${commentListInfo.gSheetRange}?key=${URCE_API_KEY}`)
+        .fail(response => Promise.resolve({ error: true, text: `Spreadsheet call failed. Code: ${response.status} - Text: ${response.statusText}` }));
+    if (data.values.length > 0)
+        return Promise.resolve(data.values);
+    return Promise.resolve({ error: true, text: 'No comments found in spreadsheet sheet.' });
 }
 
-function buildCommentList(commentListIdx, phase, autoSwitch) {
-    return new Promise(async resolve => {
-        doSpinner(false);
-        commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
-        const commentListInfo = getCommentListInfo(commentListIdx);
-        let data,
-            processCommentListResult;
-        Object.values(_defaultComments).forEach(a => { a.commentNum = null; });
-        logDebug(`Building comment list for: ${commentListInfo.name}`);
-        if (phase !== 'init')
-            maskBoxes(`${I18n.t('urce.prompts.SwitchingCommentLists')}.<br>${I18n.t('urce.common.PleaseWait')}.`, false, phase, (_selUr.urId > 0));
-        let htmlOut = `<div class="URCE-commentListName">${I18n.t('urce.common.CommentList')}: `
+async function buildCommentList(commentListIdx, phase, autoSwitch) {
+    doSpinner(false);
+    commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
+    const commentListInfo = getCommentListInfo(commentListIdx);
+    let data,
+        processCommentListResult;
+    Object.values(_defaultComments).forEach(a => { a.commentNum = null; });
+    logDebug(`Building comment list for: ${commentListInfo.name}`);
+    if (phase !== 'init')
+        maskBoxes(`${I18n.t('urce.prompts.SwitchingCommentLists')}.<br>${I18n.t('urce.common.PleaseWait')}.`, false, phase, (_selUr.urId > 0));
+    let htmlOut = `<div class="URCE-commentListName">${I18n.t('urce.common.CommentList')}: `
             + `<select id="_selcurrentCommentList" title="${I18n.t('urce.common.CurrentCommentListTitle')}">`;
-        _commentLists.forEach(cList => {
-            if (cList.status !== 'disabled')
-                htmlOut += `<option value="${cList.idx}"${((cList.idx === commentListIdx) ? ' selected' : '')}>${(!autoSwitch ? cList.name : `${cList.name} (${I18n.t('urce.common.AutoSwitched')})`)}`;
-        });
-        htmlOut += '</select>'
+    _commentLists.forEach(cList => {
+        if (cList.status !== 'disabled')
+            htmlOut += `<option value="${cList.idx}"${((cList.idx === commentListIdx) ? ' selected' : '')}>${(!autoSwitch ? cList.name : `${cList.name} (${I18n.t('urce.common.AutoSwitched')})`)}`;
+    });
+    htmlOut += '</select>'
             + `<div id="restrictionsEnforcedWarning" style="float:right;padding-top:8px;color:red;font-size:16px;${(_restrictionsEnforcedTitle ? '' : 'display:none;')}">`
             + `     <i class="fa fa-exclamation-triangle" aria-hidden="true"${(_restrictionsEnforcedTitle ? ` title="${_restrictionsEnforcedTitle}"` : '')}></i>`
             + '</div></div>'
@@ -3229,71 +3213,70 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
             + '     <div style="display:inline;"> : </div>'
             + `     <div id="URCE-collapseAllComments" class="URCE-expandCollapseAllItem">${I18n.t('urce.common.CollapseAll')}</div>`
             + '</div>';
-        $('#_commentList').empty().append(htmlOut);
-        _restrictionsEnforcedTitle = undefined;
-        $('#_selcurrentCommentList').off().on('change', function () {
-            if ((parseInt(this.value) === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
-                $(this).val(_currentCommentList);
-                WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
+    $('#_commentList').empty().append(htmlOut);
+    _restrictionsEnforcedTitle = undefined;
+    $('#_selcurrentCommentList').off().on('change', function () {
+        if ((parseInt(this.value) === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
+            $(this).val(_currentCommentList);
+            WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
+        }
+        else {
+            changeCommentList(parseInt(this.value), false, true);
+        }
+    });
+    $('#_cbenableAppendMode').off().on('change', function () {
+        _settings[$(this)[0].id.substr(3)] = isChecked(this);
+        if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length > 0)
+            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').css('background-color', (isChecked(this) ? 'peachpuff' : ''));
+        saveSettingsToStorage();
+    });
+    $('#URCE-expandAllComments, #URCE-collapseAllComments').off().on('click', function () {
+        const $legends = $('legend[id^="urceComments-for"');
+        for (let idx = 0; idx < $legends.length; idx++) {
+            if (this.id === 'URCE-expandAllComments') {
+                if ($legends[idx].nextElementSibling.className.indexOf('collapse') > -1)
+                    $($legends[idx]).click();
             }
-            else {
-                changeCommentList(parseInt(this.value), false, true);
+            else if (this.id === 'URCE-collapseAllComments') {
+                if ($legends[idx].nextElementSibling.className.indexOf('collapse') === -1)
+                    $($legends[idx]).click();
             }
-        });
-        $('#_cbenableAppendMode').off().on('change', function () {
-            _settings[$(this)[0].id.substr(3)] = this.checked;
-            if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length > 0)
-                $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').css('background-color', (this.checked ? 'peachpuff' : ''));
-            saveSettingsToStorage();
-        });
-        $('#URCE-expandAllComments, #URCE-collapseAllComments').off().on('click', function () {
-            const $legends = $('legend[id^="urceComments-for"');
-            for (let idx = 0; idx < $legends.length; idx++) {
-                if (this.id === 'URCE-expandAllComments') {
-                    if ($legends[idx].nextElementSibling.className.indexOf('collapse') > -1)
-                        $($legends[idx]).click();
-                }
-                else if (this.id === 'URCE-collapseAllComments') {
-                    if ($legends[idx].nextElementSibling.className.indexOf('collapse') === -1)
-                        $($legends[idx]).click();
-                }
-            }
-        });
-        _commentList = [];
-        _customReplaceVars = [];
-        _currentCommentList = commentListIdx;
-        processPerCommentListSettings(commentListIdx);
-        try {
-            data = (commentListInfo.type === 'static') ? await convertCommentListStatic(commentListIdx) : await commentListAsync(commentListIdx);
         }
-        catch (error) {
-            data.error = { error: true, text: error.message };
-        }
-        if (data.error) {
-            doSpinner(true);
-            return resolve({
-                error: true, text: data.text, staticList: (commentListInfo.type === 'static'), phase, maskUrPanel: (_selUr.urId > 0), commentList: commentListIdx
-            });
-        }
-        try {
-            processCommentListResult = await processCommentList(data);
-        }
-        catch (error) {
-            processCommentListResult = { error: true, text: error.message };
-        }
-        if (processCommentListResult.error) {
-            doSpinner(true);
-            return resolve({
-                error: true, text: processCommentListResult.text, staticList: (commentListInfo.type === 'static'), phase, maskUrPanel: (_selUr.urId > 0), commentList: commentListIdx
-            });
-        }
-        _commentListLoaded = true;
+    });
+    _commentList = [];
+    _customReplaceVars = [];
+    _currentCommentList = commentListIdx;
+    processPerCommentListSettings(commentListIdx);
+    try {
+        data = (commentListInfo.type === 'static') ? await convertCommentListStatic(commentListIdx) : await commentListAsync(commentListIdx);
+    }
+    catch (error) {
+        data.error = { error: true, text: error.message };
+    }
+    if (data.error) {
         doSpinner(true);
-        if (phase !== 'init')
-            maskBoxes(null, true, phase, (_selUr.urId > 0));
-        return resolve({
-            error: false, staticList: (commentListInfo.type === 'static'), phase, maskUrPanel: (_selUr.urId > 0), commentList: commentListIdx
+        return Promise.resolve({
+            error: true, text: data.text, staticList: (commentListInfo.type === 'static'), phase, maskUrPanel: (_selUr.urId > 0), commentList: commentListIdx
         });
+    }
+    try {
+        processCommentListResult = await processCommentList(data);
+    }
+    catch (error) {
+        processCommentListResult = { error: true, text: error.message };
+    }
+    if (processCommentListResult.error) {
+        doSpinner(true);
+        return Promise.resolve({
+            error: true, text: processCommentListResult.text, staticList: (commentListInfo.type === 'static'), phase, maskUrPanel: (_selUr.urId > 0), commentList: commentListIdx
+        });
+    }
+    _commentListLoaded = true;
+    doSpinner(true);
+    if (phase !== 'init')
+        maskBoxes(null, true, phase, (_selUr.urId > 0));
+    return Promise.resolve({
+        error: false, staticList: (commentListInfo.type === 'static'), phase, maskUrPanel: (_selUr.urId > 0), commentList: commentListIdx
     });
 }
 
@@ -3301,6 +3284,8 @@ function processPerCommentListSettings(commentListIdx) {
     const defaultPerCommentListSettings = {
         autoSendReminders: _settings.autoSendReminders,
         autoSendReminders_useDefault: true,
+        autoSendRemindersExceptTagged: _settings.autoSendRemindersExceptTagged,
+        autoSendRemindersExceptTagged_useDefault: true,
         autoSetNewUrComment: _settings.autoSetNewUrComment,
         autoSetNewUrComment_useDefault: true,
         autoSetNewUrCommentSlur: _settings.autoSetNewUrCommentSlur,
@@ -3344,6 +3329,13 @@ function processPerCommentListSettings(commentListIdx) {
             + `         <div class="URCE-divWarning URCE-divWarningPre">(<div class="URCE-divWarning URCE-divWarningTitle" title="${I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}">${I18n.t('urce.prefs.AutoSendRemindersWarning')}</div><div class="URCE-divWarning">)</div></div>`
             + '      </div>'
             + `      <input type="checkbox" style="right:1px;" id="_cbperCommentList_autoSendReminders_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSendReminders_useDefault) ? 'checked="true"' : '')}>`
+            + '   </div>'
+            + '   <div>'
+            + '      <div style="width:calc(100% - 18px); display:inline-block; padding-left:15px; font-style:italic;">'
+            + `         <input type="checkbox" id="_cbperCommentList_autoSendRemindersExceptTagged" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSendRemindersExceptTagged_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle')}" ${((perCListSettings.autoSendRemindersExceptTagged) ? 'checked="true"' : '')} ${((perCListSettings.autoSendRemindersExceptTagged_useDefault) ? 'disabled="true"' : '')}>`
+            + `         <label for="_cbperCommentList_autoSendRemindersExceptTagged" title="${I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSendRemindersExceptTagged_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSendRemindersExceptTagged')}</label>`
+            + '      </div>'
+            + `      <input type="checkbox" style="right:1px;" id="_cbperCommentList_autoSendRemindersExceptTagged_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSendRemindersExceptTagged_useDefault) ? 'checked="true"' : '')}>`
             + '   </div>'
             + '   <div>'
             + '      <div style="width:calc(100% - 18px); display:inline-block">'
@@ -3531,6 +3523,7 @@ async function initBackgroundTasks(status, phase) {
         WazeWrap.Events.register('mouseup', null, mouseUp);
         WazeWrap.Events.register('change:mode', null, invokeModeChange);
         WazeWrap.Events.register('change:isImperial', null, invokeModeChange);
+        W.model.mapUpdateRequests.on('objectsadded', mUrsAdded);
         W.model.states.on('objectsadded', checkRestrictions);
         W.model.countries.on('objectsadded', checkRestrictions);
     }
@@ -3566,7 +3559,7 @@ async function initBackgroundTasks(status, phase) {
         W.model.states.off('objectsadded', checkRestrictions);
         W.model.countries.off('objectsadded', checkRestrictions);
     }
-    return new Promise(resolve => { resolve({ error: false }); });
+    return Promise.resolve({ error: false });
 }
 
 function injectCss() {
@@ -3884,15 +3877,19 @@ function initSettingsTab() {
             }
             let rVal = `<input type="checkbox" id="_cb${setting}" urceprefs="${urceprefs}" class="urceSettingsCheckbox" title="${translationTitle}"${((_settings[setting] === true) ? ' checked' : '')}>`
                 + `<label for="_cb${setting}" urceprefs="${urceprefs}" title="${translationTitle}" class="URCE-label">${translationName}</label>`;
-            if (setting === 'autoSendReminders')
-                rVal += `<div class="URCE-divWarning URCE-divWarningPre">(<div class="URCE-divWarning URCE-divWarningTitle" title="${I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}">${I18n.t('urce.prefs.AutoSendRemindersWarning')}</div><div class="URCE-divWarning">)</div></div>`;
+            if (setting === 'autoSendReminders') {
+                rVal += `<div class="URCE-divWarning URCE-divWarningPre">(<div class="URCE-divWarning URCE-divWarningTitle" title="${I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}">${I18n.t('urce.prefs.AutoSendRemindersWarning')}</div><div class="URCE-divWarning">)</div></div>`
+                + `<div style="padding-left:15px; font-style:italic;"><input type="checkbox" id="_cbautoSendRemindersExceptTagged" urceprefs="${urceprefs}" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle')}"${((_settings.autoSendRemindersExceptTagged === true) ? ' checked' : '')}>`
+                + `<label for="_cbautoSendRemindersExceptTagged" urceprefs="${urceprefs}" title="${I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle')}" class="URCE-label">${I18n.t('urce.prefs.AutoSendRemindersExceptTagged')}</label></div>`;
+            }
             if (setting === 'disableFilteringAboveZoom')
                 rVal += `<div class="URCE-divDaysInline"><input type="number" id="_numdisableFilteringAboveZoomLevel" class="URCE-daysInput urceSettingsNumberBox" urceprefs="filtering" min="0" max="10" step="1" value="${_settings.disableFilteringAboveZoomLevel}" title=${translationTitle}"></div>`;
             if (setting === 'disableFilteringBelowZoom')
                 rVal += `<div class="URCE-divDaysInline"><input type="number" id="_numdisableFilteringBelowZoomLevel" class="URCE-daysInput urceSettingsNumberBox" urceprefs="filtering" min="0" max="10" step="1" value="${_settings.disableFilteringBelowZoomLevel}" title=${translationTitle}"></div>`;
             if (setting === 'hideByStatusClosedBy')
                 rVal += `<div class="URCE-divDaysInline"><input type="text" id="_texthideByStatusClosedByUsers" class="urceSettingsTextBox" style="width:150px;height:20px" urceprefs="filtering" value="${_settings.hideByStatusClosedByUsers}" title="${translationTitle}"></div>`;
-            rVal += '<br>';
+            if (setting !== 'autoSendReminders')
+                rVal += '<br>';
             return rVal;
         },
         // eslint-disable-next-line arrow-body-style
@@ -4200,25 +4197,25 @@ function initSettingsTab() {
         if (settingName === 'disableDoneNextButtons')
             otherSettingName = 'replaceNextWithDoneButton';
         if (otherSettingName !== null) {
-            if (this.checked && isChecked(`#_cb${otherSettingName}`)) {
+            if (isChecked(this) && isChecked(`#_cb${otherSettingName}`)) {
                 _settings[otherSettingName] = false;
                 $(`#_cb${otherSettingName}`).prop('checked', false);
             }
         }
         if (settingName === 'disableDoneNextButtons') {
-            if (this.checked)
+            if (isChecked(this))
                 $('#panel-container .content .navigation').css({ display: 'none' });
             else
                 $('#panel-container .content .navigation').css({ display: 'block' });
         }
         if (settingName === 'hideZoomOutLinks') {
-            if (this.checked)
+            if (isChecked(this))
                 $('div#_divZoomOutLinks').hide();
             else
                 $('div#_divZoomOutLinks').show();
         }
         if (settingName === 'unstackMarkers') {
-            if (this.checked)
+            if (isChecked(this))
                 $('[urceprefs$="-unstack"]').prop('disabled', false).removeClass('urceDisabled');
             else
                 $('[urceprefs$="-unstack"]').prop('disabled', true).addClass('urceDisabled');
@@ -4291,13 +4288,13 @@ function initSettingsTab() {
             }
         }
         if (urcePrefs === 'markerMaster') {
-            if (!this.checked)
+            if (!isChecked(this))
                 $('[urceprefs=marker]').prop('disabled', true).addClass('urceDisabled');
             else
                 $('[urceprefs=marker]').prop('disabled', false).removeClass('urceDisabled');
         }
         if (urcePrefs === 'filteringMaster') {
-            if (!this.checked) {
+            if (!isChecked(this)) {
                 $('[urceprefs=filtering]').prop('disabled', true).addClass('urceDisabled');
                 $('#urceUrFilteringToggleBtn').css('color', '#ccc');
             }
@@ -4306,13 +4303,13 @@ function initSettingsTab() {
                 $('#urceUrFilteringToggleBtn').css('color', '#00bd00');
             }
         }
-        _settings[settingName] = this.checked;
-        if (isChecked($(`input[id="_cbperCommentList_${settingName}_useDefault"]`)) && (isChecked($(`input[id="_cbperCommentList_${settingName}"]`)) !== this.checked))
-            $(`input[id="_cbperCommentList_${settingName}"]`).prop('checked', this.checked);
+        _settings[settingName] = isChecked(this);
+        if (isChecked($(`input[id="_cbperCommentList_${settingName}_useDefault"]`)) && (isChecked($(`input[id="_cbperCommentList_${settingName}"]`)) !== isChecked(this)))
+            $(`input[id="_cbperCommentList_${settingName}"]`).prop('checked', isChecked(this));
         Object.values(_settings.perCommentListSettings).forEach(arr => {
             if (arr[`${settingName}_useDefault`]) {
-                if (arr[settingName] !== this.checked)
-                    arr[settingName] = this.checked;
+                if (arr[settingName] !== isChecked(this))
+                    arr[settingName] = isChecked(this);
             }
         });
         saveSettingsToStorage();
@@ -4437,171 +4434,165 @@ function initGui() {
         new WazeWrap.Interface.Tab('URC-E', htmlOut, initTab, null);
     $('div#sidepanel-urc-e').width('295px');
     showScriptInfoAlert();
-    return new Promise(resolve => { resolve({ error: false }); });
+    return Promise.resolve({ error: false });
 }
 
-function initCommentLists() {
+async function initCommentLists() {
     logDebug('Initializing available comment lists.');
-    return new Promise(async resolve => {
-        let errorText,
-            data;
-        try {
-            data = await $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/CommentLists!A3:G?key=${URCE_API_KEY}`).fail(response => {
-                errorText = `Spreadsheet call failed. Code: ${response.status} - Text: ${response.responseText}`;
-            });
-        }
-        catch (error) {
-            if (!errorText)
-                errorText = `Spreadsheet call failed. Code: ${error.status} - Text: ${error.responseText}`;
-        }
-        if (data && data.values.length > 0) {
-            const EXPECTED_FIELD_NAMES = ['idx', 'name', 'status', 'type', 'oldVarName', 'Prefix', 'listOwner'],
-                checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
-            let ssFieldNames;
-            for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
-                if (entryIdx === 0) {
-                    if (SCRIPT_VERSION < data.values[entryIdx][0]) {
-                        errorText = `updateRequired|${data.values[entryIdx][0]}`;
-                        break;
-                    }
-                }
-                else if (entryIdx === 1) {
-                    ssFieldNames = data.values[entryIdx].map(fldName => fldName.trim());
-                    if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length)
-                        errorText = `Expected ${EXPECTED_FIELD_NAMES.length} columns in comment lists data. Spreadsheet returned ${ssFieldNames.length}.`;
-                    else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName)))
-                        errorText = `Script expected to see the following column names in the comment definition spreadsheet:\n${EXPECTED_FIELD_NAMES.join(', ')}\nHowever, the spreadsheet returned these:\n${ssFieldNames.join(', ')}`;
-                    if (errorText)
-                        break;
-                }
-                else {
-                    const output = Object.create(null);
-                    for (let valIdx = 0; valIdx < data.values[entryIdx].length; valIdx++) {
-                        if (ssFieldNames[valIdx] === 'idx')
-                            output[ssFieldNames[valIdx]] = parseInt(data.values[entryIdx][valIdx]);
-                        else if (ssFieldNames[valIdx] === 'Prefix')
-                            output.gSheetRange = `${data.values[entryIdx][valIdx]}_Output_(do_not_edit)!A1:A`;
-                        else
-                            output[ssFieldNames[valIdx]] = data.values[entryIdx][valIdx];
-                    }
-                    _commentLists.push(output);
+    let errorText,
+        data;
+    try {
+        data = await $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/CommentLists!A3:G?key=${URCE_API_KEY}`).fail(response => {
+            errorText = `Spreadsheet call failed. Code: ${response.status} - Text: ${response.responseText}`;
+        });
+    }
+    catch (error) {
+        if (!errorText)
+            errorText = `Spreadsheet call failed. Code: ${error.status} - Text: ${error.responseText}`;
+    }
+    if (data && data.values.length > 0) {
+        const EXPECTED_FIELD_NAMES = ['idx', 'name', 'status', 'type', 'oldVarName', 'Prefix', 'listOwner'],
+            checkFieldNames = fldName => ssFieldNames.indexOf(fldName) > -1;
+        let ssFieldNames;
+        for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
+            if (entryIdx === 0) {
+                if (SCRIPT_VERSION < data.values[entryIdx][0]) {
+                    errorText = `updateRequired|${data.values[entryIdx][0]}`;
+                    break;
                 }
             }
-            if (!errorText)
-                _commentLists.sort(dynamicSort('name'));
+            else if (entryIdx === 1) {
+                ssFieldNames = data.values[entryIdx].map(fldName => fldName.trim());
+                if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length)
+                    errorText = `Expected ${EXPECTED_FIELD_NAMES.length} columns in comment lists data. Spreadsheet returned ${ssFieldNames.length}.`;
+                else if (!EXPECTED_FIELD_NAMES.every(fldName => checkFieldNames(fldName)))
+                    errorText = `Script expected to see the following column names in the comment definition spreadsheet:\n${EXPECTED_FIELD_NAMES.join(', ')}\nHowever, the spreadsheet returned these:\n${ssFieldNames.join(', ')}`;
+                if (errorText)
+                    break;
+            }
+            else {
+                const output = Object.create(null);
+                for (let valIdx = 0; valIdx < data.values[entryIdx].length; valIdx++) {
+                    if (ssFieldNames[valIdx] === 'idx')
+                        output[ssFieldNames[valIdx]] = parseInt(data.values[entryIdx][valIdx]);
+                    else if (ssFieldNames[valIdx] === 'Prefix')
+                        output.gSheetRange = `${data.values[entryIdx][valIdx]}_Output_(do_not_edit)!A1:A`;
+                    else
+                        output[ssFieldNames[valIdx]] = data.values[entryIdx][valIdx];
+                }
+                _commentLists.push(output);
+            }
         }
-        else {
-            errorText = errorText || 'No lists available.';
-        }
-        if (errorText)
-            logWarning(errorText);
-        if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1)) {
-            _commentLists.push({
-                idx: 1, name: 'Custom', status: 'enabled', type: 'static', oldVarName: 'Custom', listOwner: 'Custom', gSheetRange: ''
-            });
-            _commentLists.push({
-                idx: 3, name: 'USA - SER', status: 'enabled', type: 'static', oldVarName: 'USA_Southeast', listOwner: 'itzwolf', gSheetRange: ''
-            });
-            return resolve({ error: false });
-        }
-        return resolve({ error: (errorText !== undefined), text: errorText });
-    });
+        if (!errorText)
+            _commentLists.sort(dynamicSort('name'));
+    }
+    else {
+        errorText = errorText || 'No lists available.';
+    }
+    if (errorText)
+        logWarning(errorText);
+    if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1)) {
+        _commentLists.push({
+            idx: 1, name: 'Custom', status: 'enabled', type: 'static', oldVarName: 'Custom', listOwner: 'Custom', gSheetRange: ''
+        });
+        _commentLists.push({
+            idx: 3, name: 'USA - SER', status: 'enabled', type: 'static', oldVarName: 'USA_Southeast', listOwner: 'itzwolf', gSheetRange: ''
+        });
+        return Promise.resolve({ error: false });
+    }
+    return Promise.resolve({ error: (errorText !== undefined), text: errorText });
 }
 
-function initAutoSwitchArrays() {
+async function initAutoSwitchArrays() {
     logDebug('Initializing auto switch setup.');
-    return new Promise(async resolve => {
-        let errorText,
-            data;
-        try {
-            data = await $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/CommentLists_AutoSwitch!A3:ZZ?majorDimension=COLUMNS&key=${URCE_API_KEY}`).fail(response => {
-                errorText = `Spreadsheet call failed. Code: ${response.status} - Text: ${response.responseText}`;
-            });
-        }
-        catch (error) {
-            if (!errorText)
-                errorText = `Spreadsheet call failed. Code: ${error.status} - Text: ${error.responseText}`;
-        }
-        if (data && data.values.length > 0) {
-            for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
-                if (entryIdx === 0 && SCRIPT_VERSION < data.values[entryIdx][0]) {
-                    errorText = `updateRequired|${data.values[entryIdx][0]}`;
-                    break;
-                }
-                if (data.values[entryIdx].length > 3) {
-                    const commentListNum = parseInt(data.values[entryIdx][2]);
-                    for (let idx = 3; idx < data.values[entryIdx].length; idx++) {
-                        const values = data.values[entryIdx][idx].split('.');
-                        if ((values[0] === 'state') && !_autoSwitch[values[1]])
-                            _autoSwitch[values[1]] = {};
-                        if (values[0] === 'state')
-                            _autoSwitch[values[1]][values[2]] = commentListNum;
-                        if ((values[0] === 'country') && !_autoSwitch[values[1]])
-                            _autoSwitch[values[1]] = { ALL: commentListNum };
-                    }
+    let errorText,
+        data;
+    try {
+        data = await $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/CommentLists_AutoSwitch!A3:ZZ?majorDimension=COLUMNS&key=${URCE_API_KEY}`).fail(response => {
+            errorText = `Spreadsheet call failed. Code: ${response.status} - Text: ${response.responseText}`;
+        });
+    }
+    catch (error) {
+        if (!errorText)
+            errorText = `Spreadsheet call failed. Code: ${error.status} - Text: ${error.responseText}`;
+    }
+    if (data && data.values.length > 0) {
+        for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
+            if (entryIdx === 0 && SCRIPT_VERSION < data.values[entryIdx][0]) {
+                errorText = `updateRequired|${data.values[entryIdx][0]}`;
+                break;
+            }
+            if (data.values[entryIdx].length > 3) {
+                const commentListNum = parseInt(data.values[entryIdx][2]);
+                for (let idx = 3; idx < data.values[entryIdx].length; idx++) {
+                    const values = data.values[entryIdx][idx].split('.');
+                    if ((values[0] === 'state') && !_autoSwitch[values[1]])
+                        _autoSwitch[values[1]] = {};
+                    if (values[0] === 'state')
+                        _autoSwitch[values[1]][values[2]] = commentListNum;
+                    if ((values[0] === 'country') && !_autoSwitch[values[1]])
+                        _autoSwitch[values[1]] = { ALL: commentListNum };
                 }
             }
         }
-        else {
-            errorText = errorText || 'No autoswitch data available';
-        }
-        if (errorText)
-            logWarning(errorText);
-        if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1))
-            return resolve({ error: false });
-        return resolve({ error: (errorText !== undefined), text: errorText });
-    });
+    }
+    else {
+        errorText = errorText || 'No autoswitch data available';
+    }
+    if (errorText)
+        logWarning(errorText);
+    if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1))
+        return Promise.resolve({ error: false });
+    return Promise.resolve({ error: (errorText !== undefined), text: errorText });
 }
 
-function initRestrictions() {
+async function initRestrictions() {
     logDebug('Initializing restrictions.');
-    return new Promise(async resolve => {
-        let errorText,
-            data;
-        try {
-            data = await $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/Restrictions!A3:ZZ?majorDimension=COLUMNS&key=${URCE_API_KEY}`).fail(response => {
-                errorText = `Spreadsheet call failed. Code: ${response.status} - Text: ${response.responseText}`;
-            });
-        }
-        catch (error) {
-            if (!errorText)
-                errorText = `Spreadsheet call failed. Code: ${error.status} - Text: ${error.responseText}`;
-        }
-        if (data && data.values.length > 0) {
-            for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
-                if (entryIdx === 0 && SCRIPT_VERSION < data.values[entryIdx][0]) {
-                    errorText = `updateRequired|${data.values[entryIdx][0]}`;
-                    break;
-                }
-                if (data.values[entryIdx].length > 1) {
-                    const restriction = data.values[entryIdx][1];
-                    for (let idx = 2; idx < data.values[entryIdx].length; idx++) {
-                        const values = data.values[entryIdx][idx].split('.');
-                        if (!_restrictions[values[1]])
-                            _restrictions[values[1]] = {};
-                        if (values[0] === 'state') {
-                            if (!_restrictions[values[1]][values[2]])
-                                _restrictions[values[1]][values[2]] = {};
-                            _restrictions[values[1]][values[2]][restriction] = ((restriction !== 'reminderDays') && (restriction !== 'closeDays')) ? (values[3] === 'true') : parseInt(values[3]);
-                        }
-                        if (values[0] === 'country') {
-                            if (!_restrictions[values[1]][values[2]])
-                                _restrictions[values[1]][values[2]] = {};
-                            _restrictions[values[1]][values[2]][restriction] = ((restriction !== 'reminderDays') && (restriction !== 'closeDays')) ? (values[3] === 'true') : parseInt(values[3]);
-                        }
+    let errorText,
+        data;
+    try {
+        data = await $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/Restrictions!A3:ZZ?majorDimension=COLUMNS&key=${URCE_API_KEY}`).fail(response => {
+            errorText = `Spreadsheet call failed. Code: ${response.status} - Text: ${response.responseText}`;
+        });
+    }
+    catch (error) {
+        if (!errorText)
+            errorText = `Spreadsheet call failed. Code: ${error.status} - Text: ${error.responseText}`;
+    }
+    if (data && data.values.length > 0) {
+        for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
+            if (entryIdx === 0 && SCRIPT_VERSION < data.values[entryIdx][0]) {
+                errorText = `updateRequired|${data.values[entryIdx][0]}`;
+                break;
+            }
+            if (data.values[entryIdx].length > 1) {
+                const restriction = data.values[entryIdx][1];
+                for (let idx = 2; idx < data.values[entryIdx].length; idx++) {
+                    const values = data.values[entryIdx][idx].split('.');
+                    if (!_restrictions[values[1]])
+                        _restrictions[values[1]] = {};
+                    if (values[0] === 'state') {
+                        if (!_restrictions[values[1]][values[2]])
+                            _restrictions[values[1]][values[2]] = {};
+                        _restrictions[values[1]][values[2]][restriction] = ((restriction !== 'reminderDays') && (restriction !== 'closeDays')) ? (values[3] === 'true') : parseInt(values[3]);
+                    }
+                    if (values[0] === 'country') {
+                        if (!_restrictions[values[1]][values[2]])
+                            _restrictions[values[1]][values[2]] = {};
+                        _restrictions[values[1]][values[2]][restriction] = ((restriction !== 'reminderDays') && (restriction !== 'closeDays')) ? (values[3] === 'true') : parseInt(values[3]);
                     }
                 }
             }
         }
-        else {
-            errorText = errorText || 'No restrictions data available';
-        }
-        if (errorText)
-            logWarning(errorText);
-        if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1))
-            return resolve({ error: false });
-        return resolve({ error: (errorText !== undefined), text: errorText });
-    });
+    }
+    else {
+        errorText = errorText || 'No restrictions data available';
+    }
+    if (errorText)
+        logWarning(errorText);
+    if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1))
+        return Promise.resolve({ error: false });
+    return Promise.resolve({ error: (errorText !== undefined), text: errorText });
 }
 
 async function initFinish(urId, urPanelMissing) {
@@ -4707,6 +4698,7 @@ async function init() {
             commentList: null
         });
     }
+    window._timeouts = _timeouts;
     doSpinner(true);
 }
 
@@ -4721,436 +4713,438 @@ function bootstrap(tries) {
         _timeouts.bootstrap = window.setTimeout(bootstrap, 200, ++tries);
     }
     else {
-        logError('Bootstrap timed out waiting for WME to become ready.');
+        logError(new Error('Bootstrap timed out waiting for WME to become ready.'));
     }
 }
 
 bootstrap(1);
 
-function loadTranslations() {
+async function loadTranslations() {
     logDebug('Loading translations.');
-    return new Promise(async resolve => {
-        let errorText,
-            data;
-        try {
-            data = await $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/Script_Translations!A3:AA?key=${URCE_API_KEY}`).fail(response => {
-                errorText = `Spreadsheet call failed. Code: ${response.status} - Text: ${response.responseText}`;
-            });
-        }
-        catch (error) {
-            if (!errorText)
-                errorText = `Spreadsheet call failed. Code: ${error.status} - Text: ${error.responseText}`;
-        }
-        const translationLocales = [];
-        let translations = {};
-        if (data && data.values.length > 0) {
-            for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
-                if (entryIdx === 0) {
-                    if (SCRIPT_VERSION < data.values[entryIdx][0]) {
-                        errorText = `updateRequired|${data.values[entryIdx][0]}`;
-                        break;
-                    }
+    let errorText,
+        data;
+    try {
+        data = await $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/Script_Translations!A3:AA?key=${URCE_API_KEY}`).fail(response => {
+            errorText = `Spreadsheet call failed. Code: ${response.status} - Text: ${response.responseText}`;
+        });
+    }
+    catch (error) {
+        if (!errorText)
+            errorText = `Spreadsheet call failed. Code: ${error.status} - Text: ${error.responseText}`;
+    }
+    const translationLocales = [];
+    let translations = {};
+    if (data && data.values.length > 0) {
+        for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
+            if (entryIdx === 0) {
+                if (SCRIPT_VERSION < data.values[entryIdx][0]) {
+                    errorText = `updateRequired|${data.values[entryIdx][0]}`;
+                    break;
                 }
-                else if (entryIdx === 1) {
-                    for (let idx = 1; idx < data.values[entryIdx].length; idx++) {
-                        translationLocales.push(data.values[entryIdx][idx].trim());
-                        translations[data.values[entryIdx][idx].trim()] = {};
-                    }
+            }
+            else if (entryIdx === 1) {
+                for (let idx = 1; idx < data.values[entryIdx].length; idx++) {
+                    translationLocales.push(data.values[entryIdx][idx].trim());
+                    translations[data.values[entryIdx][idx].trim()] = {};
                 }
-                else {
-                    let translationDefinition = [];
-                    for (let valIdx = 0; valIdx < data.values[entryIdx].length; valIdx++) {
-                        if (valIdx === 0) {
-                            translationDefinition = data.values[entryIdx][valIdx].split('.');
-                        }
-                        else {
-                            const translationLocale = translationLocales[(valIdx - 1)],
-                                translationDef0 = translationDefinition[0],
-                                translationDef1 = translationDefinition[1];
-                            if (typeof translations[translationLocale][translationDef0] === 'undefined')
-                                translations[translationLocale][translationDef0] = {};
-                            translations[translationLocale][translationDef0][translationDef1] = data.values[entryIdx][valIdx].replace('$SCRIPT_AUTHOR$', SCRIPT_AUTHOR).replace(/\\[r|n]+/gm, '\n');
-                        }
+            }
+            else {
+                let translationDefinition = [];
+                for (let valIdx = 0; valIdx < data.values[entryIdx].length; valIdx++) {
+                    if (valIdx === 0) {
+                        translationDefinition = data.values[entryIdx][valIdx].split('.');
+                    }
+                    else {
+                        const translationLocale = translationLocales[(valIdx - 1)],
+                            translationDef0 = translationDefinition[0],
+                            translationDef1 = translationDefinition[1];
+                        if (typeof translations[translationLocale][translationDef0] === 'undefined')
+                            translations[translationLocale][translationDef0] = {};
+                        translations[translationLocale][translationDef0][translationDef1] = data.values[entryIdx][valIdx].replace('$SCRIPT_AUTHOR$', SCRIPT_AUTHOR).replace(/\\[r|n]+/gm, '\n');
                     }
                 }
             }
         }
-        else {
-            errorText = errorText || 'No translations available.';
-        }
-        translations = (!errorText && data && (data.values.length > 0)) ? translations : {
-            en: {
-                commentsTab: {
-                    ZoomOutLink1: 'Zoom out 0 & close UR',
-                    ZoomOutLink1Title: 'Zooms all the way out and closes the UR panel.',
-                    ZoomOutLink2: 'Zoom out 2 & close UR',
-                    ZoomOutLink2Title: 'Zooms out to level 2 and closes the UR panel.',
-                    ZoomOutLink3: 'Zoom out 3 & close UR',
-                    ZoomOutLink3Title: 'Zooms out to level 3 and closes the UR panel.'
-                },
-                common: {
-                    All: 'All',
-                    AutoSwitched: 'auto switched',
-                    Backup: 'Backup',
-                    ClosedBy: 'Closed by',
-                    CollapseAll: 'Collapse all',
-                    CommentList: 'Comment List',
-                    CurrentCommentListTitle: 'You can change the currently loaded comment list using this drop down.\nChanging this drop down will not be saved as a setting and '
+    }
+    else {
+        errorText = errorText || 'No translations available.';
+    }
+    translations = (!errorText && data && (data.values.length > 0)) ? translations : {
+        en: {
+            commentsTab: {
+                ZoomOutLink1: 'Zoom out 0 & close UR',
+                ZoomOutLink1Title: 'Zooms all the way out and closes the UR panel.',
+                ZoomOutLink2: 'Zoom out 2 & close UR',
+                ZoomOutLink2Title: 'Zooms out to level 2 and closes the UR panel.',
+                ZoomOutLink3: 'Zoom out 3 & close UR',
+                ZoomOutLink3Title: 'Zooms out to level 3 and closes the UR panel.'
+            },
+            common: {
+                All: 'All',
+                AutoSwitched: 'auto switched',
+                Backup: 'Backup',
+                ClosedBy: 'Closed by',
+                CollapseAll: 'Collapse all',
+                CommentList: 'Comment List',
+                CurrentCommentListTitle: 'You can change the currently loaded comment list using this drop down.\nChanging this drop down will not be saved as a setting and '
                             + 'will not change your default list (located on the settings tab).\nThis is only to allow you to quickly switch between lists.',
-                    Custom: 'Custom',
-                    Description: 'Description',
-                    Disabled: 'Disabled',
-                    DoubleClickTitle: 'Double click here to send this comment',
-                    Enabled: 'Enabled',
-                    ErrorGeneric: 'An error has occurred within URC-E. Please contact a WazeDev team member.',
-                    ErrorHeader: 'URC-E Error',
-                    ExpandAll: 'Expand all',
-                    Failed: 'Failed',
-                    Finish: 'Finish',
-                    Following: 'Following',
-                    LessThan: 'Less than',
-                    Link: 'Link',
-                    List: 'List',
-                    ListOwner: 'List owner',
-                    Loading: 'Loading',
-                    MoreThan: 'More than',
-                    NeedsChecked: 'Needs checked',
-                    No: 'No',
-                    None: 'None',
-                    NotApplicable: 'Not applicable',
-                    NotFollowing: 'Not following',
-                    PleaseWait: 'Please wait',
-                    Reset: 'Reset',
-                    Restore: 'Restore',
-                    Style: 'Style',
-                    Success: 'Success',
-                    Total: 'Total',
-                    Type: 'Type',
-                    With: 'With',
-                    Without: 'Without',
-                    Yes: 'Yes'
-                },
-                mouseOver: {
-                    CenterInCurrentTab: 'Center in current tab',
-                    FirstComment: 'First comment',
-                    LastComment: 'Last comment',
-                    MarkedAs: 'Marked as',
-                    NoDescription: 'No description',
-                    NoneByMe: 'none by me',
-                    OpenInNewLivemapTab: 'Open in new Livemap tab',
-                    OpenInNewTab: 'Open in new tab',
-                    ReporterHasCommented: 'Reporter has commented',
-                    ToggleUrceURFiltering: 'Toggle URC-E UR filtering.',
-                    URMarkerProcessingActive: 'URC-E is currently processing UR markers... Please wait.',
-                    URMarkerProcessingInactive: 'URC-E is not currently processing any UR markers.',
-                    ViaLivemap: 'via Livemap'
-                },
-                prefs: {
-                    DefaultList: 'Default list',
-                    DefaultListTitle: 'Select the custom list you would like to use. CommentTeam is the default. If you would like your comment list built into this script or have '
+                Custom: 'Custom',
+                Description: 'Description',
+                Disabled: 'Disabled',
+                DoubleClickTitle: 'Double click here to send this comment',
+                Enabled: 'Enabled',
+                ErrorGeneric: 'An error has occurred within URC-E. Please contact a WazeDev team member.',
+                ErrorHeader: 'URC-E Error',
+                ExpandAll: 'Expand all',
+                Failed: 'Failed',
+                Finish: 'Finish',
+                Following: 'Following',
+                LessThan: 'Less than',
+                Link: 'Link',
+                List: 'List',
+                ListOwner: 'List owner',
+                Loading: 'Loading',
+                MoreThan: 'More than',
+                NeedsChecked: 'Needs checked',
+                No: 'No',
+                None: 'None',
+                NotApplicable: 'Not applicable',
+                NotFollowing: 'Not following',
+                PleaseWait: 'Please wait',
+                Reset: 'Reset',
+                Restore: 'Restore',
+                Style: 'Style',
+                Success: 'Success',
+                Total: 'Total',
+                Type: 'Type',
+                With: 'With',
+                Without: 'Without',
+                Yes: 'Yes'
+            },
+            mouseOver: {
+                CenterInCurrentTab: 'Center in current tab',
+                FirstComment: 'First comment',
+                LastComment: 'Last comment',
+                MarkedAs: 'Marked as',
+                NoDescription: 'No description',
+                NoneByMe: 'none by me',
+                OpenInNewLivemapTab: 'Open in new Livemap tab',
+                OpenInNewTab: 'Open in new tab',
+                ReporterHasCommented: 'Reporter has commented',
+                ToggleUrceURFiltering: 'Toggle URC-E UR filtering.',
+                URMarkerProcessingActive: 'URC-E is currently processing UR markers... Please wait.',
+                URMarkerProcessingInactive: 'URC-E is not currently processing any UR markers.',
+                ViaLivemap: 'via Livemap'
+            },
+            prefs: {
+                DefaultList: 'Default list',
+                DefaultListTitle: 'Select the custom list you would like to use. CommentTeam is the default. If you would like your comment list built into this script or have '
                             + 'suggestions on the CommentTeam list, please contact a WazeDev team member.',
-                    CustomSsId: 'Custom Google Spreadsheet ID',
-                    CustomSsIdTitle: 'Enter the Google Spreadsheet ID for the Custom comment list you would like to load when you select "Custom G Sheet" comment list.',
-                    CommentListStyleTitle: 'Select the style you would like the URC-E panel to be displayed in. This only affects the look of the tab, no functionality is changed.',
-                    SpreadsheetLink: 'URC-E Master Spreadsheet',
-                    SpreadsheetLinkTitle: 'Click here to view the URC-E spreadsheet.',
-                    CustomSpreadsheetLink: 'Custom Google Spreadsheet',
-                    CustomSpreadsheetLinkTitle: 'Click here to view your custom google spreadsheet.',
-                    StyleDefault: 'Default',
-                    StyleUrStyle: 'UR Style',
-                    TagEmail: 'Tag email',
-                    TagEmailTitle: 'Some comment lists have specific comments that use a replacement tag.\nThe replacement tag is used to specify an email address to send correspondence '
+                CustomSsId: 'Custom Google Spreadsheet ID',
+                CustomSsIdTitle: 'Enter the Google Spreadsheet ID for the Custom comment list you would like to load when you select "Custom G Sheet" comment list.',
+                CommentListStyleTitle: 'Select the style you would like the URC-E panel to be displayed in. This only affects the look of the tab, no functionality is changed.',
+                SpreadsheetLink: 'URC-E Master Spreadsheet',
+                SpreadsheetLinkTitle: 'Click here to view the URC-E spreadsheet.',
+                CustomSpreadsheetLink: 'Custom Google Spreadsheet',
+                CustomSpreadsheetLinkTitle: 'Click here to view your custom google spreadsheet.',
+                StyleDefault: 'Default',
+                StyleUrStyle: 'UR Style',
+                TagEmail: 'Tag email',
+                TagEmailTitle: 'Some comment lists have specific comments that use a replacement tag.\nThe replacement tag is used to specify an email address to send correspondence '
                             + 'to.\nIf you are setup to use one of these email addresses, please specify it here. If not, leave it blank.',
-                    CustomTagline: 'Custom tagline',
-                    CustomTaglineTitle: 'Some comments use a custom tagline variable.\nSpecify the text, if any, you would like to have put in place of this custom tagline variable in the '
+                CustomTagline: 'Custom tagline',
+                CustomTaglineTitle: 'Some comments use a custom tagline variable.\nSpecify the text, if any, you would like to have put in place of this custom tagline variable in the '
                             + 'comment.',
-                    AutoSwitchCommentList: 'Automatically switch comment lists',
-                    AutoSwitchCommentListTitle: 'Automatically switch to the comment list designated for the area the UR is in, if there is a list associated with the area.\nOpening a UR '
+                AutoSwitchCommentList: 'Automatically switch comment lists',
+                AutoSwitchCommentListTitle: 'Automatically switch to the comment list designated for the area the UR is in, if there is a list associated with the area.\nOpening a UR '
                             + 'in an area that does not have a list associated will use the "Comment List" you have selected above.',
-                    PerCommentListSettings: 'Per comment list settings',
-                    SettingsFor: 'Settings for',
-                    UseDefault: 'Use "URC-E Master Settings" setting',
-                    UrcePrefs: 'URC-E Master Settings',
-                    AutoCenterOnUr: 'Auto center on UR',
-                    AutoCenterOnUrTitle: 'Auto center the map to the selected UR at the current map zoom level.',
-                    AutoClickOpenSolvedNi: 'Auto click open, solved or not identified',
-                    AutoClickOpenSolvedNiTitle: 'Suppress the message about recent pending questions to the reporter and then, depending on the choice set for that comment, automatically '
+                PerCommentListSettings: 'Per comment list settings',
+                SettingsFor: 'Settings for',
+                UseDefault: 'Use "URC-E Master Settings" setting',
+                UrcePrefs: 'URC-E Master Settings',
+                AutoCenterOnUr: 'Auto center on UR',
+                AutoCenterOnUrTitle: 'Auto center the map to the selected UR at the current map zoom level.',
+                AutoClickOpenSolvedNi: 'Auto click open, solved or not identified',
+                AutoClickOpenSolvedNiTitle: 'Suppress the message about recent pending questions to the reporter and then, depending on the choice set for that comment, automatically '
                             + 'select Open, Solved or Not Identified.',
-                    AutoCloseUrPanel: 'Auto close UR panel',
-                    AutoCloseUrPanelTitle: 'Automatically close the UR panel after you click send on a comment.',
-                    AutoSaveAfterSolvedOrNiComment: 'Auto save after solved or NI comment',
-                    AutoSaveAfterSolvedOrNiCommentTitle: 'If "Auto Click Open, Solved or Not Identified" is also checked, this will automatically click the save button after you click send '
+                AutoCloseUrPanel: 'Auto close UR panel',
+                AutoCloseUrPanelTitle: 'Automatically close the UR panel after you click send on a comment.',
+                AutoSaveAfterSolvedOrNiComment: 'Auto save after solved or NI comment',
+                AutoSaveAfterSolvedOrNiCommentTitle: 'If "Auto Click Open, Solved or Not Identified" is also checked, this will automatically click the save button after you click send '
                             + 'on a comment that set the UR to Solved or Not Identified.',
-                    AutoSendReminders: 'Auto send reminders',
-                    AutoSendRemindersTitle: 'Automatically send the reminder comment to the URs in the map window (as you pan around) you were the last to comment on and it has reached the '
+                AutoSendReminders: 'Auto send reminders',
+                AutoSendRemindersTitle: 'Automatically send the reminder comment to the URs in the map window (as you pan around) you were the last to comment on and it has reached the '
                             + 'days specified in "Reminder Days".',
-                    AutoSendRemindersWarning: 'WARNING',
-                    AutoSendRemindersWarningTitle: 'AUTOMATICALLY SEND REMINDERS at the reminder days setting.\nThis only happens when they are visible on your screen.\n\nNOTE: When using '
+                AutoSendRemindersWarning: 'WARNING',
+                AutoSendRemindersWarningTitle: 'AUTOMATICALLY SEND REMINDERS at the reminder days setting.\nThis only happens when they are visible on your screen.\n\nNOTE: When using '
                             + 'this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to all open '
                             + 'URs\nafter "Reminder days".',
-                    AutoSetNewUrComment: 'Auto set new UR comment (without description)',
-                    AutoSetNewUrCommentTitle: 'Automatically set the default UR comment for the UR type on new (do not already have comments) URs that do not have a description.',
-                    AutoSetNewUrCommentSlur: 'Auto set new UR comment (SLURs)',
-                    AutoSetNewUrCommentSlurTitle: 'Automatically set the default UR comment for new (do not already have comments) SLURs.',
-                    AutoSetNewUrCommentWithDescription: 'Auto set new UR comment (with description)',
-                    AutoSetNewUrCommentWithDescriptionTitle: 'Automatically set the default UR comment for the UR type on new (do not already have comments) URs that have a description.',
-                    AutoSetReminderUrComment: 'Auto set reminder UR comment',
-                    AutoSetReminderUrCommentTitle: 'Automatically set the UR reminder comment for URs that are older than the "Reminder days" setting and have only one comment.',
-                    AutoSwitchToUrCommentsTab: 'Auto switch to the URC-E tab',
-                    AutoSwitchToUrCommentsTabTitle: 'Automatically switch to the URComments-Enhanced tab when opening a UR. When the UR panel is closed you will be switched back to your '
+                AutoSendRemindersExceptTagged: 'Except tagged',
+                AutoSendRemindersExceptTaggedTitle: 'Enabling this setting will prevent the \'Auto send reminders\' setting (if enabled as well) from automatically sending a reminder '
+                            + 'comment to a tagged UR.',
+                AutoSetNewUrComment: 'Auto set new UR comment (without description)',
+                AutoSetNewUrCommentTitle: 'Automatically set the default UR comment for the UR type on new (do not already have comments) URs that do not have a description.',
+                AutoSetNewUrCommentSlur: 'Auto set new UR comment (SLURs)',
+                AutoSetNewUrCommentSlurTitle: 'Automatically set the default UR comment for new (do not already have comments) SLURs.',
+                AutoSetNewUrCommentWithDescription: 'Auto set new UR comment (with description)',
+                AutoSetNewUrCommentWithDescriptionTitle: 'Automatically set the default UR comment for the UR type on new (do not already have comments) URs that have a description.',
+                AutoSetReminderUrComment: 'Auto set reminder UR comment',
+                AutoSetReminderUrCommentTitle: 'Automatically set the UR reminder comment for URs that are older than the "Reminder days" setting and have only one comment.',
+                AutoSwitchToUrCommentsTab: 'Auto switch to the URC-E tab',
+                AutoSwitchToUrCommentsTabTitle: 'Automatically switch to the URComments-Enhanced tab when opening a UR. When the UR panel is closed you will be switched back to your '
                             + 'previous tab.',
-                    AutoZoomInOnNewUr: 'Auto zoom in on new UR',
-                    AutoZoomInOnNewUrTitle: 'Automatically zoom in when opening new (no comments) URs.',
-                    AutoZoomOutAfterComment: 'Auto zoom out after comment',
-                    AutoZoomOutAfterCommentTitle: 'Automatically zoom the map back to the previous zoom after clicking send on a UR comment.',
-                    DisableDoneNextButtons: 'Disable done / next buttons',
-                    DisableDoneNextButtonsTitle: 'Disable the done / next buttons at the bottom of the UR panel.',
-                    ReplaceNextWithDoneButton: 'Replace Next UR button with Done button',
-                    ReplaceNextWithDoneButtonTitle: 'Replace the Next Update Request button with a Done button.',
-                    DoubleClickLinkNiComments: 'Double click link - NI comments',
-                    DoubleClickLinkNiCommentsTitle: 'Add an image (extra link) to the "not identified" comments. When double clicked it will automatically set and send the UR comment of the '
+                AutoZoomInOnNewUr: 'Auto zoom in on new UR',
+                AutoZoomInOnNewUrTitle: 'Automatically zoom in when opening new (no comments) URs.',
+                AutoZoomOutAfterComment: 'Auto zoom out after comment',
+                AutoZoomOutAfterCommentTitle: 'Automatically zoom the map back to the previous zoom after clicking send on a UR comment.',
+                DisableDoneNextButtons: 'Disable done / next buttons',
+                DisableDoneNextButtonsTitle: 'Disable the done / next buttons at the bottom of the UR panel.',
+                ReplaceNextWithDoneButton: 'Replace Next UR button with Done button',
+                ReplaceNextWithDoneButtonTitle: 'Replace the Next Update Request button with a Done button.',
+                DoubleClickLinkNiComments: 'Double click link - NI comments',
+                DoubleClickLinkNiCommentsTitle: 'Add an image (extra link) to the "not identified" comments. When double clicked it will automatically set and send the UR comment of the '
                             + 'one you double clicked, and then launch all of the other options that are enabled.',
-                    DoubleClickLinkOpenComments: 'Double click link - Open comments',
-                    DoubleClickLinkOpenCommentsTitle: 'Add an image (extra link) to the "open" comments. When double clicked it will automatically set and send the UR comment of the one you '
+                DoubleClickLinkOpenComments: 'Double click link - Open comments',
+                DoubleClickLinkOpenCommentsTitle: 'Add an image (extra link) to the "open" comments. When double clicked it will automatically set and send the UR comment of the one you '
                             + 'double clicked, and then launch all of the other options that are enabled.',
-                    DoubleClickLinkSolvedComments: 'Double click link - Solved comments',
-                    DoubleClickLinkSolvedCommentsTitle: 'Add an image (extra link) to the "solved" comments. When double clicked it will automatically set and send the UR comment of the one '
+                DoubleClickLinkSolvedComments: 'Double click link - Solved comments',
+                DoubleClickLinkSolvedCommentsTitle: 'Add an image (extra link) to the "solved" comments. When double clicked it will automatically set and send the UR comment of the one '
                             + 'you double clicked, and then launch all of the other options that are enabled.',
-                    HideZoomOutLinks: 'Hide zoom out links',
-                    HideZoomOutLinksTitle: 'Hide the zoom out links on the comments tab.',
-                    UnfollowUrAfterSend: 'Unfollow UR after send',
-                    UnfollowUrAfterSendTitle: 'Unfollow the UR after sending a comment.',
-                    EnableUrOverflowHandling: 'Enable UR overflow handling',
-                    EnableUrOverflowHandlingTitle: 'If this setting is enabled and there are more than 499 URs on the screen, URC-E will attempt to gather more URs and add them to the map, if '
+                HideZoomOutLinks: 'Hide zoom out links',
+                HideZoomOutLinksTitle: 'Hide the zoom out links on the comments tab.',
+                UnfollowUrAfterSend: 'Unfollow UR after send',
+                UnfollowUrAfterSendTitle: 'Unfollow the UR after sending a comment.',
+                EnableUrOverflowHandling: 'Enable UR overflow handling',
+                EnableUrOverflowHandlingTitle: 'If this setting is enabled and there are more than 499 URs on the screen, URC-E will attempt to gather more URs and add them to the map, if '
                             + 'they do not already exist.\nWME does not display more than 500 URs on a single screen on its own.',
-                    EnableAutoRefresh: 'Enable auto refresh on zoom / pan',
-                    EnableAutoRefreshTitle: 'Reloads the map data when zooming or panning to show URs that may have been missed due to WME\'s 500 UR limit.  Will only reload if the zoom level is '
+                EnableAutoRefresh: 'Enable auto refresh on zoom / pan',
+                EnableAutoRefreshTitle: 'Reloads the map data when zooming or panning to show URs that may have been missed due to WME\'s 500 UR limit.  Will only reload if the zoom level is '
                             + 'between 3 and 10, there are not pending edits, and there are more than 499 URs loaded.',
-                    UrMarkerPrefs: 'UR Marker Settings',
-                    EnableUrPillCounts: 'Enable UR pill counts',
-                    EnableUrPillCountsTitle: 'Enable or disable the pill with UR counts on the map marker.',
-                    DisableUrMarkerPopup: 'Disable UR marker popup',
-                    DisableUrMarkerPopupTitle: 'Do not show the UR popup tooltip when you mouse over a UR marker.',
-                    UrMarkerPopupDelay: 'UR marker popup delay',
-                    UrMarkerPopupDelayTitle: 'The number of milliseconds (* 100) to delay before the UR marker tooltip will be displayed.',
-                    UrMarkerPopupTimeout: 'UR marker popup timeout',
-                    UrMarkerPopupTimeoutTitle: 'Specify the number of seconds to leave the UR marker tooltip displayed, while hovering over the marker.\nLeaving the marker, unless to the tooltip '
+                UrMarkerPrefs: 'UR Marker Settings',
+                EnableUrPillCounts: 'Enable UR pill counts',
+                EnableUrPillCountsTitle: 'Enable or disable the pill with UR counts on the map marker.',
+                DisableUrMarkerPopup: 'Disable UR marker popup',
+                DisableUrMarkerPopupTitle: 'Do not show the UR popup tooltip when you mouse over a UR marker.',
+                UrMarkerPopupDelay: 'UR marker popup delay',
+                UrMarkerPopupDelayTitle: 'The number of milliseconds (* 100) to delay before the UR marker tooltip will be displayed.',
+                UrMarkerPopupTimeout: 'UR marker popup timeout',
+                UrMarkerPopupTimeoutTitle: 'Specify the number of seconds to leave the UR marker tooltip displayed, while hovering over the marker.\nLeaving the marker, unless to the tooltip '
                             + 'itself, will cause the tooltip to close.\nEntering the tooltip will cancel the timer and leaving the tooltip will close the tooltip.\nDouble click to quickly close.',
-                    DoNotShowTagNameOnPill: 'Don\'t show tag name on pill',
-                    DoNotShowTagNameOnPillTitle: 'Do not show the tag name on the pill where there is a tag. Example: [NOTE]',
-                    ReplaceTagNameWithEditorName: 'Replace tag name with editor name',
-                    ReplaceTagNameWithEditorNameTitle: 'When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds when '
+                DoNotShowTagNameOnPill: 'Don\'t show tag name on pill',
+                DoNotShowTagNameOnPillTitle: 'Do not show the tag name on the pill where there is a tag. Example: [NOTE]',
+                ReplaceTagNameWithEditorName: 'Replace tag name with editor name',
+                ReplaceTagNameWithEditorNameTitle: 'When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds when '
                             + 'commenting), replace the tag type with the editors name.',
-                    UnstackMarkers: 'Unstack markers',
-                    UnstackMarkersTitle: 'Attempt to unstack markers by offsetting them. Similar to how URO+ unstacks markers.',
-                    UnstackSensitivity: 'Unstack sensitivity',
-                    UnstackSensitivityTitle: 'Specify the sensitivity for which markers are considered stacked.\nDefault: 15',
-                    UnstackDisableAboveZoom: 'Unstack disable when zoom level <',
-                    UnstackDisableAboveZoomTitle: 'When you zoom out wider than the specified zoom level, marker unstacking will be disabled.\nDefault: 3',
-                    UseCustomMarkersFor: 'Use Custom Markers for',
-                    BogTitle: 'Replace default UR marker with custom marker for the URs with "[BOG]" (boots on ground) / "[BOTG]" (boots on the ground) in the description or comments.',
-                    ClosureTitle: 'Replace default UR marker with custom marker for the URs with "[CLOSURE]" in the description or comments.',
-                    ConstructionTitle: 'Replace default UR marker with custom marker for the URs with "[CONSTRUCTION]" in the description or comments.',
-                    DifficultTitle: 'Replace default UR marker with custom marker for the URs with "[DIFFICULT]" in the description or comments.',
-                    EventTitle: 'Replace default UR marker with custom marker for the URs with "[EVENT]" in the description or comments.',
-                    NoteTitle: 'Replace default UR marker with custom marker for the URs with "[NOTE]" in the description or comments.',
-                    RoadworksTitle: 'Replace default UR marker with custom marker for the URs with "[ROADWORKS]" in the description or comments. Used in the UK.',
-                    WslmTitle: 'Waze Speed Limit Marker',
-                    NativeSpeedLimits: 'Native speed limits',
-                    NativeSpeedLimitsTitle: 'Replace default UR marker with custom marker for the URs with "speed limit" type.',
-                    CustomTitle: 'Replace default UR marker with custom marker for the URs with the text in the box to the right in the description or comments.',
-                    UrFilteringPrefs: 'UR Filtering Settings',
-                    EnableUrceUrFiltering: 'Enable URC-E UR filtering',
-                    EnableUrceUrFilteringTitle: 'Enable or disable URComments-Enhanced built-in UR filtering.',
-                    InvertFilters: 'Invert filters',
-                    InvertFiltersTitle: 'This will invert the filters you select / do not select.\n\nExample: If a filter were to match a selected / enabled setting, it would normally '
+                UnstackMarkers: 'Unstack markers',
+                UnstackMarkersTitle: 'Attempt to unstack markers by offsetting them. Similar to how URO+ unstacks markers.',
+                UnstackSensitivity: 'Unstack sensitivity',
+                UnstackSensitivityTitle: 'Specify the sensitivity for which markers are considered stacked.\nDefault: 15',
+                UnstackDisableAboveZoom: 'Unstack disable when zoom level <',
+                UnstackDisableAboveZoomTitle: 'When you zoom out wider than the specified zoom level, marker unstacking will be disabled.\nDefault: 3',
+                UseCustomMarkersFor: 'Use Custom Markers for',
+                BogTitle: 'Replace default UR marker with custom marker for the URs with "[BOG]" (boots on ground) / "[BOTG]" (boots on the ground) in the description or comments.',
+                ClosureTitle: 'Replace default UR marker with custom marker for the URs with "[CLOSURE]" in the description or comments.',
+                ConstructionTitle: 'Replace default UR marker with custom marker for the URs with "[CONSTRUCTION]" in the description or comments.',
+                DifficultTitle: 'Replace default UR marker with custom marker for the URs with "[DIFFICULT]" in the description or comments.',
+                EventTitle: 'Replace default UR marker with custom marker for the URs with "[EVENT]" in the description or comments.',
+                NoteTitle: 'Replace default UR marker with custom marker for the URs with "[NOTE]" in the description or comments.',
+                RoadworksTitle: 'Replace default UR marker with custom marker for the URs with "[ROADWORKS]" in the description or comments. Used in the UK.',
+                WslmTitle: 'Waze Speed Limit Marker',
+                NativeSpeedLimits: 'Native speed limits',
+                NativeSpeedLimitsTitle: 'Replace default UR marker with custom marker for the URs with "speed limit" type.',
+                CustomTitle: 'Replace default UR marker with custom marker for the URs with the text in the box to the right in the description or comments.',
+                UrFilteringPrefs: 'UR Filtering Settings',
+                EnableUrceUrFiltering: 'Enable URC-E UR filtering',
+                EnableUrceUrFilteringTitle: 'Enable or disable URComments-Enhanced built-in UR filtering.',
+                InvertFilters: 'Invert filters',
+                InvertFiltersTitle: 'This will invert the filters you select / do not select.\n\nExample: If a filter were to match a selected / enabled setting, it would normally '
                             + 'be hidden.\nBut, if you enable "invert filters", the marker would be shown and all others that do not match will be hidden.',
-                    HideOutsideEditableArea: 'Hide outside editable area',
-                    HideOutsideEditableAreaTitle: 'Hide URs outside your editable area.',
-                    DoNotFilterTaggedUrs: 'Do not filter tagged URs',
-                    DoNotFilterTaggedUrsTitle: 'Do not filter URs that are tagged with a [] tag. Example: [NOTE]',
-                    DoNotHideSelectedUr: 'Do not hide selected UR',
-                    DoNotHideSelectedUrTitle: 'Do not hide a UR if it is currently being selected.',
-                    DisableFilteringAboveZoomLevel: 'Disable filtering when zoom level <',
-                    DisableFilteringAboveZoomLevelTitle: 'Disable UR filtering when zoomed out wider than the specified zoom level. Set to "0" to enable all filtering.',
-                    DisableFilteringBelowZoomLevel: 'Disable filtering when zoom level >',
-                    DisableFilteringBelowZoomLevelTitle: 'Disable UR filtering when zoomed in tighter than the specified zoom level. Set to "10" to enable all filtering.',
-                    LifeCycleStatus: 'Hide by lifecycle status',
-                    LifeCycleStatusInverted: 'Show by lifecycle status',
-                    HideWaiting: 'Waiting',
-                    HideWaitingTitle: 'Hide/show URs that do not currently need work.',
-                    HideUrsCloseNeeded: 'Close needed',
-                    HideUrsCloseNeededTitle: 'Hide/show URs that need closing.',
-                    HideUrsReminderNeeded: 'Reminders needed',
-                    HideUrsReminderNeededTitle: 'Hide/show URs where reminders are needed.',
-                    HideByStatus: 'Hide by status',
-                    HideByStatusInverted: 'Show by status',
-                    HideByStatusOpenTitle: 'Hide/show all open URs.',
-                    HideByStatusClosedTitle: 'Hide/show all closed (solved and not identified) URs.',
-                    HideByStatusNotIdentifiedTitle: 'Hide/show all closed as not identified URs.',
-                    HideByStatusSolvedTitle: 'Hide/show all closed as solved URs.',
-                    HideByStatusClosedByTitle: 'Hide/show closed URs that were closed by any of the specified users.\nInput username(s) in text box. Separate multiple entries with a comma.',
-                    HideByType: 'Hide by type',
-                    HideByTypeInverted: 'Show by type',
-                    HideByTypeBlockedRoadTitle: 'Hide/show all blocked road URs.',
-                    HideByTypeGeneralErrorTitle: 'Hide/show all general error URs.',
-                    HideByTypeIncorrectAddressTitle: 'Hide/show all incorrect address URs.',
-                    HideByTypeIncorrectJunctionTitle: 'Hide/show all incorrect junction URs.',
-                    HideByTypeIncorrectRouteTitle: 'Hide/show all incorrect route URs.',
-                    HideByTypeIncorrectStreetPrefixOrSuffixTitle: 'Hide/show all incorrect street prefix or suffix URs.',
-                    HideByTypeIncorrectTurnTitle: 'Hide/show all incorrect turn URs.',
-                    HideByTypeMissingBridgeOverpassTitle: 'Hide/show all missing bridge overpass URs.',
-                    HideByTypeMissingExitTitle: 'Hide/show all missing exit URs.',
-                    HideByTypeMissingLandmarkTitle: 'Hide/show all missing landmark URs.',
-                    HideByTypeMissingOrInvalidSpeedLimitTitle: 'Hide/show all missing or invalid speed limit URs.',
-                    HideByTypeMissingRoadTitle: 'Hide/show all missing road URs.',
-                    HideByTypeMissingRoundaboutTitle: 'Hide/show all missing roundabout URs.',
-                    HideByTypeMissingStreetNameTitle: 'Hide/show all missing street name URs.',
-                    HideByTypeTurnNotAllowedTitle: 'Hide/show all turn not allowed URs.',
-                    HideByTypeUndefinedTitle: 'Hide/show all undefined URs.',
-                    HideByTypeWrongDrivingDirectionTitle: 'Hide/show all wrong driving direction URs.',
-                    HideByTagged: 'Hide by tagged',
-                    HideByTaggedInverted: 'Show by tagged',
-                    HideByTaggedBogTitle: 'Hide/show all URs with [BOG] (boots on ground) / [BOTG] (boots on the ground) in description or comments.',
-                    HideByTaggedClosureTitle: 'Hide/show all URs with [CLOSURE] in description or comments.',
-                    HideByTaggedConstructionTitle: 'Hide/show all URs with [CONSTRUCTION] in description or comments.',
-                    HideByTaggedDifficultTitle: 'Hide/show all URs with [DIFFICULT] in description or comments.',
-                    HideByTaggedEventTitle: 'Hide/show all URs with [EVENT] in description or comments.',
-                    HideByTaggedNoteTitle: 'Hide/show all URs with [NOTE] in description or comments.',
-                    HideByTaggedRoadworksTitle: 'Hide/show all URs with [ROADWORKS] in description or comments. Used in the UK.',
-                    HideByTaggedWslmTitle: 'Hide/show all URs with [WSLM] in description or comments.',
-                    HideByAgeOfSubmission: 'Hide by age of submission',
-                    HideByAgeOfSubmissionInverted: 'Show by age of submission',
-                    HideByAgeOfSubmissionLessThanTitle: 'Hide/show URs that were originally created less than specified number of days ago.',
-                    HideByAgeOfSubmissionMoreThanTitle: 'Hide/show URs that were originally created more than specified number of days ago.',
-                    DescriptionCommentsFollowing: 'Hide by description, comment, following',
-                    DescriptionCommentsFollowingInverted: 'Show by description, comment following',
-                    HideFollowingTitle: 'Hide/show URs you are following.',
-                    HideNotFollowingTitle: 'Hide/show URs you are not following.',
-                    HideWithDescriptionTitle: 'Hide/show URs that have a description.',
-                    HideWithoutDescriptionTitle: 'Hide/show URs that do not have a description.',
-                    HideCommentsFromMe: 'Comments from me',
-                    HideWithCommentsFromMeTitle: 'Hide/show URs you have commented on.',
-                    HideWithoutCommentsFromMeTitle: 'Hide/show URs you have not commented on.',
-                    HideFirstCommentByMe: 'First comment by me',
-                    HideFirstCommentByMeTitle: 'Hide/show URs where you were the first person to comment.',
-                    HideFirstCommentNotByMeTitle: 'Hide/show URs where someone else was the first person to comment.',
-                    HideLastCommentByMe: 'Last comment by me',
-                    HideLastCommentByMeTitle: 'Hide/show URs where you are the last person to comment.',
-                    HideLastCommentNotByMeTitle: 'Hide/show URs where someone else is the last person to comment.',
-                    HideLastCommentByReporter: 'Last comment by reporter',
-                    HideLastCommentByReporterTitle: 'Hide/show URs where the reporter is the last person to comment.',
-                    HideLastCommentNotByReporterTitle: 'Hide/show URs where the reporter is not the last person to comment.',
-                    HideByCommentCountLessThanTitle: 'Hide/show URs that contain less comments than the number specified.',
-                    HideByCommentCountMoreThanTitle: 'Hide/show URs that contain more comments than the number specified.',
-                    HideByAgeOfFirstCommentLessThan: 'First comment less than',
-                    HideByAgeOfFirstCommentLessThanTitle: 'Hide/show URs where the first comment is less than the days specified ago.',
-                    HideByAgeOfFirstCommentMoreThan: 'First comment more than',
-                    HideByAgeOfFirstCommentMoreThanTitle: 'Hide/show URs where the first comment is more than the days specified ago.',
-                    HideByAgeOfLastCommentLessThan: 'Last comment less than',
-                    HideByAgeOfLastCommentLessThanTitle: 'Hide/show URs where the last comment is less than the days specified ago.',
-                    HideByAgeOfLastCommentMoreThan: 'Last comment more than',
-                    HideByAgeOfLastCommentMoreThanTitle: 'Hide/show URs where the last comment is more than the days specified ago.',
-                    HideByKeywordIncluding: 'Including keyword',
-                    HideByKeywordIncludingTitle: 'Hide/show URs that include the custom word / text specified. Regex compatible.',
-                    HideByKeywordNotIncluding: 'Not including keyword',
-                    HideByKeywordNotIncludingTitle: 'Hide/show URs that do not include the custom word / text specified. Regex compatible.',
-                    HideByKeywordCaseInsensitive: 'Case-insensitive keyword matches',
-                    HideByKeywordCaseInsensitiveTitle: 'If enabled, searching for the above including or not including keywords will be done using case insensitive searching.',
-                    HideWithCommentBy: 'With comment by',
-                    HideWithCommentByTitle: 'Hide/show URs that have been commented on by the specified user(s).\nUse a comma (,) to separate usernames.',
-                    HideWithoutCommentBy: 'Without comment by',
-                    HideWithoutCommentByTitle: 'Hide/show URs that have not been commented on by the specified user(s).\nUse a comma (,) to separate usernames.',
-                    ReminderDays: 'Reminder days',
-                    ReminderDaysTitle: 'Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment.\nThis is the number of days since the first '
+                HideOutsideEditableArea: 'Hide outside editable area',
+                HideOutsideEditableAreaTitle: 'Hide URs outside your editable area.',
+                DoNotFilterTaggedUrs: 'Do not filter tagged URs',
+                DoNotFilterTaggedUrsTitle: 'Do not filter URs that are tagged with a [] tag. Example: [NOTE]',
+                DoNotHideSelectedUr: 'Do not hide selected UR',
+                DoNotHideSelectedUrTitle: 'Do not hide a UR if it is currently being selected.',
+                DisableFilteringAboveZoomLevel: 'Disable filtering when zoom level <',
+                DisableFilteringAboveZoomLevelTitle: 'Disable UR filtering when zoomed out wider than the specified zoom level. Set to "0" to enable all filtering.',
+                DisableFilteringBelowZoomLevel: 'Disable filtering when zoom level >',
+                DisableFilteringBelowZoomLevelTitle: 'Disable UR filtering when zoomed in tighter than the specified zoom level. Set to "10" to enable all filtering.',
+                LifeCycleStatus: 'Hide by lifecycle status',
+                LifeCycleStatusInverted: 'Show by lifecycle status',
+                HideWaiting: 'Waiting',
+                HideWaitingTitle: 'Hide/show URs that do not currently need work.',
+                HideUrsCloseNeeded: 'Close needed',
+                HideUrsCloseNeededTitle: 'Hide/show URs that need closing.',
+                HideUrsReminderNeeded: 'Reminders needed',
+                HideUrsReminderNeededTitle: 'Hide/show URs where reminders are needed.',
+                HideByStatus: 'Hide by status',
+                HideByStatusInverted: 'Show by status',
+                HideByStatusOpenTitle: 'Hide/show all open URs.',
+                HideByStatusClosedTitle: 'Hide/show all closed (solved and not identified) URs.',
+                HideByStatusNotIdentifiedTitle: 'Hide/show all closed as not identified URs.',
+                HideByStatusSolvedTitle: 'Hide/show all closed as solved URs.',
+                HideByStatusClosedByTitle: 'Hide/show closed URs that were closed by any of the specified users.\nInput username(s) in text box. Separate multiple entries with a comma.',
+                HideByType: 'Hide by type',
+                HideByTypeInverted: 'Show by type',
+                HideByTypeBlockedRoadTitle: 'Hide/show all blocked road URs.',
+                HideByTypeGeneralErrorTitle: 'Hide/show all general error URs.',
+                HideByTypeIncorrectAddressTitle: 'Hide/show all incorrect address URs.',
+                HideByTypeIncorrectJunctionTitle: 'Hide/show all incorrect junction URs.',
+                HideByTypeIncorrectRouteTitle: 'Hide/show all incorrect route URs.',
+                HideByTypeIncorrectStreetPrefixOrSuffixTitle: 'Hide/show all incorrect street prefix or suffix URs.',
+                HideByTypeIncorrectTurnTitle: 'Hide/show all incorrect turn URs.',
+                HideByTypeMissingBridgeOverpassTitle: 'Hide/show all missing bridge overpass URs.',
+                HideByTypeMissingExitTitle: 'Hide/show all missing exit URs.',
+                HideByTypeMissingLandmarkTitle: 'Hide/show all missing landmark URs.',
+                HideByTypeMissingOrInvalidSpeedLimitTitle: 'Hide/show all missing or invalid speed limit URs.',
+                HideByTypeMissingRoadTitle: 'Hide/show all missing road URs.',
+                HideByTypeMissingRoundaboutTitle: 'Hide/show all missing roundabout URs.',
+                HideByTypeMissingStreetNameTitle: 'Hide/show all missing street name URs.',
+                HideByTypeTurnNotAllowedTitle: 'Hide/show all turn not allowed URs.',
+                HideByTypeUndefinedTitle: 'Hide/show all undefined URs.',
+                HideByTypeWrongDrivingDirectionTitle: 'Hide/show all wrong driving direction URs.',
+                HideByTagged: 'Hide by tagged',
+                HideByTaggedInverted: 'Show by tagged',
+                HideByTaggedBogTitle: 'Hide/show all URs with [BOG] (boots on ground) / [BOTG] (boots on the ground) in description or comments.',
+                HideByTaggedClosureTitle: 'Hide/show all URs with [CLOSURE] in description or comments.',
+                HideByTaggedConstructionTitle: 'Hide/show all URs with [CONSTRUCTION] in description or comments.',
+                HideByTaggedDifficultTitle: 'Hide/show all URs with [DIFFICULT] in description or comments.',
+                HideByTaggedEventTitle: 'Hide/show all URs with [EVENT] in description or comments.',
+                HideByTaggedNoteTitle: 'Hide/show all URs with [NOTE] in description or comments.',
+                HideByTaggedRoadworksTitle: 'Hide/show all URs with [ROADWORKS] in description or comments. Used in the UK.',
+                HideByTaggedWslmTitle: 'Hide/show all URs with [WSLM] in description or comments.',
+                HideByAgeOfSubmission: 'Hide by age of submission',
+                HideByAgeOfSubmissionInverted: 'Show by age of submission',
+                HideByAgeOfSubmissionLessThanTitle: 'Hide/show URs that were originally created less than specified number of days ago.',
+                HideByAgeOfSubmissionMoreThanTitle: 'Hide/show URs that were originally created more than specified number of days ago.',
+                DescriptionCommentsFollowing: 'Hide by description, comment, following',
+                DescriptionCommentsFollowingInverted: 'Show by description, comment following',
+                HideFollowingTitle: 'Hide/show URs you are following.',
+                HideNotFollowingTitle: 'Hide/show URs you are not following.',
+                HideWithDescriptionTitle: 'Hide/show URs that have a description.',
+                HideWithoutDescriptionTitle: 'Hide/show URs that do not have a description.',
+                HideCommentsFromMe: 'Comments from me',
+                HideWithCommentsFromMeTitle: 'Hide/show URs you have commented on.',
+                HideWithoutCommentsFromMeTitle: 'Hide/show URs you have not commented on.',
+                HideFirstCommentByMe: 'First comment by me',
+                HideFirstCommentByMeTitle: 'Hide/show URs where you were the first person to comment.',
+                HideFirstCommentNotByMeTitle: 'Hide/show URs where someone else was the first person to comment.',
+                HideLastCommentByMe: 'Last comment by me',
+                HideLastCommentByMeTitle: 'Hide/show URs where you are the last person to comment.',
+                HideLastCommentNotByMeTitle: 'Hide/show URs where someone else is the last person to comment.',
+                HideLastCommentByReporter: 'Last comment by reporter',
+                HideLastCommentByReporterTitle: 'Hide/show URs where the reporter is the last person to comment.',
+                HideLastCommentNotByReporterTitle: 'Hide/show URs where the reporter is not the last person to comment.',
+                HideByCommentCountLessThanTitle: 'Hide/show URs that contain less comments than the number specified.',
+                HideByCommentCountMoreThanTitle: 'Hide/show URs that contain more comments than the number specified.',
+                HideByAgeOfFirstCommentLessThan: 'First comment less than',
+                HideByAgeOfFirstCommentLessThanTitle: 'Hide/show URs where the first comment is less than the days specified ago.',
+                HideByAgeOfFirstCommentMoreThan: 'First comment more than',
+                HideByAgeOfFirstCommentMoreThanTitle: 'Hide/show URs where the first comment is more than the days specified ago.',
+                HideByAgeOfLastCommentLessThan: 'Last comment less than',
+                HideByAgeOfLastCommentLessThanTitle: 'Hide/show URs where the last comment is less than the days specified ago.',
+                HideByAgeOfLastCommentMoreThan: 'Last comment more than',
+                HideByAgeOfLastCommentMoreThanTitle: 'Hide/show URs where the last comment is more than the days specified ago.',
+                HideByKeywordIncluding: 'Including keyword',
+                HideByKeywordIncludingTitle: 'Hide/show URs that include the custom word / text specified. Regex compatible.',
+                HideByKeywordNotIncluding: 'Not including keyword',
+                HideByKeywordNotIncludingTitle: 'Hide/show URs that do not include the custom word / text specified. Regex compatible.',
+                HideByKeywordCaseInsensitive: 'Case-insensitive keyword matches',
+                HideByKeywordCaseInsensitiveTitle: 'If enabled, searching for the above including or not including keywords will be done using case insensitive searching.',
+                HideWithCommentBy: 'With comment by',
+                HideWithCommentByTitle: 'Hide/show URs that have been commented on by the specified user(s).\nUse a comma (,) to separate usernames.',
+                HideWithoutCommentBy: 'Without comment by',
+                HideWithoutCommentByTitle: 'Hide/show URs that have not been commented on by the specified user(s).\nUse a comma (,) to separate usernames.',
+                ReminderDays: 'Reminder days',
+                ReminderDaysTitle: 'Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment.\nThis is the number of days since the first '
                             + 'comment.\nSet to 0 if you do not use reminders.',
-                    CloseDays: 'Close days',
-                    CloseDaysTitle: 'Number of days to use when calculating UR filtering.\nThis is the number of days since the last comment.\nExample: If you close 4 days after the last comment '
+                CloseDays: 'Close days',
+                CloseDaysTitle: 'Number of days to use when calculating UR filtering.\nThis is the number of days since the last comment.\nExample: If you close 4 days after the last comment '
                             + 'set to 4.\nAnything less than this time will be considered "waiting" as long as there is at least one comment already.',
-                    EnableAppendMode: 'Enable append comment mode',
-                    EnableAppendModeTitle: 'Enabling append comment mode will allow you to append a comment to the existing text in the new-comment box.\nThe comment is appended with a blank '
+                EnableAppendMode: 'Enable append comment mode',
+                EnableAppendModeTitle: 'Enabling append comment mode will allow you to append a comment to the existing text in the new-comment box.\nThe comment is appended with a blank '
                         + 'line between the existing text and the new text.\nThe status of the UR is set to the status of the new comment you clicked to append.\nIf the comment would end up being '
                         + 'longer than 2000 characters, append mode will give a warning and not alter the text in the comment box, but the status would have been changed.'
-                },
-                tabs: {
-                    Comments: 'Comments',
-                    Settings: 'Settings',
-                    Tools: 'Tools'
-                },
-                tags: {
-                    Bog: '[BOG] / [BOTG]',
-                    Closure: '[CLOSURE]',
-                    Construction: '[CONSTRUCTION]',
-                    Difficult: '[DIFFICULT]',
-                    Event: '[EVENT]',
-                    Note: '[NOTE]',
-                    Roadworks: '[ROADWORKS]',
-                    Wslm: '[WSLM]'
-                },
-                tools: {
-                    BackupSettingsTitle: 'Download a backup copy of your URC-E settings in JSON format.\nThis backup can be used to restore your settings to another computer, or in the event you '
+            },
+            tabs: {
+                Comments: 'Comments',
+                Settings: 'Settings',
+                Tools: 'Tools'
+            },
+            tags: {
+                Bog: '[BOG] / [BOTG]',
+                Closure: '[CLOSURE]',
+                Construction: '[CONSTRUCTION]',
+                Difficult: '[DIFFICULT]',
+                Event: '[EVENT]',
+                Note: '[NOTE]',
+                Roadworks: '[ROADWORKS]',
+                Wslm: '[WSLM]'
+            },
+            tools: {
+                BackupSettingsTitle: 'Download a backup copy of your URC-E settings in JSON format.\nThis backup can be used to restore your settings to another computer, or in the event you '
                             + 'lose your settings.\n\nNote: Please do not modify the JSON file in any way. The format is crucial to proper restoral of settings.',
-                    ConvertCreateConvertProcess: 'Convert Process',
-                    ConvertCreateCreateProcess: 'Create Process',
-                    ConvertCreateStep1: 'Open the template spreadsheet',
-                    ConvertCreateStep2: 'Click <i>File</i> then <i>Make a copy</i>.',
-                    ConvertCreateStep3: 'Give your file a name and specify the folder you want to save it in.',
-                    ConvertCreateStep4: 'Click <i>OK</i>.',
-                    ConvertCreateStep5: 'Your sheet will open in a new tab. Look at the URL to get the <i>Spreadsheet ID</i>.<br>It is between <i>https://docs.google.com/spreadsheets/d/</i> and '
+                ConvertCreateConvertProcess: 'Convert Process',
+                ConvertCreateCreateProcess: 'Create Process',
+                ConvertCreateStep1: 'Open the template spreadsheet',
+                ConvertCreateStep2: 'Click <i>File</i> then <i>Make a copy</i>.',
+                ConvertCreateStep3: 'Give your file a name and specify the folder you want to save it in.',
+                ConvertCreateStep4: 'Click <i>OK</i>.',
+                ConvertCreateStep5: 'Your sheet will open in a new tab. Look at the URL to get the <i>Spreadsheet ID</i>.<br>It is between <i>https://docs.google.com/spreadsheets/d/</i> and '
                         + '<i>/edit#...</i>.<br><b>Example:</b> <i>1JVtw4xwjKmPX_H1Xo1uwyYwxguM-oSi0LotD4lEwmK4</i>',
-                    ConvertCreateStep6: 'Click <i>Share</i> at the top right.',
-                    ConvertCreateStep7: 'Click <i>Advanced</i> at the bottom right.',
-                    ConvertCreateStep8: 'Click <i>Change...</i> next to <i>Specific people can access</i>',
-                    ConvertCreateStep9: 'Select <i>On - Anyone with the link</i>',
-                    ConvertCreateStep10: 'Ensure <i>Access: Anyone (no sign-in required)</i> is set to <i>Can view</i>.',
-                    ConvertCreateStep11: 'Click <i>Save</i> then <i>Done</i>.',
-                    ConvertCreateStep12: 'Download your converted default UR type responses',
-                    ConvertCreateStep13: 'Download your converted comment list',
-                    ConvertCreateStep14: 'In your custom Google Sheet click cell <i>A25</i>.',
-                    ConvertCreateStep15: 'Click <i>File</i> then <i>Import</i>.',
-                    ConvertCreateStep16: 'Click <i>Upload</i> at the top.',
-                    ConvertCreateStep17: 'Select your <i>comment list</i> file that was downloaded in step 12 (<i>comment_list_DATETIME.csv</i>).',
-                    ConvertCreateStep18: 'For <i>Import location</i> select <i>Replace data at selected cell</i>.',
-                    ConvertCreateStep19: 'For <i>Separator type</i> select <i>Custom</i> and put <i>|</i> in the box.',
-                    ConvertCreateStep20: 'Click <i>Import data</i>.',
-                    ConvertCreateStep21: 'Click cell <i>B5</i>.',
-                    ConvertCreateStep22: 'Repeat steps 15 and 16.',
-                    ConvertCreateStep23: 'Select your <i>default UR type responses</i> file that was downloaded in step 11 (<i>default_responses_DATETIME.csv</i>).',
-                    ConvertCreateStep24: 'Repeat steps 16-18.',
-                    ConvertCreateStep25: 'Put your <i>Spreadsheet ID</i> (step 5) in the <i>Custom Google Spreadsheet ID</i> settings box in URC-E settings.',
-                    ConvertCreateStep26: 'You can now use the <i>Custom G Sheet</i> comment list.',
-                    ConvertCreateSteps: 'Steps',
-                    ConvertCurrentCustom: 'Convert current custom',
-                    ConvertCurrentCustomTitle: 'Convert your current custom comment list addon to URC-E style Google Sheet for easy maintenance, sharing, etc.',
-                    CreateNewCustom: 'Create new custom',
-                    CreateNewCustomTitle: 'Create your own URC-E custom comment list Google sheet for easy maintenance, sharing, etc.',
-                    CustomGoogleSpreadsheet: 'Custom Google Spreadsheet',
-                    IntersectionOf: 'at the intersection of $SEG1NAME$ and $SEG2NAME$',
-                    IntersectionOfWithCity: 'at the intersection of $SEG1NAME$ and $SEG2NAME$ in $SEGCITY$',
-                    ResetSettingsTitle: 'Reset all URC-E settings back to their default values.\n\nNote: Almost all settings default to disabled.',
-                    RestoreSettingsFileError: 'Invalid URC-E settings JSON file.',
-                    RestoreSettingsSelectFileTitle: 'Select the JSON file created by the URC-E "Backup" settings button.',
-                    RestoreSettingsTitle: 'Restore a backup copy of your URC-E settings from the JSON backup file created with the backup settings button.\n\nNote: Please do not modify the JSON '
+                ConvertCreateStep6: 'Click <i>Share</i> at the top right.',
+                ConvertCreateStep7: 'Click <i>Advanced</i> at the bottom right.',
+                ConvertCreateStep8: 'Click <i>Change...</i> next to <i>Specific people can access</i>',
+                ConvertCreateStep9: 'Select <i>On - Anyone with the link</i>',
+                ConvertCreateStep10: 'Ensure <i>Access: Anyone (no sign-in required)</i> is set to <i>Can view</i>.',
+                ConvertCreateStep11: 'Click <i>Save</i> then <i>Done</i>.',
+                ConvertCreateStep12: 'Download your converted default UR type responses',
+                ConvertCreateStep13: 'Download your converted comment list',
+                ConvertCreateStep14: 'In your custom Google Sheet click cell <i>A25</i>.',
+                ConvertCreateStep15: 'Click <i>File</i> then <i>Import</i>.',
+                ConvertCreateStep16: 'Click <i>Upload</i> at the top.',
+                ConvertCreateStep17: 'Select your <i>comment list</i> file that was downloaded in step 12 (<i>comment_list_DATETIME.csv</i>).',
+                ConvertCreateStep18: 'For <i>Import location</i> select <i>Replace data at selected cell</i>.',
+                ConvertCreateStep19: 'For <i>Separator type</i> select <i>Custom</i> and put <i>|</i> in the box.',
+                ConvertCreateStep20: 'Click <i>Import data</i>.',
+                ConvertCreateStep21: 'Click cell <i>B5</i>.',
+                ConvertCreateStep22: 'Repeat steps 15 and 16.',
+                ConvertCreateStep23: 'Select your <i>default UR type responses</i> file that was downloaded in step 11 (<i>default_responses_DATETIME.csv</i>).',
+                ConvertCreateStep24: 'Repeat steps 16-18.',
+                ConvertCreateStep25: 'Put your <i>Spreadsheet ID</i> (step 5) in the <i>Custom Google Spreadsheet ID</i> settings box in URC-E settings.',
+                ConvertCreateStep26: 'You can now use the <i>Custom G Sheet</i> comment list.',
+                ConvertCreateSteps: 'Steps',
+                ConvertCurrentCustom: 'Convert current custom',
+                ConvertCurrentCustomTitle: 'Convert your current custom comment list addon to URC-E style Google Sheet for easy maintenance, sharing, etc.',
+                CreateNewCustom: 'Create new custom',
+                CreateNewCustomTitle: 'Create your own URC-E custom comment list Google sheet for easy maintenance, sharing, etc.',
+                CustomGoogleSpreadsheet: 'Custom Google Spreadsheet',
+                IntersectionOf: 'at the intersection of $SEG1NAME$ and $SEG2NAME$',
+                IntersectionOfWithCity: 'at the intersection of $SEG1NAME$ and $SEG2NAME$ in $SEGCITY$',
+                ResetSettingsTitle: 'Reset all URC-E settings back to their default values.\n\nNote: Almost all settings default to disabled.',
+                RestoreSettingsFileError: 'Invalid URC-E settings JSON file.',
+                RestoreSettingsSelectFileTitle: 'Select the JSON file created by the URC-E "Backup" settings button.',
+                RestoreSettingsTitle: 'Restore a backup copy of your URC-E settings from the JSON backup file created with the backup settings button.\n\nNote: Please do not modify the JSON '
                             + 'file in any way. The format is crucial to proper restoral of settings.',
-                    SegmentWithCity: '$SEG1NAME$ in $SEGCITY$',
-                    UnknownRoadName: 'unnamed road',
-                    UnknownVenueName: 'unnamed venue'
-                },
-                urPanel: {
-                    CurrentDate: 'Current date',
-                    DriveDate: 'Drive date',
-                    InsertCurrentDateCasualTitle: 'Shortcut - Current date (casual): Click this icon to insert the current date into the new comment box at the cursor position (full month name, '
+                SegmentWithCity: '$SEG1NAME$ in $SEGCITY$',
+                UnknownRoadName: 'unnamed road',
+                UnknownVenueName: 'unnamed venue'
+            },
+            urPanel: {
+                CurrentDate: 'Current date',
+                DriveDate: 'Drive date',
+                InsertCurrentDateCasualTitle: 'Shortcut - Current date (casual): Click this icon to insert the current date into the new comment box at the cursor position (full month name, '
                             + '2-digit day in locale format).',
-                    InsertCurrentDateTitle: 'Shortcut - Current date: Click this icon to insert the current date into the new comment box at the cursor position (2-digit month, 2-digit day, '
+                InsertCurrentDateTitle: 'Shortcut - Current date: Click this icon to insert the current date into the new comment box at the cursor position (2-digit month, 2-digit day, '
                             + '4-digit year in locale format).',
-                    InsertCurrentDayOfWeekTitle: 'Shortcut - Current day of week: Click this icon to insert the current day of the week into the new comment box at the cursor position (full day '
+                InsertCurrentDayOfWeekTitle: 'Shortcut - Current day of week: Click this icon to insert the current day of the week into the new comment box at the cursor position (full day '
                             + 'of week name in locale language).',
-                    InsertCurrentTimeCasualTitle: 'Shortcut - Current time of day (casual): Click this icon to insert the current time of day into the new comment box at the cursor position (in '
+                InsertCurrentTimeCasualTitle: 'Shortcut - Current time of day (casual): Click this icon to insert the current time of day into the new comment box at the cursor position (in '
                             + 'locale language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
-                    InsertCurrentTimeTitle: 'Shortcut - Current time of day: Click this icon to insert the current time of day into the new comment box at the cursor position (2-digit hour, '
+                InsertCurrentTimeTitle: 'Shortcut - Current time of day: Click this icon to insert the current time of day into the new comment box at the cursor position (2-digit hour, '
                             + '2-digit minute in locale format).',
-                    InsertCustomTaglineTitle: 'Shortcut - Custom tagline: Click this icon to insert your custom tagline into the new comment box at the cursor position.',
-                    InsertDateTimeCasualModeTitle: 'Shortcut - Drive day and time (fully casual): Click this icon to insert the drive date into the new comment box at the cursor position.\n\n'
+                InsertCustomTaglineTitle: 'Shortcut - Custom tagline: Click this icon to insert your custom tagline into the new comment box at the cursor position.',
+                InsertDateTimeCasualModeTitle: 'Shortcut - Drive day and time (fully casual): Click this icon to insert the drive date into the new comment box at the cursor position.\n\n'
                             + '0 days: this morning, this afternoon, this evening, tonight\n'
                             + '1 days: yesterday morning, yesterday afternoon, yesterrday evening, last night\n'
                             + '2-6 days: Day_of_Week morning/afternoon/evening/night\n'
@@ -5160,99 +5154,100 @@ function loadTranslations() {
                             + '28-60 days: a few weeks ago\n'
                             + '61-120 days: a couple months back\n'
                             + '121+ days: a while ago',
-                    InsertDateCasualTitle: 'Shortcut - Drive date (casual): Click this icon to insert the drive date into the new comment box at the cursor position (full month name, 2-digit '
+                InsertDateCasualTitle: 'Shortcut - Drive date (casual): Click this icon to insert the drive date into the new comment box at the cursor position (full month name, 2-digit '
                             + 'day in locale format).',
-                    InsertDateTitle: 'Shortcut - Drive date: Click this icon to insert the drive date into the new comment box at the cursor position (2-digit month, 2-digit day, 4-digit year '
+                InsertDateTitle: 'Shortcut - Drive date: Click this icon to insert the drive date into the new comment box at the cursor position (2-digit month, 2-digit day, 4-digit year '
                             + 'in locale format).',
-                    InsertDayOfWeekTitle: 'Shortcut - Drive day of week: Click this icon to insert the drive date day of the week into the new comment box at the cursor position (full day of '
+                InsertDayOfWeekTitle: 'Shortcut - Drive day of week: Click this icon to insert the drive date day of the week into the new comment box at the cursor position (full day of '
                             + 'week name in locale language).',
-                    InsertDescriptionTitle: 'Shortcut - Description: Click this icon to insert the UR description into the new comment box at the cursor position.',
-                    InsertPlaceAddressTitle: 'Shortcut - Place address: Click this icon to either replace \'$PLACE_ADDRESS$\' with the address of the currently selected place, or it will insert '
+                InsertDescriptionTitle: 'Shortcut - Description: Click this icon to insert the UR description into the new comment box at the cursor position.',
+                InsertPlaceAddressTitle: 'Shortcut - Place address: Click this icon to either replace \'$PLACE_ADDRESS$\' with the address of the currently selected place, or it will insert '
                             + 'the address of the currently selected place into the comment box at the current cursor position.',
-                    InsertPlaceNameTitle: 'Shortcut - Place name: Click this icon to either replace \'$PLACE_NAME$\' with the name of the currently selected place, or it will insert the name of '
+                InsertPlaceNameTitle: 'Shortcut - Place name: Click this icon to either replace \'$PLACE_NAME$\' with the name of the currently selected place, or it will insert the name of '
                             + 'the currently selected place into the comment box at the current cursor position.',
-                    InsertSelSegsTitle: 'Shortcut - Segment name(s): Click this icon to either replace "$SELSEGS$" (or "$SELSEGS") with the name of the currently selected segment(s), or\nit '
+                InsertSelSegsTitle: 'Shortcut - Segment name(s): Click this icon to either replace "$SELSEGS$" (or "$SELSEGS") with the name of the currently selected segment(s), or\nit '
                             + 'will insert the name of the currently selected segment(s) into the comment box at the cursor position.',
-                    InsertSelSegsWithCityTitle: 'Shortcut - Segment name(s) with city: Click this icon to either replace \'$SELSEGS_WITH_CITY$\' (or \'$SELSEGS$\' or \'$SELSEGS\') with the name '
+                InsertSelSegsWithCityTitle: 'Shortcut - Segment name(s) with city: Click this icon to either replace \'$SELSEGS_WITH_CITY$\' (or \'$SELSEGS$\' or \'$SELSEGS\') with the name '
                             + 'and city of the currently selected segment(s), or\nit will insert the name and city of the currently selected segment(s) into the comment box at the cursor position.',
-                    InsertTimeCasualTitle: 'Shortcut - Drive time of day (casual): Click this icon to insert the drive date time of day into the new comment box at the cursor position (in locale '
+                InsertTimeCasualTitle: 'Shortcut - Drive time of day (casual): Click this icon to insert the drive date time of day into the new comment box at the cursor position (in locale '
                             + 'language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
-                    InsertTimeTitle: 'Shortcut - Drive time of day: Click this icon to insert the drive date time of day into the new comment box at the cursor position (2-digit hour, 2-digit '
+                InsertTimeTitle: 'Shortcut - Drive time of day: Click this icon to insert the drive date time of day into the new comment box at the cursor position (2-digit hour, 2-digit '
                             + 'minute in locale format).',
-                    InsertUrTypeTitle: 'Shortcut - UR type: Click this icon to insert the UR type into the new comment box at the cursor position.',
-                    InsertWazeUsernameTitle: 'Shortcut - Waze username: Click this icon to insert your Waze username into the new comment box at the cursor position.',
-                    Shortcuts: 'Shortcuts'
-                },
-                urStatus: {
-                    Closed: 'Closed',
-                    NotIdentified: 'Not identified'
-                },
-                urTypes: {
-                    Undefined: 'Undefined'
-                },
-                prompts: {
-                    CommentInsertTimedOut: 'URC-E timed out waiting for the comment text box to become available.',
-                    CommentTooLong: 'Appending another comment to the current text will cause the comment to be longer than 2000 characters, which is too long. URC-E did not append the selected '
+                InsertUrTypeTitle: 'Shortcut - UR type: Click this icon to insert the UR type into the new comment box at the cursor position.',
+                InsertWazeUsernameTitle: 'Shortcut - Waze username: Click this icon to insert your Waze username into the new comment box at the cursor position.',
+                Shortcuts: 'Shortcuts'
+            },
+            urStatus: {
+                Closed: 'Closed',
+                NotIdentified: 'Not identified'
+            },
+            urTypes: {
+                Undefined: 'Undefined'
+            },
+            prompts: {
+                CommentInsertTimedOut: 'URC-E timed out waiting for the comment text box to become available.',
+                CommentTooLong: 'Appending another comment to the current text will cause the comment to be longer than 2000 characters, which is too long. URC-E did not append the selected '
                             + 'comment and left the new-comment box with the same text it had.',
-                    ConversionLoadAddonFirst: 'In order to convert a custom comments addon script to the new URC-E style Google Sheet, you must first ensure your custom comments addon is enabled '
+                ConversionLoadAddonFirst: 'In order to convert a custom comments addon script to the new URC-E style Google Sheet, you must first ensure your custom comments addon is enabled '
                             + 'in TamperMonkey and selected in URC-E\'s Comment List settings box.',
-                    CustomGSheetLoadError: 'An error has occurred loading your URC-E custom comment Google sheet.<br><br>Please make sure you have done the following:\n<ul><li>Used <b><i>Make a '
+                CustomGSheetLoadError: 'An error has occurred loading your URC-E custom comment Google sheet.<br><br>Please make sure you have done the following:\n<ul><li>Used <b><i>Make a '
                             + 'copy...</i></b> on the original spreadsheet that was created for you and saved it to your own Google Drive.\n<li>Set the correct <b><i>Custom Google Spreadsheet '
                             + 'ID</i></b> (should be the ID of the copy created in the previous step) set on the settings tab.\n<li>Ensured your spreadsheet is shared to everyone with a link can '
                             + 'view.\n</ul>If all these have been done and you are still having issues, please contact a WazeDev team member.',
-                    NoCommentBox: 'URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.',
-                    PlaceAddressFound: 'The selected comment contains "$PLACE_ADDRESS$".\n\nIn order to replace this text with the place address, please select a place and click the place '
+                NoCommentBox: 'URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.',
+                PlaceAddressFound: 'The selected comment contains "$PLACE_ADDRESS$".\n\nIn order to replace this text with the place address, please select a place and click the place '
                             + 'address shortcut button in the UR panel.',
-                    PlaceAddressInsertError: 'In order to use the <i class="fa fa-map-marker" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
-                    PlaceNameFound: 'The selected comment contains "$PLACE_NAME$".\n\nIn order to replace this text with the place name, please select a place and click the place name '
+                PlaceAddressInsertError: 'In order to use the <i class="fa fa-map-marker" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
+                PlaceNameFound: 'The selected comment contains "$PLACE_NAME$".\n\nIn order to replace this text with the place name, please select a place and click the place name '
                             + 'shortcut button in the UR panel.',
-                    PlaceNameInsertError: 'In order to use the <i class="fa fa-home" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
-                    ReminderMessageAuto: 'URC-E: Automatically sending reminder message to UR:',
-                    ResetSettings: 'Reset Settings',
-                    ResetSettingsComplete: 'Settings reset complete',
-                    ResetSettingsConfirmation: 'Are you sure you want to reset URC-E settings back to their default values?',
-                    RestoreSettings: 'Restore Settings',
-                    RestoreSettingsComplete: 'Settings restore complete',
-                    RestoreSettingsConfirmation: 'Would you like to proceed with restoring your URC-E settings?',
-                    RestoreSettingsInvalidSettings: 'Invalid settings removed from JSON file',
-                    RestoreSettingsNumOfSettings: 'Number of settings to restore',
-                    RestoreSettingsRetainedSettings: 'Retained current settings',
-                    RestrictionsEnforced: 'Restrictions enforced!',
-                    RestrictionsEnforcedTitle: 'The following restrictions have been enforced',
-                    SelSegsFound: 'The selected comment contains "$SELSEGS$".\n\nIn order to replace this text with the road name(s), please\nselect one or two segments and click the road button '
+                PlaceNameInsertError: 'In order to use the <i class="fa fa-home" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
+                ReminderMessageAuto: 'URC-E: Automatically sending reminder message to UR:',
+                ResetSettings: 'Reset Settings',
+                ResetSettingsComplete: 'Settings reset complete',
+                ResetSettingsConfirmation: 'Are you sure you want to reset URC-E settings back to their default values?',
+                RestoreSettings: 'Restore Settings',
+                RestoreSettingsComplete: 'Settings restore complete',
+                RestoreSettingsConfirmation: 'Would you like to proceed with restoring your URC-E settings?',
+                RestoreSettingsInvalidSettings: 'Invalid settings removed from JSON file',
+                RestoreSettingsNumOfSettings: 'Number of settings to restore',
+                RestoreSettingsRetainedSettings: 'Retained current settings',
+                RestrictionsEnforced: 'Restrictions enforced!',
+                RestrictionsEnforcedTitle: 'The following restrictions have been enforced',
+                SelSegsFound: 'The selected comment contains "$SELSEGS$".\n\nIn order to replace this text with the road name(s), please\nselect one or two segments and click the road button '
                             + 'in the\nUR panel.',
-                    SelSegsInsertError: 'In order to use the <i class="fa fa-road" aria-hidden="true"></i> button in the UR Panel, you must first select one or two segments.',
-                    SetCustomSsIdFirst: 'Before you can select <b><i>Custom G Sheet</i></b> as your comment list, you must first set the <b><i>Custom Google Spreadsheet ID</i></b> setting on '
+                SelSegsInsertError: 'In order to use the <i class="fa fa-road" aria-hidden="true"></i> button in the UR Panel, you must first select one or two segments.',
+                SetCustomSsIdFirst: 'Before you can select <b><i>Custom G Sheet</i></b> as your comment list, you must first set the <b><i>Custom Google Spreadsheet ID</i></b> setting on '
                             + 'the URC-E settings tab.',
-                    SwitchingCommentLists: 'Switching comment lists',
-                    TimedOutWaitingStatic: 'Timed out waiting for the static list to become available. Is it enabled?',
-                    UpdateRequired: 'You are using an older version of URC-E, which has caused an error. Please update to at least version',
-                    UrOverflowErrorWithoutOverflowEnabled: 'WME will not load more than 500 URs per screen. Some URs may be missing. You can try to enable overflow handling, or zoom in and '
+                SwitchingCommentLists: 'Switching comment lists',
+                TimedOutWaitingStatic: 'Timed out waiting for the static list to become available. Is it enabled?',
+                UpdateRequired: 'You are using an older version of URC-E, which has caused an error. Please update to at least version',
+                UrOverflowErrorWithoutOverflowEnabled: 'WME will not load more than 500 URs per screen. Some URs may be missing. You can try to enable overflow handling, or zoom in and '
                             + 'refresh.',
-                    VarFound: 'The selected comment contains variables: $VARSFOUND$.\n\nUntil these are replaced, the send button is disabled.',
-                    WaitingOnInit: 'Waiting for URC-E to fully initialize'
-                },
-                time: {
-                    ACoupleMonthsAgo: 'a couple months ago',
-                    AFewWeeksAgo: 'a few weeks ago',
-                    Afternoon: 'afternoon',
-                    AWhileBack: 'a while back',
-                    Evening: 'evening',
-                    Morning: 'morning',
-                    LastNight: 'last night',
-                    LastWeekTOD: 'last $DAY_NAME$ $CASUAL_TOD$',
-                    Night: 'night',
-                    ThisCasualTOD: 'this $THIS_CASUAL_TOD$',
-                    ThisWeekTOD: '$DAY_NAME$ $CASUAL_TOD$',
-                    Tonight: 'tonight',
-                    TwoWeeksAgo: '$DAY_NAME$ before last',
-                    ThreeWeeksAgo: 'three weeks ago',
-                    YesterdayCasualTOD: 'yesterday $YESTERDAY_CASUAL_TOD$'
-                }
+                VarFound: 'The selected comment contains variables: $VARSFOUND$.\n\nUntil these are replaced, the send button is disabled.',
+                WaitingOnInit: 'Waiting for URC-E to fully initialize'
+            },
+            time: {
+                ACoupleMonthsAgo: 'a couple months ago',
+                AFewWeeksAgo: 'a few weeks ago',
+                Afternoon: 'afternoon',
+                AWhileBack: 'a while back',
+                Evening: 'evening',
+                Morning: 'morning',
+                LastNight: 'last night',
+                LastWeekTOD: 'last $DAY_NAME$ $CASUAL_TOD$',
+                Night: 'night',
+                ThisCasualTOD: 'this $THIS_CASUAL_TOD$',
+                ThisWeekTOD: '$DAY_NAME$ $CASUAL_TOD$',
+                Tonight: 'tonight',
+                TwoWeeksAgo: '$DAY_NAME$ before last',
+                ThreeWeeksAgo: 'three weeks ago',
+                YesterdayCasualTOD: 'yesterday $YESTERDAY_CASUAL_TOD$'
             }
-        };
-        translations['en-US'] = { ...translations.en };
-        const locale = I18n.currentLocale();
+        }
+    };
+    translations['en-US'] = { ...translations.en };
+    const locale = I18n.currentLocale();
+    if (translations[locale] !== undefined) {
         Object.keys(translations[locale]).forEach(obj1 => {
             if (typeof translations[locale][obj1] === 'object') {
                 Object.keys(translations[locale][obj1]).forEach(obj2 => {
@@ -5264,15 +5259,15 @@ function loadTranslations() {
                 delete (translations[locale][obj1]);
             }
         });
-        I18n.translations[locale].urce = $.extend(true, {}, translations.en, translations[locale]);
-        if (Object.keys(translations).indexOf(locale) === -1)
-            _needTranslation = true;
-        if (errorText)
-            logWarning(errorText);
-        if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1))
-            return resolve({ error: false });
-        return resolve({ error: (errorText !== undefined), text: errorText });
-    });
+    }
+    I18n.translations[locale].urce = $.extend(true, {}, translations.en, translations[locale]);
+    if (Object.keys(translations).indexOf(locale) === -1)
+        _needTranslation = true;
+    if (errorText)
+        logWarning(errorText);
+    if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1))
+        return Promise.resolve({ error: false });
+    return Promise.resolve({ error: (errorText !== undefined), text: errorText });
 }
 
 // jQuery function to set cursor position in input
