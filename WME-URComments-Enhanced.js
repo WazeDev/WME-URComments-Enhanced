@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2020.06.16.01
+// @version     2020.06.19.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -44,7 +44,8 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
         '<b>BUGFIX:</b> Further refinement for latest WME compatibility.',
         '<b>BUGFIX:</b> Error loading in non-translated language locales.',
         '<b>BUGFIX:</b> Restrictions causing errors in certain countries.',
-        '<b>BUGFIX:</b> Shortcuts chevron upside down.'],
+        '<b>BUGFIX:</b> Shortcuts chevron upside down.',
+        '<b>BUGFIX:</b> UR session data not always populating correctly.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
     LOAD_BEGIN_TIME = performance.now(),
@@ -728,9 +729,11 @@ async function mergeUpdateRequestModel(urIds = []) {
             urIds.splice(i, 1);
     }
     if (urIds.length > 0) {
-        const getUrSessionsObjs = await W.controller.descartesClient.getUpdateRequestSessionsByIds(urIds);
-        W.model.updateRequestSessions.mergeObjects(getUrSessionsObjs.updateRequestSessions);
+        const resp = await W.controller.descartesClient.getUpdateRequestSessionsByIds(urIds);
+        if (resp.updateRequestSessions.objects.length > 0)
+            W.model.mergeResponse(resp);
     }
+    return Promise.resolve();
 }
 
 async function handleAfterCommentMutation(urId) {
@@ -907,6 +910,7 @@ async function handleUpdateRequestContainer(urId, caller) {
         });
     }
     $('#panel-container .mapUpdateRequest .top-section').scrollTop($('#panel-container .mapUpdateRequest .top-section')[0].scrollHeight);
+    $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').on('click', () => { logDebug('Clicked send to submit the comment.'); });
     if (W.model.mapUpdateRequests.objects[urId].attributes.urceData.commentCount === 0) {
         if (_settings.autoZoomInOnNewUr)
             autoZoomIn(urId);
@@ -1262,8 +1266,8 @@ function formatText(text, replaceVars, shortcutClicked, urId) {
         }
     }
     if (replaceVars && text.indexOf('$CLOSED_NOR_EMAIL_TAG$') > -1) {
-        if ((_settings.perCommentListSettings[_currentCommentList].tagEmail.length > 0) && (W.model.loginManager.user.userName.length > 0))
-            text = text.replace('$CLOSED_NOR_EMAIL_TAG$', `Since this report is closed, please send further correspondence to ${_settings.perCommentListSettings[_currentCommentList].tagEmail} and include ${W.model.loginManager.user.userName} in the subject line.`);
+        if ((_settings.perCommentListSettings[_currentCommentList].tagEmail.length > 0) && (W.loginManager.user.userName.length > 0))
+            text = text.replace('$CLOSED_NOR_EMAIL_TAG$', `Since this report is closed, please send further correspondence to ${_settings.perCommentListSettings[_currentCommentList].tagEmail} and include ${W.loginManager.user.userName} in the subject line.`);
         else
             text = text.replace('$CLOSED_NOR_EMAIL_TAG$', '');
     }
@@ -1274,8 +1278,8 @@ function formatText(text, replaceVars, shortcutClicked, urId) {
             text = text.replace('$TAG_EMAIL$', '');
     }
     if (replaceVars && (text.indexOf('$USERNAME') > -1)) {
-        if (W.model.loginManager.user.userName !== null)
-            text = text.replace(/(\$USERNAME\$?)+/gmi, W.model.loginManager.user.userName);
+        if (W.loginManager.user.userName !== null)
+            text = text.replace(/(\$USERNAME\$?)+/gmi, W.loginManager.user.userName);
         else
             text = text.replace(/(\$USERNAME\$?)+/gmi, '');
     }
@@ -2202,7 +2206,7 @@ async function updateUrceData(mUrsObjArr) {
         reminderDays = _restrictionsEnforce.reminderDays || _settings.perCommentListSettings[_currentCommentList].reminderDays || 0,
         closeDays = _restrictionsEnforce.closeDays || _settings.perCommentListSettings[_currentCommentList].closeDays || 7,
         tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim,
-        tagUsernameRegex = new RegExp(` ${W.model.loginManager.user.userName} `, 'gi'),
+        tagUsernameRegex = new RegExp(` ${W.loginManager.user.userName} `, 'gi'),
         getUserIdsToCheck = usersToCheck => {
             if (usersToCheck.length > 0) {
                 // eslint-disable-next-line array-callback-return, consistent-return
@@ -2480,6 +2484,9 @@ async function updateUrceData(mUrsObjArr) {
                         urceData.hideUr = true;
                 }
                 W.model.mapUpdateRequests.objects[chunk[idx].attributes.id].attributes.urceData = urceData;
+            }
+            else {
+                logDebug(`Could not load urSessionsObj for urID: ${chunk[idx].attributes.id}`);
             }
         }
         if (autoSentRemindersFor.length > 0) {
@@ -4491,7 +4498,7 @@ async function initCommentLists() {
     }
     if (errorText)
         logWarning(errorText);
-    if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1)) {
+    if (errorText && (STATIC_ONLY_USERS.indexOf(W.loginManager.user.userName) > -1)) {
         _commentLists.push({
             idx: 1, name: 'Custom', status: 'enabled', type: 'static', oldVarName: 'Custom', listOwner: 'Custom', gSheetRange: ''
         });
@@ -4541,7 +4548,7 @@ async function initAutoSwitchArrays() {
     }
     if (errorText)
         logWarning(errorText);
-    if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1))
+    if (errorText && (STATIC_ONLY_USERS.indexOf(W.loginManager.user.userName) > -1))
         return Promise.resolve({ error: false });
     return Promise.resolve({ error: (errorText !== undefined), text: errorText });
 }
@@ -4590,7 +4597,7 @@ async function initRestrictions() {
     }
     if (errorText)
         logWarning(errorText);
-    if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1))
+    if (errorText && (STATIC_ONLY_USERS.indexOf(W.loginManager.user.userName) > -1))
         return Promise.resolve({ error: false });
     return Promise.resolve({ error: (errorText !== undefined), text: errorText });
 }
@@ -5265,7 +5272,7 @@ async function loadTranslations() {
         _needTranslation = true;
     if (errorText)
         logWarning(errorText);
-    if (errorText && (STATIC_ONLY_USERS.indexOf(W.model.loginManager.user.userName) > -1))
+    if (errorText && (STATIC_ONLY_USERS.indexOf(W.loginManager.user.userName) > -1))
         return Promise.resolve({ error: false });
     return Promise.resolve({ error: (errorText !== undefined), text: errorText });
 }
