@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2020.06.23.01
+// @version     2020.06.24.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -38,7 +38,8 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Reconfigured MutationObservers for better performance.',
+    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Auto save after closed or NI setting no longer requires the auto select setting.',
+        '<b>CHANGE:</b> Reconfigured MutationObservers for better performance.',
         '<b>CHANGE:</b> Removed passing of UR ID between functions as assigned variables.',
         '<b>BUGFIX:</b> UR session data not always populating correctly.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
@@ -729,7 +730,7 @@ async function handleAfterCloseUpdateContainer() {
     });
     if (parseInt($('.update-requests .selected').data('id')) > 0)
         return;
-    const urId = [...[_selUr.urId]];
+    const { urId, newStatus } = _selUr;
     _selUr = {
         doubleClick: false,
         handling: false,
@@ -745,14 +746,14 @@ async function handleAfterCloseUpdateContainer() {
         _urCommentsObserver.disconnect();
         _urCommentsObserver.isObserving = false;
     }
-    if (_settings.autoSaveAfterSolvedOrNiComment && ((_selUr.newStatus === 'solved') || (_selUr.newStatus === 'notidentified'))) {
+    if (_settings.autoSaveAfterSolvedOrNiComment && ((newStatus === 'solved') || (newStatus === 'notidentified'))) {
         $('.toolbar-button.waze-icon-save').trigger('click');
     }
     else {
         if (_settings.autoSwitchToUrCommentsTab)
             autoSwitchToPrevTab();
         _restoreZoom = undefined; // This must go here as it is getting out of order with the handleUrLayer call, if it is after the if/else.
-        await handleUrLayer('close', null, urId);
+        await handleUrLayer('close', null, [urId]);
     }
 }
 
@@ -4200,10 +4201,6 @@ function initSettingsTab() {
                 $('[urceprefs$="-unstack"]').prop('disabled', true).addClass('urceDisabled');
         }
         if (settingName === 'autoClickOpenSolvedNi') {
-            if (isChecked('#_cbautoSaveAfterSolvedOrNiComment')) {
-                _settings.autoSaveAfterSolvedOrNiComment = false;
-                $('#_cbautoSaveAfterSolvedOrNiComment').prop('checked', false);
-            }
             if (isChecked('#_cbdoubleClickLinkNiComments')) {
                 _settings.doubleClickLinkNiComments = false;
                 $('#_cbdoubleClickLinkNiComments').prop('checked', false);
@@ -4220,16 +4217,8 @@ function initSettingsTab() {
                 $('div#URCE-divDoubleClickSolved').hide();
             }
         }
-        if (settingName === 'autoSaveAfterSolvedOrNiComment') {
-            _settings.autoSaveAfterSolvedOrNiComment = isChecked(this);
-            if (_settings.autoSaveAfterSolvedOrNiComment && (!isChecked('#_cbautoClickOpenSolvedNi') || !_settings.autoClickOpenSolvedNi)) {
-                _settings.autoClickOpenSolvedNi = true;
-                $('#_cbautoClickOpenSolvedNi').prop('checked', true);
-            }
-        }
         if (settingName === 'doubleClickLinkOpenComments') {
-            _settings.doubleClickLinkOpenComments = isChecked(this);
-            if (!_settings.doubleClickLinkOpenComments) {
+            if (!isChecked(this)) {
                 $('div#URCE-divDoubleClickOpen').hide();
             }
             else {
@@ -4241,8 +4230,7 @@ function initSettingsTab() {
             }
         }
         if (settingName === 'doubleClickLinkNiComments') {
-            _settings.doubleClickLinkNiComments = isChecked(this);
-            if (!_settings.doubleClickLinkNiComments) {
+            if (!isChecked(this)) {
                 $('div#URCE-divDoubleClickNi').hide();
             }
             else {
@@ -4254,8 +4242,7 @@ function initSettingsTab() {
             }
         }
         if (settingName === 'doubleClickLinkSolvedComments') {
-            _settings.doubleClickLinkSolvedComments = isChecked(this);
-            if (!_settings.doubleClickLinkSolvedComments) {
+            if (!isChecked(this)) {
                 $('div#URCE-divDoubleClickSolved').hide();
             }
             else {
@@ -4848,9 +4835,8 @@ async function loadTranslations() {
                             + 'select Open, Solved or Not Identified.',
                 AutoCloseUrPanel: 'Auto close UR panel',
                 AutoCloseUrPanelTitle: 'Automatically close the UR panel after you click send on a comment.',
-                AutoSaveAfterSolvedOrNiComment: 'Auto save after solved or NI comment',
-                AutoSaveAfterSolvedOrNiCommentTitle: 'If "Auto Click Open, Solved or Not Identified" is also checked, this will automatically click the save button after you click send '
-                            + 'on a comment that set the UR to Solved or Not Identified.',
+                AutoSaveAfterSolvedOrNiComment: 'Auto save after solved or NI',
+                AutoSaveAfterSolvedOrNiCommentTitle: 'This will automatically click the save button after you close the UR panel in with you set the UR status to Solved or Not Identified.',
                 AutoSendReminders: 'Auto send reminders',
                 AutoSendRemindersTitle: 'Automatically send the reminder comment to the URs in the map window (as you pan around) you were the last to comment on and it has reached the '
                             + 'days specified in "Reminder Days".',
