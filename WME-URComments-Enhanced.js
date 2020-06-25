@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2020.06.24.01
+// @version     2020.06.25.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -41,7 +41,8 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Auto save after closed or NI setting no longer requires the auto click open, solved, NI setting.',
         '<b>CHANGE:</b> Reconfigured MutationObservers for better performance.',
         '<b>CHANGE:</b> Removed passing of UR ID between functions as assigned variables.',
-        '<b>BUGFIX:</b> UR session data not always populating correctly.'],
+        '<b>BUGFIX:</b> UR session data not always populating correctly.',
+        '<b>BUGFIX:</b> Force reopening of panel if reminder comment automatically sent and panel was loading or open.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
     LOAD_BEGIN_TIME = performance.now(),
@@ -2062,7 +2063,15 @@ function convertTagToCustomType(tag) {
     return -1;
 }
 
-function updateUrMapMarkers(urIds, filter, mUrsObjArr) {
+function updateUrMapMarkers(mUrsObjArr, filter) {
+    const zoomLevel = W.map.getOLMap().getZoom();
+    if (filter === undefined || filter === null) {
+        filter = true;
+        if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
+            || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))
+        )
+            filter = false;
+    }
     const closeDays = _restrictionsEnforce.closeDays || _settings.perCommentListSettings[_currentCommentList].closeDays || 7,
         markerChanges = {
             markers: {
@@ -2198,6 +2207,8 @@ function updateUrMapMarkers(urIds, filter, mUrsObjArr) {
 }
 
 async function updateUrceData(mUrsObjArr) {
+    const updateMarkersArr = [];
+    let reopenPanel = false;
     if (!mUrsObjArr)
         return false;
     if (typeof mUrsObjArr[0] === 'number') {
@@ -2303,9 +2314,10 @@ async function updateUrceData(mUrsObjArr) {
                     if (urceData.commentUserIds.indexOf(-1) > -1)
                         urceData.reporterHasCommented = true;
                     if (chunk[idx].attributes.open && urceData.commentCount === 1) {
-                        if ((urceData.lastCommentDaysOld > (reminderDays - 1))) {
+                        if ((reminderDays !== 0) && (_restrictionsEnforce.reminderDays !== 0) && (urceData.lastCommentDaysOld > (reminderDays - 1))) {
                             if ((_settings.perCommentListSettings[_currentCommentList].autoSendReminders || _restrictionsEnforce.autoSendReminders === true)
                                 && (_restrictionsEnforce.autoSendReminders !== false)
+                                && _defaultComments.dr.commentNum
                                 && (urceData.lastCommentBy > 1)
                                 && (_wmeUserId === urceData.lastCommentBy)
                                 && !chunk[idx].attributes.reminderSent
@@ -2314,7 +2326,7 @@ async function updateUrceData(mUrsObjArr) {
                             else
                                 urceData.needsReminder = true;
                         }
-                        else if (((reminderDays === 0) || (_settings.perCommentListSettings[_currentCommentList].reminderDays === '')) && (urceData.lastCommentDaysOld > (closeDays - 1))) {
+                        else if (((reminderDays === 0) || (_restrictionsEnforce.reminderDays === 0)) && (urceData.lastCommentDaysOld > (closeDays - 1))) {
                             urceData.needsClosed = true;
                         }
                         else {
@@ -2411,6 +2423,9 @@ async function updateUrceData(mUrsObjArr) {
                                 needsReminder: false,
                                 waiting: true
                             });
+                            if (parseInt($('.update-requests .selected').attr('data-id')) === _selUr.urId)
+                                reopenPanel = true;
+                            updateMarkersArr.push(chunk[idx]);
                         }
                     }
                     else {
@@ -2502,6 +2517,10 @@ async function updateUrceData(mUrsObjArr) {
             WazeWrap.Alerts.info(SCRIPT_NAME, `${I18n.t('urce.prompts.ReminderMessageAuto')}: ${autoSentRemindersFor.join(', ')} (${autoSentRemindersFor.length})`);
         }
     }
+    if (updateMarkersArr.length > 0)
+        updateUrMapMarkers(updateMarkersArr, null);
+    if (reopenPanel)
+        openUrPanel();
     return Promise.resolve();
 }
 
@@ -2566,7 +2585,7 @@ async function handleUrLayer(phase, filter, mUrsObjArr) {
         catch (error) {
             logWarning(error);
         }
-        updateUrMapMarkers(mUrsObjArr.map(obj => obj.attributes.id), filter, mUrsObjArr);
+        updateUrMapMarkers(mUrsObjArr, filter);
         if (_settings.enableUrOverflowHandling && (mUrsObjArr.length > 499)) {
             if (phase !== 'overflow')
                 await handleUrOverflow();
