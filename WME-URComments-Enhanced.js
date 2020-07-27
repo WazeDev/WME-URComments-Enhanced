@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2020.06.25.01
+// @version     2020.07.27.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -38,11 +38,8 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Auto save after closed or NI setting no longer requires the auto click open, solved, NI setting.',
-        '<b>CHANGE:</b> Reconfigured MutationObservers for better performance.',
-        '<b>CHANGE:</b> Removed passing of UR ID between functions as assigned variables.',
-        '<b>BUGFIX:</b> UR session data not always populating correctly.',
-        '<b>BUGFIX:</b> Force reopening of panel if reminder comment automatically sent and panel was loading or open.'],
+    SCRIPT_VERSION_CHANGES = ['<b>BUGFIX:</b> Spinner handling routines to reduce or remove stuck spinning.',
+        '<b>BUGFIX:</b> Per comment list tag email not saving correctly.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = false,
     LOAD_BEGIN_TIME = performance.now(),
@@ -73,6 +70,20 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
         sl: { commentNum: null, urNum: 23 } // Speed Limit
     },
     _restrictions = {},
+    _spinners = {
+        checkRestrictions: false,
+        handleAfterCommentMutation: false,
+        handleUpdateRequestContainer: false,
+        handleClickedShortcut: false,
+        postUrComment: false,
+        checkMarkerStacking: false,
+        markerMouseDown: false,
+        handleUrLayer: false,
+        handleUrOverflow: false,
+        changeCommentList: false,
+        buildCommentList: false,
+        init: false
+    },
     _timeouts = {
         checkRestrictions: {},
         getMapUrsAsync: {},
@@ -156,7 +167,6 @@ let _settings = {},
     _mouseIsDown = false,
     _needTranslation = false,
     _unstackedMasterId = null,
-    _spinners = 0,
     _restoreZoom,
     _$restoreTab,
     _restoreTabPosition,
@@ -520,6 +530,18 @@ function isDomElementReady(element, retryInterval = 10, maxTries = 200) {
     });
 }
 
+function handleDomElementError(reopenUrPanel = false, spinnerStop = false, spinnerName = '', errorDisplay = false, errorText = '') {
+    if (errorText.length > 0) {
+        logError(new Error(errorText));
+        if (errorDisplay)
+            WazeWrap.Alerts.error(SCRIPT_NAME, errorText);
+    }
+    if (spinnerStop)
+        doSpinner(spinnerName, false);
+    if (reopenUrPanel && (parseInt($('.update-requests .selected').attr('data-id')) > 0))
+        openUrPanel();
+}
+
 function getCollapsedGroups() {
     const $getDivs = $('div[id$="_body"]'),
         rObj = {};
@@ -530,28 +552,28 @@ function getCollapsedGroups() {
     return Promise.resolve(rObj);
 }
 
-function doSpinner(stop) {
+function doSpinner(spinnerName = '', spin = true) {
     const $btn = $('#urceUrMarkerProcessingSpinner');
     if ($btn.length === 0) {
-        _spinners = 0;
-        return;
+        Object.keys(_spinners).forEach(a => { _spinners[a] = false; });
     }
-    if (stop) {
-        _spinners--;
-        if (_spinners === 0)
+    else if (!spin) {
+        _spinners[spinnerName] = false;
+        if (!Object.values(_spinners).some(a => a === true))
             $btn.removeClass('fa-spin').css({ color: 'lightgray' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingInactive'));
-        return;
     }
-    _spinners++;
-    if (!$btn.hasClass('fa-spin'))
-        $btn.css({ color: 'black' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingActive')).addClass('fa-spin');
+    else {
+        _spinners[spinnerName] = true;
+        if (!$btn.hasClass('fa-spin'))
+            $btn.css({ color: 'black' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingActive')).addClass('fa-spin');
+    }
 }
 
 function checkRestrictions(event) {
     return new Promise(resolve => {
         (function retry(tries, toIndex, evt) {
             checkTimeout({ timeout: 'checkRestrictions', toIndex });
-            doSpinner(false);
+            doSpinner('checkRestrictions', true);
             const displayWarning = (content, remove) => {
                 if (remove) {
                     $('#restrictionsEnforcedWarning, #restrictionsEnforcedWarning-Settings').hide();
@@ -645,7 +667,7 @@ function checkRestrictions(event) {
             else {
                 resolve(logError(new Error('Unable to check for restrictions')));
             }
-            doSpinner(true);
+            doSpinner('checkRestrictions', false);
         }(1, getRandomId(), event));
     });
 }
@@ -700,7 +722,7 @@ async function mergeUpdateRequestModel(urIds = []) {
 
 async function handleAfterCommentMutation(domElem) {
     logDebug(`Handling new comment mutation for urId: ${_selUr.urId}`);
-    doSpinner(false);
+    doSpinner('handleAfterCommentMutation', true);
     if (_settings.unfollowUrAfterSend)
         unfollowUrAfterSend();
     if (_settings.autoZoomOutAfterComment)
@@ -722,7 +744,7 @@ async function handleAfterCommentMutation(domElem) {
         else
             await handleUrLayer('sendComment', null, [_selUr.urId]);
     }
-    doSpinner(true);
+    doSpinner('handleAfterCommentMutation', false);
 }
 
 async function handleAfterCloseUpdateContainer() {
@@ -767,6 +789,7 @@ async function handleAfterSave() {
 }
 
 async function handleUpdateRequestContainer() {
+    let testDomElement;
     if (!_commentListLoaded)
         return false;
     if ((parseInt($('.update-requests .selected').attr('data-id')) > 0)
@@ -781,27 +804,36 @@ async function handleUpdateRequestContainer() {
     _urPanelContainerObserver.observe(document.getElementById('panel-container'), {
         childList: true, attributes: false, attributeOldValue: false, characterData: false, characterDataOldValue: false, subtree: false
     });
-    doSpinner(false);
+    doSpinner('handleUpdateRequestContainer', true);
     _restoreZoom = W.map.getOLMap().getZoom();
     if (_timeouts.popup !== undefined)
         hidePopup();
     logDebug(`Handling update request container for urId: ${_selUr.urId}`);
     await updateUrceData([_selUr.urId]);
-    await isDomElementReady('#panel-container .top-section .header .main-title');
+    testDomElement = await isDomElementReady('#panel-container .top-section .header .main-title');
+    if (testDomElement.error)
+        return handleDomElementError(true, false, '', false, '');
     if ($('#panel-container .top-section .header .main-title').html().indexOf(_selUr.urId) === -1)
         $('#panel-container .top-section .header .main-title').append(` (${_selUr.urId}) `);
-    await isDomElementReady('#panel-container .top-section .header .reported');
+    testDomElement = await isDomElementReady('#panel-container .top-section .header .reported');
+    if (testDomElement.error)
+        return handleDomElementError(true, false, '', false, '');
     if ($('#panel-container .top-section .header .reported').length === 1)
         $('#panel-container .top-section .header').append(`<div class="reported">${I18n.t('mte.edit.submitted')} ${parseDaysAgo(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.driveDaysOld)}</div>`);
     if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount > 0) {
-        for (let idx = 0; idx < W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount; idx++) {
-            await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title');
-            if ($($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).has('#urceDaysAgo').length === 0) {
-                $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).children().filter('span.date').css('float', 'right');
-                $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).append(''
-                    + '<div class="date" style="display:flex;justify-content:flex-end;">'
-                    + `     <div>(${parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[_selUr.urId].comments[idx].createdOn))})</div>`
-                    + '</div>');
+        testDomElement = await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title');
+        if (testDomElement.error) {
+            handleDomElementError(false, false, '', false, '');
+        }
+        else {
+            for (let idx = 0; idx < W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount; idx++) {
+                if ($($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).has('#urceDaysAgo').length === 0) {
+                    $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).children().filter('span.date').css('float', 'right');
+                    $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).append(''
+                        + '<div class="date" style="display:flex;justify-content:flex-end;">'
+                        + `     <div>(${parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[_selUr.urId].comments[idx].createdOn))})</div>`
+                        + '</div>');
+                }
             }
         }
     }
@@ -826,13 +858,15 @@ async function handleUpdateRequestContainer() {
     _selUr.urOpen = W.model.mapUpdateRequests.objects[_selUr.urId].attributes.open;
     if (_settings.autoSwitchToUrCommentsTab)
         autoSwitchToUrceTab();
-    await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation');
-    if ($('#panel-container .mapUpdateRequest .top-section .body .conversation').hasClass('collapsed'))
+    testDomElement = await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation');
+    if (!testDomElement.error && $('#panel-container .mapUpdateRequest .top-section .body .conversation').hasClass('collapsed'))
         $('#panel-container .mapUpdateRequest .top-section .body .conversation').removeClass('collapsed');
     if (_settings.disableDoneNextButtons)
         $('#panel-container .mapUpdateRequest .actions .content .navigation').css({ display: 'none' });
     $('#panel-container .mapUpdateRequest .top-section .header .title .focus').off('click', recenterOnUr).on('click', { urId: _selUr.urId }, recenterOnUr);
-    await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+    testDomElement = await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+    if (testDomElement.error)
+        return handleDomElementError(true, false, '', false, '');
     $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').css('background-color', (_settings.enableAppendMode ? 'peachpuff' : ''))
         .off('keyup', checkValue).on('keyup', checkValue);
     if ($('#urceShortcuts').length === 0) {
@@ -950,7 +984,7 @@ async function handleUpdateRequestContainer() {
     }
     if (_settings.autoCenterOnUr)
         recenterOnUr({ data: { urId: _selUr.urId } }, W.map.getOLMap().getZoom());
-    doSpinner(true);
+    doSpinner('handleUpdateRequestContainer', false);
     return true;
 }
 
@@ -1342,7 +1376,7 @@ function formatText(text = '', replaceVars = false, shortcutClicked = false, urI
 }
 
 function handleClickedShortcut(shortcut) {
-    doSpinner(false);
+    doSpinner('handleClickedShortcut', true);
     const cursorPos = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].selectionStart,
         currVal = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val();
     let newVal = currVal.slice(0, cursorPos),
@@ -1431,7 +1465,7 @@ function handleClickedShortcut(shortcut) {
         }
     }
     else {
-        doSpinner(true);
+        doSpinner('handleClickedShortcut', false);
         return;
     }
     let outputText = formatText(replaceText, true, true, undefined);
@@ -1439,7 +1473,7 @@ function handleClickedShortcut(shortcut) {
         || ((shortcut === 'placeName') && (outputText.indexOf('$PLACE_NAME$') > -1))
         || ((shortcut === 'placeAddress') && (outputText.indexOf('$PLACE_ADDRESS$') > -1))
     ) {
-        doSpinner(true);
+        doSpinner('handleClickedShortcut', false);
         return;
     }
     if (outputText && !useCurrVal) {
@@ -1458,7 +1492,7 @@ function handleClickedShortcut(shortcut) {
     else if (useCurrVal) {
         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(outputText).selectRange((cursorPos + outputText.length)).change().keyup().focus();
     }
-    doSpinner(true);
+    doSpinner('handleClickedShortcut', false);
 }
 
 function autoPostReminderComment(urId) {
@@ -1478,71 +1512,69 @@ function autoPostReminderComment(urId) {
 }
 
 async function postUrComment(comment, doubleClick) {
-    doSpinner(false);
+    doSpinner('postUrComment', true);
     const testDomElement = await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text', 100, 100);
     if (testDomElement.error) {
-        WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentInsertTimedOut'));
-        logError(new Error('Timed out waiting for the comment text box to become available.'));
+        handleDomElementError(false, true, 'postUrComment', true, I18n.t('urce.prompts.CommentInsertTimedOut'));
+        return Promise.resolve();
     }
-    else {
-        let commentOutput,
-            cursorPos,
-            newCursorPos,
-            postNls = 0;
-        if (_settings.enableAppendMode && $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val() !== '' && !doubleClick) {
-            cursorPos = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].selectionStart;
-            newCursorPos = cursorPos;
-            const currVal = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val();
-            let newVal = currVal.slice(0, cursorPos);
-            if ((newVal.length > 0) && (newVal.slice(-1).search(/[\n\r]/) > -1)) {
-                if (newVal.slice(-2, -1).search(/[\n\r]/) === -1) {
+    let commentOutput,
+        cursorPos,
+        newCursorPos,
+        postNls = 0;
+    if (_settings.enableAppendMode && $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val() !== '' && !doubleClick) {
+        cursorPos = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].selectionStart;
+        newCursorPos = cursorPos;
+        const currVal = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val();
+        let newVal = currVal.slice(0, cursorPos);
+        if ((newVal.length > 0) && (newVal.slice(-1).search(/[\n\r]/) > -1)) {
+            if (newVal.slice(-2, -1).search(/[\n\r]/) === -1) {
+                newVal += '\n';
+                newCursorPos++;
+            }
+        }
+        else {
+            newVal += '\n\n';
+            newCursorPos += 2;
+        }
+        newVal += formatText(comment, true, false, undefined);
+        if (currVal.slice(cursorPos).length > 0) {
+            if (currVal.substr(cursorPos, 1).search(/[\n\r]/) > -1) {
+                if (currVal.substr(cursorPos + 1, 1).search(/[\n\r]/) === -1) {
                     newVal += '\n';
-                    newCursorPos++;
+                    postNls++;
                 }
             }
             else {
                 newVal += '\n\n';
-                newCursorPos += 2;
+                postNls += 2;
             }
-            newVal += formatText(comment, true, false, undefined);
-            if (currVal.slice(cursorPos).length > 0) {
-                if (currVal.substr(cursorPos, 1).search(/[\n\r]/) > -1) {
-                    if (currVal.substr(cursorPos + 1, 1).search(/[\n\r]/) === -1) {
-                        newVal += '\n';
-                        postNls++;
-                    }
-                }
-                else {
-                    newVal += '\n\n';
-                    postNls += 2;
-                }
-                newVal += currVal.slice(cursorPos);
-            }
-            commentOutput = newVal;
+            newVal += currVal.slice(cursorPos);
         }
-        else {
-            commentOutput = formatText(comment, true, false, undefined);
-        }
-        if (commentOutput.length > 2000) {
-            WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
-            logError(new Error(I18n.t('urce.prompts.CommentTooLong')));
-        }
-        else {
-            if (cursorPos !== undefined) {
-                $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).selectRange(
-                    (newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls)
-                ).change().keyup().focus();
-            }
-            else {
-                $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).change().keyup().focus();
-            }
-            if ((commentOutput.search(/\B\$\S*\$\B/gm) === -1) && (commentOutput.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) === -1))
-                $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').blur().focus();
-            else
-                $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').focus();
-        }
+        commentOutput = newVal;
     }
-    doSpinner(true);
+    else {
+        commentOutput = formatText(comment, true, false, undefined);
+    }
+    if (commentOutput.length > 2000) {
+        WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
+        logError(new Error(I18n.t('urce.prompts.CommentTooLong')));
+    }
+    else {
+        if (cursorPos !== undefined) {
+            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).selectRange(
+                (newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls)
+            ).change().keyup().focus();
+        }
+        else {
+            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).change().keyup().focus();
+        }
+        if ((commentOutput.search(/\B\$\S*\$\B/gm) === -1) && (commentOutput.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) === -1))
+            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').blur().focus();
+        else
+            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').focus();
+    }
+    doSpinner('postUrComment', false);
     return Promise.resolve();
 }
 
@@ -1636,7 +1668,7 @@ function checkMarkerStacking(urId, unstackedX, unstackedY) {
     urId = parseInt(urId);
     if (!_settings.unstackMarkers || (isIdAlreadyUnstacked(urId) === true))
         return;
-    doSpinner(false);
+    doSpinner('checkMarkerStacking', true);
     const stackList = [],
         markerMapCollection = { ...W.map.updateRequestLayer.featureMarkers },
         markerModelCollection = { ...W.model.mapUpdateRequests.objects };
@@ -1712,7 +1744,7 @@ function checkMarkerStacking(urId, unstackedX, unstackedY) {
     else {
         restackMarkers();
     }
-    doSpinner(true);
+    doSpinner('checkMarkerStacking', false);
 }
 
 async function markerMouseOver() {
@@ -1732,7 +1764,7 @@ async function markerMouseOver() {
                 unstackedY = parsePxString(W.map.updateRequestLayer.featureMarkers[markerId].marker.icon.imageDiv.style.top);
             checkMarkerStacking(markerId, unstackedX, unstackedY);
             if (!_settings.disableUrMarkerPopup) {
-                doSpinner(false);
+                doSpinner('markerMouseDown', true);
                 if (W.model.mapUpdateRequests.objects[markerId].attributes.urceData === undefined)
                     await updateUrceData([markerId]);
                 popupX = unstackedX - parsePxString(W.map.segmentLayer.div.style.left) + popupXOffset + 10;
@@ -1845,7 +1877,7 @@ async function markerMouseOver() {
                         popupContent, popupX, popupY, urId: markerId
                     });
                 }
-                doSpinner(true);
+                doSpinner('markerMouseDown', false);
             }
         }
     }
@@ -2526,7 +2558,7 @@ async function updateUrceData(mUrsObjArr) {
 
 async function handleUrLayer(phase, filter, mUrsObjArr) {
     const zoomLevel = W.map.getOLMap().getZoom();
-    doSpinner(false);
+    doSpinner('handleUrLayer', true);
     if (filter === undefined || filter === null) {
         filter = true;
         if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
@@ -2599,7 +2631,7 @@ async function handleUrLayer(phase, filter, mUrsObjArr) {
         if (phase !== 'overflow')
             _filtersAppliedOnZoom = filter;
     }
-    doSpinner(true);
+    doSpinner('handleUrLayer', false);
     return Promise.resolve();
 }
 
@@ -2640,7 +2672,7 @@ function getOverflowUrsFromUrl(urlStr) {
 }
 
 async function handleUrOverflow() {
-    doSpinner(false);
+    doSpinner('handleUrOverflow', true);
     const baseUrl = `https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=`
             + `${(($('#layer-switcher-item_closed_update_requests').is(':checked')) ? '3' : '1')}%2C0&bbox=`,
         overflowUrsToPut = [],
@@ -2706,7 +2738,7 @@ async function handleUrOverflow() {
     else {
         logDebug('All URs submitted for overflow processing already exist on map.');
     }
-    doSpinner(true);
+    doSpinner('handleUrOverflow', false);
     return Promise.resolve({ error: false });
 }
 
@@ -2785,7 +2817,7 @@ async function maskBoxes(message, unmask, phase, maskUrPanel) {
             $urceTabDisabled.html(`<div style="text-align:center; padding-top:200px; width:290px; position:fixed; font-weight:800;">${message}</div>`);
             const testDomElement = await isDomElementReady('#sidepanel-urc-e');
             if (testDomElement.error)
-                logError(new Error('Timed out trying to add mask to URCE side panel.'));
+                handleDomElementError(false, false, '', false, 'Timed out trying to add mask to URCE side panel.');
             else
                 $('#sidepanel-urc-e').prepend($urceTabDisabled);
         }
@@ -2795,7 +2827,7 @@ async function maskBoxes(message, unmask, phase, maskUrPanel) {
             $urPanelDisabled.html(`<div style="text-align:center; padding-top:200px; width:290px; position:fixed; font-weight:800;">${message}</div>`);
             const testDomElement = await isDomElementReady('#panel-container .mapUpdateRequest.panel.show');
             if (testDomElement.error)
-                logWarning('Timed out trying to add mask to UR panel.');
+                handleDomElementError(false, false, '', false, 'Timed out trying to add mask to UR panel.');
             else
                 $($('#panel-container .mapUpdateRequest.panel.show').children()[0]).prepend($urPanelDisabled);
         }
@@ -2818,7 +2850,7 @@ function changeCommentListStyle(settingVal) {
 }
 
 async function changeCommentList(commentListIdx, autoSwitch, refresh) {
-    doSpinner(false);
+    doSpinner('changeCommentList', true);
     refresh = (refresh === true);
     commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
     if (refresh || (!autoSwitch && ((commentListIdx !== _settings.commentList) || (commentListIdx !== _currentCommentList))) || (autoSwitch && (commentListIdx !== _currentCommentList))) {
@@ -2844,7 +2876,7 @@ async function changeCommentList(commentListIdx, autoSwitch, refresh) {
         if (!autoSwitch && !refresh)
             saveSettingsToStorage();
     }
-    doSpinner(true);
+    doSpinner('changeCommentList', false);
     return Promise.resolve();
 }
 
@@ -3192,7 +3224,7 @@ async function commentListAsync(commentListIdx) {
 }
 
 async function buildCommentList(commentListIdx, phase, autoSwitch) {
-    doSpinner(false);
+    doSpinner('buildCommentList', true);
     commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
     const commentListInfo = getCommentListInfo(commentListIdx);
     let data,
@@ -3261,7 +3293,7 @@ async function buildCommentList(commentListIdx, phase, autoSwitch) {
         data.error = { error: true, text: error.message };
     }
     if (data.error) {
-        doSpinner(true);
+        doSpinner('buildCommentList', false);
         return Promise.resolve({
             error: true, text: data.text, staticList: (commentListInfo.type === 'static'), phase, maskUrPanel: (_selUr.urId > 0), commentList: commentListIdx
         });
@@ -3273,13 +3305,13 @@ async function buildCommentList(commentListIdx, phase, autoSwitch) {
         processCommentListResult = { error: true, text: error.message };
     }
     if (processCommentListResult.error) {
-        doSpinner(true);
+        doSpinner('buildCommentList', false);
         return Promise.resolve({
             error: true, text: processCommentListResult.text, staticList: (commentListInfo.type === 'static'), phase, maskUrPanel: (_selUr.urId > 0), commentList: commentListIdx
         });
     }
     _commentListLoaded = true;
-    doSpinner(true);
+    doSpinner('buildCommentList', false);
     if (phase !== 'init')
         maskBoxes(null, true, phase, (_selUr.urId > 0));
     return Promise.resolve({
@@ -3411,6 +3443,17 @@ function processPerCommentListSettings(commentListIdx) {
         if (this.type === 'checkbox') {
             _settings.perCommentListSettings[_currentCommentList][settingName] = isChecked(this);
             saveSettingsToStorage();
+        }
+        if (this.type === 'text') {
+            const newVal = this.value.trim();
+            if ((newVal !== this.value) || (_settings.perCommentListSettings[_currentCommentList][settingName] !== newVal)) {
+                if (newVal !== this.value)
+                    this.value = newVal;
+                _settings.perCommentListSettings[_currentCommentList][settingName] = newVal;
+                saveSettingsToStorage();
+                if (settingName === 'tagEmail')
+                    changeCommentList(_currentCommentList, false, true);
+            }
         }
         if (this.type === 'number') {
             const val = Math.min(9999, Math.max(0, Math.abs((parseInt(this.value) || 0))));
@@ -4630,7 +4673,7 @@ async function init() {
         initAutoSwitchArraysResult = await initAutoSwitchArrays(),
         initRestrictionsResult = await initRestrictions();
     await initGui();
-    doSpinner(false);
+    doSpinner('init', true);
     maskBoxes(`${I18n.t('urce.prompts.WaitingOnInit')}.<br>${I18n.t('urce.common.PleaseWait')}.`, false, 'init', (urIdInUrl > 0));
     const error = loadTranslationsResult.error || initCommentListsResult.error || initAutoSwitchArraysResult.error || initRestrictionsResult.error || false;
     if (!error) {
@@ -4684,7 +4727,7 @@ async function init() {
         });
     }
     window._timeouts = _timeouts;
-    doSpinner(true);
+    doSpinner('init', false);
 }
 
 function bootstrap(tries) {
