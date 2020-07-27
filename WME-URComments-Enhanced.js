@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2020.07.27.01
+// @version     2020.07.27.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -38,7 +38,8 @@ const SCRIPT_NAME = GM_info.script.name.replace('(beta)', 'β'),
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>BUGFIX:</b> Spinner handling routines to reduce or remove stuck spinning.',
+    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> WME map object references.',
+        '<b>BUGFIX:</b> Spinner handling routines to reduce or remove stuck spinning.',
         '<b>BUGFIX:</b> Per comment list tag email not saving correctly.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
@@ -704,7 +705,7 @@ function getMapUrsAsync(urIdsArr) {
 function mUrsAdded(objectsArr) {
     if (objectsArr && (objectsArr.length === 0))
         return;
-    const zoomLevel = W.map.getOLMap().getZoom();
+    const zoomLevel = W.map.getZoom();
     let filter = true;
     if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
             || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))
@@ -805,7 +806,7 @@ async function handleUpdateRequestContainer() {
         childList: true, attributes: false, attributeOldValue: false, characterData: false, characterDataOldValue: false, subtree: false
     });
     doSpinner('handleUpdateRequestContainer', true);
-    _restoreZoom = W.map.getOLMap().getZoom();
+    _restoreZoom = W.map.getZoom();
     if (_timeouts.popup !== undefined)
         hidePopup();
     logDebug(`Handling update request container for urId: ${_selUr.urId}`);
@@ -983,7 +984,7 @@ async function handleUpdateRequestContainer() {
         }
     }
     if (_settings.autoCenterOnUr)
-        recenterOnUr({ data: { urId: _selUr.urId } }, W.map.getOLMap().getZoom());
+        recenterOnUr({ data: { urId: _selUr.urId } }, W.map.getZoom());
     doSpinner('handleUpdateRequestContainer', false);
     return true;
 }
@@ -1071,14 +1072,14 @@ function autoClickOpenSolvedNi(commentNum) {
 }
 
 function autoZoomIn() {
-    if (W.map.getOLMap().getZoom() < 5)
-        W.map.getOLMap().moveTo(W.map.updateRequestLayer.featureMarkers[_selUr.urId].marker.lonlat, 5);
+    if (W.map.getZoom() < 5)
+        W.map.moveTo(W.map.updateRequestLayer.featureMarkers[_selUr.urId].marker.lonlat, 5);
 }
 
 function autoZoomOut() {
     if (_restoreZoom && !$(W.map.getOLMap().div).hasClass('problem-selected')) {
         if (_restoreZoom !== W.map.getZoom())
-            W.map.getOLMap().setCenter(W.map.getOLMap().getCenter(), _restoreZoom);
+            W.map.setCenter(W.map.getCenter(), _restoreZoom);
         _restoreZoom = undefined; // This must go here as it is getting out of order with the handleUrLayer call, if it is after the if/else in handleAfterClose.
     }
 }
@@ -1624,8 +1625,8 @@ function restackMarkers() {
     if (_markerStackArray.length === 0)
         return;
     let filter = true;
-    if ((_settings.disableFilteringAboveZoom && (W.map.getOLMap().getZoom() < _settings.disableFilteringAboveZoomLevel))
-        || (_settings.disableFilteringBelowZoom && (W.map.getOLMap().getZoom() > _settings.disableFilteringBelowZoomLevel))
+    if ((_settings.disableFilteringAboveZoom && (W.map.getZoom() < _settings.disableFilteringAboveZoomLevel))
+        || (_settings.disableFilteringBelowZoom && (W.map.getZoom() > _settings.disableFilteringBelowZoomLevel))
     )
         filter = false;
     const markerMapCollection = { ...W.map.updateRequestLayer.featureMarkers };
@@ -1709,8 +1710,8 @@ function checkMarkerStacking(urId, unstackedX, unstackedY) {
     if (stackList.length > 0) {
         if (stackList.length === 1)
             logDebug('Single marker highlighted. Adjusting geometry properties to prevent recentering.');
-        else if (W.map.getOLMap().getZoom() < _settings.unstackDisableAboveZoom)
-            logDebug(`Zoom level is ${W.map.getOLMap().getZoom()} which is less than setting for disable above zoom of ${_settings.unstackDisableAboveZoom}. Adjusting geometry properties to prevent recentering.`);
+        else if (W.map.getZoom() < _settings.unstackDisableAboveZoom)
+            logDebug(`Zoom level is ${W.map.getZoom()} which is less than setting for disable above zoom of ${_settings.unstackDisableAboveZoom}. Adjusting geometry properties to prevent recentering.`);
         else
             logDebug(`${stackList.length} markers are stacked!`);
         if (_unstackedMasterId !== urId) {
@@ -1724,14 +1725,14 @@ function checkMarkerStacking(urId, unstackedX, unstackedY) {
                     x = parsePxString(markerMapCollection[thisUrId].marker.icon.imageDiv.style.left),
                     y = parsePxString(markerMapCollection[thisUrId].marker.icon.imageDiv.style.top);
                 _markerStackArray.push(new StackListObj(thisUrId, x, y));
-                if (!((W.map.getOLMap().getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
+                if (!((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
                     markerMapCollection[thisUrId].marker.icon.imageDiv.style.left = `${unstackedX}px`;
                     markerMapCollection[thisUrId].marker.icon.imageDiv.style.top = `${unstackedY}px`;
                     unstackedX += 10;
                     unstackedY -= 30;
                 }
             }
-            if (!((W.map.getOLMap().getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
+            if (!((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
                 Object.keys(markerMapCollection).forEach(marker => {
                     if (markerMapCollection.hasOwnProperty(marker)) {
                         if (!isIdAlreadyUnstacked(parseInt(marker)))
@@ -1987,7 +1988,7 @@ function recenterOnUr(event, zoom) {
         return;
     if (this && this.id === '_urceRecenterSession')
         openUrPanel(urId);
-    W.map.getOLMap().moveTo(W.map.updateRequestLayer.featureMarkers[urId].marker.lonlat, zoom);
+    W.map.moveTo(W.map.updateRequestLayer.featureMarkers[urId].marker.lonlat, zoom);
     hidePopup();
 }
 
@@ -2096,7 +2097,7 @@ function convertTagToCustomType(tag) {
 }
 
 function updateUrMapMarkers(mUrsObjArr, filter) {
-    const zoomLevel = W.map.getOLMap().getZoom();
+    const zoomLevel = W.map.getZoom();
     if (filter === undefined || filter === null) {
         filter = true;
         if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
@@ -2557,7 +2558,7 @@ async function updateUrceData(mUrsObjArr) {
 }
 
 async function handleUrLayer(phase, filter, mUrsObjArr) {
-    const zoomLevel = W.map.getOLMap().getZoom();
+    const zoomLevel = W.map.getZoom();
     doSpinner('handleUrLayer', true);
     if (filter === undefined || filter === null) {
         filter = true;
@@ -2676,10 +2677,10 @@ async function handleUrOverflow() {
     const baseUrl = `https://${document.location.host}${W.Config.api_base}/Features?language=en&mapUpdateRequestFilter=`
             + `${(($('#layer-switcher-item_closed_update_requests').is(':checked')) ? '3' : '1')}%2C0&bbox=`,
         overflowUrsToPut = [],
-        vpBounds = W.map.getOLMap().getExtent().transform(W.map.getOLMap().projection, W.map.getOLMap().displayProjection),
+        vpBounds = W.map.getExtent().transform(W.map.getOLMap().projection, W.map.getOLMap().displayProjection),
         vpBoundsFrom = { lon: vpBounds.left, lat: vpBounds.bottom },
         vpBoundsTo = { lon: vpBounds.right, lat: vpBounds.top },
-        vpCenter = W.map.getOLMap().getCenter().transform(W.map.getOLMap().projection, W.map.getOLMap().displayProjection),
+        vpCenter = W.map.getCenter().transform(W.map.getOLMap().projection, W.map.getOLMap().displayProjection),
         overflowUrlsToCheck = [
             `${baseUrl}${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
             `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
@@ -2752,7 +2753,7 @@ function mouseUp() {
 
 function invokeMoveEnd() {
     if (_settings.enableAutoRefresh
-        && (W.map.getOLMap().getZoom() > 2)
+        && (W.map.getZoom() > 2)
         && (W.model.mapUpdateRequests.getObjectArray().length > 499)
         && (!W.saveController.hasUnsavedChanges())
     )
@@ -2764,7 +2765,7 @@ function invokeMoveEnd() {
 }
 
 async function invokeZoomEnd() {
-    const zoomLevel = W.map.getOLMap().getZoom();
+    const zoomLevel = W.map.getZoom();
     if (_settings.enableAutoRefresh && (zoomLevel > 2) && (W.model.mapUpdateRequests.getObjectArray().length > 499) && !W.saveController.hasUnsavedChanges())
         return W.controller.reload();
     let filter = null;
@@ -3737,7 +3738,7 @@ function initCommentsTab() {
     $('a[id^="zoomOutLink"]').off().on('click', function () {
         if ($('#panel-container .mapUpdateRequest .top-section .close-panel').length > 0)
             autoCloseUrPanel();
-        W.map.getOLMap().setCenter(W.map.getOLMap().getCenter(), parseInt(this.getAttribute('zoomTo')));
+        W.map.setCenter(W.map.getCenter(), parseInt(this.getAttribute('zoomTo')));
     });
     if (_needTranslation)
         alertBoxInPanel(`URC-E does not currently have a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>). Translations are setup on a Google Sheet, so they are simple to do.<br><br>If you would like to provide a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>), please contact ${SCRIPT_AUTHOR} via forum PM or Discord, or click reply on the forum thread:<br><a href="https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278" target="_blank">https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278</a>`, null, true, 9998);
