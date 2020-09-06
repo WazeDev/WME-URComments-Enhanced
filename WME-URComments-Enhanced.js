@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2020.09.05.01
+// @version     2020.09.05.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -4699,40 +4699,37 @@ async function init() {
                     handleError(error);
                 })
                     .finally(() => {
-                        if (!urIdInUrl) {
+                        window.addEventListener('beforeunload', () => { saveSettingsToStorage(); }, false);
+                        log(`Fully initialized in ${Math.round(performance.now() - LOAD_BEGIN_TIME)} ms.`);
+                        if (!urIdInUrl || !(urIdInUrl > 0)) {
                             initBackgroundTasks('enable', 'init').then(() => {
-                                window.addEventListener('beforeunload', () => { saveSettingsToStorage(); }, false);
-                                log(`Fully initialized in ${Math.round(performance.now() - LOAD_BEGIN_TIME)} ms.`);
-                                if (urIdInUrl > 0) {
-                                    if ($('#panel-container').children().length === 0) {
-                                        logDebug(`urId ${urIdInUrl} found in URL, but the UR Panel has not shown up yet. Waiting up to 15 seconds.`);
-                                        _initUrIdInUrlObserver = new MutationObserver(mutations => {
-                                            mutations.forEach(mutation => {
-                                                if ((mutation.type === 'attributes')
+                                if (W.model.mapUpdateRequests.getObjectArray().length > _markerCountOnInit)
+                                    handleUrLayer('init_end', null, getMapUrsObjArr());
+                                _markerCountOnInit = -1;
+                                maskBoxes(null, true, 'init', (urIdInUrl > 0));
+                                debugger;
+                            });
+                        }
+                        else if ($('#panel-container').children().length === 0) {
+                            logDebug(`urId ${urIdInUrl} found in URL, but the UR Panel has not shown up yet. Waiting up to 15 seconds.`);
+                            _initUrIdInUrlObserver = new MutationObserver(mutations => {
+                                mutations.forEach(mutation => {
+                                    if ((mutation.type === 'attributes')
                                                                 && $(mutation.target.parentNode).is('#panel-container')
                                                                 && (mutation.target.className.indexOf('show') > -1)
                                                                 && (mutation.oldValue.indexOf('show') === -1)
-                                                )
-                                                    initFinish(urIdInUrl, false);
-                                            });
-                                        });
-                                        _initUrIdInUrlObserver.observe(document.getElementById('panel-container'), {
-                                            childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true
-                                        });
-                                        _initUrIdInUrlObserver.isObserving = true;
-                                        _timeouts.initUrIdInUrl = window.setTimeout(initCheckForUrPanel, 100, urIdInUrl, 1);
-                                    }
-                                    else {
+                                    )
                                         initFinish(urIdInUrl, false);
-                                    }
-                                }
-                                else {
-                                    if (W.model.mapUpdateRequests.getObjectArray().length > _markerCountOnInit)
-                                        handleUrLayer('init_end', null, getMapUrsObjArr());
-                                    _markerCountOnInit = -1;
-                                    maskBoxes(null, true, 'init', (urIdInUrl > 0));
-                                }
+                                });
                             });
+                            _initUrIdInUrlObserver.observe(document.getElementById('panel-container'), {
+                                childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true
+                            });
+                            _initUrIdInUrlObserver.isObserving = true;
+                            _timeouts.initUrIdInUrl = window.setTimeout(initCheckForUrPanel, 100, urIdInUrl, 1);
+                        }
+                        else {
+                            initFinish(urIdInUrl, false);
                         }
                         doSpinner('init', false);
                     });
