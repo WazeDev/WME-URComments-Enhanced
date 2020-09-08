@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2020.09.08.01
+// @version     2020.09.08.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -39,6 +39,8 @@ const SCRIPT_NAME = `URC-E${((GM_info.script.name.search(/beta/) > -1) ? ' β' :
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
     SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Setting to auto zoom out after closing UR panel.',
+        '<b>NEW:</b> Shortcut to insert permalink to UR.',
+        '<b>NEW:</b> Spreadsheet shortcut of "$PERMALINK$" to insert permalink to UR.',
         '<b>CHANGE:</b> Faster load time.',
         '<b>CHANGE:</b> Far less script execution awaits, letting script run more synchronously.',
         '<b>CHANGE:</b> Style compatibility with WME v2.62-35-g266443036',
@@ -891,6 +893,7 @@ async function handleUpdateRequestContainer() {
             + `<i id="urceShortcuts-wazeUsername" class="fa fa-user-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertWazeUsernameTitle')}"></i>`
             + `<i id="urceShortcuts-urType" class="fa fa-info-circle" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertUrTypeTitle')}"></i>`
             + `<i id="urceShortcuts-customTagline" class="fa fa-tag" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCustomTaglineTitle')}"></i>`
+            + `<i id="urceShortcuts-urPermalink" class="fa fa-link" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertUrPermalinkTitle')}"></i>`
             + '</div>'
             + `<div><i id="urceShortcuts-driveTime" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertTimeTitle')}"></i>`
             + `<i id="urceShortcuts-driveDayOfWeek" class="fa fa-sun-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDayOfWeekTitle')}"></i>`
@@ -1296,6 +1299,31 @@ function formatText(text = '', replaceVars = false, shortcutClicked = false, urI
                 }
             }
         }
+        if (text.indexOf('$URD') > -1) {
+            if (W.model.mapUpdateRequests.objects[urId].attributes.description)
+                text = text.replace(/("?\$URD\$?"?)+/gmi, `"${W.model.mapUpdateRequests.objects[urId].attributes.description}"`).replace(/\n+/gmi, '');
+            else
+                text = text.replace(/("?\$URD\$?"?)+/gmi, '');
+        }
+        if (text.indexOf('$CUSTOMTAGLINE$') > -1) {
+            if (_settings.perCommentListSettings[_currentCommentList].customTagline.length > 0)
+                text = text.replace('$CUSTOMTAGLINE$', formatText(_settings.perCommentListSettings[_currentCommentList].customTagline, true, shortcutClicked, urId));
+            else
+                text = text.replace('$CUSTOMTAGLINE$', '');
+        }
+        if (text.indexOf('$URTYPE$') > -1)
+            text = text.replace('$URTYPE$', W.model.mapUpdateRequests.objects[urId].attributes.typeText);
+        if (text.indexOf('$PERMALINK$') > -1) {
+            if (W.model.mapUpdateRequests.objects[urId]) {
+                const lonLat = WazeWrap.Geometry.ConvertTo4326(W.model.mapUpdateRequests.objects[urId].attributes.geometry.x, W.model.mapUpdateRequests.objects[urId].attributes.geometry.y),
+                    urlParams = new URLSearchParams(window.location.search);
+                const urPermalink = `https://${document.location.hostname.replace(/beta/i, 'www')}${document.location.pathname}?${(urlParams.get('env') ? `env=${urlParams.get('env')}&` : '')}lon=${lonLat.lon.toFixed(5)}&lat=${lonLat.lat.toFixed(5)}&s=20489175039&zoom=5&mapUpdateRequest=${urId}`;
+                text = text.replace('$PERMALINK$', urPermalink);
+            }
+            else {
+                text = text.replace('$PERMALINK$', '');
+            }
+        }
     }
     if (replaceVars && text.indexOf('$CLOSED_NOR_EMAIL_TAG$') > -1) {
         if ((_settings.perCommentListSettings[_currentCommentList].tagEmail.length > 0) && (W.loginManager.user.userName.length > 0))
@@ -1315,20 +1343,6 @@ function formatText(text = '', replaceVars = false, shortcutClicked = false, urI
         else
             text = text.replace(/(\$USERNAME\$?)+/gmi, '');
     }
-    if (replaceVars && (text.indexOf('$URD') > -1)) {
-        if (W.model.mapUpdateRequests.objects[urId].attributes.description)
-            text = text.replace(/("?\$URD\$?"?)+/gmi, `"${W.model.mapUpdateRequests.objects[urId].attributes.description}"`).replace(/\n+/gmi, '');
-        else
-            text = text.replace(/("?\$URD\$?"?)+/gmi, '');
-    }
-    if (replaceVars && text.indexOf('$CUSTOMTAGLINE$') > -1) {
-        if (_settings.perCommentListSettings[_currentCommentList].customTagline.length > 0)
-            text = text.replace('$CUSTOMTAGLINE$', formatText(_settings.perCommentListSettings[_currentCommentList].customTagline, true, shortcutClicked, urId));
-        else
-            text = text.replace('$CUSTOMTAGLINE$', '');
-    }
-    if (replaceVars && text.indexOf('$URTYPE$') > -1)
-        text = text.replace('$URTYPE$', W.model.mapUpdateRequests.objects[urId].attributes.typeText);
     if (replaceVars && text.indexOf('$PLACE_NAME$') > -1) {
         const placeObj = W.selectionManager.getSelectedFeatures()[0];
         if (placeObj && (placeObj.model.type === 'venue')) {
@@ -1467,6 +1481,9 @@ function handleClickedShortcut(shortcut) {
         else {
             replaceText = '$PLACE_ADDRESS$';
         }
+    }
+    else if (shortcut === 'urPermalink') {
+        replaceText = '$PERMALNK$';
     }
     else {
         doSpinner('handleClickedShortcut', false);
@@ -3731,7 +3748,7 @@ function injectCss() {
         + '}'
         + '#urceDiv hr { border-top:1px solid #000000; }'
         // UR Panel Manipulation
-        + '#panel-container .mapUpdateRequest.panel { width:300px; }'
+        + '#panel-container .mapUpdateRequest.panel { width:332px; }'
         // Map content
         + '.urceCountersPill { color:black; position:absolute; top:30px; display:block; width:auto; white-space:nowrap; padding-left:5px; padding-right:5px; border:1px solid; border-radius:25px; }'
         + '</style>').appendTo('head');
