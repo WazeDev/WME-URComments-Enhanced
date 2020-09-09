@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2020.09.08.02
+// @version     2020.09.09.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -43,7 +43,9 @@ const SCRIPT_NAME = `URC-E${((GM_info.script.name.search(/beta/) > -1) ? ' β' :
         '<b>NEW:</b> Spreadsheet shortcut of "$PERMALINK$" to insert permalink to UR.',
         '<b>CHANGE:</b> Faster load time.',
         '<b>CHANGE:</b> Far less script execution awaits, letting script run more synchronously.',
-        '<b>CHANGE:</b> Style compatibility with WME v2.62-35-g266443036',
+        '<b>CHANGE:</b> Style compatibility with WME v2.62-35-g266443036.',
+        '<b>BUGFIX:</b> Permalink shortcut icon not working correctly. (2020.09.09.01)',
+        '<b>BUGFIX:</b> Side panel alignments in certain situations. (2020.09.09.01)',
         '<b>BUGFIX:</b> Script style setting not correctly showing in settings.',
         '<b>BUGFIX:</b> Better error handling.',
         '<b>BUGFIX:</b> WazeWrap stored settings not applied in some cases.',
@@ -1483,7 +1485,7 @@ function handleClickedShortcut(shortcut) {
         }
     }
     else if (shortcut === 'urPermalink') {
-        replaceText = '$PERMALNK$';
+        replaceText = '$PERMALINK$';
     }
     else {
         doSpinner('handleClickedShortcut', false);
@@ -2821,12 +2823,12 @@ async function maskBoxes(message, unmask, phase, maskUrPanel) {
 function changeCommentListStyle(settingVal) {
     if (_settings.commentListStyle !== settingVal) {
         if (settingVal === 'default') {
-            $('fieldset[id^="urceComments-for-"], legend[id^="urceComments-for-"], div[id^="urceComments-for-"]').removeClass('urStyle');
-            $('fieldset[id^="urce-prefs-fieldset"], legend[id^="urce-prefs-legend"]').removeClass('urStyle');
+            $('fieldset[id^="urceComments-for-"], legend[id^="urceComments-for-"], div[id^="urceComments-for-"], fieldset[id^="urce-prefs-fieldset"], legend[id^="urce-prefs-legend"], '
+                + '#URCE-expandCollapseAllComments').removeClass('urStyle');
         }
         else if (settingVal === 'urStyle') {
-            $('fieldset[id^="urceComments-for-"], legend[id^="urceComments-for-"], div[id^="urceComments-for-"]').addClass('urStyle');
-            $('fieldset[id^="urce-prefs-fieldset"], legend[id^="urce-prefs-legend"]').addClass('urStyle');
+            $('fieldset[id^="urceComments-for-"], legend[id^="urceComments-for-"], div[id^="urceComments-for-"], fieldset[id^="urce-prefs-fieldset"], legend[id^="urce-prefs-legend"], '
+                + '#URCE-expandCollapseAllComments').addClass('urStyle');
         }
         _settings.commentListStyle = settingVal;
     }
@@ -3254,7 +3256,7 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
             + `     <input type="checkbox" id="_cbenableAppendMode" class="urceSettingsCheckbox2" title="${I18n.t('urce.prefs.EnableAppendModeTitle')}"${(_settings.enableAppendMode ? ' checked' : '')}>`
             + `     <label for="_cbenableAppendMode" title="${I18n.t('urce.prefs.EnableAppendModeTitle')}" class="URCE-label">${I18n.t('urce.prefs.EnableAppendMode')}</label><br>`
             + '</div>'
-            + `<div id="expandCollapseAllComments" class="URCE-expandCollapseAll${((_settings.commentListStyle === 'urStyle') ? ' urStyle' : '')}">`
+            + `<div id="URCE-expandCollapseAllComments" class="URCE-expandCollapseAll${((_settings.commentListStyle === 'urStyle') ? ' urStyle' : '')}">`
             + `     <div id="URCE-expandAllComments" class="URCE-expandCollapseAllItem">${I18n.t('urce.common.ExpandAll')}</div>`
             + '     <div style="display:inline;"> : </div>'
             + `     <div id="URCE-collapseAllComments" class="URCE-expandCollapseAllItem">${I18n.t('urce.common.CollapseAll')}</div>`
@@ -3633,7 +3635,7 @@ function injectCss() {
     logDebug('Injecting CSS.');
     $('<style = type="text/css">'
         // Comments tab
-        + '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:12px; }'
+        + '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:11px; }'
         + '#sidepanel-urc-e #panel-urce-comments .URCE-commentListName { padding-top:5px; font-size:10px; }'
         + '#sidepanel-urc-e #panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:12px; }'
         + '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }'
@@ -3658,16 +3660,16 @@ function injectCss() {
         + '#sidepanel-urc-e #panel-urce-comments .URCE-solvedLink { color:#008F00; }'
         + '#sidepanel-urc-e #panel-urce-comments .URCE-niLink { color:#E68A00; }'
         + '#sidepanel-urc-e #panel-urce-comments .URCE-openLink { color:#000000; }'
-        + '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-top:4px; height:16px; float:right; }'
+        + '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-top:4px; height:14px; float:right; }'
         + '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }'
         + '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }'
-        + '#sidepanel-urc-e #panel-urce-comments .URCE-group_body { line-height: 16px; }'
+        + '#sidepanel-urc-e #panel-urce-comments .URCE-group_body { line-height: 15px; }'
         + '#sidepanel-urc-e #panel-urce-comments .URCE-group_body.urStyle { padding-left:23px !important; }'
         + '#sidepanel-urc-e #panel-urce-comments .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; position:absolute }'
         + '#sidepanel-urc-e #panel-urce-comments .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; padding-left:16px; }'
         // Settings tab
         + '#sidepanel-urc-e #panel-urce-settings .URCE-divDefaultSettings {'
-        + '     background-color:lightgray; border-top:1px solid gray; border-bottom:1px solid gray; margin-top:8px; text-align:center; font-size:12px; font-weight:600;'
+        + '     background-color:lightgray; border-top:1px solid gray; border-bottom:1px solid gray; margin-top:8px; text-align:center; font-size:10px; font-weight:600;'
         + '     text-transform:uppercase;'
         + '}'
         + '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }'
@@ -3711,7 +3713,7 @@ function injectCss() {
         + '#urce-disableWme #urce-disableWme-text a { cursor:pointer; }'
         // Common
         + '.urceToolsButton {'
-        + '     font-size:11px; margin-left:10px; background-color:lightgray; border:none; cursor:default; height:22px; border-radius:4px; border:1px solid gray;'
+        + '     font-size:11px; margin-left:10px; background-color:lightgray; border:none !important; cursor:default; height:22px; border-radius:4px; border:1px solid gray;'
         + '}'
         + '.urceToolsButton.active, .urceToolsButtonFile:hover, .urceToolsButton:hover { background-color:gray !important; }'
         + '#sidepanel-urc-e .URCE-divDismiss {'
@@ -3732,9 +3734,11 @@ function injectCss() {
         + '#sidepanel-urc-e .URCE-divCC { /* padding-top:2px !important; */ }'
         + '#sidepanel-urc-e .URCE-label { white-space:pre-line; margin:0 0 0 0; }'
         + '#sidepanel-urc-e .URCE-span { font-size:13px; font-weight:600; }'
-        + '#sidepanel-urc-e .URCE-spanTitle { font-size:14px; font-weight:600; }'
+        + '#sidepanel-urc-e .URCE-spanTitle { padding-left:15px; font-size:14px; font-weight:600; }'
         + '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:11px; color:#aaa; }'
-        + '#sidepanel-urc-e .URCE-divTabs { width:295px; padding:0px !important; }'
+        + '#sidepanel-urc-e .URCE-divTabs { padding:0px 0px 0px 15px; }'
+        + '#sidepanel-urc-e .URCE-navTabs { padding:0px 0px 0px 15px; }'
+        + '#sidepanel-urc-e { width:300px; padding: 6px 0px 0px 0px !important; }'
         + '#panel-urce-comments { padding: 0px !important; }'
         + '#panel-urce-settings { padding: 0px !important; }'
         + '#panel-urce-tools { padding: 0px !important; }'
@@ -3748,7 +3752,7 @@ function injectCss() {
         + '}'
         + '#urceDiv hr { border-top:1px solid #000000; }'
         // UR Panel Manipulation
-        + '#panel-container .mapUpdateRequest.panel { width:332px; }'
+        + '#panel-container .mapUpdateRequest.panel { width:340px; }'
         // Map content
         + '.urceCountersPill { color:black; position:absolute; top:30px; display:block; width:auto; white-space:nowrap; padding-left:5px; padding-right:5px; border:1px solid; border-radius:25px; }'
         + '</style>').appendTo('head');
@@ -4477,11 +4481,11 @@ function initGui() {
             );
         }
         const htmlOut = `<span class="URCE-spanTitle">${SCRIPT_NAME}</span><span class="URCE-spanVersion">${SCRIPT_VERSION}</span>`
-                + '<ul class="nav nav-tabs">'
+                + '<div class="URCE-navTabs"><ul class="nav nav-tabs">'
                 + `     <li class="active"><a data-toggle="tab" href="#panel-urce-comments" aria-expanded="true">${I18n.t('urce.tabs.Comments')}</a></li>`
                 + `     <li><a data-toggle="tab" href="#panel-urce-settings" aria-expanded="true">${I18n.t('urce.tabs.Settings')}</a></li>`
                 + `     <li><a data-toggle="tab" href="#panel-urce-tools" aria-expanded="true">${I18n.t('urce.tabs.Tools')}</a></li>`
-                + '</ul>'
+                + '</ul></div>'
                 + '<div class="tab-content URCE-divTabs">'
                 + '     <div class="tab-pane active" id="panel-urce-comments"></div>'
                 + '     <div class="tab-pane" id="panel-urce-settings"></div>'
@@ -5228,6 +5232,8 @@ function loadTranslations() {
                                     + 'locale language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
                         InsertTimeTitle: 'Shortcut - Drive time of day: Click this icon to insert the drive date time of day into the new comment box at the cursor position (2-digit hour, '
                                     + '2-digit minute in locale format).',
+                        InsertUrPermalinkTitle: 'Shortcut - Insert permalink to this UR. URL will include your locale, your \'env\', the latitude and longitude of this UR, zoom level of 5, '
+                                    + 'mapUpdateRequest of this UR ID number, and s=20489175039 (which ensures the UR layer is turned on).',
                         InsertUrTypeTitle: 'Shortcut - UR type: Click this icon to insert the UR type into the new comment box at the cursor position.',
                         InsertWazeUsernameTitle: 'Shortcut - Waze username: Click this icon to insert your Waze username into the new comment box at the cursor position.',
                         Shortcuts: 'Shortcuts'
