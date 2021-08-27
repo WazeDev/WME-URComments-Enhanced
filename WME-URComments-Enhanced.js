@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2021.07.14.01
+// @version     2021.08.27.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -38,7 +38,7 @@ const SCRIPT_NAME = `URC-E${((GM_info.script.name.search(/beta/) > -1) ? ' β' :
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>BUGFIX:</b> Fix for WME changes - missing day names.'],
+    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Update zoom levels to new WME values.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = false,
     LOAD_BEGIN_TIME = performance.now(),
@@ -253,7 +253,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             doNotShowTagNameOnPill: false,
             replaceTagNameWithEditorName: false,
             unstackMarkers: false,
-            unstackDisableAboveZoom: 3,
+            unstackDisableAboveZoom: 15,
             unstackSensitivity: 15,
             customMarkersRoadworks: false,
             customMarkersConstruction: false,
@@ -273,9 +273,9 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             doNotFilterTaggedUrs: false,
             doNotHideSelectedUr: false,
             disableFilteringAboveZoom: false,
-            disableFilteringAboveZoomLevel: 0,
+            disableFilteringAboveZoomLevel: 12,
             disableFilteringBelowZoom: false,
-            disableFilteringBelowZoomLevel: 10,
+            disableFilteringBelowZoomLevel: 22,
             // -- Lifecycle
             hideWaiting: false,
             hideUrsCloseNeeded: false,
@@ -423,6 +423,10 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
         'hideByAgeOfSubmissionLessThanDaysOld'].forEach(setting => {
         if (_settings[setting] === undefined || _settings[setting] === null || ((_settings[setting].length === 0) && (_settings[setting] !== '')))
             _settings[setting] = '';
+    });
+    ['disableFilteringAboveZoomLevel', 'disableFilteringBelowZoomLevel', 'unstackDisableAboveZoom'].forEach(setting => {
+        if (_settings[setting] < 11)
+            _settings[setting] += 12;
     });
     _timeouts.saveSettingsToStorage = window.setTimeout(saveSettingsToStorage, 5000);
     if (proceedWithRestore) {
@@ -1069,8 +1073,8 @@ function autoClickOpenSolvedNi(commentNum) {
 }
 
 function autoZoomIn() {
-    if (W.map.getZoom() < 5)
-        W.map.getOLMap().moveTo(W.map.updateRequestLayer.featureMarkers[_selUr.urId].marker.lonlat, 5);
+    if (W.map.getZoom() < 17)
+        W.map.getOLMap().moveTo(W.map.updateRequestLayer.featureMarkers[_selUr.urId].marker.lonlat, 17);
 }
 
 function autoZoomOut() {
@@ -1307,7 +1311,7 @@ function formatText(text = '', replaceVars = false, shortcutClicked = false, urI
             if (W.model.mapUpdateRequests.objects[urId]) {
                 const lonLat = WazeWrap.Geometry.ConvertTo4326(W.model.mapUpdateRequests.objects[urId].attributes.geometry.x, W.model.mapUpdateRequests.objects[urId].attributes.geometry.y),
                     urlParams = new URLSearchParams(window.location.search);
-                const urPermalink = `https://${document.location.hostname.replace(/beta/i, 'www')}${document.location.pathname}?${(urlParams.get('env') ? `env=${urlParams.get('env')}&` : '')}lon=${lonLat.lon.toFixed(5)}&lat=${lonLat.lat.toFixed(5)}&s=20489175039&zoom=5&mapUpdateRequest=${urId}`;
+                const urPermalink = `https://${document.location.hostname.replace(/beta/i, 'www')}${document.location.pathname}?${(urlParams.get('env') ? `env=${urlParams.get('env')}&` : '')}lon=${lonLat.lon.toFixed(5)}&lat=${lonLat.lat.toFixed(5)}&s=20489175039&zoom=17&mapUpdateRequest=${urId}`;
                 text = text.replace('$PERMALINK$', urPermalink);
             }
             else {
@@ -1864,7 +1868,7 @@ async function markerMouseOver() {
                     ({ y } = W.model.mapUpdateRequests.objects[markerId].attributes.geometry);
                 const urPos = WazeWrap.Geometry.ConvertTo4326(x, y);
                 let urLink = $(document)[0].location.href;
-                urLink = `${urLink.substr(0, urLink.indexOf('?zoom'))}?zoom=5&lat=${urPos.lat}&lon=${urPos.lon}&mapUpdateRequest=${markerId}`;
+                urLink = `${urLink.substr(0, urLink.indexOf('?zoom'))}?zoom=17&lat=${urPos.lat}&lon=${urPos.lon}&mapUpdateRequest=${markerId}`;
                 popupContent += `<hr><ul><li><a href="${urLink}" id="_urceOpenInNewTab" target="${targetTab}">${I18n.t('urce.mouseOver.OpenInNewTab')}</a> - `
                     + `<a href="#" id="_urceRecenterSession" data-id="${markerId}">${I18n.t('urce.mouseOver.CenterInCurrentTab')}</a>`;
                 let lmLink = null;
@@ -2725,7 +2729,7 @@ function mouseUp() {
 function invokeMoveEnd(evt) {
     const zoomLevel = evt.object.zoom || W.map.getZoom();
     if (_settings.enableAutoRefresh
-        && (zoomLevel > 2)
+        && (zoomLevel > 14)
         && (W.model.mapUpdateRequests.getObjectArray().length > 499)
         && (!W.saveController.hasUnsavedChanges())
     )
@@ -2738,7 +2742,7 @@ function invokeMoveEnd(evt) {
 
 function invokeZoomEnd(evt) {
     const zoomLevel = evt.object.zoom || W.map.getZoom();
-    if (_settings.enableAutoRefresh && (zoomLevel > 2) && (W.model.mapUpdateRequests.getObjectArray().length > 499) && !W.saveController.hasUnsavedChanges()) {
+    if (_settings.enableAutoRefresh && (zoomLevel > 14) && (W.model.mapUpdateRequests.getObjectArray().length > 499) && !W.saveController.hasUnsavedChanges()) {
         W.controller.reload();
         return;
     }
@@ -3751,9 +3755,9 @@ function initCommentsTab() {
     $('#panel-urce-comments').empty().append(''
         + `<div id="_divZoomOutLinks" class="URCE-divCCLinks" style="${(_settings.hideZoomOutLinks ? 'display:none;' : '')}">`
         + `     <div id="urceIcon" class="URCE-divIcon"><img src="${GM_info.script.icon}" class="URCE-icon"></div>`
-        + `     <a id="zoomOutLink1" class="URCE-Comments" zoomTo="0" title="${I18n.t('urce.commentsTab.ZoomOutLink1Title')}">${I18n.t('urce.commentsTab.ZoomOutLink1')}</a><br>`
-        + `     <a id="zoomOutLink2" class="URCE-Comments" zoomTo="2" title="${I18n.t('urce.commentsTab.ZoomOutLink2Title')}">${I18n.t('urce.commentsTab.ZoomOutLink2')}</a><br>`
-        + `     <a id="zoomOutLink3" class="URCE-Comments" zoomTo="3" title="${I18n.t('urce.commentsTab.ZoomOutLink3Title')}">${I18n.t('urce.commentsTab.ZoomOutLink3')}</a><br>`
+        + `     <a id="zoomOutLink1" class="URCE-Comments" zoomTo="12" title="${I18n.t('urce.commentsTab.ZoomOutLink1Title')}">${I18n.t('urce.commentsTab.ZoomOutLink1')}</a><br>`
+        + `     <a id="zoomOutLink2" class="URCE-Comments" zoomTo="14" title="${I18n.t('urce.commentsTab.ZoomOutLink2Title')}">${I18n.t('urce.commentsTab.ZoomOutLink2')}</a><br>`
+        + `     <a id="zoomOutLink3" class="URCE-Comments" zoomTo="15" title="${I18n.t('urce.commentsTab.ZoomOutLink3Title')}">${I18n.t('urce.commentsTab.ZoomOutLink3')}</a><br>`
         + '</div>'
         + '<div id="_commentList" class="URCE-divCC"></div>');
     $('a[id^="zoomOutLink"]').off().on('click', function () {
@@ -3947,9 +3951,9 @@ function initSettingsTab() {
                 + `<label for="_cbautoSendRemindersExceptTagged" urceprefs="${urceprefs}" title="${I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle')}" class="URCE-label">${I18n.t('urce.prefs.AutoSendRemindersExceptTagged')}</label></div>`;
             }
             if (setting === 'disableFilteringAboveZoom')
-                rVal += `<div class="URCE-divDaysInline"><input type="number" id="_numdisableFilteringAboveZoomLevel" class="URCE-daysInput urceSettingsNumberBox" urceprefs="filtering" min="0" max="10" step="1" value="${_settings.disableFilteringAboveZoomLevel}" title=${translationTitle}"></div>`;
+                rVal += `<div class="URCE-divDaysInline"><input type="number" id="_numdisableFilteringAboveZoomLevel" class="URCE-daysInput urceSettingsNumberBox" urceprefs="filtering" min="12" max="22" step="1" value="${_settings.disableFilteringAboveZoomLevel}" title=${translationTitle}"></div>`;
             if (setting === 'disableFilteringBelowZoom')
-                rVal += `<div class="URCE-divDaysInline"><input type="number" id="_numdisableFilteringBelowZoomLevel" class="URCE-daysInput urceSettingsNumberBox" urceprefs="filtering" min="0" max="10" step="1" value="${_settings.disableFilteringBelowZoomLevel}" title=${translationTitle}"></div>`;
+                rVal += `<div class="URCE-divDaysInline"><input type="number" id="_numdisableFilteringBelowZoomLevel" class="URCE-daysInput urceSettingsNumberBox" urceprefs="filtering" min="12" max="22" step="1" value="${_settings.disableFilteringBelowZoomLevel}" title=${translationTitle}"></div>`;
             if (setting === 'hideByStatusClosedBy')
                 rVal += `<div class="URCE-divDaysInline"><input type="text" id="_texthideByStatusClosedByUsers" class="urceSettingsTextBox" style="width:150px;height:20px" urceprefs="filtering" value="${_settings.hideByStatusClosedByUsers}" title="${translationTitle}"></div>`;
             if (setting !== 'autoSendReminders')
@@ -4096,7 +4100,7 @@ function initSettingsTab() {
     htmlOut += buildStandardCbSetting('unstackMarkers', 'marker-nodisable');
     htmlOut += '    <div class="URCE-textFirst" urceprefs="marker-nodisable-stack">';
     htmlOut += buildTextFirstNumSetting('unstackSensitivity', 'marker-nodisable-unstack', '1', '99', '1', undefined);
-    htmlOut += buildTextFirstNumSetting('unstackDisableAboveZoom', 'marker-nodisable-unstack', '0', '10', '1', undefined);
+    htmlOut += buildTextFirstNumSetting('unstackDisableAboveZoom', 'marker-nodisable-unstack', '12', '22', '1', undefined);
     htmlOut += '    </div>'
         // -- Custom markers
         + '<div>'
@@ -4371,8 +4375,9 @@ function initSettingsTab() {
     });
     $('.urceSettingsNumberBox').off().on('change', function () {
         const settingName = $(this)[0].id.substr(4),
-            maxVal = (settingName === 'disableFilteringAboveZoomLevel' || settingName === 'disableFilteringBelowZoomLevel') ? 10 : 9999,
-            val = Math.min(maxVal, Math.max(0, parseInt(Math.abs(parseInt(this.value) || 0))));
+            maxVal = (['disableFilteringAboveZoomLevel', 'disableFilteringBelowZoomLevel', 'unstackDisableAboveZoom'].indexOf(settingName) > -1) ? 22 : 9999,
+            minVal = (['disableFilteringAboveZoomLevel', 'disableFilteringBelowZoomLevel', 'unstackDisableAboveZoom'].indexOf(settingName) > -1) ? 12 : 0,
+            val = Math.min(maxVal, Math.max(minVal, parseInt(Math.abs(parseInt(this.value) || minVal))));
         if ((val !== parseInt(this.value)) || (_settings[settingName] !== val)) {
             if (val !== parseInt(this.value))
                 this.value = val;
@@ -4824,12 +4829,12 @@ function loadTranslations() {
             translations = (!errorText && data && (data.values.length > 0)) ? translations : {
                 en: {
                     commentsTab: {
-                        ZoomOutLink1: 'Zoom out 0 & close UR',
+                        ZoomOutLink1: 'Zoom out 12 & close UR',
                         ZoomOutLink1Title: 'Zooms all the way out and closes the UR panel.',
-                        ZoomOutLink2: 'Zoom out 2 & close UR',
-                        ZoomOutLink2Title: 'Zooms out to level 2 and closes the UR panel.',
-                        ZoomOutLink3: 'Zoom out 3 & close UR',
-                        ZoomOutLink3Title: 'Zooms out to level 3 and closes the UR panel.'
+                        ZoomOutLink2: 'Zoom out 14 & close UR',
+                        ZoomOutLink2Title: 'Zooms out to level 14 and closes the UR panel.',
+                        ZoomOutLink3: 'Zoom out 15 & close UR',
+                        ZoomOutLink3Title: 'Zooms out to level 15 and closes the UR panel.'
                     },
                     common: {
                         All: 'All',
@@ -4973,7 +4978,7 @@ function loadTranslations() {
                                     + 'if they do not already exist.\nWME does not display more than 500 URs on a single screen on its own.',
                         EnableAutoRefresh: 'Enable auto refresh on zoom / pan',
                         EnableAutoRefreshTitle: 'Reloads the map data when zooming or panning to show URs that may have been missed due to WME\'s 500 UR limit.  Will only reload if the zoom '
-                                    + 'level is between 3 and 10, there are not pending edits, and there are more than 499 URs loaded.',
+                                    + 'level is between 15 and 22, there are not pending edits, and there are more than 499 URs loaded.',
                         UrMarkerPrefs: 'UR Marker Settings',
                         EnableUrPillCounts: 'Enable UR pill counts',
                         EnableUrPillCountsTitle: 'Enable or disable the pill with UR counts on the map marker.',
@@ -4995,7 +5000,7 @@ function loadTranslations() {
                         UnstackSensitivity: 'Unstack sensitivity',
                         UnstackSensitivityTitle: 'Specify the sensitivity for which markers are considered stacked.\nDefault: 15',
                         UnstackDisableAboveZoom: 'Unstack disable when zoom level <',
-                        UnstackDisableAboveZoomTitle: 'When you zoom out wider than the specified zoom level, marker unstacking will be disabled.\nDefault: 3',
+                        UnstackDisableAboveZoomTitle: 'When you zoom out wider than the specified zoom level, marker unstacking will be disabled.\nDefault: 15',
                         UseCustomMarkersFor: 'Use Custom Markers for',
                         BogTitle: 'Replace default UR marker with custom marker for the URs with "[BOG]" (boots on ground) / "[BOTG]" (boots on the ground) in the description or comments.',
                         ClosureTitle: 'Replace default UR marker with custom marker for the URs with "[CLOSURE]" in the description or comments.',
@@ -5021,9 +5026,9 @@ function loadTranslations() {
                         DoNotHideSelectedUr: 'Do not hide selected UR',
                         DoNotHideSelectedUrTitle: 'Do not hide a UR if it is currently being selected.',
                         DisableFilteringAboveZoomLevel: 'Disable filtering when zoom level <',
-                        DisableFilteringAboveZoomLevelTitle: 'Disable UR filtering when zoomed out wider than the specified zoom level. Set to "0" to enable all filtering.',
+                        DisableFilteringAboveZoomLevelTitle: 'Disable UR filtering when zoomed out wider than the specified zoom level. Set to "12" to enable all filtering.',
                         DisableFilteringBelowZoomLevel: 'Disable filtering when zoom level >',
-                        DisableFilteringBelowZoomLevelTitle: 'Disable UR filtering when zoomed in tighter than the specified zoom level. Set to "10" to enable all filtering.',
+                        DisableFilteringBelowZoomLevelTitle: 'Disable UR filtering when zoomed in tighter than the specified zoom level. Set to "22" to enable all filtering.',
                         LifeCycleStatus: 'Hide by lifecycle status',
                         LifeCycleStatusInverted: 'Show by lifecycle status',
                         HideWaiting: 'Waiting',
@@ -5229,7 +5234,7 @@ function loadTranslations() {
                                     + 'locale language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
                         InsertTimeTitle: 'Shortcut - Drive time of day: Click this icon to insert the drive date time of day into the new comment box at the cursor position (2-digit hour, '
                                     + '2-digit minute in locale format).',
-                        InsertUrPermalinkTitle: 'Shortcut - Insert permalink to this UR. URL will include your locale, your \'env\', the latitude and longitude of this UR, zoom level of 5, '
+                        InsertUrPermalinkTitle: 'Shortcut - Insert permalink to this UR. URL will include your locale, your \'env\', the latitude and longitude of this UR, zoom level of 17, '
                                     + 'mapUpdateRequest of this UR ID number, and s=20489175039 (which ensures the UR layer is turned on).',
                         InsertUrTypeTitle: 'Shortcut - UR type: Click this icon to insert the UR type into the new comment box at the cursor position.',
                         InsertWazeUsernameTitle: 'Shortcut - Waze username: Click this icon to insert your Waze username into the new comment box at the cursor position.',
