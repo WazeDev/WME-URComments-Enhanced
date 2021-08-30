@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2021.08.27.01
+// @version     2021.08.30.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -1311,7 +1311,7 @@ function formatText(text = '', replaceVars = false, shortcutClicked = false, urI
             if (W.model.mapUpdateRequests.objects[urId]) {
                 const lonLat = WazeWrap.Geometry.ConvertTo4326(W.model.mapUpdateRequests.objects[urId].attributes.geometry.x, W.model.mapUpdateRequests.objects[urId].attributes.geometry.y),
                     urlParams = new URLSearchParams(window.location.search);
-                const urPermalink = `https://${document.location.hostname.replace(/beta/i, 'www')}${document.location.pathname}?${(urlParams.get('env') ? `env=${urlParams.get('env')}&` : '')}lon=${lonLat.lon.toFixed(5)}&lat=${lonLat.lat.toFixed(5)}&s=20489175039&zoom=17&mapUpdateRequest=${urId}`;
+                const urPermalink = `https://${document.location.hostname.replace(/beta/i, 'www')}${document.location.pathname}?${(urlParams.get('env') ? `env=${urlParams.get('env')}&` : '')}lon=${lonLat.lon.toFixed(5)}&lat=${lonLat.lat.toFixed(5)}&s=20489175039&zoomLevel=17&mapUpdateRequest=${urId}`;
                 text = text.replace('$PERMALINK$', urPermalink);
             }
             else {
@@ -1868,7 +1868,7 @@ async function markerMouseOver() {
                     ({ y } = W.model.mapUpdateRequests.objects[markerId].attributes.geometry);
                 const urPos = WazeWrap.Geometry.ConvertTo4326(x, y);
                 let urLink = $(document)[0].location.href;
-                urLink = `${urLink.substr(0, urLink.indexOf('?zoom'))}?zoom=17&lat=${urPos.lat}&lon=${urPos.lon}&mapUpdateRequest=${markerId}`;
+                urLink = `${urLink.substr(0, urLink.indexOf('?zoom'))}?zoomLevel=17&lat=${urPos.lat}&lon=${urPos.lon}&mapUpdateRequest=${markerId}`;
                 popupContent += `<hr><ul><li><a href="${urLink}" id="_urceOpenInNewTab" target="${targetTab}">${I18n.t('urce.mouseOver.OpenInNewTab')}</a> - `
                     + `<a href="#" id="_urceRecenterSession" data-id="${markerId}">${I18n.t('urce.mouseOver.CenterInCurrentTab')}</a>`;
                 let lmLink = null;
@@ -1877,7 +1877,7 @@ async function markerMouseOver() {
                 else if ($('.livemap-link').length > 0)
                     lmLink = $('.livemap-link')[0].href;
                 if (lmLink !== null) {
-                    lmLink = `${((lmLink.indexOf('?') > -1) ? lmLink.substr(0, lmLink.indexOf('?')) : lmLink)}?zoom=17&lat=${urPos.lat}&lon=${urPos.lon}&layers=BTTTT`;
+                    lmLink = `${((lmLink.indexOf('?') > -1) ? lmLink.substr(0, lmLink.indexOf('?')) : lmLink)}?zoomLevel=17&lat=${urPos.lat}&lon=${urPos.lon}&layers=BTTTT`;
                     popupContent += `<li><a href="${lmLink}" target="${targetTab}_lmTab">${I18n.t('urce.mouseOver.OpenInNewLivemapTab')}</a>`;
                 }
                 const popupDelay = (Date.now() > popupDelayTime) ? -1 : (popupDelayTime - Date.now());
