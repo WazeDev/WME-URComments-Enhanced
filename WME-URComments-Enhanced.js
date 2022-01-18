@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2021.08.30.01
+// @version     2022.01.17.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -14,7 +14,7 @@
 // @contributionURL https://github.com/WazeDev/Thank-The-Authors
 // ==/UserScript==
 
-/* global $, Blob, document, FileReader, GM_info, I18n, localStorage, location, MutationObserver, OpenLayers, performance, W, WazeWrap, window */
+/* global $, Blob, document, Event, FileReader, GM_info, I18n, localStorage, location, MutationObserver, OpenLayers, performance, W, WazeWrap, window */
 
 /*
  * Original concept and code for URComments (URC) was written by rickzabel and licensed under MIT/BSD/X11.
@@ -38,7 +38,9 @@ const SCRIPT_NAME = `URC-E${((GM_info.script.name.search(/beta/) > -1) ? ' β' :
     SETTINGS_STORE_NAME = 'WME_URC-E',
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
-    SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Update zoom levels to new WME values.'],
+    SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Setting to change comments sort order.',
+        'NEW: Setting to allow auto expanding of shortcuts section.',
+        'NEW: Setting to allow auto expanding of more info section.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
     LOAD_BEGIN_TIME = performance.now(),
@@ -88,6 +90,7 @@ const SCRIPT_NAME = `URC-E${((GM_info.script.name.search(/beta/) > -1) ? ' β' :
         getMapUrsAsync: {},
         getOverflowUrsFromUrl: {},
         isDomElementReady: {},
+        isShadowRootElementReady: {},
         bootstrap: undefined,
         saveSettingsToStorage: undefined,
         popupDelay: undefined,
@@ -118,7 +121,7 @@ const SCRIPT_NAME = `URC-E${((GM_info.script.name.search(/beta/) > -1) ? ' β' :
     }),
     _urCommentsObserver = new MutationObserver(mutations => {
         if (_selUr.handling && (mutations[0].addedNodes.length > 0))
-            handleAfterCommentMutation(mutations[0].addedNodes[0].firstElementChild.firstElementChild);
+            handleAfterCommentMutation(mutations[0].addedNodes[0]);
     }),
     _urPanelContainerObserver = new MutationObserver(mutations => {
         if (_selUr.handling
@@ -243,6 +246,7 @@ async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
             unfollowUrAfterSend: false,
             enableUrOverflowHandling: false,
             enableAutoRefresh: false,
+            sortCommentsOldestFirst: false,
             reminderDays: 0,
             closeDays: 7,
             // UR Marker Settings
@@ -726,11 +730,17 @@ async function handleAfterCommentMutation(domElem) {
     else {
         await updateUrceData(getMapUrsObjArr([_selUr.urId]));
         if ($(domElem).has('#urceDaysAgo').length === 0) {
-            $(domElem).children().filter('span.date').css('float', 'right');
-            $(domElem).append(''
+            $(domElem).find('span.date').css('float', 'right');
+            $($(domElem).children()[0]).append(''
                 + '<div class="date" style="display:flex;justify-content:flex-end;">'
                 + `     <div>(${parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[_selUr.urId].comments[(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount - 1)].createdOn))})</div>`
                 + '</div>');
+        }
+        await sortComments();
+        if (_settings.sortCommentsOldestFirst) {
+            $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list').scrollTop(
+                $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list')[0].scrollHeight
+            );
         }
         if (_settings.autoSaveAfterSolvedOrNiComment && (_selUr.newStatus === 'solved' || _selUr.newStatus === 'notidentified'))
             $('.toolbar-button.waze-icon-save').trigger('click');
@@ -826,14 +836,23 @@ async function handleUpdateRequestContainer() {
             handleDomElementError(false, false, '', false, '');
         }
         else {
+            if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount > 1) {
+                if (_settings.sortCommentsOldestFirst)
+                    await sortComments();
+            }
+            let urPanelCommentIdx = (_settings.sortCommentsOldestFirst) ? 0 : (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount - 1);
             for (let idx = 0; idx < W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount; idx++) {
                 if ($($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).has('#urceDaysAgo').length === 0) {
                     $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).children().filter('span.date').css('float', 'right');
                     $($('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')[idx]).append(''
                         + '<div class="date" style="display:flex;justify-content:flex-end;">'
-                        + `     <div>(${parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[_selUr.urId].comments[idx].createdOn))})</div>`
+                        + `     <div>(${parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[_selUr.urId].comments[urPanelCommentIdx].createdOn))})</div>`
                         + '</div>');
                 }
+                if (_settings.sortCommentsOldestFirst)
+                    urPanelCommentIdx++;
+                else
+                    urPanelCommentIdx--;
             }
         }
     }
@@ -869,10 +888,12 @@ async function handleUpdateRequestContainer() {
         handleDomElementError(true, false, '', false, '');
         return;
     }
-    $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').css('background-color', (_settings.enableAppendMode ? 'peachpuff' : ''))
+    $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)
+        .css('background-color', (_settings.enableAppendMode ? 'peachpuff' : ''))
         .off('keyup', checkValue).on('keyup', checkValue);
     if ($('#urceShortcuts').length === 0) {
-        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend('<div id="urceShortcuts" style="text-align:left;padding-bottom:8px;font-size:12px;">'
+        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend(''
+            + '<div id="urceShortcuts" style="text-align:left;padding-bottom:8px;font-size:12px;width:100%">'
             + `<div id="urceShortcutsExpand" style="padding-bottom:4px;font-size:13px;cursor:pointer;border-bottom:1px solid darkgray;">${I18n.t('urce.urPanel.Shortcuts')}`
             + `<div style="display:inline;float:right;padding-right:8px;font-size:11px;"><i class="fa fa-fw ${(_settings.expandShortcuts ? 'fa-chevron-up' : 'fa-chevron-down')} URCE-chevron"></i></div></div>`
             + `<div id="urceShortcutsExpandDiv" style="${(_settings.expandShortcuts ? '' : 'display:none;')}border-bottom:1px solid darkgray;padding: 5px 0 5px 0;"><div><i id="urceShortcuts-selSegs" class="fa fa-road" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertSelSegsTitle')}"></i>`
@@ -930,6 +951,11 @@ async function handleUpdateRequestContainer() {
         });
     }
     $('#panel-container .mapUpdateRequest .top-section').scrollTop($('#panel-container .mapUpdateRequest .top-section')[0].scrollHeight);
+    if (_settings.sortCommentsOldestFirst) {
+        $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list').scrollTop(
+            $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list')[0].scrollHeight
+        );
+    }
     $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').on('click', () => { logDebug('Clicked send to submit the comment.'); });
     if (!_urDataStateObserver.isObserving) {
         _urDataStateObserver.observe($('#panel-container .mapUpdateRequest.panel.show .problem-edit')[0], {
@@ -1011,13 +1037,14 @@ function checkValue() {
 
 function handleClickedComment(commentNum, doubleClick) {
     _selUr.doubleClick = doubleClick;
-    if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length === 0) {
+    const $commentBox = $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot);
+    if ($commentBox.length === 0) {
         logWarning('No comment box found after clicking a comment from the list.');
         WazeWrap.Alerts.info(SCRIPT_NAME, I18n.t('urce.prompts.NoCommentBox'));
     }
     else {
         if (doubleClick)
-            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').off('blur', autoClickSendButton).on('blur', autoClickSendButton);
+            $commentBox.off('blur', autoClickSendButton).on('blur', autoClickSendButton);
         if (_settings.autoClickOpenSolvedNi && _selUr.urOpen)
             autoClickOpenSolvedNi(commentNum);
         postUrComment(_commentList[commentNum].comment, doubleClick);
@@ -1053,7 +1080,7 @@ function autoCloseUrPanel() {
 
 function autoClickSendButton() {
     $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').trigger('click');
-    $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').off('blur', autoClickSendButton);
+    $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).off('blur', autoClickSendButton);
 }
 
 function autoClickOpenSolvedNi(commentNum) {
@@ -1389,8 +1416,9 @@ function formatText(text = '', replaceVars = false, shortcutClicked = false, urI
 
 function handleClickedShortcut(shortcut) {
     doSpinner('handleClickedShortcut', true);
-    const cursorPos = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].selectionStart,
-        currVal = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val();
+    const $commentBox = $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot),
+        cursorPos = $commentBox[0].selectionStart,
+        currVal = $commentBox.val();
     let newVal = currVal.slice(0, cursorPos),
         useCurrVal = false,
         replaceText;
@@ -1499,13 +1527,19 @@ function handleClickedShortcut(shortcut) {
                 outputText = `${outputText} `;
         }
         newVal = `${newVal}${outputText}${currVal.slice(cursorPos)}`;
-        if (newVal.length > 2000)
+        if (newVal.length > 2000) {
             WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
-        else
-            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(newVal).selectRange((cursorPos + outputText.length)).change().keyup().focus();
+        }
+        else {
+            $commentBox.val(newVal).selectRange((cursorPos + outputText.length));
+            $commentBox[0].dispatchEvent(new Event('input'));
+            $commentBox.keyup().focus();
+        }
     }
     else if (useCurrVal) {
-        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(outputText).selectRange((cursorPos + outputText.length)).change().keyup().focus();
+        $commentBox.val(outputText).selectRange((cursorPos + outputText.length));
+        $commentBox[0].dispatchEvent(new Event('input'));
+        $commentBox.keyup().focus();
     }
     doSpinner('handleClickedShortcut', false);
 }
@@ -1530,14 +1564,15 @@ function autoPostReminderComment(urId) {
 function postUrComment(comment, doubleClick) {
     return new Promise(resolve => {
         doSpinner('postUrComment', true);
+        const $commentBox = $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot);
         let commentOutput,
             cursorPos,
             newCursorPos,
             postNls = 0;
-        if (_settings.enableAppendMode && $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val() !== '' && !doubleClick) {
-            cursorPos = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].selectionStart;
+        if (_settings.enableAppendMode && $commentBox.val() !== '' && !doubleClick) {
+            cursorPos = $commentBox[0].selectionStart;
             newCursorPos = cursorPos;
-            const currVal = $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val();
+            const currVal = $commentBox.val();
             let newVal = currVal.slice(0, cursorPos);
             if ((newVal.length > 0) && (newVal.slice(-1).search(/[\n\r]/) > -1)) {
                 if (newVal.slice(-2, -1).search(/[\n\r]/) === -1) {
@@ -1574,17 +1609,21 @@ function postUrComment(comment, doubleClick) {
         }
         else {
             if (cursorPos !== undefined) {
-                $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).selectRange(
+                $commentBox.val(commentOutput).selectRange(
                     (newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls)
-                ).change().keyup().focus();
+                );
+                $commentBox[0].dispatchEvent(new Event('input'));
+                $commentBox.keyup().focus();
             }
             else {
-                $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').val(commentOutput).change().keyup().focus();
+                $commentBox.val(commentOutput);
+                $commentBox[0].dispatchEvent(new Event('input'));
+                $commentBox.keyup().focus();
             }
             if ((commentOutput.search(/\B\$\S*\$\B/gm) === -1) && (commentOutput.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) === -1))
-                $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').blur().focus();
+                $commentBox.blur().focus();
             else
-                $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').focus();
+                $commentBox.focus();
         }
         doSpinner('postUrComment', false);
         resolve();
@@ -1615,6 +1654,22 @@ function parseDaysAgo(days) {
     if (days === 1)
         return I18n.t('date.yesterday');
     return I18n.t('common.time.ago', { time: I18n.t('common.time.days', { days }) });
+}
+
+function sortComments() {
+    return new Promise(resolve => {
+        const commentList = $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list'),
+            comments = commentList.children('wz-list-item').get(),
+            retVal1 = (_settings.sortCommentsOldestFirst) ? 1 : -1,
+            retVal2 = (_settings.sortCommentsOldestFirst) ? -1 : 1,
+            sortedComments = comments.sort((a, b) => {
+                if (Date.parse($('.date', a.children).text()) > Date.parse($('.date', b.children).text()))
+                    return retVal1;
+                return retVal2;
+            });
+        commentList.append(sortedComments);
+        resolve();
+    });
 }
 
 function isIdAlreadyUnstacked(urId) {
@@ -3266,8 +3321,10 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
         });
         $('#_cbenableAppendMode').off().on('change', function () {
             _settings[$(this)[0].id.substr(3)] = isChecked(this);
-            if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length > 0)
-                $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').css('background-color', (isChecked(this) ? 'peachpuff' : ''));
+            if ($('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).length > 0) {
+                $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)
+                    .css('background-color', (isChecked(this) ? 'peachpuff' : ''));
+            }
             saveSettingsToStorage();
         });
         $('#URCE-expandAllComments, #URCE-collapseAllComments').off().on('click', function () {
@@ -3744,7 +3801,8 @@ function injectCss() {
         + '}'
         + '#urceDiv hr { border-top:1px solid #000000; }'
         // UR Panel Manipulation
-        + '#panel-container .mapUpdateRequest.panel { width:340px; }'
+        + '#panel-container .mapUpdateRequest.panel { width:360px; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit { max-height:85vh; }'
         // Map content
         + '.urceCountersPill { color:black; position:absolute; top:30px; display:block; width:auto; white-space:nowrap; padding-left:5px; padding-right:5px; border:1px solid; border-radius:25px; }'
         + '</style>').appendTo('head');
@@ -4078,7 +4136,8 @@ function initSettingsTab() {
     ['autoCenterOnUr', 'autoClickOpenSolvedNi', 'autoCloseUrPanel', 'autoSaveAfterSolvedOrNiComment', 'autoSendReminders', 'autoSetNewUrComment', 'autoSetNewUrCommentSlur',
         'autoSetNewUrCommentWithDescription', 'autoSetReminderUrComment', 'autoSwitchToUrCommentsTab', 'autoZoomInOnNewUr', 'autoZoomOutAfterClosePanel', 'autoZoomOutAfterComment',
         'disableDoneNextButtons', 'replaceNextWithDoneButton', 'doubleClickLinkNiComments', 'doubleClickLinkOpenComments', 'doubleClickLinkSolvedComments', 'hideZoomOutLinks',
-        'unfollowUrAfterSend', 'enableUrOverflowHandling', 'enableAutoRefresh'].forEach(setting => { htmlOut += buildStandardCbSetting(setting, 'urce'); });
+        'unfollowUrAfterSend', 'enableUrOverflowHandling', 'enableAutoRefresh', 'expandMoreInfo', 'expandShortcuts',
+        'sortCommentsOldestFirst'].forEach(setting => { htmlOut += buildStandardCbSetting(setting, 'urce'); });
     htmlOut += '<div class="URCE-controls URCE-textFirst">';
     htmlOut += buildTextFirstTextSetting('tagEmail', 'commentList');
     htmlOut += buildTextFirstNumSetting('reminderDays', 'urce', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''));
@@ -4979,6 +5038,12 @@ function loadTranslations() {
                         EnableAutoRefresh: 'Enable auto refresh on zoom / pan',
                         EnableAutoRefreshTitle: 'Reloads the map data when zooming or panning to show URs that may have been missed due to WME\'s 500 UR limit.  Will only reload if the zoom '
                                     + 'level is between 15 and 22, there are not pending edits, and there are more than 499 URs loaded.',
+                        ExpandMoreInfo: 'Auto expand more info section',
+                        ExpandMoreInfoTitle: 'Automatically expand the more info section of the UR Panel.',
+                        ExpandShortcuts: 'Auto expand shortcuts section',
+                        EpandShortcutsTitle: 'Automatically expand the shortcuts section of the UR Panel.',
+                        SortCommentsOldestFirst: 'Sort Comments "Oldest First"',
+                        SortCommentsOldestFirstTitle: 'Sort comments in the UR Panel by listing the oldest comments first.',
                         UrMarkerPrefs: 'UR Marker Settings',
                         EnableUrPillCounts: 'Enable UR pill counts',
                         EnableUrPillCountsTitle: 'Enable or disable the pill with UR counts on the map marker.',
