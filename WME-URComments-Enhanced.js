@@ -801,7 +801,6 @@ function handleAfterSave() {
 }
 
 async function handleUpdateRequestContainer() {
-    debugger;
     let testDomElement;
     if (!_commentListLoaded)
         return;
