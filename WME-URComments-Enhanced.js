@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2022.01.18.03
+// @version     2022.01.19.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -96,7 +96,8 @@ const SCRIPT_NAME = `URC-E${((GM_info.script.name.search(/beta/) > -1) ? ' β' :
         popupDelay: undefined,
         popup: undefined,
         checkForStaticListArray: undefined,
-        initUrIdInUrl: undefined
+        initUrIdInUrl: undefined,
+        autoScrollComments: undefined
     },
     _saveButtonObserver = new MutationObserver(mutations => {
         if (mutations.filter(
@@ -522,21 +523,21 @@ function isChecked(obj) {
     return $(obj).is(':checked');
 }
 
-function isDomElementReady(element, retryInterval = 10, maxTries = 200) {
+function isDomElementReady(element, shadowHost, retryInterval = 10, maxTries = 200) {
     return new Promise(resolve => {
-        (function retry(elementStr, tries, toIndex, retryInt, maxNumTries) {
+        (function retry(elementStr, shadowHostStr, tries, toIndex, retryInt, maxNumTries) {
             checkTimeout({ timeout: 'isDomElementReady', toIndex });
             if (tries > maxNumTries) {
-                logError(`Timed out waiting for DOM element to appear: ${elementStr}`);
+                logError(new Error(`Timed out waiting for DOM element to appear: ${elementStr}`));
                 resolve({ error: true });
             }
-            else if ($(elementStr).length === 0) {
-                _timeouts.isDomElementReady = window.setTimeout(retry, retryInt, elementStr, ++tries, toIndex, retryInt, maxNumTries);
-            }
-            else {
+            else if ((shadowHostStr && ($(elementStr, $(shadowHostStr)[0].shadowRoot).length > 0)) || (!shadowHostStr && ($(elementStr).length > 0))) {
                 resolve({ error: false });
             }
-        }(element, 1, getRandomId(), retryInterval, maxTries));
+            else {
+                _timeouts.isDomElementReady = window.setTimeout(retry, retryInt, elementStr, shadowHostStr, ++tries, toIndex, retryInt, maxNumTries);
+            }
+        }(element, shadowHost, 1, getRandomId(), retryInterval, maxTries));
     });
 }
 
@@ -742,11 +743,12 @@ async function handleAfterCommentMutation(domElem) {
                 + '</div>');
         }
         if (_settings.reverseCommentSort) {
-            const $commentList = $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list');
+            const $commentList = $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list'),
+                numComments = $commentList.children().length;
             domElem.remove();
             $commentList.append(domElem);
             if (_settings.autoScrollComments)
-                $commentList.scrollTop($commentList[0].scrollHeight);
+                autoScrollComments(numComments);
         }
         if (_settings.autoSaveAfterSolvedOrNiComment && (_selUr.newStatus === 'solved' || _selUr.newStatus === 'notidentified'))
             $('.toolbar-button.waze-icon-save').trigger('click');
@@ -824,14 +826,14 @@ async function handleUpdateRequestContainer() {
     await updateUrceData(getMapUrsObjArr([_selUr.urId]));
     testDomElement = await isDomElementReady('#panel-container .top-section .header .main-title');
     if (testDomElement.error) {
-        handleDomElementError(true, false, '', false, '');
+        handleDomElementError(true, true, 'handleUpdateRequestContainer', false, '');
         return;
     }
     if ($('#panel-container .top-section .header .main-title').html().indexOf(_selUr.urId) === -1)
         $('#panel-container .top-section .header .main-title').append(` (${_selUr.urId}) `);
     testDomElement = await isDomElementReady('#panel-container .top-section .header .reported');
     if (testDomElement.error) {
-        handleDomElementError(true, false, '', false, '');
+        handleDomElementError(true, true, 'handleUpdateRequestContainer', false, '');
         return;
     }
     if (!$('#panel-container .top-section .header .reported')[0].textContent.endsWith(')'))
@@ -894,12 +896,17 @@ async function handleUpdateRequestContainer() {
     $('#panel-container .mapUpdateRequest .top-section .header .title .focus').off('click', recenterOnUr).on('click', { urId: _selUr.urId }, recenterOnUr);
     testDomElement = await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
     if (testDomElement.error) {
-        handleDomElementError(true, false, '', false, '');
+        handleDomElementError(true, true, 'handleUpdateRequestContainer', false, '');
         return;
     }
-    $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)
-        .css('background-color', (_settings.enableAppendMode ? 'peachpuff' : ''))
-        .off('keyup', checkValue).on('keyup', checkValue);
+    if (!(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error) {
+        $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)
+            .css('background-color', (_settings.enableAppendMode ? 'peachpuff' : ''))
+            .off('keyup', checkValue).on('keyup', checkValue);
+    }
+    else {
+        logWarning('Could not change textbox background-color to peachpuff and set keyup event listener due to timeout waiting on DOM element.');
+    }
     if ($('#urceShortcuts').length === 0) {
         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend(''
             + '<div id="urceShortcuts" style="text-align:left;padding-bottom:8px;font-size:12px;width:100%">'
@@ -960,20 +967,27 @@ async function handleUpdateRequestContainer() {
         });
     }
     $('#panel-container .mapUpdateRequest .top-section').scrollTop($('#panel-container .mapUpdateRequest .top-section')[0].scrollHeight);
-    if (_settings.autoScrollComments) {
-        $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list').scrollTop(
-            $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list')[0].scrollHeight
-        );
-    }
+    if (_settings.autoScrollComments)
+        autoScrollComments(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount, 10, 1);
     $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').on('click', () => { logDebug('Clicked send to submit the comment.'); });
     const shadowDOMstyle = document.createElement('style');
     shadowDOMstyle.innerHTML = '.wz-button.md { height: 30px !important; width: 60px !important; padding: 0px 10px !important; }';
-    $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button')[0].shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
-    shadowDOMstyle.innerHTML = '.wz-textarea textarea { font-size: 12px !important; padding: 6px !important; } '
-        + '.wz-textarea .length-text { font-size: 10px !important; padding: 2px 6px 0px 0px !important; }';
-    $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .new-comment-text')[0].shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
+    if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button')).error)
+        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button')[0].shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
+    else
+        logWarning('Could not appendChild CSS to send-button shadow root due to timeout waiting for DOM element.');
+
+    shadowDOMstyle.innerHTML = '.wz-textarea textarea { font-size: 13px !important; line-height: 14px; padding: 6px !important; } '
+        + '.wz-textarea .length-text { font-size: 12px !important; padding: 2px 6px 0px 0px !important; }';
+    if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .new-comment-text')).error)
+        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .new-comment-text')[0].shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
+    else
+        logWarning('Could not appendChild CSS to new-comment-text shadow root due to timeout waiting for DOM element.');
     shadowDOMstyle.innerHTML = '.wz-checkbox { font-size: 12px !important; } .wz-checkbox .border { height: 15px !important; width: 15px !important; }';
-    $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .new-comment-follow')[0].shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
+    if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .new-comment-follow')).error)
+        $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .new-comment-follow')[0].shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
+    else
+        logWarning('Could not appendChild CSS to new-comment-follow shadow root due to timeout waiting for DOM element.');
     if (!_urDataStateObserver.isObserving) {
         _urDataStateObserver.observe($('#panel-container .mapUpdateRequest.panel.show .problem-edit')[0], {
             childList: false, attributes: true, attributeOldValue: true, characterData: false, characterDataOldValue: false, subtree: false
@@ -1052,21 +1066,19 @@ function checkValue() {
     }
 }
 
-function handleClickedComment(commentNum, doubleClick) {
+async function handleClickedComment(commentNum, doubleClick) {
     _selUr.doubleClick = doubleClick;
-    if ($('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).length === 0) {
+    if (($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length === 0)
+            || ($('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).length === 0)) {
         logWarning('No comment box found after clicking a comment from the list.');
         WazeWrap.Alerts.info(SCRIPT_NAME, I18n.t('urce.prompts.NoCommentBox'));
+        return;
     }
-    else {
-        if (doubleClick) {
-            $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)
-                .off('blur', autoClickSendButton).on('blur', autoClickSendButton);
-        }
-        if (_settings.autoClickOpenSolvedNi && _selUr.urOpen)
-            autoClickOpenSolvedNi(commentNum);
-        postUrComment(_commentList[commentNum].comment, doubleClick);
-    }
+    if (doubleClick)
+        $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).off('blur', autoClickSendButton).on('blur', autoClickSendButton);
+    if (_settings.autoClickOpenSolvedNi && _selUr.urOpen)
+        autoClickOpenSolvedNi(commentNum);
+    postUrComment(_commentList[commentNum].comment, doubleClick);
 }
 
 function autoSwitchToUrceTab() {
@@ -1432,8 +1444,13 @@ function formatText(text = '', replaceVars = false, shortcutClicked = false, urI
     return text.replace(/\\[r|n]+/gm, '\n');
 }
 
-function handleClickedShortcut(shortcut) {
+async function handleClickedShortcut(shortcut) {
     doSpinner('handleClickedShortcut', true);
+    if ((await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').error)
+        || (await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').error)) {
+        handleDomElementError(false, true, 'handleClickedShortcut', true, 'UR Panel comment box is missing.');
+        return;
+    }
     const cursorPos = $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].selectionStart,
         currVal = $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).val();
     let newVal = currVal.slice(0, cursorPos),
@@ -1546,19 +1563,37 @@ function handleClickedShortcut(shortcut) {
         newVal = `${newVal}${outputText}${currVal.slice(cursorPos)}`;
         if (newVal.length > 2000) {
             WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
+            doSpinner('handleClickedShortcut', false);
+            return;
         }
-        else {
+        if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+                && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error)
             $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).val(newVal).selectRange((cursorPos + outputText.length));
+        else
+            logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut with selectRange.');
+        if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+                && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error)
             $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].dispatchEvent(new Event('input'));
-            $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).keyup().focus();
-        }
+        else
+            logWarning('Timed out waiting for DOM elements before dispatching input event after clicking a shortcut with selectRange.');
     }
     else if (useCurrVal) {
-        $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).val(outputText).selectRange((cursorPos + outputText.length))
-            .keyup().focus();
-        $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].dispatchEvent(new Event('input'));
-        $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).keyup().focus();
+        if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+                && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error)
+            $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).val(outputText).selectRange((cursorPos + outputText.length));
+        else
+            logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut without selectRange.');
+        if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+                && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error)
+            $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].dispatchEvent(new Event('input'));
+        else
+            logWarning('Timed out waiting for DOM elements before dispatching input event after clicking a shortcut without selectRange.');
     }
+    if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+            && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error)
+        $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).keyup().focus();
+    else
+        logWarning('Timed out waiting for DOM elements before triggering keyup and focus events after clicking a shortcut.');
     doSpinner('handleClickedShortcut', false);
 }
 
@@ -1579,72 +1614,104 @@ function autoPostReminderComment(urId) {
     });
 }
 
-function postUrComment(comment, doubleClick) {
-    return new Promise(resolve => {
-        doSpinner('postUrComment', true);
-        let commentOutput,
-            cursorPos,
-            newCursorPos,
-            postNls = 0;
-        if (_settings.enableAppendMode && $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).val() !== '' && !doubleClick) {
-            cursorPos = $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].selectionStart;
-            newCursorPos = cursorPos;
-            const currVal = $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).val();
-            let newVal = currVal.slice(0, cursorPos);
-            if ((newVal.length > 0) && (newVal.slice(-1).search(/[\n\r]/) > -1)) {
-                if (newVal.slice(-2, -1).search(/[\n\r]/) === -1) {
+async function postUrComment(comment, doubleClick) {
+    doSpinner('postUrComment', true);
+    let commentOutput,
+        cursorPos,
+        newCursorPos,
+        postNls = 0;
+    if ((await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').error)
+            || (await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').error)) {
+        logError(new Error('UR Panel comment box is missing at beginning of postUrComment function.'));
+        handleDomElementError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+        return;
+    }
+    if (_settings.enableAppendMode
+            && $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).val() !== '' && !doubleClick) {
+        cursorPos = $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].selectionStart;
+        newCursorPos = cursorPos;
+        const currVal = $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).val();
+        let newVal = currVal.slice(0, cursorPos);
+        if ((newVal.length > 0) && (newVal.slice(-1).search(/[\n\r]/) > -1)) {
+            if (newVal.slice(-2, -1).search(/[\n\r]/) === -1) {
+                newVal += '\n';
+                newCursorPos++;
+            }
+        }
+        else {
+            newVal += '\n\n';
+            newCursorPos += 2;
+        }
+        newVal += formatText(comment, true, false, undefined);
+        if (currVal.slice(cursorPos).length > 0) {
+            if (currVal.substr(cursorPos, 1).search(/[\n\r]/) > -1) {
+                if (currVal.substr(cursorPos + 1, 1).search(/[\n\r]/) === -1) {
                     newVal += '\n';
-                    newCursorPos++;
+                    postNls++;
                 }
             }
             else {
                 newVal += '\n\n';
-                newCursorPos += 2;
+                postNls += 2;
             }
-            newVal += formatText(comment, true, false, undefined);
-            if (currVal.slice(cursorPos).length > 0) {
-                if (currVal.substr(cursorPos, 1).search(/[\n\r]/) > -1) {
-                    if (currVal.substr(cursorPos + 1, 1).search(/[\n\r]/) === -1) {
-                        newVal += '\n';
-                        postNls++;
-                    }
-                }
-                else {
-                    newVal += '\n\n';
-                    postNls += 2;
-                }
-                newVal += currVal.slice(cursorPos);
-            }
-            commentOutput = newVal;
+            newVal += currVal.slice(cursorPos);
         }
-        else {
-            commentOutput = formatText(comment, true, false, undefined);
-        }
-        if (commentOutput.length > 2000) {
-            WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
-            logError(new Error(I18n.t('urce.prompts.CommentTooLong')));
-        }
-        else {
-            if (cursorPos !== undefined) {
+        commentOutput = newVal;
+    }
+    else {
+        commentOutput = formatText(comment, true, false, undefined);
+    }
+    if (commentOutput.length > 2000) {
+        WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
+        logError(new Error(I18n.t('urce.prompts.CommentTooLong')));
+    }
+    else {
+        if (cursorPos !== undefined) {
+            if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error) {
                 $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).val(commentOutput).selectRange(
                     (newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls)
                 );
-                $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].dispatchEvent(new Event('input'));
-                $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).keyup().focus();
             }
             else {
-                $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).val(commentOutput);
-                $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].dispatchEvent(new Event('input'));
-                $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).keyup().focus();
+                logError(new Error('Timed out waiting on text box to set value with selectRange.'));
+                handleDomElementError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                return;
             }
-            if ((commentOutput.search(/\B\$\S*\$\B/gm) === -1) && (commentOutput.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) === -1))
-                $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).blur().focus();
-            else
-                $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).focus();
+            if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+                    && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error) {
+                $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].dispatchEvent(new Event('input'));
+            }
+            else {
+                logError(new Error('Timed out waiting on text box shadow root to dispatch event with selectRange.'));
+                handleDomElementError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                return;
+            }
         }
-        doSpinner('postUrComment', false);
-        resolve();
-    });
+        else {
+            if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error) {
+                $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).val(commentOutput);
+            }
+            else {
+                logError(new Error('Timed out waiting on text box to set value without selectRange.'));
+                handleDomElementError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                return;
+            }
+            if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+                    && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error) {
+                $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].dispatchEvent(new Event('input'));
+            }
+            else {
+                logError(new Error('Timed out waiting on text box shadow root to dispatch event without selectRange.'));
+                handleDomElementError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                return;
+            }
+        }
+        if (doubleClick && (commentOutput.search(/\B\$\S*\$\B/gm) === -1) && (commentOutput.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) === -1))
+            $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).blur();
+        else if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error)
+            $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).keyup().focus();
+    }
+    doSpinner('postUrComment', false);
 }
 
 function getUsernameAndRank(userId) {
@@ -2868,6 +2935,23 @@ async function maskBoxes(message, unmask, phase, maskUrPanel) {
     }
 }
 
+function autoScrollComments(commentCount = 0, retryInterval = 10, maxTries = 200) {
+    (function retry(commentCountInt, tries, toIndex, retryInt, maxNumTries) {
+        checkTimeout({ timeout: 'autoScrollComments', toIndex });
+        if (tries > maxNumTries) {
+            logWarning(`Timed out trying to scroll to the bottom. commentCount: ${commentCountInt}, tries: ${tries}, retryInt: ${retryInt}, maxTries: ${maxTries}`);
+            return;
+        }
+        const $commentList = $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list');
+        if ((commentCountInt > 0)
+                && (commentCountInt === $commentList.children().length)
+                && (($commentList[0].scrollHeight - $commentList.scrollTop() - $commentList.outerHeight()) > 1))
+            $commentList.scrollTop($commentList[0].scrollHeight);
+        else if (commentCountInt !== 0)
+            _timeouts.autoScrollComments = window.setTimeout(retry, retryInt, commentCountInt, ++tries, toIndex, retryInt, maxNumTries);
+    }(commentCount, 1, getRandomId(), retryInterval, maxTries));
+}
+
 function changeCommentListStyle(settingVal) {
     if (_settings.commentListStyle !== settingVal) {
         if (settingVal === 'default') {
@@ -3320,11 +3404,15 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
                 changeCommentList(parseInt(this.value), false, true);
             }
         });
-        $('#_cbenableAppendMode').off().on('change', function () {
+        $('#_cbenableAppendMode').off().on('change', async function () {
             _settings[$(this)[0].id.substr(3)] = isChecked(this);
-            if ($('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).length > 0) {
+            if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+                    && $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).length > 0) {
                 $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)
                     .css('background-color', (isChecked(this) ? 'peachpuff' : ''));
+            }
+            else {
+                logWarning('Could not change textbox background-color to peachpuff and set keyup event listener due to timeout waiting on DOM element.');
             }
             saveSettingsToStorage();
         });
@@ -3804,18 +3892,25 @@ function injectCss() {
         // UR Panel Manipulation
         + '#panel-container .mapUpdateRequest.panel { width:380px; }'
         + '#panel-container .mapUpdateRequest.panel .problem-edit { max-height:87vh; }'
-        + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment-list { padding: 0px 6px; margin-bottom: 6px; max-height: 200px; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment-list { padding: 0px 6px; margin-bottom: 6px; max-height: 228px; }'
         + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .new-comment-form .new-comment-text { margin-bottom: 0px; }'
         + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment .comment-title .date.urce { display: flex; justify-content: flex-end; margin-top: -4px; }'
-        + '#panel-container .mapUpdateRequest.panel .problem-edit .header { padding-top: 5px; padding-bottom: 5px; font-size: 11px; line-height: 13px; padding-right: 0px; }'
-        + '#panel-container .mapUpdateRequest.panel .problem-edit .header .main-title { font-size: 13px; line-height: 13px; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .header { padding-top: 5px; padding-bottom: 5px; font-size: 12px; line-height: 14px; padding-right: 0px; }' // done was 11 / 13
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .header .main-title { font-size: 14px; line-height: 14px; }' // DONE was 12 / 12
         + '#panel-container .mapUpdateRequest.panel .problem-edit .header .dot { top: 6px; }'
-        + '#panel-container .mapUpdateRequest.panel .problem-edit .section .content { padding: 5px 12px; font-size: 11px; line-height: 12px; }'
-        + '#panel-container .mapUpdateRequest.panel .problem-edit .section .title { padding: 0 6px 0 6px; font-size: 13px; line-height: 13px; }'
-        + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .controls-container { margin-top: -2px; margin-bottom: -8px; }'
-        + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .controls-container label[for|="state"] { height: 22px; width: 162px; line-height: 26px; margin-bottom: 6px; }'
-        + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .navigation .waze-plain-btn { height: 34px; line-height: 28px; }'
-        + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .no-permissions-alert { margin-bottom: 8px; martin-top: 2px; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .section .content { padding: 5px 12px; font-size: 12px; line-height: 14px; }' // DONE was 11 / 12
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .section .title { padding: 0 6px 0 6px; font-size: 13px; line-height: 13px; }' // leave at 13 / 13
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .controls-container { margin-top: -2px; margin-bottom: -8px; text-align: center; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .more-info .more-info-checkbox label { font-size: 12px; line-height: 14px; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .controls-container label[for|="state"] { height: 22px; width: 162px; line-height: 26px; margin: 2px; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="open"] .actions .controls-container label[for="state-solved"]  { display: inline-block; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="open"] .actions .controls-container label[for|="state-not-identified"] { display: inline-block; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="solved"] .actions .controls-container label[for|="state-open"], '
+        + '     #panel-container .mapUpdateRequest.panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-open"] { display: inline-block !important; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-not-identified"], '
+        + '     #panel-container .mapUpdateRequest.panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-solved"] { display: none !important; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .navigation .waze-plain-btn { height: 30px; line-height: 18px; font-size: 13px; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .no-permissions-alert { margin-bottom: 8px; margin-top: 2px; padding: 4px; }'
         // Map content
         + '.urceCountersPill { color:black; position:absolute; top:30px; display:block; width:auto; white-space:nowrap; padding-left:5px; padding-right:5px; border:1px solid; border-radius:25px; }'
         + '</style>').appendTo('head');
