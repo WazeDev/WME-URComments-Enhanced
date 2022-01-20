@@ -838,6 +838,11 @@ async function handleUpdateRequestContainer() {
     }
     if (!$('#panel-container .top-section .header .reported').text().endsWith(')'))
         $('#panel-container .top-section .header .reported')[0].textContent += ` (${parseDaysAgo(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.driveDaysOld)})`;
+    testDomElement = await isDomElementReady('#panel-container .top-section .body .problem-data .description .content');
+    if (testDomElement.error) {
+        handleDomElementError(true, true, 'handleUpdateRequestContainer', false, '');
+        return;
+    }
     if ($('#panel-container .top-section .body .problem-data .description .content').children().length === 0) {
         const $content = $('#panel-container .top-section .body .problem-data .description .content'),
             newDiv = `<div class="URCE-divDesc">${$content.text()}</div>`;
