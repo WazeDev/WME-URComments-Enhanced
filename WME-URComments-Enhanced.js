@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2022.01.19.01
+// @version     2022.01.20.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -836,8 +836,14 @@ async function handleUpdateRequestContainer() {
         handleDomElementError(true, true, 'handleUpdateRequestContainer', false, '');
         return;
     }
-    if (!$('#panel-container .top-section .header .reported')[0].textContent.endsWith(')'))
+    if (!$('#panel-container .top-section .header .reported').text().endsWith(')'))
         $('#panel-container .top-section .header .reported')[0].textContent += ` (${parseDaysAgo(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.driveDaysOld)})`;
+    if ($('#panel-container .top-section .body .problem-data .description .content').children().length === 0) {
+        const $content = $('#panel-container .top-section .body .problem-data .description .content'),
+            newDiv = `<div class="URCE-divDesc">${$content.text()}</div>`;
+        $content.text('');
+        $content.append(newDiv);
+    }
     if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount > 0) {
         testDomElement = await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title');
         if (testDomElement.error) {
@@ -3890,16 +3896,17 @@ function injectCss() {
         + '}'
         + '#urceDiv hr { border-top:1px solid #000000; }'
         // UR Panel Manipulation
-        + '#panel-container .mapUpdateRequest.panel { width:380px; }'
-        + '#panel-container .mapUpdateRequest.panel .problem-edit { max-height:87vh; }'
-        + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment-list { padding: 0px 6px; margin-bottom: 6px; max-height: 228px; }'
+        + '#panel-container .mapUpdateRequest.panel { width:380px; max-height:87vh; }'
+        + '#panel-container .mapUpdateRequest.panel>* { max-height:87vh; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment-list { padding: 0px 6px; margin-bottom: 6px; max-height: 26vh; }'
         + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .new-comment-form .new-comment-text { margin-bottom: 0px; }'
         + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment .comment-title .date.urce { display: flex; justify-content: flex-end; margin-top: -4px; }'
-        + '#panel-container .mapUpdateRequest.panel .problem-edit .header { padding-top: 5px; padding-bottom: 5px; font-size: 12px; line-height: 14px; padding-right: 0px; }' // done was 11 / 13
-        + '#panel-container .mapUpdateRequest.panel .problem-edit .header .main-title { font-size: 14px; line-height: 14px; }' // DONE was 12 / 12
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .header { padding-top: 5px; padding-bottom: 5px; font-size: 12px; line-height: 14px; padding-right: 0px; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .header .main-title { font-size: 14px; line-height: 14px; }'
         + '#panel-container .mapUpdateRequest.panel .problem-edit .header .dot { top: 6px; }'
-        + '#panel-container .mapUpdateRequest.panel .problem-edit .section .content { padding: 5px 12px; font-size: 12px; line-height: 14px; }' // DONE was 11 / 12
-        + '#panel-container .mapUpdateRequest.panel .problem-edit .section .title { padding: 0 6px 0 6px; font-size: 13px; line-height: 13px; }' // leave at 13 / 13
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .section .content { padding: 5px 12px; font-size: 12px; line-height: 14px; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .section .content .URCE-divDesc { max-height: 82px; overflow-y: auto; }'
+        + '#panel-container .mapUpdateRequest.panel .problem-edit .section .title { padding: 0 6px 0 6px; font-size: 13px; line-height: 13px; }'
         + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .controls-container { margin-top: -2px; margin-bottom: -8px; text-align: center; }'
         + '#panel-container .mapUpdateRequest.panel .problem-edit .more-info .more-info-checkbox label { font-size: 12px; line-height: 14px; }'
         + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .controls-container label[for|="state"] { height: 22px; width: 162px; line-height: 26px; margin: 2px; }'
