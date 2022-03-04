@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2022.03.02.01
+// @version     2022.03.03.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -41,7 +41,9 @@ const SCRIPT_NAME = `URC-E${((GM_info.script.name.search(/beta/) > -1) ? ' β' :
     SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Fix replace next with done setting after latest WME update.',
         '<b>CHANGE:</b> CSS to allow buttons to expand.',
         '<b>CHANGE:</b> Changes to formatting  per new ESLINT options.',
-        '<b>CHANGE:</b> Days ago on incorrect comments due to comment order reverted to oldest first in latest WME update.'],
+        '<b>CHANGE:</b> Days ago on incorrect comments due to comment order reverted to oldest first in latest WME update.',
+        '<b>BUGFIX:</b> Scroll comments.',
+        '<b>BUGFIX:</b> UR panel failed to show when clicking on pill instead of marker.'],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = false,
     LOAD_BEGIN_TIME = performance.now(),
@@ -91,6 +93,7 @@ const SCRIPT_NAME = `URC-E${((GM_info.script.name.search(/beta/) > -1) ? ' β' :
         getMapUrsAsync: {},
         getOverflowUrsFromUrl: {},
         isDomElementReady: {},
+        isPanelReady: {},
         bootstrap: undefined,
         saveSettingsToStorage: undefined,
         popupDelay: undefined,
@@ -527,6 +530,25 @@ function isChecked(obj) {
     return $(obj).is(':checked');
 }
 
+function isPanelReady(waitForAttr = '', retryInterval = 10, maxTries = 200) {
+    return new Promise(resolve => {
+        (function retry(waitForAttrStr, tries, toIndex, retryInt, maxNumTries) {
+            checkTimeout({ timeout: 'isPanelReady', toIndex });
+            if (tries > maxNumTries)
+                resolve({ error: true });
+            else if (
+                W.map.panelRegion.currentView
+                && W.map.panelRegion.currentView.model
+                && W.map.panelRegion.currentView.model.attributes
+                && !W.map.panelRegion.currentView.model.attributes[waitForAttrStr]
+            )
+                resolve({ error: false });
+            else
+                _timeouts.isPanelReady[toIndex] = window.setTimeout(retry, retryInt, waitForAttrStr, ++tries, toIndex, retryInt, maxNumTries);
+        }(waitForAttr, 1, getRandomId(), retryInterval, maxTries));
+    });
+}
+
 function isDomElementReady(element, shadowHost, retryInterval = 10, maxTries = 200) {
     return new Promise(resolve => {
         (function retry(elementStr, shadowHostStr, tries, toIndex, retryInt, maxNumTries) {
@@ -539,13 +561,13 @@ function isDomElementReady(element, shadowHost, retryInterval = 10, maxTries = 2
                 resolve({ error: false });
             }
             else {
-                _timeouts.isDomElementReady = window.setTimeout(retry, retryInt, elementStr, shadowHostStr, ++tries, toIndex, retryInt, maxNumTries);
+                _timeouts.isDomElementReady[toIndex] = window.setTimeout(retry, retryInt, elementStr, shadowHostStr, ++tries, toIndex, retryInt, maxNumTries);
             }
         }(element, shadowHost, 1, getRandomId(), retryInterval, maxTries));
     });
 }
 
-function handleDomElementError(reopenUrPanel = false, spinnerStop = false, spinnerName = '', errorDisplay = false, errorText = '') {
+function handleReadyError(reopenUrPanel = false, spinnerStop = false, spinnerName = '', errorDisplay = false, errorText = '') {
     if (errorText.length > 0) {
         logError(new Error(errorText));
         if (errorDisplay)
@@ -596,7 +618,8 @@ function checkRestrictions(event) {
                     $('#restrictionsEnforcedWarning, #restrictionsEnforcedWarning-Settings').hide();
                 }
                 else if ((evt && ((evt[0].type === 'init') || (evt[0].type === 'modeChange')))
-                    || ($('#restrictionsEnforcedWarning').length === 0)) {
+                    || ($('#restrictionsEnforcedWarning').length === 0)
+                ) {
                     _restrictionsEnforcedTitle = content;
                 }
                 else {
@@ -813,7 +836,7 @@ async function handleUpdateRequestContainer() {
         _selUr.urId = parseInt($('.update-requests .selected').attr('data-id'));
         logDebug(`Selected UR from handleURContainer: ${_selUr.urId}`);
     }
-    if (_settings.replaceNextWithDoneButton && ($('#panel-container .mapUpdateRequest.panel .section .content .navigation .done').length === 0)) {
+    if (_settings.replaceNextWithDoneButton && W.map.panelRegion.currentView.options.showNext) {
         openUrPanel(_selUr.urId, true);
         return;
     }
@@ -826,15 +849,33 @@ async function handleUpdateRequestContainer() {
     if (_timeouts.popup !== undefined)
         hidePopup();
     logDebug(`Handling update request container for urId: ${_selUr.urId}`);
+    if (_settings.autoSwitchCommentList) {
+        const topCountry = W.model.getTopCountry(),
+            topState = W.model.getTopState();
+        if (_autoSwitch[topCountry.abbr] && ((_autoSwitch[topCountry.abbr].ALL > -1) || (_autoSwitch[topCountry.abbr][topState.name] > -1))) {
+            let commentList;
+            if (_autoSwitch[topCountry.abbr][topState.name] > -1)
+                commentList = _autoSwitch[topCountry.abbr][topState.name];
+            else if (_autoSwitch[topCountry.abbr].ALL)
+                commentList = _autoSwitch[topState.abbr].ALL;
+            else
+                commentList = -1;
+            if ((commentList > -1) && (commentList !== _currentCommentList))
+                await changeCommentList(commentList, (commentList !== _settings.commentList), false);
+        }
+        else if (_currentCommentList !== _settings.commentList) {
+            await changeCommentList(_settings.commentList, true, false);
+        }
+    }
     await updateUrceData(getMapUrsObjArr([_selUr.urId]));
     if ((await isDomElementReady('#panel-container .top-section .header .main-title')).error) {
-        handleDomElementError(true, true, 'handleUpdateRequestContainer', false, '');
+        handleReadyError(true, true, 'handleUpdateRequestContainer', false, 'isDomElementReady: .main-title');
         return;
     }
     if ($('#panel-container .top-section .header .main-title').html().indexOf(_selUr.urId) === -1)
         $('#panel-container .top-section .header .main-title').append(` (${_selUr.urId}) `);
     if ((await isDomElementReady('#panel-container .top-section .header .reported')).error) {
-        handleDomElementError(true, true, 'handleUpdateRequestContainer', false, '');
+        handleReadyError(true, true, 'handleUpdateRequestContainer', false, '');
         return;
     }
     if (!$('#panel-container .top-section .header .reported').text().endsWith(')'))
@@ -847,7 +888,7 @@ async function handleUpdateRequestContainer() {
     }
     if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount > 0) {
         if ((await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title')).error) {
-            handleDomElementError(false, false, '', false, '');
+            handleReadyError(false, false, '', false, 'isConversationLoaded: loadingConversation');
         }
         else {
             const shadowDOMstyle = document.createElement('style');
@@ -871,46 +912,19 @@ async function handleUpdateRequestContainer() {
             }
         }
     }
-    if (_settings.autoSwitchCommentList) {
-        const topCountry = W.model.getTopCountry(),
-            topState = W.model.getTopState();
-        if (_autoSwitch[topCountry.abbr] && ((_autoSwitch[topCountry.abbr].ALL > -1) || (_autoSwitch[topCountry.abbr][topState.name] > -1))) {
-            let commentList;
-            if (_autoSwitch[topCountry.abbr][topState.name] > -1)
-                commentList = _autoSwitch[topCountry.abbr][topState.name];
-            else if (_autoSwitch[topCountry.abbr].ALL)
-                commentList = _autoSwitch[topState.abbr].ALL;
-            else
-                commentList = -1;
-            if ((commentList > -1) && (commentList !== _currentCommentList))
-                await changeCommentList(commentList, (commentList !== _settings.commentList), false);
-        }
-        else if (_currentCommentList !== _settings.commentList) {
-            await changeCommentList(_settings.commentList, true, false);
-        }
-    }
     _selUr.urOpen = W.model.mapUpdateRequests.objects[_selUr.urId].attributes.open;
     if (_settings.autoSwitchToUrCommentsTab)
         autoSwitchToUrceTab();
-    if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation')).error
-        && $('#panel-container .mapUpdateRequest .top-section .body .conversation').hasClass('collapsed')
-    )
-        $('#panel-container .mapUpdateRequest .top-section .body .conversation').removeClass('collapsed');
     if (_settings.disableDoneNextButtons)
         $('#panel-container .mapUpdateRequest .actions .content .navigation').css({ display: 'none' });
     $('#panel-container .mapUpdateRequest .top-section .header .title .focus').off('click', recenterOnUr).on('click', { urId: _selUr.urId }, recenterOnUr);
-    if ((await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error) {
-        handleDomElementError(true, true, 'handleUpdateRequestContainer', false, '');
+    if ((await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error) {
+        handleReadyError(true, true, 'handleUpdateRequestContainer', false, '');
         return;
     }
-    if (!(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error) {
-        $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)
-            .css('background-color', (_settings.enableAppendMode ? 'peachpuff' : ''))
-            .off('keyup', checkValue).on('keyup', checkValue);
-    }
-    else {
-        logWarning('Could not change textbox background-color to peachpuff and set keyup event listener due to timeout waiting on DOM element.');
-    }
+    $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)
+        .css('background-color', (_settings.enableAppendMode ? 'peachpuff' : ''))
+        .off('keyup', checkValue).on('keyup', checkValue);
     if ($('#urceShortcuts').length === 0) {
         $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend(''
             + '<div id="urceShortcuts" style="text-align:left;padding-bottom:8px;font-size:12px;width:100%">'
@@ -948,15 +962,6 @@ async function handleUpdateRequestContainer() {
         $('i[id|="urceShortcuts"]').off().on('click', function () {
             handleClickedShortcut(this.id.substr(14));
         });
-        if (_settings.expandMoreInfo && $('#panel-container .mapUpdateRequest .top-section .body .more-info').hasClass('collapsed'))
-            $('#panel-container .mapUpdateRequest .top-section .body .more-info .title').click();
-        $('#panel-container .mapUpdateRequest .top-section .body .more-info .title').on('click', function () {
-            if (this.parentElement.classList.contains('collapsed'))
-                _settings.expandMoreInfo = true;
-            else
-                _settings.expandMoreInfo = false;
-            saveSettingsToStorage();
-        });
         $('#urceShortcutsExpand').off().on('click', function () {
             if ($($(this).find('i')[0]).hasClass('fa-chevron-up'))
                 _settings.expandShortcuts = false;
@@ -970,9 +975,6 @@ async function handleUpdateRequestContainer() {
             saveSettingsToStorage();
         });
     }
-    $('#panel-container .mapUpdateRequest .top-section').scrollTop($('#panel-container .mapUpdateRequest .top-section')[0].scrollHeight);
-    if (_settings.autoScrollComments)
-        autoScrollComments(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount, 10, 1);
     $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').on('click', () => { logDebug('Clicked send to submit the comment.'); });
     const shadowDOMstyle = document.createElement('style');
     shadowDOMstyle.innerHTML = '.wz-button.md { height: 30px !important; min-width: 60px !important; max-widt: 140px !important; padding: 0px 10px !important; overflow: hidden; }';
@@ -1004,6 +1006,29 @@ async function handleUpdateRequestContainer() {
         });
         _urCommentsObserver.isObserving = true;
     }
+    if (!(await isPanelReady('loadingMoreInfo', 10, 200)).error) {
+        if (_settings.expandMoreInfo
+            && W.map.panelRegion.currentView.model.attributes.moreInfoAvailable
+            && $('#panel-container .mapUpdateRequest .top-section .body .more-info').hasClass('collapsed')
+        )
+            $('#panel-container .mapUpdateRequest .top-section .body .more-info .title').click();
+        else if (!_settings.expandMoreInfo && !$('#panel-container .mapUpdateRequest .top-section .body .more-info').hasClass('collapsed'))
+            $('#panel-container .mapUpdateRequest .top-section .body .more-info .title').click();
+    }
+    $('#panel-container .mapUpdateRequest .top-section .body .more-info .title').on('click', function () {
+        if (this.parentElement.classList.contains('collapsed'))
+            _settings.expandMoreInfo = true;
+        else
+            _settings.expandMoreInfo = false;
+        saveSettingsToStorage();
+    });
+    if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation')).error
+        && $('#panel-container .mapUpdateRequest .top-section .body .conversation').hasClass('collapsed')
+    )
+        $('#panel-container .mapUpdateRequest .top-section .body .conversation .title').click();
+    $('#panel-container .mapUpdateRequest .top-section').scrollTop($('#panel-container .mapUpdateRequest .top-section')[0].scrollHeight);
+    if (_settings.autoScrollComments)
+        autoScrollComments(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount, 10, 1);
     if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount === 0) {
         if (_settings.autoZoomInOnNewUr)
             autoZoomIn();
@@ -1071,7 +1096,8 @@ function checkValue() {
 async function handleClickedComment(commentNum, doubleClick) {
     _selUr.doubleClick = doubleClick;
     if (($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').length === 0)
-            || ($('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).length === 0)) {
+        || ($('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).length === 0)
+    ) {
         logWarning('No comment box found after clicking a comment from the list.');
         WazeWrap.Alerts.info(SCRIPT_NAME, I18n.t('urce.prompts.NoCommentBox'));
         return;
@@ -1107,21 +1133,22 @@ async function unfollowUrAfterSend() {
 }
 
 async function autoCloseUrPanel() {
-    if ((await isDomElementReady('#panel-container .mapUpdateRequest .top-section .close-panel')).error)
-        return Promise.resolve();
-
-    await new Promise(resolve => {
-        (function retry(tries) {
+    const areCommentsLoaded = await new Promise(resolve => {
+        (function retry(tries, retryInt, maxNumTries) {
             checkTimeout({ timeout: 'autoCloseUrPanel' });
-            if (tries > 20)
-                resolve();
+            if (tries > maxNumTries)
+                resolve({ error: true });
             else if (!$('#panel-container .mapUpdateRequest .top-section .body .problem-data .more-info').hasClass('loading'))
-                resolve();
+                resolve({ error: false });
             else
-                _timeouts.autoCloseUrPanel = window.setTimeout(retry, 100, ++tries);
-        }(1));
+                _timeouts.autoCloseUrPanel = window.setTimeout(retry, ++tries, retryInt, maxNumTries);
+        }(1, 10, 200));
     });
-    $('#panel-container .mapUpdateRequest .top-section .close-panel').trigger('click');
+    if (areCommentsLoaded.error) {
+        handleReadyError(false, false, '', false, '');
+        return Promise.resolve();
+    }
+    W.map.panelRegion.currentView.destroy();
     return Promise.resolve();
 }
 
@@ -1475,9 +1502,8 @@ function formatText(text = '', replaceVars = false, shortcutClicked = false, urI
 
 async function handleClickedShortcut(shortcut) {
     doSpinner('handleClickedShortcut', true);
-    if ((await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').error)
-        || (await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').error)) {
-        handleDomElementError(false, true, 'handleClickedShortcut', true, 'UR Panel comment box is missing.');
+    if ((await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error) {
+        handleReadyError(false, true, 'handleClickedShortcut', true, 'UR Panel comment box is missing.');
         return;
     }
     const cursorPos = $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].selectionStart,
@@ -1596,30 +1622,35 @@ async function handleClickedShortcut(shortcut) {
             return;
         }
         if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
-                && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error)
+            && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+        )
             $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).val(newVal).selectRange((cursorPos + outputText.length));
         else
             logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut with selectRange.');
         if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
-                && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error)
+            && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+        )
             $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].dispatchEvent(new Event('input'));
         else
             logWarning('Timed out waiting for DOM elements before dispatching input event after clicking a shortcut with selectRange.');
     }
     else if (useCurrVal) {
         if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
-                && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error)
+            && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+        )
             $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).val(outputText).selectRange((cursorPos + outputText.length));
         else
             logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut without selectRange.');
         if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
-                && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error)
+            && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+        )
             $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].dispatchEvent(new Event('input'));
         else
             logWarning('Timed out waiting for DOM elements before dispatching input event after clicking a shortcut without selectRange.');
     }
     if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
-            && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error)
+        && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+    )
         $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).keyup().focus();
     else
         logWarning('Timed out waiting for DOM elements before triggering keyup and focus events after clicking a shortcut.');
@@ -1649,10 +1680,9 @@ async function postUrComment(comment, doubleClick) {
         cursorPos,
         newCursorPos,
         postNls = 0;
-    if ((await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').error)
-            || (await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text').error)) {
+    if ((await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error) {
         logError(new Error('UR Panel comment box is missing at beginning of postUrComment function.'));
-        handleDomElementError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+        handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
         return;
     }
     if (_settings.enableAppendMode
@@ -1703,16 +1733,17 @@ async function postUrComment(comment, doubleClick) {
             }
             else {
                 logError(new Error('Timed out waiting on text box to set value with selectRange.'));
-                handleDomElementError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
                 return;
             }
             if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
-                    && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error) {
+                && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+            ) {
                 $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].dispatchEvent(new Event('input'));
             }
             else {
                 logError(new Error('Timed out waiting on text box shadow root to dispatch event with selectRange.'));
-                handleDomElementError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
                 return;
             }
         }
@@ -1722,16 +1753,17 @@ async function postUrComment(comment, doubleClick) {
             }
             else {
                 logError(new Error('Timed out waiting on text box to set value without selectRange.'));
-                handleDomElementError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
                 return;
             }
             if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
-                    && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error) {
+                && !(await isDomElementReady('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
+            ) {
                 $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)[0].dispatchEvent(new Event('input'));
             }
             else {
                 logError(new Error('Timed out waiting on text box shadow root to dispatch event without selectRange.'));
-                handleDomElementError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
                 return;
             }
         }
@@ -2358,11 +2390,10 @@ function updateUrMapMarkers(mUrsObjArr, filter) {
                         else {
                             markerChanges.pills.added.push(mUrObj.attributes.id);
                         }
-                        $marker.append(
-                            `<div id="urceCounters-${mUrObj.attributes.id}" "data-id"="${mUrObj.attributes.id}" style="clear:both; margin-bottom:10px;">`
-                            + `   <div id="urceCounters-${mUrObj.attributes.id}-text" "data-id"="${mUrObj.attributes.id}" class="urceCountersPill urceCounts" style="background-color:${urCountBackground}; right:${tagOffset}">${tagContent}</div>`
-                            + '</div>'
-                        );
+                        const $divContainer = $(`<div id="urceCounters-${mUrObj.attributes.id}" data-id="${mUrObj.attributes.id}" style="clear:both; margin-bottom:10px;"></div>`),
+                            $divInner = $(`<div id="urceCounters-${mUrObj.attributes.id}-text" data-id="${mUrObj.attributes.id}" class="urceCountersPill urceCounts" style="background-color:${urCountBackground}; right:${tagOffset}">${tagContent}</div>`);
+                        $divInner.data('model', $marker.data('model'));
+                        $marker.append($divContainer.append($divInner));
                     }
                     else if ($(`#urceCounters-${mUrObj.attributes.id}`).length > 0) {
                         markerChanges.pills.removed.push(mUrObj.attributes.id);
@@ -2601,7 +2632,8 @@ async function updateUrceData(mUrsObjArr) {
                 }
                 if (autoSendReminder) {
                     if (((urceData.customType > -1) && !_settings.perCommentListSettings[_currentCommentList].autoSendRemindersExceptTagged)
-                        || (urceData.customType === -1)) {
+                        || (urceData.customType === -1)
+                    ) {
                         try {
                             // eslint-disable-next-line no-await-in-loop
                             await autoPostReminderComment(chunk[idx].attributes.id);
@@ -2958,7 +2990,7 @@ async function maskBoxes(message, unmask, phase, maskUrPanel) {
             $urceTabDisabled.html(`<div style="text-align:center; padding-top:200px; width:290px; position:fixed; font-weight:800;">${message}</div>`);
             const testDomElement = await isDomElementReady('#sidepanel-urc-e');
             if (testDomElement.error)
-                handleDomElementError(false, false, '', false, 'Timed out trying to add mask to URCE side panel.');
+                handleReadyError(false, false, '', false, 'Timed out trying to add mask to URCE side panel.');
             else
                 $('#sidepanel-urc-e').prepend($urceTabDisabled);
         }
@@ -2968,7 +3000,7 @@ async function maskBoxes(message, unmask, phase, maskUrPanel) {
             $urPanelDisabled.html(`<div style="text-align:center; padding-top:200px; width:290px; position:fixed; font-weight:800;">${message}</div>`);
             const testDomElement = await isDomElementReady('#panel-container .mapUpdateRequest.panel.show');
             if (testDomElement.error)
-                handleDomElementError(false, false, '', false, 'Timed out trying to add mask to UR panel.');
+                handleReadyError(false, false, '', false, 'Timed out trying to add mask to UR panel.');
             else
                 $($('#panel-container .mapUpdateRequest.panel.show').children()[0]).prepend($urPanelDisabled);
         }
@@ -2976,20 +3008,21 @@ async function maskBoxes(message, unmask, phase, maskUrPanel) {
 }
 
 function autoScrollComments(commentCount = 0, retryInterval = 10, maxTries = 200) {
-    (function retry(commentCountInt, tries, toIndex, retryInt, maxNumTries) {
-        checkTimeout({ timeout: 'autoScrollComments', toIndex });
+    (function retry(commentCountInt, tries, retryInt, maxNumTries) {
+        checkTimeout({ timeout: 'autoScrollComments' });
         if (tries > maxNumTries) {
             logWarning(`Timed out trying to scroll to the bottom. commentCount: ${commentCountInt}, tries: ${tries}, retryInt: ${retryInt}, maxTries: ${maxTries}`);
             return;
         }
         const $commentList = $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list');
         if ((commentCountInt > 0)
-                && (commentCountInt === $commentList.children().length)
-                && (($commentList[0].scrollHeight - $commentList.scrollTop() - $commentList.outerHeight()) > 1))
+            && (commentCountInt === $commentList.children().length)
+            && (($commentList[0].scrollHeight - $commentList.scrollTop() - $commentList.outerHeight()) > 1)
+        )
             $commentList.scrollTop($commentList[0].scrollHeight);
-        else if (commentCountInt !== 0)
-            _timeouts.autoScrollComments = window.setTimeout(retry, retryInt, commentCountInt, ++tries, toIndex, retryInt, maxNumTries);
-    }(commentCount, 1, getRandomId(), retryInterval, maxTries));
+        else if ((commentCountInt !== 0) && W.map.panelRegion.currentView.model.attributes.loadingConversation)
+            _timeouts.autoScrollComments = window.setTimeout(retry, retryInt, commentCountInt, ++tries, retryInt, maxNumTries);
+    }(commentCount, 1, retryInterval, maxTries));
 }
 
 function changeCommentListStyle(settingVal) {
@@ -3277,9 +3310,11 @@ function processCommentList(data) {
                             else {
                                 groupDivId += `blankGroup${(++blankGroup)}`;
                             }
-                            const collapsed = (_settings.commentListCollapses.hasOwnProperty(_settings.commentList)
-                            && _settings.commentListCollapses[_settings.commentList].hasOwnProperty(`${groupDivId}_body_urce`)
-                                && (_settings.commentListCollapses[_settings.commentList][`${groupDivId}_body_urce`] === true))
+                            const collapsed = (
+                                    _settings.commentListCollapses.hasOwnProperty(_settings.commentList)
+                                    && _settings.commentListCollapses[_settings.commentList].hasOwnProperty(`${groupDivId}_body_urce`)
+                                    && (_settings.commentListCollapses[_settings.commentList][`${groupDivId}_body_urce`] === true)
+                                )
                                     ? 'collapse'
                                     : '',
                                 chevron = (collapsed === 'collapse') ? 'fa-chevron-right' : 'fa-chevron-down';
@@ -3444,15 +3479,11 @@ function buildCommentList(commentListIdx, phase, autoSwitch) {
                 changeCommentList(parseInt(this.value), false, true);
             }
         });
-        $('#_cbenableAppendMode').off().on('change', async function () {
+        $('#_cbenableAppendMode').off().on('change', function () {
             _settings[$(this)[0].id.substr(3)] = isChecked(this);
-            if (!(await isDomElementReady('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')).error
-                    && $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot).length > 0) {
+            if (W.map.panelRegion.currentView && W.map.panelRegion.currentView.adapter && W.map.panelRegion.currentView.adapter.problem) {
                 $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)
                     .css('background-color', (isChecked(this) ? 'peachpuff' : ''));
-            }
-            else {
-                logWarning('Could not change textbox background-color to peachpuff and set keyup event listener due to timeout waiting on DOM element.');
             }
             saveSettingsToStorage();
         });
@@ -4578,7 +4609,8 @@ function initSettingsTab() {
         if (settingName === 'invertFilters')
             initSettingsTab();
         if ((((urcePrefs.indexOf('marker') > -1) || (urcePrefs.indexOf('filtering') > -1)) && (settingName.indexOf('unstack') === -1))
-            || (settingName === 'enableUrOverflowHandling'))
+            || (settingName === 'enableUrOverflowHandling')
+        )
             handleUrLayer('settingsToggle', null, getMapUrsObjArr());
     });
     $('.urceSettingsNumberBox').off().on('change', function () {
@@ -4944,9 +4976,9 @@ async function init() {
                             _initUrIdInUrlObserver = new MutationObserver(mutations => {
                                 mutations.forEach(mutation => {
                                     if ((mutation.type === 'attributes')
-                                                                && $(mutation.target.parentNode).is('#panel-container')
-                                                                && (mutation.target.className.indexOf('show') > -1)
-                                                                && (mutation.oldValue.indexOf('show') === -1)
+                                        && $(mutation.target.parentNode).is('#panel-container')
+                                        && (mutation.target.className.indexOf('show') > -1)
+                                        && (mutation.oldValue.indexOf('show') === -1)
                                     )
                                         initFinish(urIdInUrl, false);
                                 });
