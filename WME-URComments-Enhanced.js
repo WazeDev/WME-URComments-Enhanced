@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2022.03.14.02
+// @version     2022.03.14.03
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -39,7 +39,9 @@ const SCRIPT_NAME = `URC-E${((GM_info.script.name.search(/beta/) > -1) ? ' β' :
     ALERT_UPDATE = true,
     SCRIPT_VERSION = GM_info.script.version,
     SCRIPT_VERSION_CHANGES = ['<b>BUGFIX:</b> Shortcuts missing in certain situations.',
-        '<b>BUGFIX:</b> Failure to set initial comment in certain situations.'
+        '<b>BUGFIX:</b> Failure to set initial comment in certain situations.',
+        '<b>BUGFIX:</b> New comment insertion location if reverse sort is enabled.',
+        '<b>CHANGE:</b> Auto scroll comments now will either scroll to bottom if enabled or top if disabled.'
     ],
     DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
     DEBUG = true,
@@ -779,9 +781,8 @@ async function handleAfterCommentMutation(domElem) {
             const $commentList = $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list'),
                 numComments = $commentList.children().length;
             domElem.remove();
-            $commentList.append(domElem);
-            if (_settings.autoScrollComments)
-                autoScrollComments(numComments);
+            $commentList.prepend(domElem);
+            autoScrollComments(numComments);
         }
         if (_settings.autoSaveAfterSolvedOrNiComment && (_selUr.newStatus === 'solved' || _selUr.newStatus === 'notidentified'))
             $('.toolbar-button.waze-icon-save').trigger('click');
@@ -1060,8 +1061,7 @@ async function handleUpdateRequestContainer() {
     $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section');
     if ($domElement)
         $domElement.scrollTop($domElement[0].scrollHeight);
-    if (_settings.autoScrollComments)
-        autoScrollComments(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount, 10, 1);
+    autoScrollComments(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount, 10, 1);
     if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount === 0) {
         if (_settings.autoZoomInOnNewUr)
             autoZoomIn();
@@ -3049,9 +3049,11 @@ function autoScrollComments(commentCount = 0, retryInterval = 10, maxTries = 200
         const $commentList = await getDomElement('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list');
         if ($commentList && (commentCountInt > 0)
             && (commentCountInt === $commentList.children().length)
-            && (($commentList[0].scrollHeight - $commentList.scrollTop() - $commentList.outerHeight()) > 1)
+            && (!_settings.autoScrollComments
+                || (($commentList[0].scrollHeight - $commentList.scrollTop() - $commentList.outerHeight()) > 1)
+            )
         )
-            $commentList.scrollTop($commentList[0].scrollHeight);
+            $commentList.scrollTop((_settings.autoScrollComments ? $commentList[0].scrollHeight : 0));
         else if ((commentCountInt !== 0) && W.map.panelRegion.currentView.model.attributes.loadingConversation)
             _timeouts.autoScrollComments = window.setTimeout(retry, retryInt, commentCountInt, ++tries, retryInt, maxNumTries);
     }(commentCount, 1, retryInterval, maxTries));
@@ -5258,7 +5260,7 @@ function loadTranslations() {
                         ExpandShortcuts: 'Auto expand shortcuts section',
                         ExpandShortcutsTitle: 'Automatically expand the shortcuts section of the UR Panel.',
                         AutoScrollComments: 'Auto scroll comments in UR Panel',
-                        AutoScrollCommentsTitle: 'Automatically scroll the comments in the UR panel to the bottom.',
+                        AutoScrollCommentsTitle: 'Automatically scroll the comments in the UR panel to the bottom if enabled, or top if disabled.',
                         ReverseCommentSort: 'Sort Comments in reverse order',
                         ReverseCommentSortTitle: 'Sort comments in the UR Panel in the reverse order.',
                         UrMarkerPrefs: 'UR Marker Settings',
