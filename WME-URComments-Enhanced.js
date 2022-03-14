@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2022.03.14.01
+// @version     2022.03.14.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -1669,20 +1669,25 @@ async function handleClickedShortcut(shortcut) {
             doSpinner('handleClickedShortcut', false);
             return;
         }
+        $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+        if (!$domElement)
+            logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut with selectRange.');
+        else
+            $domElement.val(newVal).selectRange((cursorPos + outputText.length));
+    }
+    else if (useCurrVal) {
+        $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+        if (!$domElement)
+            logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut without selectRange.');
+        else
+            $domElement.val(outputText).selectRange((cursorPos + outputText.length));
     }
     if ((outputText && !useCurrVal) || useCurrVal) {
         $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-        if (!$domElement) {
-            logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut with selectRange.');
-        }
-        else {
-            $domElement.val((newVal && (newVal.length > 0)) ? newVal : outputText).selectRange((cursorPos + outputText.length));
-            $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-            if (!$domElement)
-                $domElement.keyup().focus();
-            else
-                logWarning('Timed out waiting for DOM elements before triggering keyup and focus events after clicking a shortcut.');
-        }
+        if (!$domElement)
+            logWarning('Timed out waiting for DOM elements before triggering keyup and focus events after clicking a shortcut.');
+        else
+            $domElement.keyup().focus();
     }
     doSpinner('handleClickedShortcut', false);
 }
@@ -1710,7 +1715,7 @@ async function postUrComment(comment, doubleClick) {
         cursorPos,
         newCursorPos,
         postNls = 0;
-    const $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+    let $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
     if (!$domElement) {
         logError(new Error('UR Panel comment box is missing at beginning of postUrComment function.'));
         handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
@@ -1757,17 +1762,47 @@ async function postUrComment(comment, doubleClick) {
     }
     else {
         if (cursorPos !== undefined) {
+            $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            if (!$domElement) {
+                logError(new Error('Timed out waiting on text box to set value with selectRange.'));
+                handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                return;
+            }
             $domElement.val(commentOutput).selectRange((newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls));
+            $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            if (!$domElement) {
+                logError(new Error('Timed out waiting on text box shadow root to dispatch event with selectRange.'));
+                handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                return;
+            }
             $domElement[0].dispatchEvent(new Event('input'));
         }
         else {
+            $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            if (!$domElement) {
+                logError(new Error('Timed out waiting on text box to set value without selectRange.'));
+                handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                return;
+            }
             $domElement.val(commentOutput);
+            $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            if (!$domElement) {
+                logError(new Error('Timed out waiting on text box shadow root to dispatch event without selectRange.'));
+                handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                return;
+            }
             $domElement[0].dispatchEvent(new Event('input'));
         }
-        if (doubleClick && (commentOutput.search(/\B\$\S*\$\B/gm) === -1) && (commentOutput.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) === -1))
-            $domElement.blur();
-        else
-            $domElement.keyup().focus();
+        if (doubleClick && (commentOutput.search(/\B\$\S*\$\B/gm) === -1) && (commentOutput.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) === -1)) {
+            $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            if ($domElement)
+                $domElement.blur();
+        }
+        else {
+            $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            if ($domElement)
+                $domElement.keyup().focus();
+        }
     }
     doSpinner('postUrComment', false);
 }
