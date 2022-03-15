@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2022.03.14.03
+// @version     2022.03.15.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -1674,6 +1674,11 @@ async function handleClickedShortcut(shortcut) {
             logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut with selectRange.');
         else
             $domElement.val(newVal).selectRange((cursorPos + outputText.length));
+        $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+        if (!$domElement)
+            logWarning('Timed out waiting for DOM elements before dispatching input event after clicking a shortcut with selectRange.');
+        else
+            $domElement[0].dispatchEvent(new Event('input'));
     }
     else if (useCurrVal) {
         $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
@@ -1681,6 +1686,11 @@ async function handleClickedShortcut(shortcut) {
             logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut without selectRange.');
         else
             $domElement.val(outputText).selectRange((cursorPos + outputText.length));
+        $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+        if (!$domElement)
+            logWarning('Timed out waiting for DOM elements before dispatching input event after clicking a shortcut without selectRange.');
+        else
+            $domElement[0].dispatchEvent(new Event('input'));
     }
     if ((outputText && !useCurrVal) || useCurrVal) {
         $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
