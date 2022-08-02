@@ -2704,7 +2704,7 @@ async function updateUrceData(mUrsObjArr) {
                     }
                 }
                 if ((_settings.hideWaiting && urceData.waiting)
-                    || (_settings.needsClosed && urceData.needsClosed)
+                    || (_settings.hideUrsCloseNeeded && urceData.needsClosed)
                     || (_settings.hideUrsReminderNeeded && urceData.needsReminder)
                     || (_settings.hideByStatusOpen && chunk[idx].attributes.open)
                     || (_settings.hideByStatusClosed && !chunk[idx].attributes.open)
