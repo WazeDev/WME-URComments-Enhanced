@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2022.12.12.02
+// @version     2023.01.30.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -261,7 +261,7 @@
             else if (mutations.filter(
                 (mutation) => (mutation.type === 'attributes')
             ).filter(
-                (mutation) => (mutation.oldValue.match('mapUpdateRequest panel') && mutation.target.classList.contains('show'))
+                (mutation) => (mutation.oldValue && mutation.oldValue.match('mapUpdateRequest panel') && mutation.target.classList.contains('show'))
             ).length > 0)
                 handleUpdateRequestContainer();
         }),
@@ -872,7 +872,7 @@
                     + '</div>');
             }
             if (_settings.reverseCommentSort) {
-                const $commentList = $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list'),
+                const $commentList = $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list'),
                     numComments = $commentList.children().length;
                 domElem.remove();
                 $commentList.prepend(domElem);
@@ -1016,7 +1016,7 @@
             }
             if (_settings.reverseCommentSort && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount > 1)) {
                 const $commentList = await getDomElement(
-                        '#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list'
+                        '#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list'
                     ),
                     sortedComments = $commentList.children('wz-list-item').get().reverse();
                 if ($commentList)
@@ -1111,7 +1111,7 @@
         else
             logWarning('Could not appendChild CSS to new-comment-text shadow root due to timeout waiting for DOM element.');
         shadowDOMstyle.innerHTML = '.wz-checkbox { font-size: 12px !important; } .wz-checkbox .border { height: 15px !important; width: 15px !important; }';
-        $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .new-comment-follow');
+        $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form wz-checkbox[name=follow]');
         if ($domElement)
             $domElement[0].shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
         else
@@ -1123,7 +1123,7 @@
             _urDataStateObserver.isObserving = true;
         }
         if (!_urCommentsObserver.isObserving) {
-            _urCommentsObserver.observe($('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list')[0], {
+            _urCommentsObserver.observe($('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list')[0], {
                 childList: true, attributes: false, attributeOldValue: false, characterData: false, characterDataOldValue: false, subtree: false
             });
             _urCommentsObserver.isObserving = true;
@@ -3156,7 +3156,7 @@
                 logWarning(`Timed out trying to scroll to the bottom. commentCount: ${commentCountInt}, tries: ${tries}, retryInt: ${retryInt}, maxTries: ${maxTries}`);
                 return;
             }
-            const $commentList = await getDomElement('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list');
+            const $commentList = await getDomElement('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list');
             if ($commentList && (commentCountInt > 0)
                 && (commentCountInt === $commentList.children().length)
                 && (!_settings.autoScrollComments
@@ -5818,3 +5818,4 @@
     }
 }
 )();
+
