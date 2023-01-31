@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2022.12.12.02
+// @version     2023.01.31.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -69,7 +69,7 @@
         SETTINGS_STORE_NAME = 'WME_URC-E',
         ALERT_UPDATE = true,
         SCRIPT_VERSION = GM_info.script.version,
-        SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Restore tab clicking in latest WME.'],
+        SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Compatibility with latest WME release.'],
         DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
         DEBUG = false,
         LOAD_BEGIN_TIME = performance.now(),
@@ -261,7 +261,7 @@
             else if (mutations.filter(
                 (mutation) => (mutation.type === 'attributes')
             ).filter(
-                (mutation) => (mutation.oldValue.match('mapUpdateRequest panel') && mutation.target.classList.contains('show'))
+                (mutation) => (mutation.oldValue && mutation.oldValue.match('mapUpdateRequest panel') && mutation.target.classList.contains('show'))
             ).length > 0)
                 handleUpdateRequestContainer();
         }),
@@ -872,7 +872,7 @@
                     + '</div>');
             }
             if (_settings.reverseCommentSort) {
-                const $commentList = $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list'),
+                const $commentList = $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list'),
                     numComments = $commentList.children().length;
                 domElem.remove();
                 $commentList.prepend(domElem);
@@ -1016,7 +1016,7 @@
             }
             if (_settings.reverseCommentSort && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.commentCount > 1)) {
                 const $commentList = await getDomElement(
-                        '#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list'
+                        '#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list'
                     ),
                     sortedComments = $commentList.children('wz-list-item').get().reverse();
                 if ($commentList)
@@ -1111,7 +1111,7 @@
         else
             logWarning('Could not appendChild CSS to new-comment-text shadow root due to timeout waiting for DOM element.');
         shadowDOMstyle.innerHTML = '.wz-checkbox { font-size: 12px !important; } .wz-checkbox .border { height: 15px !important; width: 15px !important; }';
-        $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .new-comment-follow');
+        $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form wz-checkbox[name=follow]');
         if ($domElement)
             $domElement[0].shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
         else
@@ -1123,7 +1123,7 @@
             _urDataStateObserver.isObserving = true;
         }
         if (!_urCommentsObserver.isObserving) {
-            _urCommentsObserver.observe($('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list')[0], {
+            _urCommentsObserver.observe($('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list')[0], {
                 childList: true, attributes: false, attributeOldValue: false, characterData: false, characterDataOldValue: false, subtree: false
             });
             _urCommentsObserver.isObserving = true;
@@ -3156,7 +3156,7 @@
                 logWarning(`Timed out trying to scroll to the bottom. commentCount: ${commentCountInt}, tries: ${tries}, retryInt: ${retryInt}, maxTries: ${maxTries}`);
                 return;
             }
-            const $commentList = await getDomElement('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-region .conversation-view .comment-list');
+            const $commentList = await getDomElement('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list');
             if ($commentList && (commentCountInt > 0)
                 && (commentCountInt === $commentList.children().length)
                 && (!_settings.autoScrollComments
