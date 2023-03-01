@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.01.31.01
+// @version     2023.03.01.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -56,6 +56,7 @@
         _needTranslation = false,
         _unstackedMasterId = null,
         _restoreZoom,
+        _restoreDrawerTab,
         _restoreTab,
         _restoreTabPosition,
         _wmeUserId,
@@ -1236,7 +1237,13 @@
     }
 
     function autoSwitchToUrceTab() {
-        _restoreTab = _restoreTab || $('#user-tabs .nav .active > a').first()[0];
+        _restoreDrawerTab = $('#drawer').find('[selected="true"]').children('.w-icon')[0] || 'none-selected';
+        if (!$(_restoreDrawerTab).hasClass('w-icon-script')) {
+            document.querySelector('.w-icon-script').dispatchEvent(new MouseEvent('click', {
+                view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
+            }));
+        }
+        _restoreTab = _restoreTab || $('#user-tabs .nav-tabs .active > a').first()[0];
         _restoreTabPosition = _restoreTabPosition || $($('#user-info .tab-content')[0]).scrollTop();
         document.querySelector('a[href="#sidepanel-urc-e"]').dispatchEvent(new MouseEvent('click', {
             view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
@@ -1248,11 +1255,26 @@
     }
 
     function autoSwitchToPrevTab() {
-        if ($(_restoreTab) && !$(W.map.getOLMap().div).hasClass('problem-selected')) {
-            _restoreTab.dispatchEvent(new MouseEvent('click', {
-                view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
-            }));
-            $($('#user-info .tab-content')[0]).scrollTop(_restoreTabPosition);
+        if (!$(W.map.getOLMap().div).hasClass('problem-selected')) {
+            if ($(_restoreDrawerTab).hasClass('w-icon-script')) {
+                if ($(_restoreTab).length > 0) {
+                    _restoreTab.dispatchEvent(new MouseEvent('click', {
+                        view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
+                    }));
+                    $($('#user-info .tab-content')[0]).scrollTop(_restoreTabPosition);
+                }
+            }
+            else if (_restoreDrawerTab && (_restoreDrawerTab !== 'none-selected')) {
+                _restoreDrawerTab.dispatchEvent(new MouseEvent('click', {
+                    view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
+                }));
+            }
+            else if (_restoreDrawerTab === 'none-selected') {
+                $('#drawer').find('.w-icon-script')[0].dispatchEvent(new MouseEvent('click', {
+                    view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
+                }));
+            }
+            _restoreDrawerTab = null;
             _restoreTab = null;
             _restoreTabPosition = null;
         }
@@ -2100,7 +2122,7 @@
             if ((markerId > 0) && ((_mousedOverMarkerId !== markerId) || ($('#urceDiv').css('visibility') === 'hidden'))) {
                 _mousedOverMarkerId = markerId;
                 const targetTab = `_urceTab_${Math.round(Math.random() * 1000000)}`,
-                    popupXOffset = parsePxString($('#sidebar').css('width')),
+                    popupXOffset = parsePxString($('#sidebar').css('width')) + parsePxString($('#drawer').css('width')),
                     unstackedX = parsePxString(W.map.updateRequestLayer.featureMarkers[markerId].marker.icon.imageDiv.style.left),
                     unstackedY = parsePxString(W.map.updateRequestLayer.featureMarkers[markerId].marker.icon.imageDiv.style.top);
                 checkMarkerStacking(markerId, unstackedX, unstackedY);
@@ -4813,7 +4835,7 @@
                             $('#urceCustomSpreadsheetLinkDiv').empty().append($customSsIdLink);
                         }
                     }
-                    else if ($('#urceCustomSpreadsheetLinkDiv')) {
+                    else if ($('#urceCustomSpreadsheetLinkDiv').length > 0) {
                         $('#urceCustomSpreadsheetLinkDiv').remove();
                     }
                 }
