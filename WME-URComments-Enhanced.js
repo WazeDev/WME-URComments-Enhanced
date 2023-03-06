@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.03.01.01
+// @version     2023.03.06.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -70,7 +70,9 @@
         SETTINGS_STORE_NAME = 'WME_URC-E',
         ALERT_UPDATE = true,
         SCRIPT_VERSION = GM_info.script.version,
-        SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Compatibility with latest WME release.'],
+        SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> New bootstrap routine.',
+            '<b>CHANGE:</b> Updated code to use optional chaining.'
+        ],
         DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
         DEBUG = true,
         LOAD_BEGIN_TIME = performance.now(),
@@ -121,7 +123,6 @@
             getOverflowUrsFromUrl: {},
             isDomElementReady: {},
             isPanelReady: {},
-            bootstrap: undefined,
             saveSettingsToStorage: undefined,
             popupDelay: undefined,
             popup: undefined,
@@ -262,7 +263,7 @@
             else if (mutations.filter(
                 (mutation) => (mutation.type === 'attributes')
             ).filter(
-                (mutation) => (mutation.oldValue && mutation.oldValue.match('mapUpdateRequest panel') && mutation.target.classList.contains('show'))
+                (mutation) => (mutation.oldValue?.match('mapUpdateRequest panel') && mutation.target.classList.contains('show'))
             ).length > 0)
                 handleUpdateRequestContainer();
         }),
@@ -510,7 +511,7 @@
         _settings = $.extend(true, {}, defaultSettings, loadedSettings);
 
         const serverSettings = await WazeWrap.Remote.RetrieveSettings(SETTINGS_STORE_NAME);
-        if (!restoreSettings && serverSettings && (serverSettings.lastSaved > _settings.lastSaved)) {
+        if (!restoreSettings && (serverSettings?.lastSaved > _settings.lastSaved)) {
             _settings = $.extend(true, _settings, serverSettings);
             _timeouts.saveSettingsToStorage = window.setTimeout(saveSettingsToStorage, 5000);
         }
@@ -579,7 +580,7 @@
 
     function checkTimeout(obj) {
         if (obj.toIndex) {
-            if (_timeouts[obj.timeout] && (_timeouts[obj.timeout][obj.toIndex] !== undefined)) {
+            if (_timeouts[obj.timeout]?.[obj.toIndex] !== undefined) {
                 window.clearTimeout(_timeouts[obj.timeout][obj.toIndex]);
                 _timeouts[obj.timeout][obj.toIndex] = undefined;
             }
@@ -603,7 +604,7 @@
     }
 
     function dismissAlertBoxInPanel(event, idx) {
-        if ((event && (event !== null) && event.data && (event.data.idx > -1) && ($(`#urceAlertPanelBox-${event.data.idx}`).length > 0))
+        if (((event?.data?.idx > -1) && ($(`#urceAlertPanelBox-${event?.data?.idx}`).length > 0))
             || ((idx > 0) && ($(`#urceAlertPanelBox-${idx}`).length > 0))
         )
             $(`#urceAlertPanelBox-${((idx > -1) ? idx : event.data.idx)}`).remove();
@@ -630,12 +631,7 @@
                 checkTimeout({ timeout: 'isPanelReady', toIndex });
                 if (tries > maxNumTries)
                     resolve({ error: true });
-                else if (
-                    W.map.panelRegion.currentView
-                    && W.map.panelRegion.currentView.model
-                    && W.map.panelRegion.currentView.model.attributes
-                    && !W.map.panelRegion.currentView.model.attributes[waitForAttrStr]
-                )
+                else if (!W.map.panelRegion.currentView?.model?.attributes?.[waitForAttrStr])
                     resolve({ error: false });
                 else
                     _timeouts.isPanelReady[toIndex] = window.setTimeout(retry, retryInt, waitForAttrStr, ++tries, toIndex, retryInt, maxNumTries);
@@ -655,13 +651,13 @@
                     let $returnElem;
                     if (shadowHostStr) {
                         const $shadowHostElem = $(shadowHostStr);
-                        if ($shadowHostElem && ($shadowHostElem.length > 0))
+                        if ($shadowHostElem?.length > 0)
                             $returnElem = $(elementStr, $shadowHostElem[0].shadowRoot);
                     }
                     else {
                         $returnElem = $(elementStr);
                     }
-                    if ($returnElem && ($returnElem.length > 0))
+                    if ($returnElem?.length > 0)
                         resolve($returnElem);
                     else
                         _timeouts.isDomElementReady[toIndex] = window.setTimeout(retry, retryInt, elementStr, shadowHostStr, ++tries, toIndex, retryInt, maxNumTries);
@@ -720,7 +716,7 @@
                     if (remove) {
                         $('#restrictionsEnforcedWarning, #restrictionsEnforcedWarning-Settings').hide();
                     }
-                    else if ((evt && ((evt[0].type === 'init') || (evt[0].type === 'modeChange')))
+                    else if (((evt?.[0]?.type === 'init') || (evt?.[0]?.type === 'modeChange'))
                         || ($('#restrictionsEnforcedWarning').length === 0)
                     ) {
                         _restrictionsEnforcedTitle = content;
@@ -733,15 +729,15 @@
                 let moved = false,
                     state,
                     country;
-                if (evt && (tries === 1) && (evt[0].type !== 'init') && (evt[0].type !== 'modeChange')) {
+                if ((tries === 1) && (evt?.[0]?.type !== 'init') && (evt?.[0]?.type !== 'modeChange')) {
                     _timeouts.checkRestrictions[toIndex] = window.setTimeout(retry, 500, ++tries, toIndex, evt);
                 }
                 else if (tries < 301) {
-                    if (evt && (evt[0].type === 'state') && (evt[0].name === W.model.getTopState().name)) {
+                    if ((evt?.[0]?.type === 'state') && (evt?.[0]?.name === W.model.getTopState().name)) {
                         country = (evt[0].countryID !== 0) ? W.model.countries.getObjectById(evt[0].countryID).abbr : W.model.getTopCountry().abbr;
                         state = evt[0].name;
                     }
-                    else if (evt && (evt[0].type === 'country') && (evt[0].abbr === W.model.getTopCountry().abbr)) {
+                    else if ((evt?.[0]?.type === 'country') && (evt?.[0]?.abbr === W.model.getTopCountry().abbr)) {
                         country = evt[0].abbr;
                         state = null;
                     }
@@ -762,11 +758,11 @@
                             moved = true;
                         }
                         if (moved) {
-                            logDebug(((evt && ((evt[0].type === 'init') || (evt[0].type === 'modeChange'))) ? 'Setting up restrictions.' : 'Checking restrictions.'));
+                            logDebug((((evt?.[0]?.type === 'init') || (evt?.[0]?.type === 'modeChange')) ? 'Setting up restrictions.' : 'Checking restrictions.'));
                             _restrictionsEnforce = {};
                             let restrictionsAlertBannerTitle = `${I18n.t('urce.prompts.RestrictionsEnforced')}\n\n${I18n.t('urce.prompts.RestrictionsEnforcedTitle')}:\n`;
                             if (_restrictions[country]) {
-                                if (state && _restrictions[country][state]) {
+                                if (_restrictions[country][state]) {
                                     restrictionsAlertBannerTitle += `\n${W.model.countries.getByAttributes({ abbr: country })[0].name} - ${state}:`;
                                     Object.keys(_restrictions[country][state]).forEach((restriction) => {
                                         _restrictionsEnforce[restriction] = _restrictions[country][state][restriction];
@@ -779,7 +775,7 @@
                                             restrictionsAlertBannerTitle += I18n.t('common.time.days', { days: _restrictionsEnforce[restriction] });
                                     });
                                 }
-                                else if (_restrictions[country].ALL && (Object.keys(_restrictions[country].ALL).length > 0)) {
+                                else if (Object.keys(_restrictions[country]?.ALL || {}).length > 0) {
                                     restrictionsAlertBannerTitle += `\n${W.model.countries.getByAttributes({ abbr: country })[0].name} - ${I18n.t('urce.common.All')}:`;
                                     Object.keys(_restrictions[country].ALL).forEach((restriction) => {
                                         _restrictionsEnforce[restriction] = _restrictions[country].ALL[restriction];
@@ -826,7 +822,7 @@
     }
 
     function mUrsAdded(objectsArr) {
-        if (objectsArr && (objectsArr.length === 0))
+        if (objectsArr?.length === 0)
             return;
         const zoomLevel = W.map.getZoom();
         let filter = true;
@@ -954,7 +950,7 @@
         if (_settings.autoSwitchCommentList) {
             const topCountry = W.model.getTopCountry(),
                 topState = W.model.getTopState();
-            if (_autoSwitch[topCountry.abbr] && ((_autoSwitch[topCountry.abbr].ALL > -1) || (_autoSwitch[topCountry.abbr][topState.name] > -1))) {
+            if ((_autoSwitch[topCountry.abbr]?.ALL > -1) || (_autoSwitch[topCountry.abbr]?.[topState.name] > -1)) {
                 let commentList;
                 if (_autoSwitch[topCountry.abbr][topState.name] > -1)
                     commentList = _autoSwitch[topCountry.abbr][topState.name];
@@ -985,7 +981,7 @@
         if (!$domElement.text().endsWith(')'))
             $domElement[0].textContent += ` (${parseDaysAgo(W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.driveDaysOld)})`;
         $domElement = (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.description) ? await getDomElement('#panel-container .top-section .body .problem-data .description .content') : null;
-        if ($domElement && $domElement.children().length === 0) {
+        if ($domElement?.children().length === 0) {
             const $content = await getDomElement('#panel-container .top-section .body .problem-data .description .content'),
                 newDiv = `<div class="URCE-divDesc">${$content.text()}</div>`;
             if ($content) {
@@ -1149,7 +1145,7 @@
             saveSettingsToStorage();
         });
         $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation');
-        if ($domElement && $domElement.hasClass('collapsed')) {
+        if ($domElement?.hasClass('collapsed')) {
             $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .title');
             $domElement.click();
         }
@@ -1264,7 +1260,7 @@
                     $($('#user-info .tab-content')[0]).scrollTop(_restoreTabPosition);
                 }
             }
-            else if (_restoreDrawerTab && (_restoreDrawerTab !== 'none-selected')) {
+            else if (_restoreDrawerTab !== 'none-selected') {
                 _restoreDrawerTab.dispatchEvent(new MouseEvent('click', {
                     view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
                 }));
@@ -1324,17 +1320,17 @@
         let $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body');
         if ($domElement)
             $domElement.scrollTop($domElement[0].scrollHeight);
-        if (_commentList[commentNum].urstatus === 'notidentified' && _selUr.newStatus !== 'notidentified') {
+        if ((_commentList[commentNum].urstatus === 'notidentified') && (_selUr.newStatus !== 'notidentified')) {
             $domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="not-identified"]');
             if ($domElement)
                 $domElement.trigger('click');
         }
-        else if (_commentList[commentNum].urstatus === 'solved' && _selUr.newStatus !== 'solved') {
+        else if ((_commentList[commentNum].urstatus === 'solved') && (_selUr.newStatus !== 'solved')) {
             $domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="solved"]');
             if ($domElement)
                 $domElement.trigger('click');
         }
-        else if (_commentList[commentNum].urstatus === 'open' && (_selUr.newStatus === 'solved' || _selUr.newStatus === 'notidentified')) {
+        else if ((_commentList[commentNum].urstatus === 'open') && ((_selUr.newStatus === 'solved') || (_selUr.newStatus === 'notidentified'))) {
             $domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="open"]');
             if ($domElement)
                 $domElement.trigger('click');
@@ -1370,12 +1366,12 @@
     }
 
     function formatText(text = '', replaceVars = false, shortcutClicked = false, urId = -1) {
-        if (!(urId > 0) && _selUr && _selUr.urId)
+        if (!(urId > 0) && _selUr?.urId)
             ({ urId } = _selUr);
         if (replaceVars && shortcutClicked && (text.indexOf('$SELSEGS') > -1)) {
             const selFeatures = W.selectionManager.getSelectedFeatures();
             let output = '';
-            if (selFeatures.length > 0 && selFeatures.length < 3) {
+            if ((selFeatures.length > 0) && (selFeatures.length < 3)) {
                 let street1Name = '',
                     street2Name = '',
                     cityName = '',
@@ -1385,11 +1381,11 @@
                         if (selFeatures.length > 1) {
                             const streetObj = W.model.streets.getObjectById(selFeatures[idx].model.attributes.primaryStreetID);
                             if (idx === 0) {
-                                street1Name = (streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : I18n.t('urce.tools.UnknownRoadName');
+                                street1Name = (streetObj.name?.length > 0) ? streetObj.name : I18n.t('urce.tools.UnknownRoadName');
                                 firstCityId = streetObj.cityID;
                             }
                             else {
-                                street2Name = (streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : I18n.t('urce.tools.UnknownRoadName');
+                                street2Name = (streetObj.name?.length > 0) ? streetObj.name : I18n.t('urce.tools.UnknownRoadName');
                                 if ((firstCityId !== 999940) && (text.indexOf('$SELSEGS_WITH_CITY$') > -1)) {
                                     if ((firstCityId === streetObj.cityID) || (streetObj.cityID === 999940)) {
                                         const cityObj = W.model.cities.getObjectById(firstCityId);
@@ -1404,9 +1400,9 @@
                         }
                         else {
                             const streetObj = W.model.streets.getObjectById(selFeatures[idx].model.attributes.primaryStreetID);
-                            street1Name = (streetObj.name && (streetObj.name.length > 0)) ? streetObj.name : '';
+                            street1Name = (streetObj.name?.length > 0) ? streetObj.name : '';
                             const cityObj = W.model.cities.getObjectById(streetObj.cityID);
-                            if ((cityObj.attributes.name !== '') && (street1Name !== '') && (text.indexOf('$SELSEGS_WITH_CITY$') > -1))
+                            if ((cityObj.attributes?.name !== '') && (street1Name !== '') && (text.indexOf('$SELSEGS_WITH_CITY$') > -1))
                                 cityName = cityObj.attributes.name;
                         }
                     }
@@ -1451,7 +1447,7 @@
             if (text.search(/(\$(DRIVEDATE_DAY_OF_WEEK|DRIVEDATE_DATE|DRIVEDATE_DATE_CASUAL|DRIVEDATE_DAYS_AGO|DRIVEDATE_TIME|DRIVEDATE_TIME_CASUAL|DRIVEDATE_TIME_CASUALMODE)\$)/gm) > -1) {
                 if (W.model.mapUpdateRequests.objects[urId]) {
                     if (text.indexOf('$DRIVEDATE_DAY_OF_WEEK$') > -1) {
-                        if (W.model.mapUpdateRequests.objects[urId].attributes && (W.model.mapUpdateRequests.objects[urId].attributes.driveDate > -1)) {
+                        if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1) {
                             text = text.replace(
                                 '$DRIVEDATE_DAY_OF_WEEK$',
                                 new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).toLocaleDateString(I18n.currentLocale(), { weekday: 'long' })
@@ -1462,7 +1458,7 @@
                         }
                     }
                     if (text.indexOf('$DRIVEDATE_DATE$') > -1) {
-                        if (W.model.mapUpdateRequests.objects[urId].attributes && (W.model.mapUpdateRequests.objects[urId].attributes.driveDate > -1)) {
+                        if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1) {
                             text = text.replace(
                                 '$DRIVEDATE_DATE$',
                                 new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).toLocaleDateString(
@@ -1476,7 +1472,7 @@
                         }
                     }
                     if (text.indexOf('$DRIVEDATE_DATE_CASUAL$') > -1) {
-                        if (W.model.mapUpdateRequests.objects[urId].attributes && (W.model.mapUpdateRequests.objects[urId].attributes.driveDate > -1)) {
+                        if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1) {
                             text = text.replace(
                                 '$DRIVEDATE_DATE_CASUAL$',
                                 new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).toLocaleDateString(I18n.currentLocale(), { month: 'long', day: '2-digit' })
@@ -1487,13 +1483,13 @@
                         }
                     }
                     if (text.indexOf('$DRIVEDATE_DAYS_AGO$') > -1) {
-                        if (W.model.mapUpdateRequests.objects[urId].attributes.urceData && (W.model.mapUpdateRequests.objects[urId].attributes.urceData.driveDaysOld > -1))
+                        if (W.model.mapUpdateRequests.objects[urId]?.attributes.urceData.driveDaysOld > -1)
                             text = text.replace('$DRIVEDATE_DAYS_AGO$', parseDaysAgo(W.model.mapUpdateRequests.objects[urId].attributes.urceData.driveDaysOld));
                         else
                             text = text.replace('$DRIVEDATE_DAYS_AGO$', '');
                     }
                     if (text.indexOf('$DRIVEDATE_TIME$') > -1) {
-                        if (W.model.mapUpdateRequests.objects[urId].attributes && (W.model.mapUpdateRequests.objects[urId].attributes.driveDate > -1)) {
+                        if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1) {
                             text = text.replace(
                                 '$DRIVEDATE_TIME$',
                                 new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).toLocaleTimeString(
@@ -1507,13 +1503,13 @@
                         }
                     }
                     if (text.indexOf('$DRIVEDATE_TIME_CASUAL$') > -1) {
-                        if (W.model.mapUpdateRequests.objects[urId].attributes && (W.model.mapUpdateRequests.objects[urId].attributes.driveDate > -1))
+                        if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1)
                             text = text.replace('$DRIVEDATE_TIME_CASUAL$', convertTimeOfDayToCasual(new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).getHours()));
                         else
                             text = text.replace('$DRIVEDATE_TIME_CASUAL$', '');
                     }
                     if (text.indexOf('$DRIVEDATE_TIME_CASUALMODE$') > -1) {
-                        if (W.model.mapUpdateRequests.objects[urId].attributes.urceData) {
+                        if (W.model.mapUpdateRequests.objects[urId]?.attributes.urceData) {
                             const driveDaysAgo = W.model.mapUpdateRequests.objects[urId].attributes.urceData.driveDaysOld;
                             const driveHour = new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).getHours();
                             let dayOfWeek = new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).getDay(),
@@ -1576,7 +1572,7 @@
                 }
             }
             if (text.indexOf('$URD') > -1) {
-                if (W.model.mapUpdateRequests.objects[urId].attributes.description)
+                if (W.model.mapUpdateRequests.objects[urId]?.attributes.description)
                     text = text.replace(/("?\$URD\$?"?)+/gmi, `"${W.model.mapUpdateRequests.objects[urId].attributes.description}"`).replace(/\n+/gmi, '');
                 else
                     text = text.replace(/("?\$URD\$?"?)+/gmi, '');
@@ -1621,7 +1617,7 @@
         }
         if (replaceVars && text.indexOf('$PLACE_NAME$') > -1) {
             const placeObj = W.selectionManager.getSelectedFeatures()[0];
-            if (placeObj && (placeObj.model.type === 'venue')) {
+            if (placeObj?.model.type === 'venue') {
                 if (placeObj.model.attributes.residential === true)
                     text = text.replace('$PLACE_NAME$', I18n.t('objects.venue.fields.residential'));
                 else
@@ -1633,13 +1629,13 @@
         }
         if (replaceVars && text.indexOf('$PLACE_ADDRESS$') > -1) {
             const placeObj = W.selectionManager.getSelectedFeatures()[0];
-            if (placeObj && (placeObj.model.type === 'venue') && ((placeObj.model.attributes.houseNumber.length > 0) || (placeObj.model.attributes.streetID.length > 0))) {
+            if ((placeObj?.model.type === 'venue') && ((placeObj?.model.attributes.houseNumber.length > 0) || (placeObj?.model.attributes.streetID.length > 0))) {
                 let placeAddress = '';
                 if (placeObj.model.attributes.houseNumber.length > 0)
                     placeAddress += `${placeObj.model.attributes.houseNumber} `;
                 if (placeObj.model.attributes.streetID > 0) {
                     const streetObj = W.model.streets.getObjectById(placeObj.model.attributes.streetID);
-                    if (streetObj.name && (streetObj.name !== ''))
+                    if (streetObj?.name !== '')
                         placeAddress += streetObj.name;
                     if ((streetObj.cityID > 0) && (streetObj.cityID !== 999940)) {
                         const cityObj = W.model.cities.getObjectById(streetObj.cityID);
@@ -1660,7 +1656,7 @@
                 WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.PlaceAddressInsertError'));
             }
         }
-        if (replaceVars && _customReplaceVars && (_customReplaceVars.length > 0)) {
+        if (replaceVars && (_customReplaceVars?.length > 0)) {
             _customReplaceVars.forEach((customReplaceVar) => {
                 if (text.indexOf(customReplaceVar.customVar) > -1)
                     text = text.replace(customReplaceVar.customVar, formatText(customReplaceVar.replaceText, true, shortcutClicked, urId));
@@ -1692,7 +1688,7 @@
         }
         else if (shortcut === 'selSegsWithCity') {
             const checkVal = currVal.match(/(\$SELSEGS(\$|(?!_))|\$SELSEGS_WITH_CITY\$?)/);
-            if (checkVal && (checkVal.length > 0)) {
+            if (checkVal?.length > 0) {
                 useCurrVal = true;
                 replaceText = currVal.replace(checkVal[0], '$SELSEGS_WITH_CITY$');
             }
@@ -1942,7 +1938,7 @@
     function getUsernameAndRank(userId) {
         let username,
             rank;
-        if (W.model.users.objects[userId] !== null && W.model.users.objects[userId] !== undefined) {
+        if ((W.model.users.objects[userId] !== null) && (W.model.users.objects[userId] !== undefined)) {
             username = (W.model.users.objects[userId].userName === undefined) ? userId : W.model.users.objects[userId].userName;
             rank = W.model.users.objects[userId].rank + 1;
         }
@@ -2006,8 +2002,7 @@
                     }
                     if (!(filter
                             && _settings.enableUrceUrFiltering
-                            && markerModelObj.attributes.urceData
-                            && markerModelObj.attributes.urceData.hideUr
+                            && markerModelObj.attributes.urceData?.hideUr
                             && (!((_selUr.urId === markerModelObj.attributes.id) && _settings.doNotHideSelectedUr))
                             && (!((markerModelObj.attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs)))
                     ) {
@@ -2144,7 +2139,7 @@
                             popupContent += `(${new Date(W.model.mapUpdateRequests.objects[markerId].attributes.driveDate).toLocaleDateString('en-us')}`
                                 + ` ${new Date(W.model.mapUpdateRequests.objects[markerId].attributes.driveDate).toLocaleTimeString('en-us')}) `;
                         }
-                        if (W.model.mapUpdateRequests.objects[markerId].attributes.guestUserName && (W.model.mapUpdateRequests.objects[markerId].attributes.guestUserName !== null)) {
+                        if (W.model.mapUpdateRequests.objects[markerId]?.attributes.guestUserName !== null) {
                             popupContent += I18n.t('urce.mouseOver.ViaLivemap');
                             if (W.model.mapUpdateRequests.objects[markerId].attributes.guestUserName !== '')
                                 popupContent += ` by ${W.model.mapUpdateRequests.objects[markerId].attributes.guestUserName.replace(/<\/?[^>]+(>|$)/g, '')}`;
@@ -2247,14 +2242,9 @@
     }
 
     function markerMouseOut(event) {
-        const newUrId = ((event.relatedTarget) && (parseInt($(event.relatedTarget).attr('data-id')) > -1)) ? parseInt($(event.relatedTarget).attr('data-id')) : null;
-        if ((newUrId > 0 && isIdAlreadyUnstacked(newUrId))
-            || (event.relatedTarget
-                && ((event.relatedTarget.id === 'urceDiv')
-                    || (event.relatedTarget.id.indexOf('urceCounts') > -1)
-                    || (event.relatedTarget.parentNode && event.relatedTarget.parentNode.id && (event.relatedTarget.parentNode.id.indexOf('urce') > -1))
-                )
-            )
+        const newUrId = (parseInt($(event?.relatedTarget).attr('data-id')) > -1) ? parseInt($(event.relatedTarget).attr('data-id')) : null;
+        if (((newUrId > 0) && isIdAlreadyUnstacked(newUrId))
+            || ((event?.relatedTarget?.id === 'urceDiv') || (event?.relatedTarget?.id.indexOf('urceCounts') > -1) || (event?.relatedTarget?.parentNode?.id.indexOf('urce') > -1))
         )
             return;
         if (!newUrId)
@@ -2311,25 +2301,25 @@
     }
 
     function hidePopup(event) {
-        const newUrId = (event && event.relatedTarget && (parseInt($(event.relatedTarget).attr('data-id')) > -1)) ? parseInt($(event.relatedTarget).attr('data-id')) : null;
+        const newUrId = (parseInt($(event?.relatedTarget).attr('data-id')) > -1) ? parseInt($(event.relatedTarget).attr('data-id')) : null;
         checkTimeout({ timeout: 'popup' });
         if ($('#urceDiv').css('visibility') !== 'hidden')
             $('#urceDiv').css({ visibility: 'hidden' });
         $('#urceDiv').off();
-        if ((newUrId > 0 && isIdAlreadyUnstacked(newUrId))
-            || (event && event.relatedTarget && ((event.relatedTarget.id === 'urceDiv') || (event.relatedTarget.id.indexOf('urceCounts') > -1) || (event.relatedTarget.parentNode.id.indexOf('urce') > -1)))
+        if (((newUrId > 0) && isIdAlreadyUnstacked(newUrId))
+            || ((event?.relatedTarget?.id === 'urceDiv') || (event?.relatedTarget?.id.indexOf('urceCounts') > -1) || (event?.relatedTarget?.parentNode.id.indexOf('urce') > -1))
         ) {
-            if (event.data && !event.data.doubleClick)
+            if (!event?.data?.doubleClick)
                 return;
         }
-        if (!newUrId && event && (event.type === 'mouseleave') && event.target && ((event.target.id === 'urceDiv') || (event.target.offsetParent.id === 'urceDiv')))
+        if (!newUrId && (event?.type === 'mouseleave') && ((event?.target?.id === 'urceDiv') || (event?.target?.offsetParent?.id === 'urceDiv')))
             _mousedOverMarkerId = null;
         if (_mousedOverMarkerId === null)
             restackMarkers();
     }
 
     async function openUrPanel(urId = -1, closeUrPanel = false) {
-        if (!(urId > 0) && _selUr && _selUr.urId)
+        if (!(urId > 0) && _selUr?.urId)
             ({ urId } = _selUr);
         if (!(urId > 0))
             return;
@@ -2351,10 +2341,10 @@
     }
 
     function recenterOnUr(event) {
-        const urId = (event.data && event.data.urId) ? event.data.urId : -1;
+        const urId = event?.data?.urId || -1;
         if (urId < 0)
             return;
-        if (this && this.id === '_urceRecenterSession')
+        if (this?.id === '_urceRecenterSession')
             openUrPanel(urId, true);
         hidePopup();
         W.map.setCenter(W.map.updateRequestLayer.featureMarkers[urId].marker.lonlat);
@@ -2872,7 +2862,7 @@
                         || (_settings.hideFollowing && urSessionsObj.isFollowing)
                         || (_settings.hideNotFollowing && !urSessionsObj.isFollowing)
                         || (_settings.hideDescription
-                            && chunk[idx].attributes.description && (chunk[idx].attributes.description.length > 0) && (chunk[idx].attributes.description !== ''))
+                            && (chunk[idx]?.attributes.description.length > 0) && (chunk[idx]?.attributes.description !== ''))
                         || (_settings.hideWithoutDescription
                             && (!chunk[idx].attributes.description || (chunk[idx].attributes.description.length === 0) || (chunk[idx].attributes.description === '')))
                         || (_settings.hideWithCommentsFromMe && (urceData.commentsByMe))
@@ -2999,7 +2989,7 @@
                 else if (errorObj.error) {
                     resolve(errorObj);
                 }
-                else if (!data || (data.error && (data.error.status === 429))) {
+                else if (!data || (data?.error?.status === 429)) {
                     log('Rate limited by Waze server. Retrying overflow request.');
                     _timeouts.getOverflowUrsFromUrl[toIndex] = window.setTimeout(retry, 100, url, ++tries, toIndex);
                 }
@@ -3034,7 +3024,7 @@
             if (data.error) {
                 logWarning(data.error);
             }
-            else if (data.mapUpdateRequests && data.mapUpdateRequests.objects && data.mapUpdateRequests.objects.length > 499) {
+            else if (data.mapUpdateRequests?.objects?.length > 499) {
                 logDebug('More than 499 objects returned in overflow request, queueing sub quadrants for further checking.');
                 const bbox = overflowUrl.split('bbox=')[1].split(','),
                     bboxFrom = WazeWrap.Geometry.ConvertTo900913(bbox[0], bbox[1]),
@@ -3045,7 +3035,7 @@
                 overflowUrlsToCheck.push(`${baseUrl}${bbox[0]},${bbox[1]},${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)}`);
                 overflowUrlsToCheck.push(`${baseUrl}${subQuadCenter.lon.toFixed(6)},${bbox[1]},${bbox[2]},${subQuadCenter.lat.toFixed(6)}`);
             }
-            else if (data.mapUpdateRequests && data.mapUpdateRequests.objects.length > 0) {
+            else if (data.mapUpdateRequests?.objects?.length > 0) {
                 respUrObjs = respUrObjs.concat(data.mapUpdateRequests.objects);
             }
             respUrObjs.forEach((respUrObj) => {
@@ -3130,11 +3120,11 @@
     }
 
     async function invokeModeChange(event) {
-        if (event && event.changed && event.changed.mode === 1)
+        if (event?.changed?.mode === 1)
             await initBackgroundTasks('disable', 'invokeModeChange');
-        else if (event && event.changed && event.changed.mode === 0)
+        else if (event?.changed?.mode === 0)
             await initBackgroundTasks('enable', 'invokeModeChange');
-        if (event && event.changed && ((event.changed.mode === 0) || (event.changed.isImperial === true) || (event.changed.isImperial === false))) {
+        if ((event?.changed?.mode === 0) || (event?.changed?.isImperial === true) || (event?.changed?.isImperial === false)) {
             await changeCommentList(_currentCommentList, false, true);
             await checkRestrictions([{ type: 'modeChange' }]);
             handleUrLayer('modeChange', null, getMapUrsObjArr());
@@ -3647,7 +3637,7 @@
             });
             $('#_cbenableAppendMode').off().on('change', function () {
                 _settings[$(this)[0].id.substr(3)] = isChecked(this);
-                if (W.map.panelRegion.currentView && W.map.panelRegion.currentView.adapter && W.map.panelRegion.currentView.adapter.problem) {
+                if (W.map.panelRegion.currentView?.adapter?.problem) {
                     $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)
                         .css('background-color', (isChecked(this) ? 'peachpuff' : ''));
                 }
@@ -3900,7 +3890,7 @@
     function handleError(err = new Error()) {
         let errorText,
             htmlOut = '<div class="URCE-divLoading">';
-        if (err.message && err.message.indexOf('|') > -1) {
+        if (err.message?.indexOf('|') > -1) {
             if (err.message.split('|')[0] === 'updateRequired')
                 errorText = `${I18n.t('urce.prompts.UpdateRequired')}: ${err.message.split('|')[1]}`;
             htmlOut += errorText;
@@ -4467,7 +4457,7 @@
             + `         <label for="_cbautoSwitchCommentList" urceprefs="commentList" title="${I18n.t('urce.prefs.AutoSwitchCommentListTitle')}" class="URCE-label">${I18n.t('urce.prefs.AutoSwitchCommentList')}</label>`
             + '         <div id="urceSpreadsheetLinks">'
             + `             <div class="URCE-spreadsheetLink" id="urceSpreadsheetLinkDiv"><a class="URCE-Controls URCE-spreadsheetLink" id="urce-spreadsheet-link" title="${I18n.t('urce.prefs.SpreadsheetLinkTitle')}" href="http://bit.ly/urc-e_ss">URC-E Master Spreadsheet</a></div>`;
-        if (_settings.customSsId && (_settings.customSsId.length > 0))
+        if (_settings.customSsId?.length > 0)
             htmlOut += `    <div class="URCE-spreadsheetLink" id="urceCustomSpreadsheetLinkDiv"><a class="URCE-Controls URCE-spreadsheetLink" id="urce-customSpreadsheet-link" title="${I18n.t('urce.prefs.CustomSpreadsheetLinkTitle')}" href="https://docs.google.com/spreadsheets/d/${_settings.customSsId}/edit">${I18n.t('urce.prefs.CustomSpreadsheetLink')}</a></div>`;
         htmlOut += ''
             + '</div></div></fieldset>'
@@ -4906,7 +4896,7 @@
             logDebug('Initializing available comment lists.');
             let errorText;
             $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/CommentLists!A3:G?key=${URCE_API_KEY}`, (data) => {
-                if (data && data.values.length > 0) {
+                if (data?.values.length > 0) {
                     let ssFieldNames;
                     const EXPECTED_FIELD_NAMES = ['idx', 'name', 'status', 'type', 'oldVarName', 'Prefix', 'listOwner'],
                         checkFieldNames = (fldName) => ssFieldNames.indexOf(fldName) > -1;
@@ -4976,9 +4966,9 @@
             logDebug('Initializing auto switch setup.');
             let errorText;
             $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/CommentLists_AutoSwitch!A3:ZZ?majorDimension=COLUMNS&key=${URCE_API_KEY}`, (data) => {
-                if (data && data.values.length > 0) {
+                if (data?.values.length > 0) {
                     for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
-                        if (entryIdx === 0 && SCRIPT_VERSION < data.values[entryIdx][0]) {
+                        if ((entryIdx === 0) && (SCRIPT_VERSION < data.values[entryIdx][0])) {
                             errorText = `updateRequired|${data.values[entryIdx][0]}`;
                             break;
                         }
@@ -5019,9 +5009,9 @@
             logDebug('Initializing restrictions.');
             let errorText;
             $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/Restrictions!A3:ZZ?majorDimension=COLUMNS&key=${URCE_API_KEY}`, (data) => {
-                if (data && data.values.length > 0) {
+                if (data?.values.length > 0) {
                     for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
-                        if (entryIdx === 0 && SCRIPT_VERSION < data.values[entryIdx][0]) {
+                        if ((entryIdx === 0) && (SCRIPT_VERSION < data.values[entryIdx][0])) {
                             errorText = `updateRequired|${data.values[entryIdx][0]}`;
                             break;
                         }
@@ -5069,7 +5059,7 @@
 
     async function initFinish(urId, urPanelMissing) {
         checkTimeout({ timeout: 'initUrIdInUrl' });
-        if (_initUrIdInUrlObserver && _initUrIdInUrlObserver.isObserving) {
+        if (_initUrIdInUrlObserver?.isObserving) {
             _initUrIdInUrlObserver.isObserving = false;
             _initUrIdInUrlObserver.disconnect();
         }
@@ -5165,22 +5155,33 @@
         });
     }
 
-    function bootstrap(tries) {
-        if (W && W.map && W.model && $ && WazeWrap.Ready && require) {
-            checkTimeout({ timeout: 'bootstrap' });
-            log('Bootstrapping.');
+    function preInit() {
+        if (W.userscripts?.state?.isReady) {
+            logDebug('Found W in "wme-ready" state during preInit(). Running int().');
             init();
         }
-        else if (tries < 1000) {
-            logDebug(`WME not ready. Retrying ${tries} of 1000`);
-            _timeouts.bootstrap = window.setTimeout(bootstrap, 200, ++tries);
-        }
         else {
-            logError(new Error('Bootstrap timed out waiting for WME to become ready.'));
+            logDebug('W is ready. But state is not yet "wme-ready" during preInit(). Adding event listener for "wme-ready" to run init().');
+            document.addEventListener('wme-ready', init, {once: true});
         }
     }
 
-    bootstrap(1);
+    function bootstrap() {
+        if (!W) {
+            logDebug('W not available. Adding event listener for "wme-initialized" to run preInit().')
+            document.addEventListener('wme-initialized', preInit, {once: true});
+        }
+        else if (W.userscripts?.state?.isReady) {
+            logDebug('Found W already in "wme-ready" state during bootstrap(). Running init().');
+            init();
+        }
+        else {
+            logDebug('W is ready. But state is not yet "wme-ready". Adding event listener for "wme-ready" to run init().');
+            document.addEventListener('wme-ready', init, {once: true});
+        }
+    }
+
+    bootstrap();
 
     function loadTranslations() {
         return new Promise((resolve, reject) => {
@@ -5198,7 +5199,7 @@
             $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${URCE_SPREADSHEET_ID}/values/Script_Translations!A3:AA?key=${URCE_API_KEY}`, (data) => {
                 const translationLocales = [];
                 let translations = {};
-                if (data && data.values.length > 0) {
+                if (data?.values.length > 0) {
                     for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
                         if (entryIdx === 0) {
                             if (SCRIPT_VERSION < data.values[entryIdx][0]) {
@@ -5234,7 +5235,7 @@
                 else {
                     errorText = errorText || 'No translations available.';
                 }
-                translations = (!errorText && data && (data.values.length > 0)) ? translations : {
+                translations = (!errorText && (data?.values.length > 0)) ? translations : {
                     en: {
                         commentsTab: {
                             ZoomOutLink1: 'Zoom out 12 & close UR',

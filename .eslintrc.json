@@ -1,0 +1,41 @@
+{
+    "env": {
+        "browser": true,
+        "es2021": true,
+        "ecmaVersion": "latest",
+        "sourceType": "script"
+    },
+    "extends": [
+        "airbnb-base"
+    ],
+    "parserOptions": {
+        "sourceType": "script"
+    },
+    "rules": {
+        "brace-style": ["error", "stroustrup", { "allowSingleLine": true }],
+        "camelcase": ["error", {"allow": ["^GM_", "^day_names$", "_useDefault$"]}],
+        "comma-dangle": ["error", "never"],
+        "consistent-return": ["error", { "treatUndefinedAsUnspecified": true }], // Good
+        "curly": ["error", "multi-or-nest", "consistent"], // GOod
+        "func-names": ["error", "never"],
+        "global-require": "off",
+        "indent": ["error", 4, { "SwitchCase": 1 }],
+        "import/no-unresolved": "off",
+        "lines-around-directive": ["error", { "before": "never", "after": "always" }],
+        "max-len": ["error", 205, { "ignoreUrls": true, "ignorePattern": "data:image\/png;base64,", "ignoreTrailingComments": true, "ignoreTemplateLiterals": true }],
+        "newline-per-chained-call": ["error", { "ignoreChainWithDepth": 5 }],
+        "no-console": "off", // Good
+        "no-param-reassign": "off", // Good
+        "no-plusplus": "off",
+        "no-promise-executor-return": "off",
+        "no-prototype-builtins": "off", // Good
+        "no-restricted-globals": "off",
+        "no-underscore-dangle": "off",
+        "no-use-before-define": ["error", "nofunc"],
+        "nonblock-statement-body-position": ["error", "below"],
+        "one-var": "off",
+        "radix": ["error", "as-needed"],
+        "strict": ["error", "function"],
+        "wrap-iife": ["error", "any"]
+    }
+}
