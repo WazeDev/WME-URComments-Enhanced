@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.03.06.01
+// @version     2023.03.07.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -253,11 +253,11 @@
         }),
         _urPanelContainerObserver = new MutationObserver((mutations) => {
             if (_selUr.handling
-                && mutations.filter(
+                && (mutations.filter(
                     (mutation) => (mutation.removedNodes.length > 0) && $(mutation.target).is('#panel-container')
                 ).filter(
                     (removedChild) => removedChild.removedNodes[0].classList.contains('show') && removedChild.removedNodes[0].classList.contains('mapUpdateRequest')
-                ).length > 0
+                ).length > 0)
             )
                 handleAfterCloseUpdateContainer();
             else if (mutations.filter(
@@ -529,7 +529,7 @@
         ['reminderDays', 'closeDays', 'hideByAgeOfLastCommentMoreThanDaysOld', 'hideByAgeOfLastCommentLessThanDaysOld', 'hideByAgeOfFirstCommentMoreThanDaysOld',
             'hideByAgeOfFirstCommentLessThanDaysOld', 'hideByCommentCountMoreThanNumber', 'hideByCommentCountLessThanNumber', 'hideByAgeOfSubmissionMoreThanDaysOld',
             'hideByAgeOfSubmissionLessThanDaysOld'].forEach((setting) => {
-            if (_settings[setting] === undefined || _settings[setting] === null || ((_settings[setting].length === 0) && (_settings[setting] !== '')))
+            if ((_settings[setting] === undefined) || (_settings[setting] === null) || ((_settings[setting].length === 0) && (_settings[setting] !== '')))
                 _settings[setting] = '';
         });
         ['disableFilteringAboveZoomLevel', 'disableFilteringBelowZoomLevel', 'unstackDisableAboveZoom'].forEach((setting) => {
@@ -548,7 +548,7 @@
     }
 
     function showScriptInfoAlert() {
-        if (ALERT_UPDATE && SCRIPT_VERSION !== _settings.lastVersion) {
+        if (ALERT_UPDATE && (SCRIPT_VERSION !== _settings.lastVersion)) {
             let releaseNotes = '';
             releaseNotes += '<p>What\'s New:</p>';
             if (SCRIPT_VERSION_CHANGES.length > 0) {
@@ -875,7 +875,7 @@
                 $commentList.prepend(domElem);
                 autoScrollComments(numComments);
             }
-            if (_settings.autoSaveAfterSolvedOrNiComment && (_selUr.newStatus === 'solved' || _selUr.newStatus === 'notidentified'))
+            if (_settings.autoSaveAfterSolvedOrNiComment && ((_selUr.newStatus === 'solved') || (_selUr.newStatus === 'notidentified')))
                 $('.toolbar-button.waze-icon-save').trigger('click');
             else
                 handleUrLayer('sendComment', null, getMapUrsObjArr([_selUr.urId]));
@@ -1185,7 +1185,7 @@
                 && (_settings.perCommentListSettings[_currentCommentList].reminderDays !== 0)
                 && (_restrictionsEnforce.reminderDays !== 0)
                 && ((W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.lastCommentDaysOld > (_settings.perCommentListSettings[_currentCommentList].reminderDays - 1))
-                    || W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.lastCommentDaysOld > (_restrictionsEnforce.reminderDays - 1))
+                    || (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.lastCommentDaysOld > (_restrictionsEnforce.reminderDays - 1)))
                 && (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.urceData.lastCommentBy > 0)
             ) {
                 if (_settings.autoClickOpenSolvedNi)
@@ -1597,13 +1597,13 @@
                 }
             }
         }
-        if (replaceVars && text.indexOf('$CLOSED_NOR_EMAIL_TAG$') > -1) {
+        if (replaceVars && (text.indexOf('$CLOSED_NOR_EMAIL_TAG$') > -1)) {
             if ((_settings.perCommentListSettings[_currentCommentList].tagEmail.length > 0) && (W.loginManager.user.userName.length > 0))
                 text = text.replace('$CLOSED_NOR_EMAIL_TAG$', `Since this report is closed, please send further correspondence to ${_settings.perCommentListSettings[_currentCommentList].tagEmail} and include ${W.loginManager.user.userName} in the subject line.`);
             else
                 text = text.replace('$CLOSED_NOR_EMAIL_TAG$', '');
         }
-        if (replaceVars && text.indexOf('$TAG_EMAIL$') > -1) {
+        if (replaceVars && (text.indexOf('$TAG_EMAIL$') > -1)) {
             if (_settings.perCommentListSettings[_currentCommentList].tagEmail.length > 0)
                 text = text.replace('$TAG_EMAIL$', _settings.perCommentListSettings[_currentCommentList].tagEmail);
             else
@@ -1615,7 +1615,7 @@
             else
                 text = text.replace(/(\$USERNAME\$?)+/gmi, '');
         }
-        if (replaceVars && text.indexOf('$PLACE_NAME$') > -1) {
+        if (replaceVars && (text.indexOf('$PLACE_NAME$') > -1)) {
             const placeObj = W.selectionManager.getSelectedFeatures()[0];
             if (placeObj?.model.type === 'venue') {
                 if (placeObj.model.attributes.residential === true)
@@ -1627,7 +1627,7 @@
                 WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.PlaceNameInsertError'));
             }
         }
-        if (replaceVars && text.indexOf('$PLACE_ADDRESS$') > -1) {
+        if (replaceVars && (text.indexOf('$PLACE_ADDRESS$') > -1)) {
             const placeObj = W.selectionManager.getSelectedFeatures()[0];
             if ((placeObj?.model.type === 'venue') && ((placeObj?.model.attributes.houseNumber.length > 0) || (placeObj?.model.attributes.streetID.length > 0))) {
                 let placeAddress = '';
@@ -1849,8 +1849,7 @@
             handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
             return;
         }
-        if (_settings.enableAppendMode
-                && $domElement.val() !== '' && !doubleClick) {
+        if (_settings.enableAppendMode && ($domElement.val() !== '') && !doubleClick) {
             cursorPos = $domElement[0].selectionStart;
             newCursorPos = cursorPos;
             const currVal = $domElement.val();
@@ -2447,7 +2446,7 @@
             return 4;
         if (tag === 'WSLM')
             return 5;
-        if (tag === 'BOG' || tag === 'BOTG')
+        if ((tag === 'BOG') || (tag === 'BOTG'))
             return 6;
         if (tag === 'DIFFICULT')
             return 7;
@@ -2456,7 +2455,7 @@
 
     function updateUrMapMarkers(mUrsObjArr, filter) {
         const zoomLevel = W.map.getZoom();
-        if (filter === undefined || filter === null) {
+        if ((filter === undefined) || (filter === null)) {
             filter = true;
             if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
                 || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))
@@ -2486,7 +2485,8 @@
             if ($marker.length > 0) {
                 if (!$marker.data('urce_hasListeners'))
                     $marker.on({ mouseover: markerMouseOver, mouseout: markerMouseOut, click: markerClick }).data('urce_hasListeners', true);
-                if (filter && _settings.enableUrceUrFiltering
+                if (filter
+                    && _settings.enableUrceUrFiltering
                     && (mUrObj.attributes.urceData.hideUr || (_settings.hideOutsideEditableArea && !mUrObj.canEdit()))
                     && (!((_selUr.urId === mUrObj.attributes.id) && _settings.doNotHideSelectedUr))
                     && (!((mUrObj.attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs))
@@ -2695,7 +2695,7 @@
                             urceData.reporterHasCommented = true;
                         if (chunk[idx].attributes.open && urceData.commentCount === 1) {
                             if ((reminderDays !== 0) && (_restrictionsEnforce.reminderDays !== 0) && (urceData.lastCommentDaysOld > (reminderDays - 1))) {
-                                if ((_settings.perCommentListSettings[_currentCommentList].autoSendReminders || _restrictionsEnforce.autoSendReminders === true)
+                                if ((_settings.perCommentListSettings[_currentCommentList].autoSendReminders || (_restrictionsEnforce.autoSendReminders === true))
                                     && (_restrictionsEnforce.autoSendReminders !== false)
                                     && _defaultComments.dr.commentNum
                                     && (urceData.lastCommentBy > 1)
@@ -2713,7 +2713,7 @@
                                 urceData.waiting = true;
                             }
                         }
-                        if (chunk[idx].attributes.open && urceData.commentCount > 1) {
+                        if (chunk[idx].attributes.open && (urceData.commentCount > 1)) {
                             if (urceData.lastCommentBy > 1) {
                                 if ((closeDays > 0) && (urceData.lastCommentDaysOld > (closeDays - 1))) {
                                     if (_wmeUserId === urceData.lastCommentBy)
@@ -2912,7 +2912,7 @@
             return Promise.resolve();
         const zoomLevel = W.map.getZoom();
         doSpinner('handleUrLayer', true);
-        if (filter === undefined || filter === null) {
+        if ((filter === undefined) || (filter === null)) {
             filter = true;
             if ((_settings.disableFilteringAboveZoom && (zoomLevel < _settings.disableFilteringAboveZoomLevel))
                 || (_settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))
@@ -2936,7 +2936,7 @@
         mUrsObjArr.sort((a, b) => a.attributes.id - b.attributes.id);
         if (phase === 'init')
             _markerCountOnInit = mUrsObjArr.length;
-        if (phase === 'overflow' && _initialUrLayerScan) {
+        if ((phase === 'overflow') && _initialUrLayerScan) {
             if (_markerCountOnInit > -1)
                 _markerCountOnInit += mUrsObjArr.length;
             else
@@ -3291,7 +3291,7 @@
     }
 
     function createStaticToGoogleSheet(convert) {
-        if (convert && getCommentListInfo(_currentCommentList).type !== 'static') {
+        if (convert && (getCommentListInfo(_currentCommentList).type !== 'static')) {
             WazeWrap.Alerts.error(SCRIPT_NAME, I18n.t('urce.prompts.ConversionLoadAddonFirst'));
             return;
         }
@@ -4829,7 +4829,7 @@
                         $('#urceCustomSpreadsheetLinkDiv').remove();
                     }
                 }
-                if ((settingName !== 'tagEmail') && (settingName !== 'customSsId') && settingName !== 'customTagline')
+                if ((settingName !== 'tagEmail') && (settingName !== 'customSsId') && (settingName !== 'customTagline'))
                     handleUrLayer('settingsToggle', null, getMapUrsObjArr());
                 else if ((settingName === 'tagEmail') || (settingName === 'customTagline') || ((settingName === 'customSsId') && (_currentCommentList === 1001)))
                     changeCommentList(_settings.commentList, false, true);
@@ -5097,14 +5097,14 @@
         }
     }
 
-    async function init() {
+    async function onWmeReady() {
         log('Initializing.');
         _wmeUserId = W.loginManager.user.id;
         await loadSettingsFromStorage(null, null);
         const urIdInUrl = parseInt(window.location.search.split('mapUpdateRequest=')[1]);
         Promise.all([loadTranslations(), initCommentLists(), initAutoSwitchArrays(), initRestrictions()]).catch((error) => {
             error.staticList = false;
-            error.phase = init;
+            error.phase = 'init';
             error.maskUrPanel = (urIdInUrl > 0);
             error.commentList = null;
             handleError(error);
@@ -5155,29 +5155,24 @@
         });
     }
 
-    function preInit() {
+    function onWmeInitialized() {
         if (W.userscripts?.state?.isReady) {
-            logDebug('Found W in "wme-ready" state during preInit(). Running int().');
-            init();
+            logDebug('W is ready and already in "wme-ready" state. Proceeding with initialization.');
+            onWmeReady();
         }
         else {
-            logDebug('W is ready. But state is not yet "wme-ready" during preInit(). Adding event listener for "wme-ready" to run init().');
-            document.addEventListener('wme-ready', init, {once: true});
+            logDebug('W is ready, but state is not "wme-ready". Adding event listener.');
+            document.addEventListener('wme-ready', onWmeReady, { once: true });
         }
     }
 
     function bootstrap() {
         if (!W) {
-            logDebug('W not available. Adding event listener for "wme-initialized" to run preInit().')
-            document.addEventListener('wme-initialized', preInit, {once: true});
-        }
-        else if (W.userscripts?.state?.isReady) {
-            logDebug('Found W already in "wme-ready" state during bootstrap(). Running init().');
-            init();
+            logDebug('W is not available. Adding event listener.');
+            document.addEventListener('wme-initialized', onWmeInitialized, { once: true });
         }
         else {
-            logDebug('W is ready. But state is not yet "wme-ready". Adding event listener for "wme-ready" to run init().');
-            document.addEventListener('wme-ready', init, {once: true});
+            onWmeInitialized();
         }
     }
 

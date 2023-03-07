@@ -1,14 +1,13 @@
 {
     "env": {
         "browser": true,
-        "es2021": true,
-        "ecmaVersion": "latest",
-        "sourceType": "script"
+        "es2021": true
     },
     "extends": [
         "airbnb-base"
     ],
     "parserOptions": {
+        "ecmaVersion": "latest",
         "sourceType": "script"
     },
     "rules": {
