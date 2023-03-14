@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.03.13.01
+// @version     2023.03.14.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -64,7 +64,7 @@
         _initUrIdInUrlObserver;
 
     // eslint-disable-next-line no-nested-ternary
-    const SCRIPT_NAME = `URC-E${((GM_info.script.name.search(/beta/) > -1) ? ' β' : (GM_info.script.name.search(/\(DEV\)/i) > -1) ? ' Ω' : '')}`,
+    const SCRIPT_NAME = `URC-E${(/beta/.test(GM_info.script.name) ? ' β' : /\(DEV\)/i.test(GM_info.script.name) ? ' Ω' : '')}`,
         SCRIPT_AUTHOR = GM_info.script.author,
         SCRIPT_GF_URL = 'https://greasyfork.org/en/scripts/375430-wme-urcomments-enhanced',
         SCRIPT_FORUM_URL = 'https://www.waze.com/forum/viewtopic.php?f=819&t=275608',
@@ -76,7 +76,8 @@
             '<b>CHANGE:</b> New bootstrap routine.',
             '<b>CHANGE:</b> Updated code to use optional chaining.',
             '<b>CHANGE:</b> Utilize @match instead of @include in userscript headers.',
-            '<b>CHANGE:</b> Code cleanup.'
+            '<b>CHANGE:</b> Code cleanup.',
+            '<b>CHANGE:</b> Prep for future WazeWrap change.'
         ],
         DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
         DEBUG = true,
@@ -1436,7 +1437,7 @@
             }
         }
         if (replaceVars && (urId > -1)) {
-            if (text.search(/(\$(CURRENTDATE_DAY_OF_WEEK|CURRENTDATE_DATE|CURRENTDATE_DATE_CASUAL|CURRENTDATE_TIME|CURRENTDATE_TIME_CASUAL)\$)/gm) > -1) {
+            if (/(\$(CURRENTDATE_DAY_OF_WEEK|CURRENTDATE_DATE|CURRENTDATE_DATE_CASUAL|CURRENTDATE_TIME|CURRENTDATE_TIME_CASUAL)\$)/gm.test(text)) {
                 if (text.indexOf('$CURRENTDATE_DAY_OF_WEEK$') > -1)
                     text = text.replace('$CURRENTDATE_DAY_OF_WEEK$', new Date().toLocaleDateString(I18n.currentLocale(), { weekday: 'long' }));
                 if (text.indexOf('$CURRENTDATE_DATE$') > -1)
@@ -1448,7 +1449,7 @@
                 if (text.indexOf('$CURRENTDATE_TIME_CASUAL$') > -1)
                     text = text.replace('$CURRENTDATE_TIME_CASUAL$', convertTimeOfDayToCasual(new Date().getHours()));
             }
-            if (text.search(/(\$(DRIVEDATE_DAY_OF_WEEK|DRIVEDATE_DATE|DRIVEDATE_DATE_CASUAL|DRIVEDATE_DAYS_AGO|DRIVEDATE_TIME|DRIVEDATE_TIME_CASUAL|DRIVEDATE_TIME_CASUALMODE)\$)/gm) > -1) {
+            if (/(\$(DRIVEDATE_DAY_OF_WEEK|DRIVEDATE_DATE|DRIVEDATE_DATE_CASUAL|DRIVEDATE_DAYS_AGO|DRIVEDATE_TIME|DRIVEDATE_TIME_CASUAL|DRIVEDATE_TIME_CASUALMODE)\$)/gm.test(text)) {
                 if (W.model.mapUpdateRequests.objects[urId]) {
                     if (text.indexOf('$DRIVEDATE_DAY_OF_WEEK$') > -1) {
                         if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1) {
@@ -1682,7 +1683,7 @@
             useCurrVal = false,
             replaceText;
         if (shortcut === 'selSegs') {
-            if (currVal.search(/\$SELSEGS(\$|_WITH_CITY\$)?/) > -1) {
+            if (/\$SELSEGS(\$|_WITH_CITY\$)?/.test(currVal)) {
                 useCurrVal = true;
                 replaceText = currVal;
             }
@@ -1746,7 +1747,7 @@
             replaceText = '$CUSTOMTAGLINE$';
         }
         else if (shortcut === 'placeName') {
-            if (currVal.search(/\$PLACE_NAME\$/) > -1) {
+            if (/\$PLACE_NAME\$/.test(currVal)) {
                 useCurrVal = true;
                 replaceText = currVal;
             }
@@ -1755,7 +1756,7 @@
             }
         }
         else if (shortcut === 'placeAddress') {
-            if (currVal.search(/\$PLACE_ADDRESS\$/) > -1) {
+            if (/\$PLACE_ADDRESS\$/.test(currVal)) {
                 useCurrVal = true;
                 replaceText = currVal;
             }
@@ -1771,7 +1772,7 @@
             return;
         }
         let outputText = formatText(replaceText, true, true, -1);
-        if ((((shortcut === 'selSegs') || (shortcut === 'selSegsWithCity')) && (outputText.search(/\$SELSEGS\$?/gm) > -1))
+        if ((((shortcut === 'selSegs') || (shortcut === 'selSegsWithCity')) && /\$SELSEGS\$?/gm.test(outputText))
             || ((shortcut === 'placeName') && (outputText.indexOf('$PLACE_NAME$') > -1))
             || ((shortcut === 'placeAddress') && (outputText.indexOf('$PLACE_ADDRESS$') > -1))
         ) {
@@ -1779,10 +1780,10 @@
             return;
         }
         if (outputText && !useCurrVal) {
-            if ((newVal.length > 0) && (newVal.slice(-1).search(/\s/) === -1))
+            if ((newVal.length > 0) && !/\s/.test(newVal.slice(-1)))
                 outputText = ` ${outputText}`;
             if (currVal.slice(cursorPos).length > 0) {
-                if ((currVal.substr(cursorPos, 1).search(/[\t\f\v ]/) === -1))
+                if (!/[\t\f\v ]/.test(currVal.substr(cursorPos, 1)))
                     outputText = `${outputText} `;
             }
             newVal = `${newVal}${outputText}${currVal.slice(cursorPos)}`;
@@ -1828,7 +1829,7 @@
         return new Promise((resolve, reject) => {
             const comment = formatText(_commentList[_defaultComments.dr.commentNum].comment, true, false, urId);
             try {
-                if ((comment.search(/\B\$\S*\$\B/gm) > -1) || (comment.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) > -1))
+                if (/\B\$\S*\$\B/gm.test(comment) || /(\$SELSEGS|\$USERNAME|\$URD)/gm.test(comment))
                     throw new Error(`Did not auto-post reminder comment for urId ${urId} because a variable was not replaced.`);
                 W.model.updateRequestSessions.objects[urId].addComment(comment);
                 W.model.mapUpdateRequests.objects[urId].attributes.reminderSent = true;
@@ -1858,8 +1859,8 @@
             newCursorPos = cursorPos;
             const currVal = $domElement.val();
             let newVal = currVal.slice(0, cursorPos);
-            if ((newVal.length > 0) && (newVal.slice(-1).search(/[\n\r]/) > -1)) {
-                if (newVal.slice(-2, -1).search(/[\n\r]/) === -1) {
+            if ((newVal.length > 0) && /[\n\r]/.test(newVal.slice(-1))) {
+                if (!/[\n\r]/.test(newVal.slice(-2, -1))) {
                     newVal += '\n';
                     newCursorPos++;
                 }
@@ -1870,8 +1871,8 @@
             }
             newVal += formatText(comment, true, false, -1);
             if (currVal.slice(cursorPos).length > 0) {
-                if (currVal.substr(cursorPos, 1).search(/[\n\r]/) > -1) {
-                    if (currVal.substr(cursorPos + 1, 1).search(/[\n\r]/) === -1) {
+                if (/[\n\r]/.test(currVal.substr(cursorPos, 1))) {
+                    if (!/[\n\r]/.test(currVal.substr(cursorPos + 1, 1))) {
                         newVal += '\n';
                         postNls++;
                     }
@@ -1924,7 +1925,7 @@
                 }
                 $domElement[0].dispatchEvent(new Event('input'));
             }
-            if (doubleClick && (commentOutput.search(/\B\$\S*\$\B/gm) === -1) && (commentOutput.search(/(\$SELSEGS|\$USERNAME|\$URD)/gm) === -1)) {
+            if (doubleClick && !/\B\$\S*\$\B/gm.test(commentOutput) && !/(\$SELSEGS|\$USERNAME|\$URD)/gm.test(commentOutput)) {
                 $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
                 if ($domElement)
                     $domElement.blur();
@@ -2745,30 +2746,30 @@
                     }
                     // eslint-disable-next-line no-control-regex
                     urceData.fullText = urceData.fullText.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, ' ');
-                    urceData.tagType = (urceData.fullText.search(tagRegex) > -1) ? urceData.fullText.replace(tagRegex, '$1') : -1;
+                    urceData.tagType = tagRegex.test(urceData.fullText) ? urceData.fullText.replace(tagRegex, '$1') : -1;
                     if (urceData.tagType !== -1) {
                         urceData.customType = convertTagToCustomType(urceData.tagType);
                     }
                     else if (chunk[idx].attributes.type === 23) {
                         urceData.customType = 98;
                     }
-                    else if (_settings.customMarkersCustom && (_settings.customMarkersCustomText.length > 0) && (urceData.fullText.search(new RegExp(`\\[${_settings.customMarkersCustomText.replace(/[[\]]+/gim, '')}\\]`)) > -1)) {
+                    else if (_settings.customMarkersCustom && (_settings.customMarkersCustomText.length > 0) && new RegExp(`\\[${_settings.customMarkersCustomText.replace(/[[\]]+/gim, '')}\\]`).test(urceData.fullText)) {
                         urceData.tagType = 99;
                         urceData.customType = 99;
                     }
                     else {
                         urceData.customType = -1;
                     }
-                    if (keywordIncludingRegex && (urceData.fullText.search(keywordIncludingRegex) > -1))
+                    if (keywordIncludingRegex && keywordIncludingRegex.test(urceData.fullText))
                         urceData.keywordIncluding = true;
-                    if (keywordNotIncludingRegex && (urceData.fullText.search(keywordNotIncludingRegex) === -1))
+                    if (keywordNotIncludingRegex && !keywordNotIncludingRegex.test(urceData.fullText))
                         urceData.keywordNotIncluding = true;
                     if ((urceData.tagType === -1) && (chunk[idx].attributes.type === 23))
                         urceData.customType = 98;
                     else if (urceData.tagType === -1)
                         urceData.customType = -1;
                     if ((urceData.tagType === -1) || _settings.replaceTagNameWithEditorName) {
-                        if (_settings.replaceTagNameWithEditorName && (urceData.fullText.search(tagUsernameRegex) > -1))
+                        if (_settings.replaceTagNameWithEditorName && tagUsernameRegex.test(urceData.fullText))
                             urceData.tagType = W.loginManager.user.userName;
                         else if (!urceData.tagType)
                             urceData.tagType = -1;
@@ -3351,7 +3352,7 @@
                     data[0] = ['URCE'];
                     data[1] = ['2018.11.28.01'];
                     data[2] = ['TITLE|COMMENT|URSTATUS|DR|DC|IT|IA|IR|MRA|GE|TNA|IJ|MBO|WDD|ME|MR|ML|BR|MSN|ISPS|SL'];
-                    if ((oldUrcArr[0].search(/<br>/gi) === -1) && (oldUrcArr[2] !== '')) {
+                    if (!/<br>/gi.test(oldUrcArr[0]) && (oldUrcArr[2] !== '')) {
                         data[3] = ['||GROUP TITLE||||||||||||||||||'];
                         entryIdx = 4;
                     }
@@ -3359,7 +3360,7 @@
                         entryIdx = 3;
                     }
                     for (let oldUrcArrIdx = 0; oldUrcArrIdx < oldUrcArr.length; oldUrcArrIdx += 3) {
-                        if ((oldUrcArr[oldUrcArrIdx].search(/<br>/gi) > -1) || (oldUrcArr[oldUrcArrIdx + 2] === '')) {
+                        if (/<br>/gi.test(oldUrcArr[oldUrcArrIdx]) || (oldUrcArr[oldUrcArrIdx + 2] === '')) {
                             oldUrcArr[oldUrcArrIdx + 2] = 'GROUP TITLE';
                             oldUrcArr[oldUrcArrIdx] = $('<div>').html(oldUrcArr[oldUrcArrIdx]).text();
                         }
@@ -4879,13 +4880,13 @@
                     + '     <div class="tab-pane active" id="panel-urce-comments"></div>'
                     + '     <div class="tab-pane" id="panel-urce-settings"></div>'
                     + '     <div class="tab-pane" id="panel-urce-tools"></div>'
-                    + '</div></span>';
-            if (SCRIPT_NAME.indexOf('β') > -1)
+                    + '</div></span>',
+                wwTab = WazeWrap.Interface.Tab;
+            if (/^\s*class\s+/.test(wwTab.toString()))
                 // eslint-disable-next-line no-new
-                new WazeWrap.Interface.Tab('URC-E β', htmlOut, initTab, undefined);
+                new WazeWrap.Interface.Tab(`URC-E${(/β/.test(SCRIPT_NAME) ? ' β' : '')}`, htmlOut, initTab);
             else
-                // eslint-disable-next-line no-new
-                new WazeWrap.Interface.Tab('URC-E', htmlOut, initTab, undefined);
+                WazeWrap.Interface.Tab(`URC-E${(/β/.test(SCRIPT_NAME) ? ' β' : '')}`, htmlOut, initTab);
             showScriptInfoAlert();
             resolve();
         });
