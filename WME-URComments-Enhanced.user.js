@@ -4882,7 +4882,7 @@
                     + '     <div class="tab-pane" id="panel-urce-tools"></div>'
 
                     + '</div></span></div>';
-                wwTab = WazeWrap.Interface.Tab;
+            const wwTab = WazeWrap.Interface.Tab;
             if (/^\s*class\s+/.test(wwTab.toString()))
                 // eslint-disable-next-line no-new
                 new WazeWrap.Interface.Tab(`URC-E${(/β/.test(SCRIPT_NAME) ? ' β' : '')}`, htmlOut, initTab);
