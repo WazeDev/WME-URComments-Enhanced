@@ -71,7 +71,7 @@
         SETTINGS_STORE_NAME = 'WME_URC-E',
         ALERT_UPDATE = true,
         SCRIPT_VERSION = GM_info.script.version,
-        SCRIPT_VERSION_CHANGES = ['<b>NEW: Close button for UR marker mouseover popup.',
+        SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Close button for UR marker mouseover popup.',
             '<b>NEW:</b> Link to disable UR marker mouseover popups within popup.',
             '<b>CHANGE:</b> New bootstrap routine.',
             '<b>CHANGE:</b> Updated code to use optional chaining.',
