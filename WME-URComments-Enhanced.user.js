@@ -4837,7 +4837,7 @@
         initCommentsTab();
         initToolsTab();
         if ($('img#urceIcon').length === 0) {
-            $('a[href="#sidepanel-urc-e"]').text('').attr('title', 'URC-E').prepend(
+            $('a > span:contains("URC-E")').text('').attr('title', 'URC-E').prepend(
                 `<img id="urceIcon" class="URCE-tabIcon" src="${GM_info.script.icon}">`
             ).append(
                 `<span id="urceUrMarkerProcessingSpinner" class="fa fa-spinner URCE-spinner" title="${I18n.t('urce.mouseOver.URMarkerProcessingInactive')}"></span>`,
