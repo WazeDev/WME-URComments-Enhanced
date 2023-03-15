@@ -4092,7 +4092,7 @@
             + '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:11px; color:#aaa; }'
             + '#sidepanel-urc-e .URCE-divTabs { padding:0px 0px 0px 15px; }'
             + '#sidepanel-urc-e .URCE-navTabs { padding:0px 0px 0px 15px; }'
-            + '#sidepanel-urc-e { width:300px !important; padding: 6px 0px 0px 0px !important; }'
+            + '#sidepanel-urc-e { padding: 0px 15px 0px 0px !important; }'
             + '#panel-urce-comments { padding: 0px !important; width:100% !important; }'
             + '#panel-urce-settings { padding: 0px !important; width:100% !important; }'
             + '#panel-urce-tools { padding: 0px !important; width:100% !important; }'
@@ -4870,7 +4870,7 @@
                 hidePopup(true);
                 $('#_cbdisableUrMarkerPopup').click();
             });
-            const htmlOut = `<span class="URCE-spanTitle">${SCRIPT_NAME}</span><span class="URCE-spanVersion">${SCRIPT_VERSION}</span>`
+            const htmlOut = `<div id="sidepanel-urc-e"><span class="URCE-spanTitle">${SCRIPT_NAME}</span><span class="URCE-spanVersion">${SCRIPT_VERSION}</span>`
                     + '<div class="URCE-navTabs"><ul class="nav nav-tabs">'
                     + `     <li class="active"><a data-toggle="tab" href="#panel-urce-comments" aria-expanded="true">${I18n.t('urce.tabs.Comments')}</a></li>`
                     + `     <li><a data-toggle="tab" href="#panel-urce-settings" aria-expanded="true">${I18n.t('urce.tabs.Settings')}</a></li>`
@@ -4880,7 +4880,8 @@
                     + '     <div class="tab-pane active" id="panel-urce-comments"></div>'
                     + '     <div class="tab-pane" id="panel-urce-settings"></div>'
                     + '     <div class="tab-pane" id="panel-urce-tools"></div>'
-                    + '</div></span>',
+
+                    + '</div></span></div>';
                 wwTab = WazeWrap.Interface.Tab;
             if (/^\s*class\s+/.test(wwTab.toString()))
                 // eslint-disable-next-line no-new
