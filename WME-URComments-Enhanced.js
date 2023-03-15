@@ -4089,7 +4089,6 @@
             + '.URCE-spanVersion { font-size:11px; margin-left:11px; color:#aaa; }'
             + '.URCE-divTabs { padding:0px 0px 0px 15px; }'
             + '.URCE-navTabs { padding:0px 0px 0px 15px; }'
-            + '{ width:300px !important; padding: 6px 0px 0px 0px !important; }'
             + '#panel-urce-comments { padding: 0px !important; width:100% !important; }'
             + '#panel-urce-settings { padding: 0px !important; width:100% !important; }'
             + '#panel-urce-tools { padding: 0px !important; width:100% !important; }'
@@ -4834,7 +4833,7 @@
         initCommentsTab();
         initToolsTab();
         $('img#urceIcon').parents('li').attr('title', 'URC-E');
-        $('div#urce-tab-content').parents('section').css({ width: 'auto', padding: '5px' });
+        $('div#urce-tab-content').parents('section').css({ width: '300px', padding: '5px' });
         $('span#urceUrFilteringToggleBtn').on('click', (evt) => {
             evt.stopPropagation();
             $('#_cbenableUrceUrFiltering').click();
