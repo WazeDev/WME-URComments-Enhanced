@@ -1351,8 +1351,10 @@
 
     function autoZoomOut() {
         if (_restoreZoom && !$(W.map.getOLMap().div).hasClass('problem-selected')) {
-            if (_restoreZoom !== W.map.olMap.getZoom())
+            if (_restoreZoom !== W.map.olMap.getZoom()) {
                 W.map.getOLMap().zoomTo(_restoreZoom);
+                _restoreZoom = null;
+            }
         }
     }
 
