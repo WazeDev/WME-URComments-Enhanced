@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.03.14.01
+// @version     2023.03.14.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -77,7 +77,7 @@
             '<b>CHANGE:</b> Updated code to use optional chaining.',
             '<b>CHANGE:</b> Utilize @match instead of @include in userscript headers.',
             '<b>CHANGE:</b> Code cleanup.',
-            '<b>CHANGE:</b> Prep for future WazeWrap change.'
+            '<b>CHANGE:</b> WazeWrap compatibility.'
         ],
         DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
         DEBUG = true,
@@ -110,32 +110,33 @@
         },
         _restrictions = {},
         _spinners = {
+            buildCommentList: false,
+            changeCommentList: false,
+            checkMarkerStacking: false,
             checkRestrictions: false,
             handleAfterCommentMutation: false,
-            handleUpdateRequestContainer: false,
             handleClickedShortcut: false,
-            postUrComment: false,
-            checkMarkerStacking: false,
-            markerMouseDown: false,
+            handleUpdateRequestContainer: false,
             handleUrLayer: false,
             handleUrOverflow: false,
-            changeCommentList: false,
-            buildCommentList: false,
-            init: false
+            init: false,
+            markerMouseDown: false,
+            postUrComment: false
         },
         _timeouts = {
+            autoCloseUrPanel: undefined,
+            autoScrollComments: undefined,
+            checkForStaticListArray: undefined,
             checkRestrictions: {},
             getMapUrsAsync: {},
             getOverflowUrsFromUrl: {},
+            initUrIdInUrl: undefined,
             isDomElementReady: {},
             isPanelReady: {},
-            saveSettingsToStorage: undefined,
-            popupDelay: undefined,
+            onWmeReady: undefined,
             popup: undefined,
-            checkForStaticListArray: undefined,
-            initUrIdInUrl: undefined,
-            autoScrollComments: undefined,
-            autoCloseUrPanel: undefined
+            popupDelay: undefined,
+            saveSettingsToStorage: undefined
         },
         // URO+ Alt Markers, courtesy of URO+. Thank you!
         uroAltMarkers = [
@@ -1246,7 +1247,7 @@
         }
         _restoreTab = _restoreTab || $('#user-tabs .nav-tabs .active > a').first()[0];
         _restoreTabPosition = _restoreTabPosition || $($('#user-info .tab-content')[0]).scrollTop();
-        document.querySelector('a[href="#sidepanel-urc-e"]').dispatchEvent(new MouseEvent('click', {
+        document.querySelector('img#urceIcon').closest('a[href^="#userscript"').dispatchEvent(new MouseEvent('click', {
             view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
         }));
         document.querySelector('a[href="#panel-urce-comments"]').dispatchEvent(new MouseEvent('click', {
@@ -3125,17 +3126,13 @@
         if (unmask) {
             $(`#urceTabLightbox-${phase}`).remove();
             $(`#urPanelLightbox-${phase}`).remove();
+            $('div#urce-tab-content').parents('section').css('position', '');
         }
         else if (!unmask) {
             if ($(`#urceTabLightbox-${phase}`).length === 0) {
-                $('#sidepanel-urc-e').css('position', 'relative');
                 const $urceTabDisabled = $('<div>', { id: `urceTabLightbox-${phase}`, style: `position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.75); color:white; z-index:${zIndex};` });
                 $urceTabDisabled.html(`<div style="text-align:center; padding-top:200px; width:290px; position:fixed; font-weight:800;">${message}</div>`);
-                const $domElement = await getDomElement('#sidepanel-urc-e');
-                if (!$domElement)
-                    handleReadyError(false, false, '', false, 'Timed out trying to add mask to URCE side panel.');
-                else
-                    $domElement.prepend($urceTabDisabled);
+                $('div#urce-tab-content').parents('section').prepend($urceTabDisabled).css('position', 'relative');
             }
             if (maskUrPanel && ($(`#urPanelLightbox-${phase}`).length === 0)) {
                 const $domElement = await getDomElement('#panel-container .mapUpdateRequest.panel.show');
@@ -3989,70 +3986,70 @@
         logDebug('Injecting CSS.');
         $('<style = type="text/css">'
             // Comments tab
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:11px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-commentListName { padding-top:5px; font-size:10px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:12px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-icon { cursor:default; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment { padding:0px 4px 0px 4px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:before, #sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:after { '
+            + '#panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:11px; }'
+            + '#panel-urce-comments .URCE-commentListName { padding-top:5px; font-size:10px; }'
+            + '#panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:12px; }'
+            + '#panel-urce-comments .URCE-divCCLinks { text-align:center; }'
+            + '#panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }'
+            + '#panel-urce-comments .URCE-icon { cursor:default; }'
+            + '#panel-urce-comments .URCE-divComment { padding:0px 4px 0px 4px; }'
+            + '#panel-urce-comments .URCE-divComment:before, #panel-urce-comments .URCE-divComment.hover:after { '
             + '     content:""; position:absolute; bottom:-2px; width:0px; height:2px; transition:all 0.2s ease-in-out; transition-duration:0.5s; opacity:0;'
             + '}'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:before { left:calc(50%); background-color:#000000; margin-right:5px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:after { right:calc(50%); background-color:#000000; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:before { left:calc(50%); background-color:#008F00; margin-right:5px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:after { right:calc(50%); background-color:#008F00;}'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:before { left:calc(50%); background-color:#E68A00; margin-right:5px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:after { right:calc(50%); background-color:#E68A00; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover { cursor:pointer; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.URCE-blankLine:hover { cursor:default; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:hover:after { width:100%; opacity:1; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:hover:before { width:100%; opacity:1; margin-right:5px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover.expand:after { width:50%; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover.expand:before { width:50%; margin-right:5px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-solvedLink { color:#008F00; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-niLink { color:#E68A00; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-openLink { color:#000000; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-top:4px; height:14px; float:right; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-group_body { line-height: 15px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-group_body.urStyle { padding-left:23px !important; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; position:absolute }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; padding-left:16px; }'
+            + '#panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:before { left:calc(50%); background-color:#000000; margin-right:5px; }'
+            + '#panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:after { right:calc(50%); background-color:#000000; }'
+            + '#panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:before { left:calc(50%); background-color:#008F00; margin-right:5px; }'
+            + '#panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:after { right:calc(50%); background-color:#008F00;}'
+            + '#panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:before { left:calc(50%); background-color:#E68A00; margin-right:5px; }'
+            + '#panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:after { right:calc(50%); background-color:#E68A00; }'
+            + '#panel-urce-comments .URCE-divComment.hover:hover { cursor:pointer; }'
+            + '#panel-urce-comments .URCE-divComment.hover.URCE-blankLine:hover { cursor:default; }'
+            + '#panel-urce-comments .URCE-divComment:hover:after { width:100%; opacity:1; }'
+            + '#panel-urce-comments .URCE-divComment:hover:before { width:100%; opacity:1; margin-right:5px; }'
+            + '#panel-urce-comments .URCE-divComment.hover:hover.expand:after { width:50%; }'
+            + '#panel-urce-comments .URCE-divComment.hover:hover.expand:before { width:50%; margin-right:5px; }'
+            + '#panel-urce-comments .URCE-solvedLink { color:#008F00; }'
+            + '#panel-urce-comments .URCE-niLink { color:#E68A00; }'
+            + '#panel-urce-comments .URCE-openLink { color:#000000; }'
+            + '#panel-urce-comments .URCE-doubleClickIcon { padding-top:4px; height:14px; float:right; }'
+            + '#panel-urce-comments .URCE-divDoubleClick { display:inline; }'
+            + '#panel-urce-comments .URCE-span { cursor:pointer; }'
+            + '#panel-urce-comments .URCE-group_body { line-height: 15px; }'
+            + '#panel-urce-comments .URCE-group_body.urStyle { padding-left:23px !important; }'
+            + '#panel-urce-comments .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; }'
+            + '#panel-urce-comments .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; padding-left:16px; }'
             // Settings tab
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-divDefaultSettings {'
+            + '#panel-urce-settings .URCE-divDefaultSettings {'
             + '     background-color:lightgray; border-top:1px solid gray; border-bottom:1px solid gray; margin-top:8px; text-align:center; font-size:10px; font-weight:600;'
             + '     text-transform:uppercase;'
             + '}'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-daysInput { width:38px; height:20px; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-textInput { width:175px; height:20px; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-textInput2 { width:75px; height:20px; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:10px;}'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-subHeading { font-weight:600; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 16px !important; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst.urceDisabled, .URCE-controls.URCE-textFirst.urceDisabled, div.URCE-label.urceDisabled { color:#808080; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline { display:inline; padding-left:3px; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline.urceDisabled { display:inline; padding-left:2px; cursor:default; color:#808080; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; position:absolute }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"][disabled] { margin:2px; vertical-align:middle; cursor:default; position:absolute; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls select { height:22px; vertical-align:middle; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; padding-left:16px; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080;  display:inline-block; position:relative; padding-left:16px; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:11px; text-align:right; }'
+            + '#panel-urce-settings .URCE-divWarningPre { margin-left:3px; }'
+            + '#panel-urce-settings .URCE-divWarning { display:inline; }'
+            + '#panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }'
+            + '#panel-urce-settings .URCE-daysInput { width:38px; height:20px; }'
+            + '#panel-urce-settings .URCE-textInput { width:175px; height:20px; }'
+            + '#panel-urce-settings .URCE-textInput2 { width:75px; height:20px; }'
+            + '#panel-urce-settings .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }'
+            + '#panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:10px;}'
+            + '#panel-urce-settings .URCE-controls .URCE-subHeading { font-weight:600; }'
+            + '#panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 16px !important; }'
+            + '#panel-urce-settings .URCE-controls .URCE-textFirst.urceDisabled, .URCE-controls.URCE-textFirst.urceDisabled, div.URCE-label.urceDisabled { color:#808080; }'
+            + '#panel-urce-settings .URCE-controls .URCE-divDaysInline { display:inline; padding-left:3px; }'
+            + '#panel-urce-settings .URCE-controls .URCE-divDaysInline.urceDisabled { display:inline; padding-left:2px; cursor:default; color:#808080; }'
+            + '#panel-urce-settings .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; }'
+            + '#panel-urce-settings .URCE-controls input[type="checkbox"][disabled] { margin:2px; vertical-align:middle; cursor:default; }'
+            + '#panel-urce-settings .URCE-controls select { height:22px; vertical-align:middle; }'
+            + '#panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; }'
+            + '#panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080;  display:inline-block; position:relative; }'
+            + '#panel-urce-settings .URCE-spreadsheetLink { font-size:11px; text-align:right; }'
             // Tools tab
-            + '#sidepanel-urc-e #panel-urce-tools .URCE-divCC { text-align:center; }'
-            + '#sidepanel-urc-e #panel-urce-tools .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }'
-            + '#sidepanel-urc-e #panel-urce-tools .urceToolsButtonFile {'
+            + '#panel-urce-tools .URCE-divCC { text-align:center; }'
+            + '#panel-urce-tools .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }'
+            + '#panel-urce-tools .urceToolsButtonFile {'
             + '     font-size:11px; background-color:lightgray; border:1px solid gray; cursor:default; height:22px; margin-top:6px; border-radius:4px;'
             + '}'
-            + '#sidepanel-urc-e #panel-urce-tools .URCE-divRestoreFileError { font-weight:600; margin:6px; font-size:11px; text-align:left; }'
-            + '#sidepanel-urc-e #panel-urce-tools #urceGSheetCreateConvert { margin-top:5px; }'
+            + '#panel-urce-tools .URCE-divRestoreFileError { font-weight:600; margin:6px; font-size:11px; text-align:left; }'
+            + '#panel-urce-tools #urceGSheetCreateConvert { margin-top:5px; }'
             // disable WME
             + '#urce-disableWme.URCE-disableWme-main { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:2000; }'
             + '#urce-disableWme #urce-disableWme-text.URCE-disableWme-text {'
@@ -4070,29 +4067,29 @@
             + '     font-size:11px; margin-left:10px; background-color:lightgray; border:none !important; cursor:default; height:22px; border-radius:4px; border:1px solid gray;'
             + '}'
             + '.urceToolsButton.active, .urceToolsButtonFile:hover, .urceToolsButton:hover { background-color:gray !important; }'
-            + '#sidepanel-urc-e .URCE-divDismiss {'
+            + '.URCE-divDismiss {'
             + '     display:inline-block; float:right; width:16px; height:16px; margin-top:-12px; border-radius:50%; border:1px solid black; background-color:white; text-align:center; cursor:pointer;'
             + '}'
-            + '#sidepanel-urc-e .URCE-divWarningBox { background-color:indianred; border:1px solid silver; margin:6px 0 6px 0; font-size:12px; border-radius:4px; padding:5px; font-weight:600; }'
-            + '#sidepanel-urc-e .URCE-expandCollapseAll { font-size:10px; margin-bottom:-10px; text-align:right; }'
-            + '#sidepanel-urc-e .URCE-expandCollapseAll.urStyle { margin-bottom:unset !important; }'
-            + '#sidepanel-urc-e .URCE-expandCollapseAllItem { display:inline; cursor:pointer; }'
-            + '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:12px; margin-right:4px; }'
-            + '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; }'
-            + '#sidepanel-urc-e .URCE-field.urStyle { border:unset !important; padding:unset !important; border-radius:unset !important; }'
-            + '#sidepanel-urc-e .URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }'
-            + '#sidepanel-urc-e .URCE-legend.urStyle {'
+            + '.URCE-divWarningBox { background-color:indianred; border:1px solid silver; margin:6px 0 6px 0; font-size:12px; border-radius:4px; padding:5px; font-weight:600; }'
+            + '.URCE-expandCollapseAll { font-size:10px; margin-bottom:-10px; text-align:right; }'
+            + '.URCE-expandCollapseAll.urStyle { margin-bottom:unset !important; }'
+            + '.URCE-expandCollapseAllItem { display:inline; cursor:pointer; }'
+            + '.URCE-chevron { cursor:pointer; font-size:12px; margin-right:4px; }'
+            + '.URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; }'
+            + '.URCE-field.urStyle { border:unset !important; padding:unset !important; border-radius:unset !important; }'
+            + '.URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }'
+            + '.URCE-legend.urStyle {'
             + '     border-bottom-style:unset !important; margin-bottom:2px !important; width:100% !important; background-color:#F6F7F7 !important; line-height:20px !important;'
             + '     padding:0 2px 0 2px !important; border-top:1px solid #C0C0C0 !important; border-bottom:1px solid #C0C0C0 !important;'
             + '}'
-            + '#sidepanel-urc-e .URCE-divCC { /* padding-top:2px !important; */ }'
-            + '#sidepanel-urc-e .URCE-label { white-space:pre-line; margin:0 0 0 0; }'
-            + '#sidepanel-urc-e .URCE-span { font-size:13px; font-weight:600; }'
-            + '#sidepanel-urc-e .URCE-spanTitle { padding-left:15px; font-size:14px; font-weight:600; }'
-            + '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:11px; color:#aaa; }'
-            + '#sidepanel-urc-e .URCE-divTabs { padding:0px 0px 0px 15px; }'
-            + '#sidepanel-urc-e .URCE-navTabs { padding:0px 0px 0px 15px; }'
-            + '#sidepanel-urc-e { width:300px !important; padding: 6px 0px 0px 0px !important; }'
+            + '.URCE-divCC { /* padding-top:2px !important; */ }'
+            + '.URCE-label { white-space:pre-line; margin:0 0 0 0; }'
+            + '.URCE-span { font-size:13px; font-weight:600; }'
+            + '.URCE-spanTitle { padding-left:15px; font-size:14px; font-weight:600; }'
+            + '.URCE-spanVersion { font-size:11px; margin-left:11px; color:#aaa; }'
+            + '.URCE-divTabs { padding:0px 0px 0px 15px; }'
+            + '.URCE-navTabs { padding:0px 0px 0px 15px; }'
+            + '{ width:300px !important; padding: 6px 0px 0px 0px !important; }'
             + '#panel-urce-comments { padding: 0px !important; width:100% !important; }'
             + '#panel-urce-settings { padding: 0px !important; width:100% !important; }'
             + '#panel-urce-tools { padding: 0px !important; width:100% !important; }'
@@ -4836,22 +4833,12 @@
         initSettingsTab();
         initCommentsTab();
         initToolsTab();
-        if ($('img#urceIcon').length === 0) {
-            $('a[href="#sidepanel-urc-e"]').text('').attr('title', 'URC-E').prepend(
-                `<img id="urceIcon" class="URCE-tabIcon" src="${GM_info.script.icon}">`
-            ).append(
-                `<span id="urceUrMarkerProcessingSpinner" class="fa fa-spinner URCE-spinner" title="${I18n.t('urce.mouseOver.URMarkerProcessingInactive')}"></span>`,
-                $('<span>', {
-                    class: 'fa fa-filter URCE-urFilteringToggleBtn',
-                    id: 'urceUrFilteringToggleBtn',
-                    style: `color:${(_settings.enableUrceUrFiltering ? '#00bd00' : '#ccc')};`,
-                    title: I18n.t('urce.mouseOver.ToggleUrceURFiltering')
-                }).on('click', (evt) => {
-                    evt.stopPropagation();
-                    $('#_cbenableUrceUrFiltering').click();
-                })
-            );
-        }
+        $('img#urceIcon').parents('li').attr('title', 'URC-E');
+        $('div#urce-tab-content').parents('section').css({ width: 'auto', padding: '5px' });
+        $('span#urceUrFilteringToggleBtn').on('click', (evt) => {
+            evt.stopPropagation();
+            $('#_cbenableUrceUrFiltering').click();
+        });
     }
 
     function initGui() {
@@ -4871,22 +4858,20 @@
                 $('#_cbdisableUrMarkerPopup').click();
             });
             const htmlOut = `<span class="URCE-spanTitle">${SCRIPT_NAME}</span><span class="URCE-spanVersion">${SCRIPT_VERSION}</span>`
-                    + '<div class="URCE-navTabs"><ul class="nav nav-tabs">'
+                    + '<div id="urce-navtabs" class="URCE-navTabs"><ul class="nav nav-tabs">'
                     + `     <li class="active"><a data-toggle="tab" href="#panel-urce-comments" aria-expanded="true">${I18n.t('urce.tabs.Comments')}</a></li>`
                     + `     <li><a data-toggle="tab" href="#panel-urce-settings" aria-expanded="true">${I18n.t('urce.tabs.Settings')}</a></li>`
                     + `     <li><a data-toggle="tab" href="#panel-urce-tools" aria-expanded="true">${I18n.t('urce.tabs.Tools')}</a></li>`
                     + '</ul></div>'
-                    + '<div class="tab-content URCE-divTabs">'
+                    + '<div id="urce-tab-content" class="tab-content URCE-divTabs">'
                     + '     <div class="tab-pane active" id="panel-urce-comments"></div>'
                     + '     <div class="tab-pane" id="panel-urce-settings"></div>'
                     + '     <div class="tab-pane" id="panel-urce-tools"></div>'
                     + '</div></span>',
-                wwTab = WazeWrap.Interface.Tab;
-            if (/^\s*class\s+/.test(wwTab.toString()))
-                // eslint-disable-next-line no-new
-                new WazeWrap.Interface.Tab(`URC-E${(/β/.test(SCRIPT_NAME) ? ' β' : '')}`, htmlOut, initTab);
-            else
-                WazeWrap.Interface.Tab(`URC-E${(/β/.test(SCRIPT_NAME) ? ' β' : '')}`, htmlOut, initTab);
+                tabTitle = `<img id="urceIcon" class="URCE-tabIcon" src="${GM_info.script.icon}">`
+                    + `<span id="urceUrMarkerProcessingSpinner" class="fa fa-spinner URCE-spinner" title="${I18n.t('urce.mouseOver.URMarkerProcessingInactive')}"></span>`
+                    + `<span id="urceUrFilteringToggleBtn" class="fa fa-filter URCE-urFilteringToggleBtn" style="color:${(_settings.enableUrceUrFiltering ? '#00bd00' : '#ccc')};" title="${I18n.t('urce.mouseOver.ToggleUrceURFiltering')}">`;
+            WazeWrap.Interface.Tab(`URC-E${(/β/.test(SCRIPT_NAME) ? ' β' : '')}`, htmlOut, initTab, tabTitle);
             showScriptInfoAlert();
             resolve();
         });
@@ -5098,7 +5083,7 @@
         }
     }
 
-    async function onWmeReady() {
+    async function onWazeWrapReady() {
         log('Initializing.');
         _wmeUserId = W.loginManager.user.id;
         await loadSettingsFromStorage(false, false);
@@ -5156,10 +5141,27 @@
         });
     }
 
+    function onWmeReady(tries = 1) {
+        if (typeof tries === 'object')
+            tries = 1;
+        checkTimeout({ timeout: 'onWmeReady' });
+        if (WazeWrap?.Ready) {
+            logDebug('WazeWrap is ready. Proceeding with initialization.');
+            onWazeWrapReady();
+        }
+        else if (tries < 1000) {
+            logDebug(`WazeWrap is not in Ready state. Retrying ${tries} of 1000.`);
+            _timeouts.onWmeReady = window.setTimeout(onWmeReady, 200, ++tries);
+        }
+        else {
+            logError(new Error('onWmeReady timed out waiting for WazeWrap Ready state.'));
+        }
+    }
+
     function onWmeInitialized() {
         if (W.userscripts?.state?.isReady) {
             logDebug('W is ready and already in "wme-ready" state. Proceeding with initialization.');
-            onWmeReady();
+            onWmeReady(1);
         }
         else {
             logDebug('W is ready, but state is not "wme-ready". Adding event listener.');
