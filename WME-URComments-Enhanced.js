@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.03.21.01
+// @version     2023.03.24.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
-// @match       http*://*.waze.com/*editor*
-// @exclude     http*://*.waze.com/user/editor*
+// @match       *://*.waze.com/*editor*
+// @exclude     *://*.waze.com/user/editor*
 // @require     https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @author      dBsooner
 // @license     MIT/BSD/X11
@@ -73,7 +73,9 @@
         SCRIPT_VERSION = GM_info.script.version,
         SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Move scroll bar for comments / settings to only be for that div element.',
             '<b>CHANGE:</b> Use WME API to create userscripts tab.',
-            '<b>BUGFIX:</b> URC-E not catching UR correctly when a UR panel is already open.'
+            '<b>CHANGE:</b> Auto-send reminder comments restricted to editors ranked 4 and above.',
+            '<b>BUGFIX:</b> URC-E not catching UR correctly when a UR panel is already open.',
+            '<b>BUGFIX:</b> Auto-send reminder comments sending to URs not on screen in certain situations.'
         ],
         DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
         DEBUG = true,
@@ -2634,7 +2636,8 @@
         let reopenPanel = false;
         if (!mUrsObjArr)
             return Promise.resolve();
-        const processMUrObjs = [...mUrsObjArr],
+        const eg = W.map.getExtent().toGeometry(),
+            processMUrObjs = [...mUrsObjArr],
             reminderDays = _restrictionsEnforce.reminderDays || _settings.perCommentListSettings[_currentCommentList].reminderDays || 0,
             closeDays = _restrictionsEnforce.closeDays || _settings.perCommentListSettings[_currentCommentList].closeDays || 7,
             tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim,
@@ -2692,6 +2695,7 @@
                         commentCount: urSessionsObj.comments.length,
                         commentsByMe: false,
                         commentUserIds: [],
+                        containsSquareBrackets: false,
                         customType: -1,
                         driveDaysOld: (chunk[idx].attributes.driveDate) ? uroDateToDays(chunk[idx].attributes.driveDate) : -1,
                         firstCommentBy: -2,
@@ -2701,6 +2705,7 @@
                         hideUr: false,
                         hideWithCommentBy: false,
                         hideWithoutCommentBy: false,
+                        inMapExtent: eg.intersects(chunk[idx].attributes.geometry),
                         keywordIncluding: false,
                         keywordNotIncluding: false,
                         lastCommentBy: -2,
@@ -2722,6 +2727,8 @@
                             urceData.fullText += `${urSessionsObj.comments[commentIdx].text} `;
                             urceData.commentUserIds.push(urSessionsObj.comments[commentIdx].userID);
                         }
+                        if (/\[\s*\S+[\s\S]+\]/m.test(urceData.fullText))
+                            urceData.containsSquareBrackets = true;
                         if (urceData.commentUserIds.indexOf(_wmeUserId) > -1)
                             urceData.commentsByMe = true;
                         if (urceData.commentUserIds.indexOf(-1) > -1)
@@ -2733,6 +2740,9 @@
                                     && _defaultComments.dr.commentNum
                                     && (urceData.lastCommentBy > 1)
                                     && (_wmeUserId === urceData.lastCommentBy)
+                                    && urceData.inMapExtent
+                                    && !urceData.containsSquareBrackets
+                                    && (W.loginManager.user.rank > 3)
                                     && !chunk[idx].attributes.reminderSent
                                 )
                                     autoSendReminder = true;
@@ -4149,6 +4159,7 @@
             + '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:11px; color:#aaa; }'
             + '#sidepanel-urc-e .URCE-divTabs { padding-right:5px; height:calc(100vh - var(--height-offset)); }'
             + '#sidepanel-urc-e .URCE-navTabs { padding:0 0 6px; }'
+            + '#sidepanel-urc-e .URCE-navTabs li { flex-grow:1; }' // Compatibility with FUME "Compress/enhance side panel contents" setting
             + '#panel-urce-comments { padding: 0px !important; width:100% !important; }'
             + '#panel-urce-settings { padding: 0px !important; width:100% !important; }'
             + '#panel-urce-tools { padding: 0px !important; width:100% !important; }'
@@ -5395,7 +5406,7 @@
                                         + 'Identified.',
                             AutoSendReminders: 'Auto send reminders',
                             AutoSendRemindersTitle: 'Automatically send the reminder comment to the URs in the map window (as you pan around) you were the last to comment on and it has reached the '
-                                        + 'days specified in "Reminder Days".',
+                                        + 'days specified in "Reminder Days". Restricted to editor rank 4+.',
                             AutoSendRemindersWarning: 'WARNING',
                             AutoSendRemindersWarningTitle: 'AUTOMATICALLY SEND REMINDERS at the reminder days setting.\nThis only happens when they are visible on your screen.\n\nNOTE: When using '
                                         + 'this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to '
