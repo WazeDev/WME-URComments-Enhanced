@@ -73,7 +73,7 @@
         SCRIPT_VERSION = GM_info.script.version,
         SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Move scroll bar for comments / settings to only be for that div element.',
             '<b>CHANGE:</b> Use WME API to create userscripts tab.',
-            '<b>CHANGE:</b> Auto-send reminder comments restricted to editors ranked 4 and above.',
+            '<b>CHANGE:</b> Auto-send reminder comments restricted to editors ranked 4 and above (or 3 and above with AM).',
             '<b>BUGFIX:</b> URC-E not catching UR correctly when a UR panel is already open.',
             '<b>BUGFIX:</b> Auto-send reminder comments sending to URs not on screen in certain situations.'
         ],
@@ -2742,7 +2742,7 @@
                                     && (_wmeUserId === urceData.lastCommentBy)
                                     && urceData.inMapExtent
                                     && !urceData.containsSquareBrackets
-                                    && (W.loginManager.user.rank > 3)
+                                    && ((W.loginManager.user.rank > 3) || ((W.loginManager.user.rank > 2) && W.loginManager.user.isAreaManager))
                                     && !chunk[idx].attributes.reminderSent
                                 )
                                     autoSendReminder = true;
