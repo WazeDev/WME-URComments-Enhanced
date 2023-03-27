@@ -74,6 +74,7 @@
         SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Move scroll bar for comments / settings to only be for that div element.',
             '<b>CHANGE:</b> Use WME API to create userscripts tab.',
             '<b>CHANGE:</b> Auto-send reminder comments restricted to editors ranked 4 and above (or 3 and above with AM).',
+            '<b>CHANGE:</b> Auto-send reminder will not send to URs that contain a complete set of square brackets anywhere within text.',
             '<b>BUGFIX:</b> URC-E not catching UR correctly when a UR panel is already open.',
             '<b>BUGFIX:</b> Auto-send reminder comments sending to URs not on screen in certain situations.'
         ],
