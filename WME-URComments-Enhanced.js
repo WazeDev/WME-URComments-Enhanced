@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.03.15.01
+// @version     2023.03.27.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
-// @match       http*://*.waze.com/*editor*
-// @exclude     http*://*.waze.com/user/editor*
+// @match       *://*.waze.com/*editor*
+// @exclude     *://*.waze.com/user/editor*
 // @require     https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @author      dBsooner
 // @license     MIT/BSD/X11
@@ -71,13 +71,12 @@
         SETTINGS_STORE_NAME = 'WME_URC-E',
         ALERT_UPDATE = true,
         SCRIPT_VERSION = GM_info.script.version,
-        SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Close button for UR marker mouseover popup.',
-            '<b>NEW:</b> Link to disable UR marker mouseover popups within popup.',
-            '<b>CHANGE:</b> New bootstrap routine.',
-            '<b>CHANGE:</b> Updated code to use optional chaining.',
-            '<b>CHANGE:</b> Utilize @match instead of @include in userscript headers.',
-            '<b>CHANGE:</b> Code cleanup.',
-            '<b>CHANGE:</b> WazeWrap compatibility.'
+        SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Move scroll bar for comments / settings to only be for that div element.',
+            '<b>CHANGE:</b> Use WME API to create userscripts tab.',
+            '<b>CHANGE:</b> Auto-send reminder comments restricted to editors ranked 4 and above (or 3 and above with AM).',
+            '<b>CHANGE:</b> Auto-send reminder will not send to URs that contain a complete set of square brackets anywhere within text.',
+            '<b>BUGFIX:</b> URC-E not catching UR correctly when a UR panel is already open.',
+            '<b>BUGFIX:</b> Auto-send reminder comments sending to URs not on screen in certain situations.'
         ],
         DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=',
         DEBUG = false,
@@ -279,6 +278,27 @@
                 const $addedNode = $(newMarker.addedNodes[0]);
                 if (!$addedNode.data('urce_hasListeners'))
                     $addedNode.on({ mouseover: markerMouseOver, mouseout: markerMouseOut, click: markerClick }).data('urce_hasListeners', true);
+            });
+        }),
+        _urceSidepanelContentObserver = new MutationObserver((mutations) => {
+            if (mutations.some((mutation) => mutation.target.classList.contains('active')))
+                checkSidebarHeight();
+        }),
+        _userscriptsApiDocsLinkIntersectionObserver = new IntersectionObserver((entries) => {
+            if (entries.some((entry) => entry.isIntersecting)) {
+                checkSidebarHeight();
+                _userscriptsApiDocsLinkIntersectionObserver.disconnect();
+                _userscriptsApiDocsLinkIntersectionObserver.isObserving = false;
+            }
+        }, { root: document.documentElement }),
+        _userInfoTabContentObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (/^userscripts-api-docs-link-container/.test(node.className) && !_userscriptsApiDocsLinkIntersectionObserver.isObserving) {
+                        _userscriptsApiDocsLinkIntersectionObserver.observing = true;
+                        _userscriptsApiDocsLinkIntersectionObserver.observe(node);
+                    }
+                });
             });
         });
 
@@ -545,7 +565,7 @@
         });
         _timeouts.saveSettingsToStorage = window.setTimeout(saveSettingsToStorage, 5000);
         if (proceedWithRestore) {
-            initTab();
+            await initGui(false);
             await changeCommentList(parseInt(this.value), false, true);
             handleUrLayer('settingsToggle', undefined, getMapUrsObjArr());
             saveSettingsToStorage();
@@ -595,6 +615,20 @@
             if (_timeouts[obj.timeout])
                 window.clearTimeout(_timeouts[obj.timeout]);
             _timeouts[obj.timeout] = undefined;
+        }
+    }
+
+    async function checkSidebarHeight() {
+        const node = document.querySelector('#sidepanel-urc-e .URCE-divTabs'),
+            { top } = node.getBoundingClientRect(),
+            { scrollY, pageYOffset } = window,
+            { scrollTop } = document.body;
+        let offset = (top + (scrollY || pageYOffset || scrollTop)) || 0;
+        offset += document.querySelector('#user-info .userscripts-api-docs-link-container').offsetHeight;
+        offset += document.querySelector('#waze-map-container .wz-map-ol-footer').offsetHeight;
+        if (offset !== parseInt(getComputedStyle(node).getPropertyValue('--height-offset'))) {
+            logDebug(`Changing --height-offset to: ${offset}`);
+            node.style.setProperty('--height-offset', `${offset}px`);
         }
     }
 
@@ -680,7 +714,7 @@
         }
         if (spinnerStop)
             doSpinner(spinnerName, false);
-        if (reopenUrPanel && (parseInt($('.update-requests .selected').attr('data-id')) > 0))
+        if (reopenUrPanel && (parseInt($('.update-requests .marker-selected').attr('data-id')) > 0))
             openUrPanel(0, reopenUrPanel);
     }
 
@@ -890,11 +924,19 @@
     }
 
     async function handleAfterCloseUpdateContainer() {
+        _urPanelContainerObserver.disconnect();
         _urPanelContainerObserver.observe(document.getElementById('panel-container'), {
             childList: true, attributes: true, attributeOldValue: true, characterData: false, characterDataOldValue: false, subtree: true
         });
-        if (parseInt($('.update-requests .selected').data('id')) > 0)
-            return;
+        /**
+         * 2023.03.21
+         * Commented out because the marker is still selected when the panel is first closed.
+         * We need to go ahead and process the rest as it's important for the rest of our script. This will have a side effect of the zoom features being
+         * a little wonky.
+         * TODO: Find another way to know if we clicked a new UR marker with the current one still open OR if we truly closed the UR panel.
+         */
+        // if (parseInt($('.update-requests .marker-selected').data('id')) > 0)
+        //    return;
         const { urId, newStatus } = _selUr;
         _selUr = {
             doubleClick: false,
@@ -934,10 +976,10 @@
     async function handleUpdateRequestContainer() {
         if (!_commentListLoaded)
             return;
-        if ((parseInt($('.update-requests .selected').attr('data-id')) > 0)
-            && (!(_selUr.urId > 0) || (_selUr.urId !== parseInt($('.update-requests .selected').attr('data-id'))))
+        if ((parseInt($('.update-requests .marker-selected').attr('data-id')) > 0)
+            && (!(_selUr.urId > 0) || (_selUr.urId !== parseInt($('.update-requests .marker-selected').attr('data-id'))))
         ) {
-            _selUr.urId = parseInt($('.update-requests .selected').attr('data-id'));
+            _selUr.urId = parseInt($('.update-requests .marker-selected').attr('data-id'));
             logDebug(`Selected UR from handleURContainer: ${_selUr.urId}`);
         }
         if (_settings.replaceNextWithDoneButton && W.map.panelRegion.currentView.options.showNext) {
@@ -945,6 +987,7 @@
             return;
         }
         _selUr.handling = true;
+        _urPanelContainerObserver.disconnect();
         _urPanelContainerObserver.observe(document.getElementById('panel-container'), {
             childList: true, attributes: false, attributeOldValue: false, characterData: false, characterDataOldValue: false, subtree: false
         });
@@ -1266,7 +1309,7 @@
                     $($('#user-info .tab-content')[0]).scrollTop(_restoreTabPosition);
                 }
             }
-            else if (_restoreDrawerTab !== 'none-selected') {
+            else if (_restoreDrawerTab && _restoreDrawerTab !== 'none-selected') {
                 _restoreDrawerTab.dispatchEvent(new MouseEvent('click', {
                     view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
                 }));
@@ -2594,7 +2637,8 @@
         let reopenPanel = false;
         if (!mUrsObjArr)
             return Promise.resolve();
-        const processMUrObjs = [...mUrsObjArr],
+        const eg = W.map.getExtent().toGeometry(),
+            processMUrObjs = [...mUrsObjArr],
             reminderDays = _restrictionsEnforce.reminderDays || _settings.perCommentListSettings[_currentCommentList].reminderDays || 0,
             closeDays = _restrictionsEnforce.closeDays || _settings.perCommentListSettings[_currentCommentList].closeDays || 7,
             tagRegex = /^.*?\[(ROADWORKS|CONSTRUCTION|CLOSURE|EVENT|NOTE|WSLM|BOG|BOTG|DIFFICULT)\].*$/gim,
@@ -2652,6 +2696,7 @@
                         commentCount: urSessionsObj.comments.length,
                         commentsByMe: false,
                         commentUserIds: [],
+                        containsSquareBrackets: false,
                         customType: -1,
                         driveDaysOld: (chunk[idx].attributes.driveDate) ? uroDateToDays(chunk[idx].attributes.driveDate) : -1,
                         firstCommentBy: -2,
@@ -2661,6 +2706,7 @@
                         hideUr: false,
                         hideWithCommentBy: false,
                         hideWithoutCommentBy: false,
+                        inMapExtent: eg.intersects(chunk[idx].attributes.geometry),
                         keywordIncluding: false,
                         keywordNotIncluding: false,
                         lastCommentBy: -2,
@@ -2682,6 +2728,8 @@
                             urceData.fullText += `${urSessionsObj.comments[commentIdx].text} `;
                             urceData.commentUserIds.push(urSessionsObj.comments[commentIdx].userID);
                         }
+                        if (/\[\s*\S+[\s\S]+\]/m.test(urceData.fullText))
+                            urceData.containsSquareBrackets = true;
                         if (urceData.commentUserIds.indexOf(_wmeUserId) > -1)
                             urceData.commentsByMe = true;
                         if (urceData.commentUserIds.indexOf(-1) > -1)
@@ -2693,6 +2741,9 @@
                                     && _defaultComments.dr.commentNum
                                     && (urceData.lastCommentBy > 1)
                                     && (_wmeUserId === urceData.lastCommentBy)
+                                    && urceData.inMapExtent
+                                    && !urceData.containsSquareBrackets
+                                    && ((W.loginManager.user.rank > 3) || ((W.loginManager.user.rank > 2) && W.loginManager.user.isAreaManager))
                                     && !chunk[idx].attributes.reminderSent
                                 )
                                     autoSendReminder = true;
@@ -2795,7 +2846,7 @@
                                     needsReminder: false,
                                     waiting: true
                                 });
-                                if (parseInt($('.update-requests .selected').attr('data-id')) === _selUr.urId)
+                                if (parseInt($('.update-requests .marker-selected').attr('data-id')) === _selUr.urId)
                                     reopenPanel = true;
                                 updateMarkersArr.push(chunk[idx]);
                             }
@@ -3128,13 +3179,14 @@
         if (unmask) {
             $(`#urceTabLightbox-${phase}`).remove();
             $(`#urPanelLightbox-${phase}`).remove();
-            $('div#urce-tab-content').parents('section').css('position', '');
+            $('#sidepanel-urc-e').css('position', '');
         }
         else if (!unmask) {
             if ($(`#urceTabLightbox-${phase}`).length === 0) {
+                $('#sidepanel-urc-e').css('position', 'relative');
                 const $urceTabDisabled = $('<div>', { id: `urceTabLightbox-${phase}`, style: `position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.75); color:white; z-index:${zIndex};` });
                 $urceTabDisabled.html(`<div style="text-align:center; padding-top:200px; width:290px; position:fixed; font-weight:800;">${message}</div>`);
-                $('div#urce-tab-content').parents('section').prepend($urceTabDisabled).css('position', 'relative');
+                $('#sidepanel-urc-e').prepend($urceTabDisabled);
             }
             if (maskUrPanel && ($(`#urPanelLightbox-${phase}`).length === 0)) {
                 const $domElement = await getDomElement('#panel-container .mapUpdateRequest.panel.show');
@@ -3914,7 +3966,12 @@
                 await handleUrLayer('init', undefined, getMapUrsObjArr());
                 _initialUrLayerScan = false;
             }
-            if (!_saveButtonObserver.isObserving || !_urPanelContainerObserver.isObserving || !_urMarkerObserver.isObserving) {
+            if (!_saveButtonObserver.isObserving
+                || !_urPanelContainerObserver.isObserving
+                || !_urMarkerObserver.isObserving
+                || !_urceSidepanelContentObserver.isObserving
+                || !_userInfoTabContentObserver.isObserving
+            ) {
                 logDebug('Enabling MOs.');
                 if (!_saveButtonObserver.isObserving) {
                     _saveButtonObserver.observe($('#edit-buttons .waze-icon-save')[0], {
@@ -3933,6 +3990,18 @@
                         childList: true, attributes: false, attributeOldValue: false, characterData: false, characterDataOldValue: false, subtree: false
                     });
                     _urMarkerObserver.isObserving = true;
+                }
+                if (!_urceSidepanelContentObserver.isObserving) {
+                    _urceSidepanelContentObserver.observe($('#sidepanel-urc-e').parent()[0], {
+                        childList: false, attributes: true, attributeOldValue: true, characterData: false, characterOldValue: false, subtree: false
+                    });
+                    _urceSidepanelContentObserver.isObserving = true;
+                }
+                if (!_userInfoTabContentObserver.isObserving) {
+                    _userInfoTabContentObserver.observe(document.querySelector('#user-info .tab-content'), {
+                        childList: true, attributes: false, attributeOldValue: false, subtree: false
+                    });
+                    _userInfoTabContentObserver.isObserving = true;
                 }
             }
             logDebug('Registering event hooks.');
@@ -3988,70 +4057,70 @@
         logDebug('Injecting CSS.');
         $('<style = type="text/css">'
             // Comments tab
-            + '#panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:11px; }'
-            + '#panel-urce-comments .URCE-commentListName { padding-top:5px; font-size:10px; }'
-            + '#panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:12px; }'
-            + '#panel-urce-comments .URCE-divCCLinks { text-align:center; }'
-            + '#panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }'
-            + '#panel-urce-comments .URCE-icon { cursor:default; }'
-            + '#panel-urce-comments .URCE-divComment { padding:0px 4px 0px 4px; }'
-            + '#panel-urce-comments .URCE-divComment:before, #panel-urce-comments .URCE-divComment.hover:after { '
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:11px; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-commentListName { padding-top:5px; font-size:10px; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:12px; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-icon { cursor:default; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment { padding:0px 4px 0px 4px; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:before, #panel-urce-comments .URCE-divComment.hover:after { '
             + '     content:""; position:absolute; bottom:-2px; width:0px; height:2px; transition:all 0.2s ease-in-out; transition-duration:0.5s; opacity:0;'
             + '}'
-            + '#panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:before { left:calc(50%); background-color:#000000; margin-right:5px; }'
-            + '#panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:after { right:calc(50%); background-color:#000000; }'
-            + '#panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:before { left:calc(50%); background-color:#008F00; margin-right:5px; }'
-            + '#panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:after { right:calc(50%); background-color:#008F00;}'
-            + '#panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:before { left:calc(50%); background-color:#E68A00; margin-right:5px; }'
-            + '#panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:after { right:calc(50%); background-color:#E68A00; }'
-            + '#panel-urce-comments .URCE-divComment.hover:hover { cursor:pointer; }'
-            + '#panel-urce-comments .URCE-divComment.hover.URCE-blankLine:hover { cursor:default; }'
-            + '#panel-urce-comments .URCE-divComment:hover:after { width:100%; opacity:1; }'
-            + '#panel-urce-comments .URCE-divComment:hover:before { width:100%; opacity:1; margin-right:5px; }'
-            + '#panel-urce-comments .URCE-divComment.hover:hover.expand:after { width:50%; }'
-            + '#panel-urce-comments .URCE-divComment.hover:hover.expand:before { width:50%; margin-right:5px; }'
-            + '#panel-urce-comments .URCE-solvedLink { color:#008F00; }'
-            + '#panel-urce-comments .URCE-niLink { color:#E68A00; }'
-            + '#panel-urce-comments .URCE-openLink { color:#000000; }'
-            + '#panel-urce-comments .URCE-doubleClickIcon { padding-top:4px; height:14px; float:right; }'
-            + '#panel-urce-comments .URCE-divDoubleClick { display:inline; }'
-            + '#panel-urce-comments .URCE-span { cursor:pointer; }'
-            + '#panel-urce-comments .URCE-group_body { line-height: 15px; }'
-            + '#panel-urce-comments .URCE-group_body.urStyle { padding-left:23px !important; }'
-            + '#panel-urce-comments .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; }'
-            + '#panel-urce-comments .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; padding-left:16px; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:before { left:calc(50%); background-color:#000000; margin-right:5px; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:after { right:calc(50%); background-color:#000000; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:before { left:calc(50%); background-color:#008F00; margin-right:5px; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:after { right:calc(50%); background-color:#008F00;}'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:before { left:calc(50%); background-color:#E68A00; margin-right:5px; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:after { right:calc(50%); background-color:#E68A00; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover { cursor:pointer; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.URCE-blankLine:hover { cursor:default; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:hover:after { width:100%; opacity:1; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:hover:before { width:100%; opacity:1; margin-right:5px; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover.expand:after { width:50%; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover.expand:before { width:50%; margin-right:5px; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-solvedLink { color:#008F00; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-niLink { color:#E68A00; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-openLink { color:#000000; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-top:4px; height:14px; float:right; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-group_body { line-height: 15px; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-group_body.urStyle { padding-left:23px !important; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; }'
+            + '#sidepanel-urc-e #panel-urce-comments .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; padding-left:16px; }'
             // Settings tab
-            + '#panel-urce-settings .URCE-divDefaultSettings {'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-divDefaultSettings {'
             + '     background-color:lightgray; border-top:1px solid gray; border-bottom:1px solid gray; margin-top:8px; text-align:center; font-size:10px; font-weight:600;'
             + '     text-transform:uppercase;'
             + '}'
-            + '#panel-urce-settings .URCE-divWarningPre { margin-left:3px; }'
-            + '#panel-urce-settings .URCE-divWarning { display:inline; }'
-            + '#panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }'
-            + '#panel-urce-settings .URCE-daysInput { width:38px; height:20px; }'
-            + '#panel-urce-settings .URCE-textInput { width:175px; height:20px; }'
-            + '#panel-urce-settings .URCE-textInput2 { width:75px; height:20px; }'
-            + '#panel-urce-settings .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }'
-            + '#panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:10px;}'
-            + '#panel-urce-settings .URCE-controls .URCE-subHeading { font-weight:600; }'
-            + '#panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 16px !important; }'
-            + '#panel-urce-settings .URCE-controls .URCE-textFirst.urceDisabled, .URCE-controls.URCE-textFirst.urceDisabled, div.URCE-label.urceDisabled { color:#808080; }'
-            + '#panel-urce-settings .URCE-controls .URCE-divDaysInline { display:inline; padding-left:3px; }'
-            + '#panel-urce-settings .URCE-controls .URCE-divDaysInline.urceDisabled { display:inline; padding-left:2px; cursor:default; color:#808080; }'
-            + '#panel-urce-settings .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; }'
-            + '#panel-urce-settings .URCE-controls input[type="checkbox"][disabled] { margin:2px; vertical-align:middle; cursor:default; }'
-            + '#panel-urce-settings .URCE-controls select { height:22px; vertical-align:middle; }'
-            + '#panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; }'
-            + '#panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080;  display:inline-block; position:relative; }'
-            + '#panel-urce-settings .URCE-spreadsheetLink { font-size:11px; text-align:right; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-daysInput { width:38px; height:20px; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-textInput { width:175px; height:20px; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-textInput2 { width:75px; height:20px; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:10px;}'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-subHeading { font-weight:600; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 16px !important; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst.urceDisabled, .URCE-controls.URCE-textFirst.urceDisabled, div.URCE-label.urceDisabled { color:#808080; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline { display:inline; padding-left:3px; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline.urceDisabled { display:inline; padding-left:2px; cursor:default; color:#808080; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"][disabled] { margin:2px; vertical-align:middle; cursor:default; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls select { height:22px; vertical-align:middle; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080;  display:inline-block; position:relative; }'
+            + '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:11px; text-align:right; }'
             // Tools tab
-            + '#panel-urce-tools .URCE-divCC { text-align:center; }'
-            + '#panel-urce-tools .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }'
-            + '#panel-urce-tools .urceToolsButtonFile {'
+            + '#sidepanel-urc-e #panel-urce-tools .URCE-divCC { text-align:center; }'
+            + '#sidepanel-urc-e #panel-urce-tools .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }'
+            + '#sidepanel-urc-e #panel-urce-tools .urceToolsButtonFile {'
             + '     font-size:11px; background-color:lightgray; border:1px solid gray; cursor:default; height:22px; margin-top:6px; border-radius:4px;'
             + '}'
-            + '#panel-urce-tools .URCE-divRestoreFileError { font-weight:600; margin:6px; font-size:11px; text-align:left; }'
-            + '#panel-urce-tools #urceGSheetCreateConvert { margin-top:5px; }'
+            + '#sidepanel-urc-e #panel-urce-tools .URCE-divRestoreFileError { font-weight:600; margin:6px; font-size:11px; text-align:left; }'
+            + '#sidepanel-urc-e #panel-urce-tools #urceGSheetCreateConvert { margin-top:5px; }'
             // disable WME
             + '#urce-disableWme.URCE-disableWme-main { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:2000; }'
             + '#urce-disableWme #urce-disableWme-text.URCE-disableWme-text {'
@@ -4069,28 +4138,29 @@
             + '     font-size:11px; margin-left:10px; background-color:lightgray; border:none !important; cursor:default; height:22px; border-radius:4px; border:1px solid gray;'
             + '}'
             + '.urceToolsButton.active, .urceToolsButtonFile:hover, .urceToolsButton:hover { background-color:gray !important; }'
-            + '.URCE-divDismiss {'
+            + '#sidepanel-urc-e .URCE-divDismiss {'
             + '     display:inline-block; float:right; width:16px; height:16px; margin-top:-12px; border-radius:50%; border:1px solid black; background-color:white; text-align:center; cursor:pointer;'
             + '}'
-            + '.URCE-divWarningBox { background-color:indianred; border:1px solid silver; margin:6px 0 6px 0; font-size:12px; border-radius:4px; padding:5px; font-weight:600; }'
-            + '.URCE-expandCollapseAll { font-size:10px; margin-bottom:-10px; text-align:right; }'
-            + '.URCE-expandCollapseAll.urStyle { margin-bottom:unset !important; }'
-            + '.URCE-expandCollapseAllItem { display:inline; cursor:pointer; }'
-            + '.URCE-chevron { cursor:pointer; font-size:12px; margin-right:4px; }'
-            + '.URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; }'
-            + '.URCE-field.urStyle { border:unset !important; padding:unset !important; border-radius:unset !important; }'
-            + '.URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }'
-            + '.URCE-legend.urStyle {'
+            + '#sidepanel-urc-e .URCE-divWarningBox { background-color:indianred; border:1px solid silver; margin:6px 0 6px 0; font-size:12px; border-radius:4px; padding:5px; font-weight:600; }'
+            + '#sidepanel-urc-e .URCE-expandCollapseAll { font-size:10px; margin-bottom:-10px; text-align:right; }'
+            + '#sidepanel-urc-e .URCE-expandCollapseAll.urStyle { margin-bottom:unset !important; }'
+            + '#sidepanel-urc-e .URCE-expandCollapseAllItem { display:inline; cursor:pointer; }'
+            + '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:12px; margin-right:4px; }'
+            + '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; }'
+            + '#sidepanel-urc-e .URCE-field.urStyle { border:unset !important; padding:unset !important; border-radius:unset !important; }'
+            + '#sidepanel-urc-e .URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }'
+            + '#sidepanel-urc-e .URCE-legend.urStyle {'
             + '     border-bottom-style:unset !important; margin-bottom:2px !important; width:100% !important; background-color:#F6F7F7 !important; line-height:20px !important;'
             + '     padding:0 2px 0 2px !important; border-top:1px solid #C0C0C0 !important; border-bottom:1px solid #C0C0C0 !important;'
             + '}'
-            + '.URCE-divCC { /* padding-top:2px !important; */ }'
-            + '.URCE-label { white-space:pre-line; margin:0 0 0 0; }'
-            + '.URCE-span { font-size:13px; font-weight:600; }'
-            + '.URCE-spanTitle { padding-left:15px; font-size:14px; font-weight:600; }'
-            + '.URCE-spanVersion { font-size:11px; margin-left:11px; color:#aaa; }'
-            + '.URCE-divTabs { padding:0px 0px 0px 15px; }'
-            + '.URCE-navTabs { padding:0px 0px 0px 15px; }'
+            + '#sidepanel-urc-e .URCE-divCC { /* padding-top:2px !important; */ }'
+            + '#sidepanel-urc-e .URCE-label { white-space:pre-line; margin:0 0 0 0; }'
+            + '#sidepanel-urc-e .URCE-span { font-size:13px; font-weight:600; }'
+            + '#sidepanel-urc-e .URCE-spanTitle { font-size:14px; font-weight:600; }'
+            + '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:11px; color:#aaa; }'
+            + '#sidepanel-urc-e .URCE-divTabs { padding-right:5px; height:calc(100vh - var(--height-offset)); }'
+            + '#sidepanel-urc-e .URCE-navTabs { padding:0 0 6px; }'
+            + '#sidepanel-urc-e .URCE-navTabs li { flex-grow:1 !important; }' // Compatibility with FUME "Compress/enhance side panel contents" setting
             + '#panel-urce-comments { padding: 0px !important; width:100% !important; }'
             + '#panel-urce-settings { padding: 0px !important; width:100% !important; }'
             + '#panel-urce-tools { padding: 0px !important; width:100% !important; }'
@@ -4829,53 +4899,51 @@
         });
     }
 
-    function initTab() {
-        logDebug('Firing initTab via callback.');
+    async function initGui(firstCall = true) {
+        logDebug('Initializing GUI.');
+        injectCss();
+        if ($('#urceDiv').length === 0) {
+            $('body').append('<div id="urceDiv">'
+                + '<span class="urceDivCloseButton">X</span>'
+                + '<div class="urceDivContent"></div>'
+                + `<span class="urceDivDisablePopups">${I18n.t('urce.prefs.DisableUrMarkerPopup')}</span>`
+                + '</div>');
+        }
+        $('#urceDiv .urceDivCloseButton').off().on('click', { doubleClick: false }, hidePopup);
+        $('#urceDiv .urceDivDisablePopups').off().on('click', undefined, () => {
+            hidePopup(true);
+            $('#_cbdisableUrMarkerPopup').click();
+        });
+        if (firstCall) {
+            const { tabLabel, tabPane } = W.userscripts.registerSidebarTab('URC-E');
+            tabLabel.innerHTML = `<img id="urceIcon" class="URCE-tabIcon" src="${GM_info.script.icon}">`
+                + `<span id="urceUrMarkerProcessingSpinner" class="fa fa-spinner URCE-spinner" title="${I18n.t('urce.mouseOver.URMarkerProcessingInactive')}"></span>`
+                + `<span id="urceUrFilteringToggleBtn" class="fa fa-filter URCE-urFilteringToggleBtn" style="color:${(_settings.enableUrceUrFiltering ? '#00bd00' : '#ccc')};" title="${I18n.t('urce.mouseOver.ToggleUrceURFiltering')}">`;
+            tabLabel.title = 'URC-E';
+            tabPane.innerHTML = `<span class="URCE-spanTitle">${SCRIPT_NAME}</span><span class="URCE-spanVersion">${SCRIPT_VERSION}</span>`
+                + '<div class="URCE-navTabs"><ul class="nav nav-tabs">'
+                + `     <li class="active"><a data-toggle="tab" href="#panel-urce-comments" aria-expanded="true">${I18n.t('urce.tabs.Comments')}</a></li>`
+                + `     <li><a data-toggle="tab" href="#panel-urce-settings" aria-expanded="true">${I18n.t('urce.tabs.Settings')}</a></li>`
+                + `     <li><a data-toggle="tab" href="#panel-urce-tools" aria-expanded="true">${I18n.t('urce.tabs.Tools')}</a></li>`
+                + '</ul></div>'
+                + '<div class="tab-content URCE-divTabs" style="--height-offset:0px;">'
+                + '     <div class="tab-pane active" id="panel-urce-comments"></div>'
+                + '     <div class="tab-pane" id="panel-urce-settings"></div>'
+                + '     <div class="tab-pane" id="panel-urce-tools"></div>'
+                + '</div></span>';
+            Object.assign(tabPane.parentElement.style, { width: 'auto', padding: '0 15px' });
+            tabPane.id = 'sidepanel-urc-e';
+            await W.userscripts.waitForElementConnected(tabPane);
+            $('span#urceUrFilteringToggleBtn').on('click', (evt) => {
+                evt.stopPropagation();
+                $('#_cbenableUrceUrFiltering').click();
+            });
+            showScriptInfoAlert();
+        }
         initSettingsTab();
         initCommentsTab();
         initToolsTab();
-        $('img#urceIcon').parents('li').attr('title', 'URC-E');
-        $('div#urce-tab-content').parents('section').css({ width: 'auto', padding: '5px' });
-        $('span#urceUrFilteringToggleBtn').on('click', (evt) => {
-            evt.stopPropagation();
-            $('#_cbenableUrceUrFiltering').click();
-        });
-    }
-
-    function initGui() {
-        return new Promise((resolve) => {
-            logDebug('Initializing GUI.');
-            injectCss();
-            if ($('#urceDiv').length === 0) {
-                $('body').append('<div id="urceDiv">'
-                    + '<span class="urceDivCloseButton">X</span>'
-                    + '<div class="urceDivContent"></div>'
-                    + `<span class="urceDivDisablePopups">${I18n.t('urce.prefs.DisableUrMarkerPopup')}</span>`
-                    + '</div>');
-            }
-            $('#urceDiv .urceDivCloseButton').off().on('click', { doubleClick: false }, hidePopup);
-            $('#urceDiv .urceDivDisablePopups').off().on('click', undefined, () => {
-                hidePopup(true);
-                $('#_cbdisableUrMarkerPopup').click();
-            });
-            const htmlOut = `<span class="URCE-spanTitle">${SCRIPT_NAME}</span><span class="URCE-spanVersion">${SCRIPT_VERSION}</span>`
-                    + '<div id="urce-navtabs" class="URCE-navTabs"><ul class="nav nav-tabs">'
-                    + `     <li class="active"><a data-toggle="tab" href="#panel-urce-comments" aria-expanded="true">${I18n.t('urce.tabs.Comments')}</a></li>`
-                    + `     <li><a data-toggle="tab" href="#panel-urce-settings" aria-expanded="true">${I18n.t('urce.tabs.Settings')}</a></li>`
-                    + `     <li><a data-toggle="tab" href="#panel-urce-tools" aria-expanded="true">${I18n.t('urce.tabs.Tools')}</a></li>`
-                    + '</ul></div>'
-                    + '<div id="urce-tab-content" class="tab-content URCE-divTabs">'
-                    + '     <div class="tab-pane active" id="panel-urce-comments"></div>'
-                    + '     <div class="tab-pane" id="panel-urce-settings"></div>'
-                    + '     <div class="tab-pane" id="panel-urce-tools"></div>'
-                    + '</div></span>',
-                tabTitle = `<img id="urceIcon" class="URCE-tabIcon" src="${GM_info.script.icon}">`
-                    + `<span id="urceUrMarkerProcessingSpinner" class="fa fa-spinner URCE-spinner" title="${I18n.t('urce.mouseOver.URMarkerProcessingInactive')}"></span>`
-                    + `<span id="urceUrFilteringToggleBtn" class="fa fa-filter URCE-urFilteringToggleBtn" style="color:${(_settings.enableUrceUrFiltering ? '#00bd00' : '#ccc')};" title="${I18n.t('urce.mouseOver.ToggleUrceURFiltering')}">`;
-            WazeWrap.Interface.Tab(`URC-E${(/β/.test(SCRIPT_NAME) ? ' β' : '')}`, htmlOut, initTab, tabTitle);
-            showScriptInfoAlert();
-            resolve();
-        });
+        return Promise.resolve();
     }
 
     function initCommentLists() {
@@ -5339,7 +5407,7 @@
                                         + 'Identified.',
                             AutoSendReminders: 'Auto send reminders',
                             AutoSendRemindersTitle: 'Automatically send the reminder comment to the URs in the map window (as you pan around) you were the last to comment on and it has reached the '
-                                        + 'days specified in "Reminder Days".',
+                                        + 'days specified in "Reminder Days". Restricted to editor rank 4+.',
                             AutoSendRemindersWarning: 'WARNING',
                             AutoSendRemindersWarningTitle: 'AUTOMATICALLY SEND REMINDERS at the reminder days setting.\nThis only happens when they are visible on your screen.\n\nNOTE: When using '
                                         + 'this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to '
