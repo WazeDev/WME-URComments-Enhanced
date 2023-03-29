@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.03.27.01
+// @version     2023.03.29.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       none
@@ -71,9 +71,9 @@
         SETTINGS_STORE_NAME = 'WME_URC-E',
         ALERT_UPDATE = true,
         SCRIPT_VERSION = GM_info.script.version,
-        SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Move scroll bar for comments / settings to only be for that div element.',
+        SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Move scroll bar for comments / settings to only be for that div element. (fixed)',
             '<b>CHANGE:</b> Use WME API to create userscripts tab.',
-            '<b>CHANGE:</b> Auto-send reminder comments restricted to editors ranked 4 and above (or 3 and above with AM).',
+            '<b>CHANGE:</b> Auto-send reminder comments restricted to editors ranked 4 and above (or 3 and above with AM). (fixed)',
             '<b>CHANGE:</b> Auto-send reminder will not send to URs that contain a complete set of square brackets anywhere within text.',
             '<b>BUGFIX:</b> URC-E not catching UR correctly when a UR panel is already open.',
             '<b>BUGFIX:</b> Auto-send reminder comments sending to URs not on screen in certain situations.'
@@ -619,16 +619,20 @@
     }
 
     async function checkSidebarHeight() {
-        const node = document.querySelector('#sidepanel-urc-e .URCE-divTabs'),
-            { top } = node.getBoundingClientRect(),
+        const urceNode = document.querySelector('#sidepanel-urc-e .URCE-divTabs'),
+            userscriptsApiDocsLinkNode = document.querySelector('#user-info .userscripts-api-docs-link-container'),
+            wzMapOlFooter = document.querySelector('#waze-map-container .wz-map-ol-footer'),
+            { top } = urceNode.getBoundingClientRect(),
             { scrollY, pageYOffset } = window,
             { scrollTop } = document.body;
+        if (!userscriptsApiDocsLinkNode || !wzMapOlFooter)
+            return;
         let offset = (top + (scrollY || pageYOffset || scrollTop)) || 0;
-        offset += document.querySelector('#user-info .userscripts-api-docs-link-container').offsetHeight;
-        offset += document.querySelector('#waze-map-container .wz-map-ol-footer').offsetHeight;
-        if (offset !== parseInt(getComputedStyle(node).getPropertyValue('--height-offset'))) {
+        offset += userscriptsApiDocsLinkNode.offsetHeight;
+        offset += wzMapOlFooter.offsetHeight;
+        if (offset !== parseInt(getComputedStyle(urceNode).getPropertyValue('--height-offset'))) {
             logDebug(`Changing --height-offset to: ${offset}`);
-            node.style.setProperty('--height-offset', `${offset}px`);
+            urceNode.style.setProperty('--height-offset', `${offset}px`);
         }
     }
 
@@ -2743,7 +2747,7 @@
                                     && (_wmeUserId === urceData.lastCommentBy)
                                     && urceData.inMapExtent
                                     && !urceData.containsSquareBrackets
-                                    && ((W.loginManager.user.rank > 3) || ((W.loginManager.user.rank > 2) && W.loginManager.user.isAreaManager))
+                                    && ((W.loginManager.user.rank > 2) || ((parseInt(W.loginManager.user.rank) === 2) && W.loginManager.user.isAreaManager))
                                     && !chunk[idx].attributes.reminderSent
                                 )
                                     autoSendReminder = true;
