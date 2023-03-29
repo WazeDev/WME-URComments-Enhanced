@@ -21,7 +21,7 @@
         "indent": ["error", 4, { "SwitchCase": 1 }],
         "import/no-unresolved": "off",
         "lines-around-directive": ["error", { "before": "never", "after": "always" }],
-        "max-len": ["error", 205, { "ignoreUrls": true, "ignorePattern": "data:image\/png;base64,", "ignoreTrailingComments": true, "ignoreTemplateLiterals": true }],
+        "max-len": ["error", 216, { "ignoreUrls": true, "ignorePattern": "data:image\/png;base64,", "ignoreTrailingComments": true, "ignoreTemplateLiterals": true }],
         "newline-per-chained-call": ["error", { "ignoreChainWithDepth": 5 }],
         "no-console": "off", // Good
         "no-param-reassign": "off", // Good
