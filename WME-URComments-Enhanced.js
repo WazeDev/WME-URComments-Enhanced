@@ -83,6 +83,7 @@
             '<b>BUGFIX:</b> UR Panel showed -1 for urId in certain situations.',
             '<b>CHANGE:</b> Moved urceData to private object instead of WME model.',
             '<b>CHANGE:</b> "Enable UR Overflow" no longer applies if zoom level is less than 12.',
+            '<b>CHANGE:</b> Auto-send reminder comment will only work when zoom level is greater than 11.',
             '<b>CHANGE:</b> Miscellaneous code variable changes.',
             '<b>CHANGE:</b> Above bugfix also resulted in necessity to disable auto refresh setting.'
         ],
