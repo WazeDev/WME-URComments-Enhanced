@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.03.31.01
+// @version     2023.04.03.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -81,6 +81,7 @@
         _SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Check for updated version on load.',
             '<b>BUGFIX:</b> Issues when Issue Tracker has greater than 499 URs.',
             '<b>BUGFIX:</b> UR Panel showed -1 for urId in certain situations.',
+            '<b>BUGFIX:</b> Save button observer in WME beta.',
             '<b>CHANGE:</b> Moved urceData to private object instead of WME model.',
             '<b>CHANGE:</b> "Enable UR Overflow" no longer applies if zoom level is less than 12.',
             '<b>CHANGE:</b> Auto-send reminder comment will only work when zoom level is greater than 11.',
@@ -147,12 +148,18 @@
             saveSettingsToStorage: undefined
         },
         _saveButtonObserver = new MutationObserver((mutations) => {
-            if (mutations.filter(
-                (mutation) => (mutation.attributeName === 'class')
-                    && (mutation.target.classList.contains('waze-icon-save'))
-                    && (mutation.oldValue.indexOf('ItemDisabled') === -1)
-                    && (mutation.target.classList.contains('ItemDisabled'))
-            ).length > 0)
+            if ((W.model.actionManager._redoStack.length === 0)
+                // 2023.04.03.01: Production save button observer mutations
+                && (mutations.some((mutation) => (mutation.attributeName === 'class')
+                        && mutation.target.classList.contains('waze-icon-save')
+                        && (mutation.oldValue.indexOf('ItemDisabled') === -1)
+                        && mutation.target.classList.contains('ItemDisabled'))
+                // 2023.04.03.01: Beta save button observer mutations
+                    || mutations.some((mutation) => ((mutation.attributeName === 'disabled')
+                        && (mutation.oldValue === 'false')
+                        && (mutation.target.attributes.disabled.value === 'true')))
+                )
+            )
                 handleAfterSave();
         }),
         _urDataStateObserver = new MutationObserver((mutations) => {
@@ -685,7 +692,7 @@
         return new Promise((resolve) => {
             (function retry(tries, toIndex, evt) {
                 checkTimeout({ timeout: 'checkRestrictions', toIndex });
-                // 2023.03.31: W.model.getTopCountry() and W.model.getTopState() return null when zoom level < 12.
+                // 2023.04.03: W.model.getTopCountry() and W.model.getTopState() return null when zoom level < 12.
                 if (W.map.getZoom() < 12) {
                     resolve();
                     return;
@@ -821,7 +828,7 @@
         try {
             data = await W.controller.descartesClient.getUpdateRequestSessionsByIds(urIds);
             if (data?.updateRequestSessions?.objects.length > 0)
-                // 2023.03.31: No need to merge the data to the W.map.mapUpdateRequests repo. Let WME control that repo.
+                // 2023.04.03: No need to merge the data to the W.map.mapUpdateRequests repo. Let WME control that repo.
                 // W.model.mergeResponse(data);
                 data = Object.fromEntries(data.updateRequestSessions.objects.map((o) => [o.id, o]));
             else
@@ -4069,7 +4076,7 @@
             ) {
                 logDebug('Enabling MOs.');
                 if (!_saveButtonObserver.isObserving) {
-                    _saveButtonObserver.observe($('#edit-buttons .waze-icon-save')[0], {
+                    _saveButtonObserver.observe(document.querySelector('#toolbar .js-save-popover-target'), {
                         childList: false, attributes: true, attributeOldValue: true, characterData: false, characterDataOldValue: false, subtree: false
                     });
                     _saveButtonObserver.isObserving = true;
