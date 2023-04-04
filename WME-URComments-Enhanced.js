@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.04.03.01
+// @version     2023.04.04.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -66,9 +66,10 @@
         _needUrId = false;
 
     // eslint-disable-next-line no-nested-ternary
-    const _SCRIPT_NAME = `URC-E${(/beta/.test(GM_info.script.name) ? ' β' : /\(DEV\)/i.test(GM_info.script.name) ? ' Ω' : '')}`,
-        _IS_ALPHA_VERSION = /[Ω]/.test(_SCRIPT_NAME),
-        _IS_BETA_VERSION = /[β]/.test(_SCRIPT_NAME),
+    const _SCRIPT_SHORT_NAME = `URC-E${(/beta/.test(GM_info.script.name) ? ' β' : /\(DEV\)/i.test(GM_info.script.name) ? ' Ω' : '')}`,
+        _SCRIPT_LONG_NAME = GM_info.script.name,
+        _IS_ALPHA_VERSION = /[Ω]/.test(_SCRIPT_SHORT_NAME),
+        _IS_BETA_VERSION = /[β]/.test(_SCRIPT_SHORT_NAME),
         _SCRIPT_AUTHOR = GM_info.script.author,
         _PROD_URL = 'https://greasyfork.org/scripts/375430-wme-urcomments-enhanced/code/WME-URComments-Enhanced.user.js',
         _PROD_META_URL = 'https://greasyfork.org/scripts/375430-wme-urcomments-enhanced/code/WME-URComments-Enhanced.meta.js',
@@ -82,13 +83,15 @@
             '<b>BUGFIX:</b> Issues when Issue Tracker has greater than 499 URs.',
             '<b>BUGFIX:</b> UR Panel showed -1 for urId in certain situations.',
             '<b>BUGFIX:</b> Save button observer in WME beta.',
+            '<b>BUGFIX:</b> Restore settings resulted in error before completion.',
             '<b>CHANGE:</b> Moved urceData to private object instead of WME model.',
-            '<b>CHANGE:</b> "Enable UR Overflow" no longer applies if zoom level is less than 12.',
-            '<b>CHANGE:</b> Auto-send reminder comment will only work when zoom level is greater than 11.',
+            '<b>CHANGE:</b> "Enable UR Overflow" no longer applies if zoom level is less than 10.',
+            '<b>CHANGE:</b> Auto-send reminder comment will no longer send if zoom level is less than 10.',
             '<b>CHANGE:</b> Miscellaneous code variable changes.',
-            '<b>CHANGE:</b> Above bugfix also resulted in necessity to disable auto refresh setting.'
+            '<b>CHANGE:</b> Above bugfix also resulted in necessity to disable auto refresh setting.',
+            '<b>CHANGE:</b> Future (possible) WME changes preparation.'
         ],
-        _DEBUG = /[βΩ]/.test(_SCRIPT_NAME),
+        _DEBUG = /[βΩ]/.test(_SCRIPT_SHORT_NAME),
         _LOAD_BEGIN_TIME = performance.now(),
         _STATIC_ONLY_USERS = ['itzwolf'],
         _URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c',
@@ -117,6 +120,7 @@
             sl: { commentNum: null, urNum: 23 } // Speed Limit
         },
         _mapUpdateRequests = {},
+        _overflowUrsUrls = [],
         _restrictions = {},
         _spinners = {
             buildCommentList: false,
@@ -149,12 +153,12 @@
         },
         _saveButtonObserver = new MutationObserver((mutations) => {
             if ((W.model.actionManager._redoStack.length === 0)
-                // 2023.04.03.01: Production save button observer mutations
+                // 2023.04.04.01: Production save button observer mutations
                 && (mutations.some((mutation) => (mutation.attributeName === 'class')
                         && mutation.target.classList.contains('waze-icon-save')
                         && (mutation.oldValue.indexOf('ItemDisabled') === -1)
                         && mutation.target.classList.contains('ItemDisabled'))
-                // 2023.04.03.01: Beta save button observer mutations
+                // 2023.04.04.01: Beta save button observer mutations
                     || mutations.some((mutation) => ((mutation.attributeName === 'disabled')
                         && (mutation.oldValue === 'false')
                         && (mutation.target.attributes.disabled.value === 'true')))
@@ -235,9 +239,9 @@
             });
         });
 
-    function log(message, data = '') { console.log(`${_SCRIPT_NAME}:`, message, data); }
-    function logError(message, data = '') { console.error(`${_SCRIPT_NAME}:`, new Error(message), data); }
-    function logWarning(message, data = '') { console.warn(`${_SCRIPT_NAME}:`, message, data); }
+    function log(message, data = '') { console.log(`${_SCRIPT_SHORT_NAME}:`, message, data); }
+    function logError(message, data = '') { console.error(`${_SCRIPT_SHORT_NAME}:`, new Error(message), data); }
+    function logWarning(message, data = '') { console.warn(`${_SCRIPT_SHORT_NAME}:`, message, data); }
     function logDebug(message, data = '') {
         if (_DEBUG)
             log(message, data);
@@ -462,7 +466,7 @@
                 outputText += `<i>${I18n.t('urce.common.None')}</i>`;
             outputText += `<br><br><b>${I18n.t('urce.prompts.RestoreSettingsConfirmation')}</b>`;
             WazeWrap.Alerts.confirm(
-                _SCRIPT_NAME,
+                _SCRIPT_SHORT_NAME,
                 formatText(outputText, true, false, -1),
                 () => { loadSettingsFromStorage(restoreSettings, true); },
                 () => { },
@@ -503,10 +507,10 @@
         _timeouts.saveSettingsToStorage = window.setTimeout(saveSettingsToStorage, 5000);
         if (proceedWithRestore) {
             await initGui(false);
-            await changeCommentList(parseInt(this.value), false, true);
+            await changeCommentList(_settings.commentList, false, true);
             handleUrLayer('settingsToggle', undefined, getMapUrsObjArr());
             saveSettingsToStorage();
-            WazeWrap.Alerts.success(_SCRIPT_NAME, ((restoreSettings === 'resetSettings') ? `${I18n.t('urce.prompts.ResetSettingsComplete')}.` : `${I18n.t('urce.prompts.RestoreSettingsComplete')}.`));
+            WazeWrap.Alerts.success(_SCRIPT_SHORT_NAME, ((restoreSettings === 'resetSettings') ? `${I18n.t('urce.prompts.ResetSettingsComplete')}.` : `${I18n.t('urce.prompts.RestoreSettingsComplete')}.`));
         }
         return Promise.resolve();
     }
@@ -524,7 +528,7 @@
             else {
                 releaseNotes += '<ul><li>Nothing major.</ul>';
             }
-            WazeWrap.Interface.ShowScriptUpdate(_SCRIPT_NAME, _SCRIPT_VERSION, releaseNotes, (_IS_BETA_VERSION ? dec(_BETA_URL) : _PROD_URL).replace(/code\/.*\.js/, ''), _FORUM_URL);
+            WazeWrap.Interface.ShowScriptUpdate(_SCRIPT_SHORT_NAME, _SCRIPT_VERSION, releaseNotes, (_IS_BETA_VERSION ? dec(_BETA_URL) : _PROD_URL).replace(/code\/.*\.js/, ''), _FORUM_URL);
         }
     }
 
@@ -651,7 +655,7 @@
         if (errorText.length > 0) {
             logError(errorText);
             if (errorDisplay)
-                WazeWrap.Alerts.error(_SCRIPT_NAME, errorText);
+                WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, errorText);
         }
         if (spinnerStop)
             doSpinner(spinnerName, false);
@@ -692,7 +696,7 @@
         return new Promise((resolve) => {
             (function retry(tries, toIndex, evt) {
                 checkTimeout({ timeout: 'checkRestrictions', toIndex });
-                // 2023.04.03: W.model.getTopCountry() and W.model.getTopState() return null when zoom level < 12.
+                // 2023.04.04.01: W.model.getTopCountry() and W.model.getTopState() return null when zoom level < 12.
                 if (W.map.getZoom() < 12) {
                     resolve();
                     return;
@@ -828,7 +832,7 @@
         try {
             data = await W.controller.descartesClient.getUpdateRequestSessionsByIds(urIds);
             if (data?.updateRequestSessions?.objects.length > 0)
-                // 2023.04.03: No need to merge the data to the W.map.mapUpdateRequests repo. Let WME control that repo.
+                // 2023.04.04.01: No need to merge the data to the W.map.mapUpdateRequests repo. Let WME control that repo.
                 // W.model.mergeResponse(data);
                 data = Object.fromEntries(data.updateRequestSessions.objects.map((o) => [o.id, o]));
             else
@@ -889,9 +893,10 @@
          * We need to go ahead and process the rest as it's important for the rest of our script. This will have a side effect of the zoom features being
          * a little wonky.
          * TODO: Find another way to know if we clicked a new UR marker with the current one still open OR if we truly closed the UR panel.
+         *
+        if (parseInt($('.update-requests .marker-selected').data('id')) > 0)
+            return;
          */
-        // if (parseInt($('.update-requests .marker-selected').data('id')) > 0)
-        //    return;
         const { urId, newStatus } = _selUr;
         _selUr = {
             doubleClick: false,
@@ -1231,7 +1236,7 @@
         const $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
         if (!$domElement) {
             logWarning('No comment box found after clicking a comment from the list.');
-            WazeWrap.Alerts.info(_SCRIPT_NAME, I18n.t('urce.prompts.NoCommentBox'));
+            WazeWrap.Alerts.info(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.NoCommentBox'));
             return;
         }
         if (doubleClick)
@@ -1385,7 +1390,10 @@
         if (!(urId > 0) && _selUr?.urId)
             ({ urId } = _selUr);
         if (replaceVars && shortcutClicked && (text.indexOf('$SELSEGS') > -1)) {
-            const selFeatures = W.selectionManager.getSelectedFeatures();
+            // 2023.04.04.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
+            const selFeatures = (typeof W.selectionManager.getSelectedDataModelObjects === 'function')
+                ? W.selectionManager.getSelectedDataModelObjects()
+                : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes.repositoryObject);
             let output = '';
             if ((selFeatures.length > 0) && (selFeatures.length < 3)) {
                 let street1Name = '',
@@ -1393,9 +1401,9 @@
                     cityName = '',
                     firstCityId;
                 for (let idx = 0; idx < selFeatures.length; idx++) {
-                    if (selFeatures[idx].model.type === 'segment') {
+                    if (selFeatures[idx].type === 'segment') {
                         if (selFeatures.length > 1) {
-                            const streetObj = W.model.streets.getObjectById(selFeatures[idx].model.attributes.primaryStreetID);
+                            const streetObj = W.model.streets.getObjectById(selFeatures[idx].attributes.primaryStreetID);
                             if (idx === 0) {
                                 street1Name = (streetObj.name?.length > 0) ? streetObj.name : I18n.t('urce.tools.UnknownRoadName');
                                 firstCityId = streetObj.cityID;
@@ -1415,7 +1423,7 @@
                             }
                         }
                         else {
-                            const streetObj = W.model.streets.getObjectById(selFeatures[idx].model.attributes.primaryStreetID);
+                            const streetObj = W.model.streets.getObjectById(selFeatures[idx].attributes.primaryStreetID);
                             street1Name = (streetObj.name?.length > 0) ? streetObj.name : '';
                             const cityObj = W.model.cities.getObjectById(streetObj.cityID);
                             if ((cityObj.attributes?.name !== '') && (street1Name !== '') && (text.indexOf('$SELSEGS_WITH_CITY$') > -1))
@@ -1440,11 +1448,11 @@
                     text = text.replace(/\$SELSEGS(\$|_WITH_CITY\$)?/gm, output);
                 }
                 else {
-                    WazeWrap.Alerts.error(_SCRIPT_NAME, I18n.t('urce.prompts.SelSegsInsertError'));
+                    WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.SelSegsInsertError'));
                 }
             }
             else {
-                WazeWrap.Alerts.error(_SCRIPT_NAME, I18n.t('urce.prompts.SelSegsInsertError'));
+                WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.SelSegsInsertError'));
             }
         }
         if (replaceVars && (urId > -1)) {
@@ -1632,25 +1640,31 @@
                 text = text.replace(/(\$USERNAME\$?)+/gmi, '');
         }
         if (replaceVars && (text.indexOf('$PLACE_NAME$') > -1)) {
-            const placeObj = W.selectionManager.getSelectedFeatures()[0];
-            if (placeObj?.model.type === 'venue') {
-                if (placeObj.model.attributes.residential === true)
+            // 2023.04.04.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
+            const placeObj = (typeof W.selectionManager.getSelectedDataModelObjects === 'function')
+                ? W.selectionManager.getSelectedDataModelObjects()[0]
+                : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes.repositoryObject)[0];
+            if (placeObj?.type === 'venue') {
+                if (placeObj.attributes.residential === true)
                     text = text.replace('$PLACE_NAME$', I18n.t('objects.venue.fields.residential'));
                 else
-                    text = text.replace('$PLACE_NAME$', ((placeObj.model.attributes.name.length > 0) ? placeObj.model.attributes.name : I18n.t('urce.tools.UnknownVenueName')));
+                    text = text.replace('$PLACE_NAME$', ((placeObj.attributes.name.length > 0) ? placeObj.attributes.name : I18n.t('urce.tools.UnknownVenueName')));
             }
             else {
-                WazeWrap.Alerts.error(_SCRIPT_NAME, I18n.t('urce.prompts.PlaceNameInsertError'));
+                WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.PlaceNameInsertError'));
             }
         }
         if (replaceVars && (text.indexOf('$PLACE_ADDRESS$') > -1)) {
-            const placeObj = W.selectionManager.getSelectedFeatures()[0];
-            if ((placeObj?.model.type === 'venue') && ((placeObj?.model.attributes.houseNumber.length > 0) || (placeObj?.model.attributes.streetID.length > 0))) {
+            // 2023.04.04.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
+            const placeObj = (typeof W.selectionManager.getSelectedDataModelObjects === 'function')
+                ? W.selectionManager.getSelectedDataModelObjects()[0]
+                : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes.repositoryObject)[0];
+            if ((placeObj?.type === 'venue') && ((placeObj?.attributes.houseNumber.length > 0) || (placeObj?.attributes.streetID.length > 0))) {
                 let placeAddress = '';
-                if (placeObj.model.attributes.houseNumber.length > 0)
-                    placeAddress += `${placeObj.model.attributes.houseNumber} `;
-                if (placeObj.model.attributes.streetID > 0) {
-                    const streetObj = W.model.streets.getObjectById(placeObj.model.attributes.streetID);
+                if (placeObj.attributes.houseNumber.length > 0)
+                    placeAddress += `${placeObj.attributes.houseNumber} `;
+                if (placeObj.attributes.streetID > 0) {
+                    const streetObj = W.model.streets.getObjectById(placeObj.attributes.streetID);
                     if (streetObj?.name !== '')
                         placeAddress += streetObj.name;
                     if ((streetObj.cityID > 0) && (streetObj.cityID !== 999940)) {
@@ -1666,10 +1680,10 @@
                 if (placeAddress !== '')
                     text = text.replace('$PLACE_ADDRESS$', placeAddress);
                 else
-                    WazeWrap.Alerts.error(_SCRIPT_NAME, I18n.t('urce.prompts.PlaceAddressInsertError'));
+                    WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.PlaceAddressInsertError'));
             }
             else {
-                WazeWrap.Alerts.error(_SCRIPT_NAME, I18n.t('urce.prompts.PlaceAddressInsertError'));
+                WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.PlaceAddressInsertError'));
             }
         }
         if (replaceVars && (_customReplaceVars?.length > 0)) {
@@ -1799,7 +1813,7 @@
             }
             newVal = `${newVal}${outputText}${currVal.slice(cursorPos)}`;
             if (newVal.length > 2000) {
-                WazeWrap.Alerts.error(_SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
+                WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.CommentTooLong'));
                 doSpinner('handleClickedShortcut', false);
                 return;
             }
@@ -1837,7 +1851,7 @@
     }
 
     async function autoPostReminderComment(urId) {
-        if (W.map.getZoom() < 12)
+        if (W.map.getZoom() < 10)
             return Promise.resolve({ error: true, message: 'zoomIn' });
         const comment = formatText(_commentList[_defaultComments.dr.commentNum].comment, true, false, urId);
         try {
@@ -1905,7 +1919,7 @@
             commentOutput = formatText(comment, true, false, -1);
         }
         if (commentOutput.length > 2000) {
-            WazeWrap.Alerts.error(_SCRIPT_NAME, I18n.t('urce.prompts.CommentTooLong'));
+            WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.CommentTooLong'));
             logError(I18n.t('urce.prompts.CommentTooLong'));
         }
         else {
@@ -2902,7 +2916,7 @@
                                 const autoPostReminderCommentResult = await autoPostReminderComment(chunk[idx].attributes.id);
                                 if (autoPostReminderCommentResult.error) {
                                     if (autoPostReminderCommentResult.message === 'zoomIn')
-                                        logDebug(`Did not auto post reminder comment due to zoom being less than 12 (Zoom: ${W.map.getZoom()}) for urId ${chunk[idx].attributes.id}.`);
+                                        logDebug(`Did not auto post reminder comment due to zoom being less than 10 (Zoom: ${W.map.getZoom()}) for urId ${chunk[idx].attributes.id}.`);
                                     else
                                         logError(autoPostReminderCommentResult.message);
                                 }
@@ -3015,7 +3029,7 @@
             }
             if (autoSentRemindersFor.length > 0) {
                 logDebug(`Automatically sent reminder comments to urId(s): ${autoSentRemindersFor.join(', ')} (${autoSentRemindersFor.length})`);
-                WazeWrap.Alerts.info(_SCRIPT_NAME, `${I18n.t('urce.prompts.ReminderMessageAuto')}: ${autoSentRemindersFor.join(', ')} (${autoSentRemindersFor.length})`);
+                WazeWrap.Alerts.info(_SCRIPT_SHORT_NAME, `${I18n.t('urce.prompts.ReminderMessageAuto')}: ${autoSentRemindersFor.join(', ')} (${autoSentRemindersFor.length})`);
             }
         }
         if (updateMarkersArr.length > 0) {
@@ -3059,12 +3073,7 @@
             else
                 _markerCountOnInit = mUrsObjArr.length;
         }
-        try {
-            await updateUrceData(mUrsObjArr);
-        }
-        catch (error) {
-            logWarning(error);
-        }
+        await updateUrceData(mUrsObjArr);
         updateUrMapMarkers(mUrsObjArr, filter);
         if (_settings.enableUrOverflowHandling && (mUrsObjArr.length > 499)) {
             if (phase !== 'overflow')
@@ -3083,25 +3092,24 @@
     }
 
     function getOverflowUrsFromUrl(urlStr) {
+        logDebug(`Getting URs from: ${urlStr}`);
         return new Promise((resolve) => {
             (async function retry(url, tries, toIndex) {
                 checkTimeout({ timeout: 'getOverflowUrsFromUrl', toIndex });
-                const errorObj = { error: false };
+                const errorObj = { error: false, url };
                 let data;
                 try {
                     data = await $.getJSON(url);
+                    data.url = url;
                 }
                 catch (error) {
-                    if (error.status === 429) {
+                    if (error.status === 429)
                         data = { error: { status: 429 } };
-                    }
-                    else if (!errorObj.error) {
+                    else if (!errorObj.error)
                         errorObj.error = (typeof error === 'object') ? error : { error };
-                        errorObj.error.url = url;
-                    }
                 }
                 if (tries > 10) {
-                    resolve({ error: { reason: 'Too many retries.', url } });
+                    resolve({ error: { reason: 'Too many retries.' }, url });
                 }
                 else if (errorObj.error) {
                     resolve(errorObj);
@@ -3118,72 +3126,73 @@
         });
     }
 
-    async function handleUrOverflow() {
-        if (W.map.getZoom() < 12)
-            return Promise.resolve();
+    function handleUrOverflow() {
+        if (W.map.getZoom() < 10) {
+            logDebug('UR overflow handling does not work with zoom levels < 10.');
+            return;
+        }
         doSpinner('handleUrOverflow', true);
         const baseUrl = `https://${document.location.host}${W.Config.paths.features}?language=en&mapUpdateRequestFilter=`
                 + `${(($('#layer-switcher-item_closed_update_requests').is(':checked')) ? '3' : '1')}%2C0&bbox=`,
-            overflowUrsToPut = [],
             vpBounds = W.map.getExtent().transform(W.map.getProjectionObject(), new OpenLayers.Projection('EPSG:4326')),
             vpBoundsFrom = { lon: vpBounds.left, lat: vpBounds.bottom },
             vpBoundsTo = { lon: vpBounds.right, lat: vpBounds.top },
             vpCenter = W.map.getCenter().transform(W.map.getProjectionObject(), new OpenLayers.Projection('EPSG:4326')),
-            overflowUrlsToCheck = [
-                `${baseUrl}${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
-                `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
-                `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpBoundsFrom.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)}`,
-                `${baseUrl}${vpCenter.lon.toFixed(6)},${vpBoundsFrom.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpCenter.lat.toFixed(6)}`
-            ];
-        while (overflowUrlsToCheck.length > 0) {
-            const overflowUrl = overflowUrlsToCheck.shift(),
-                // eslint-disable-next-line no-await-in-loop
-                data = await getOverflowUrsFromUrl(overflowUrl);
-            let respUrObjs = [];
-            if (data.error) {
-                logWarning(data.error);
-            }
-            else if (data.mapUpdateRequests?.objects?.length > 499) {
-                logDebug('More than 499 objects returned in overflow request, queueing sub quadrants for further checking.');
-                const bbox = overflowUrl.split('bbox=')[1].split(','),
-                    bboxFrom = WazeWrap.Geometry.ConvertTo900913(bbox[0], bbox[1]),
-                    bboxTo = WazeWrap.Geometry.ConvertTo900913(bbox[2], bbox[3]),
-                    subQuadCenter = WazeWrap.Geometry.ConvertTo4326((bboxFrom.lon - ((bboxFrom.lon - bboxTo.lon) / 2)), (bboxTo.lat - ((bboxTo.lat - bboxFrom.lat) / 2)));
-                overflowUrlsToCheck.push(`${baseUrl}${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)},${bbox[2]},${bbox[3]}`);
-                overflowUrlsToCheck.push(`${baseUrl}${bbox[0]},${subQuadCenter.lat.toFixed(6)},${subQuadCenter.lon.toFixed(6)},${bbox[3]}`);
-                overflowUrlsToCheck.push(`${baseUrl}${bbox[0]},${bbox[1]},${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)}`);
-                overflowUrlsToCheck.push(`${baseUrl}${subQuadCenter.lon.toFixed(6)},${bbox[1]},${bbox[2]},${subQuadCenter.lat.toFixed(6)}`);
-            }
-            else if (data.mapUpdateRequests?.objects?.length > 0) {
-                respUrObjs = respUrObjs.concat(data.mapUpdateRequests.objects);
-            }
-            respUrObjs.forEach((respUrObj) => {
-                if (!W.model.mapUpdateRequests.objects[respUrObj.id]) {
-                    const NewUr = require('Waze/Feature/Vector/UpdateRequest'),
-                        toPutUr = new NewUr(respUrObj),
-                        toPutPoint = new OpenLayers.Geometry.Point(respUrObj.geometry.coordinates[0], respUrObj.geometry.coordinates[1])
-                            .transform(new OpenLayers.Projection('EPSG:4326'), W.map.getProjectionObject());
-                    toPutUr.geometry = toPutPoint;
-                    const toPutReqBounds = new OpenLayers.Geometry.Polygon(),
-                        toPutBounds = new OpenLayers.Bounds(toPutPoint.x, toPutPoint.y, toPutPoint.x, toPutPoint.y);
-                    toPutReqBounds.bounds = toPutBounds;
-                    toPutUr.requestBounds = toPutReqBounds;
-                    overflowUrsToPut.push(toPutUr);
+            processData = (data) => {
+                if (data.error) {
+                    logWarning(data.error);
                 }
-            });
-        }
-        if (overflowUrsToPut.length > 0) {
-            while (overflowUrsToPut.length > 0) {
-                const chunk = overflowUrsToPut.splice(0, 500);
-                logDebug(`${chunk.length} URs added from overflow.`);
-                W.model.mapUpdateRequests.put(chunk);
-            }
-        }
-        else {
-            logDebug('All URs submitted for overflow processing already exist on map.');
-        }
-        doSpinner('handleUrOverflow', false);
-        return Promise.resolve();
+                else if (data.mapUpdateRequests?.objects?.length > 499) {
+                    logDebug('More than 499 objects returned in overflow request, queueing sub quadrants for further checking.');
+                    const bbox = data.url.split('bbox=')[1].split(','),
+                        bboxFrom = WazeWrap.Geometry.ConvertTo900913(bbox[0], bbox[1]),
+                        bboxTo = WazeWrap.Geometry.ConvertTo900913(bbox[2], bbox[3]),
+                        subQuadCenter = WazeWrap.Geometry.ConvertTo4326((bboxFrom.lon - ((bboxFrom.lon - bboxTo.lon) / 2)), (bboxTo.lat - ((bboxTo.lat - bboxFrom.lat) / 2)));
+                    [`${baseUrl}${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)},${bbox[2]},${bbox[3]}`,
+                        `${baseUrl}${bbox[0]},${subQuadCenter.lat.toFixed(6)},${subQuadCenter.lon.toFixed(6)},${bbox[3]}`,
+                        `${baseUrl}${bbox[0]},${bbox[1]},${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)}`,
+                        `${baseUrl}${subQuadCenter.lon.toFixed(6)},${bbox[1]},${bbox[2]},${subQuadCenter.lat.toFixed(6)}`
+                    ].forEach((url) => {
+                        _overflowUrsUrls.push(url);
+                        getOverflowUrsFromUrl(url).then(processData);
+                    });
+                }
+                else if (data.mapUpdateRequests?.objects?.length > 0) {
+                    const overflowUrsToPut = [];
+                    data.mapUpdateRequests.objects.forEach((mapUr) => {
+                        if (!W.model.mapUpdateRequests.objects[mapUr.id]) {
+                            const NewUr = require('Waze/Feature/Vector/UpdateRequest'),
+                                toPutUr = new NewUr(mapUr),
+                                toPutPoint = new OpenLayers.Geometry.Point(mapUr.geometry.coordinates[0], mapUr.geometry.coordinates[1])
+                                    .transform(new OpenLayers.Projection('EPSG:4326'), W.map.getProjectionObject());
+                            toPutUr.geometry = toPutPoint;
+                            const toPutReqBounds = new OpenLayers.Geometry.Polygon(),
+                                toPutBounds = new OpenLayers.Bounds(toPutPoint.x, toPutPoint.y, toPutPoint.x, toPutPoint.y);
+                            toPutReqBounds.bounds = toPutBounds;
+                            toPutUr.requestBounds = toPutReqBounds;
+                            overflowUrsToPut.push(toPutUr);
+                        }
+                    });
+                    if (overflowUrsToPut.length > 0) {
+                        logDebug(`${overflowUrsToPut.length} URs added from overflow.`);
+                        W.model.mapUpdateRequests.put(overflowUrsToPut);
+                    }
+                    else {
+                        logDebug('All URs submitted for overflow processing already exist on map.');
+                    }
+                }
+                _overflowUrsUrls.splice(_overflowUrsUrls.indexOf(data.url), 1);
+                if (_overflowUrsUrls.length === 0)
+                    doSpinner('handleUrOverflow', false);
+            };
+        [`${baseUrl}${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
+            `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpCenter.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpBoundsTo.lat.toFixed(6)}`,
+            `${baseUrl}${vpBoundsFrom.lon.toFixed(6)},${vpBoundsFrom.lat.toFixed(6)},${vpCenter.lon.toFixed(6)},${vpCenter.lat.toFixed(6)}`,
+            `${baseUrl}${vpCenter.lon.toFixed(6)},${vpBoundsFrom.lat.toFixed(6)},${vpBoundsTo.lon.toFixed(6)},${vpCenter.lat.toFixed(6)}`
+        ].forEach((url) => {
+            _overflowUrsUrls.push(url);
+            getOverflowUrsFromUrl(url).then(processData);
+        });
     }
 
     function mouseDown() {
@@ -3433,7 +3442,7 @@
 
     function createStaticToGoogleSheet(convert) {
         if (convert && (getCommentListInfo(_currentCommentList).type !== 'static')) {
-            WazeWrap.Alerts.error(_SCRIPT_NAME, I18n.t('urce.prompts.ConversionLoadAddonFirst'));
+            WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.ConversionLoadAddonFirst'));
             return;
         }
         let htmlOut = `<div class="URCE-disableWme-text-header">${(convert ? I18n.t('urce.tools.ConvertCreateConvertProcess') : I18n.t('urce.tools.ConvertCreateCreateProcess'))}</div>`
@@ -3771,7 +3780,7 @@
             $('#_selcurrentCommentList').off().on('change', function () {
                 if ((parseInt(this.value) === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
                     $(this).val(_currentCommentList);
-                    WazeWrap.Alerts.error(_SCRIPT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
+                    WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
                 }
                 else {
                     changeCommentList(parseInt(this.value), false, true);
@@ -4055,7 +4064,7 @@
         }
         htmlOut += '</div>';
         $('#_commentList').empty().append(htmlOut);
-        WazeWrap.Alerts.error(_SCRIPT_NAME, htmlOut);
+        WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, htmlOut);
         maskBoxes(undefined, true, err.phase, err.maskUrPanel);
     }
 
@@ -4375,7 +4384,7 @@
         });
         $('#_butresetSettings').off().on('click', () => {
             WazeWrap.Alerts.confirm(
-                _SCRIPT_NAME,
+                _SCRIPT_SHORT_NAME,
                 I18n.t('urce.prompts.ResetSettingsConfirmation'),
                 () => { loadSettingsFromStorage('resetSettings', true); },
                 () => { },
@@ -4774,7 +4783,7 @@
         $('#_selCommentList').off().on('change', function () {
             if ((parseInt(this.value) === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
                 $(this).val(_currentCommentList);
-                WazeWrap.Alerts.error(_SCRIPT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
+                WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
             }
             else {
                 changeCommentList(parseInt(this.value), false, false);
@@ -5031,7 +5040,7 @@
                 + `<span id="urceUrMarkerProcessingSpinner" class="fa fa-spinner URCE-spinner" title="${I18n.t('urce.mouseOver.URMarkerProcessingInactive')}"></span>`
                 + `<span id="urceUrFilteringToggleBtn" class="fa fa-filter URCE-urFilteringToggleBtn" style="color:${(_settings.enableUrceUrFiltering ? '#00bd00' : '#ccc')};" title="${I18n.t('urce.mouseOver.ToggleUrceURFiltering')}">`;
             tabLabel.title = 'URC-E';
-            tabPane.innerHTML = `<span class="URCE-spanTitle">${_SCRIPT_NAME}</span><span class="URCE-spanVersion">${_SCRIPT_VERSION}</span>`
+            tabPane.innerHTML = `<span class="URCE-spanTitle">${_SCRIPT_SHORT_NAME}</span><span class="URCE-spanVersion">${_SCRIPT_VERSION}</span>`
                 + '<div class="URCE-navTabs"><ul class="nav nav-tabs">'
                 + `     <li class="active"><a data-toggle="tab" href="#panel-urce-comments" aria-expanded="true">${I18n.t('urce.tabs.Comments')}</a></li>`
                 + `     <li><a data-toggle="tab" href="#panel-urce-settings" aria-expanded="true">${I18n.t('urce.tabs.Settings')}</a></li>`
@@ -5275,7 +5284,7 @@
                     if ((latestVersion > _SCRIPT_VERSION) && (latestVersion > (_lastVersionChecked || '0'))) {
                         _lastVersionChecked = latestVersion;
                         WazeWrap.Alerts.info(
-                            _SCRIPT_NAME,
+                            _SCRIPT_LONG_NAME,
                             `<a href="${(_IS_BETA_VERSION ? dec(_BETA_URL) : _PROD_URL)}" target = "_blank">Version ${latestVersion}</a> is available.<br>Update now to get the latest features and fixes.`,
                             true,
                             false
