@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.04.04.01
+// @version     2023.04.05.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -88,7 +88,7 @@
             '<b>CHANGE:</b> "Enable UR Overflow" no longer applies if zoom level is less than 10.',
             '<b>CHANGE:</b> Auto-send reminder comment will no longer send if zoom level is less than 10.',
             '<b>CHANGE:</b> Miscellaneous code variable changes.',
-            '<b>CHANGE:</b> Above bugfix also resulted in necessity to disable auto refresh setting.',
+            '<b>CHANGE:</b> Issue tracker bugfix also resulted in necessity to disable auto refresh setting.',
             '<b>CHANGE:</b> Future (possible) WME changes preparation.'
         ],
         _DEBUG = /[βΩ]/.test(_SCRIPT_SHORT_NAME),
@@ -153,12 +153,12 @@
         },
         _saveButtonObserver = new MutationObserver((mutations) => {
             if ((W.model.actionManager._redoStack.length === 0)
-                // 2023.04.04.01: Production save button observer mutations
+                // 2023.04.05.01: Production save button observer mutations
                 && (mutations.some((mutation) => (mutation.attributeName === 'class')
                         && mutation.target.classList.contains('waze-icon-save')
                         && (mutation.oldValue.indexOf('ItemDisabled') === -1)
                         && mutation.target.classList.contains('ItemDisabled'))
-                // 2023.04.04.01: Beta save button observer mutations
+                // 2023.04.05.01: Beta save button observer mutations
                     || mutations.some((mutation) => ((mutation.attributeName === 'disabled')
                         && (mutation.oldValue === 'false')
                         && (mutation.target.attributes.disabled.value === 'true')))
@@ -696,7 +696,7 @@
         return new Promise((resolve) => {
             (function retry(tries, toIndex, evt) {
                 checkTimeout({ timeout: 'checkRestrictions', toIndex });
-                // 2023.04.04.01: W.model.getTopCountry() and W.model.getTopState() return null when zoom level < 12.
+                // 2023.04.05.01: W.model.getTopCountry() and W.model.getTopState() return null when zoom level < 12.
                 if (W.map.getZoom() < 12) {
                     resolve();
                     return;
@@ -832,7 +832,7 @@
         try {
             data = await W.controller.descartesClient.getUpdateRequestSessionsByIds(urIds);
             if (data?.updateRequestSessions?.objects.length > 0)
-                // 2023.04.04.01: No need to merge the data to the W.map.mapUpdateRequests repo. Let WME control that repo.
+                // 2023.04.05.01: No need to merge the data to the W.map.mapUpdateRequests repo. Let WME control that repo.
                 // W.model.mergeResponse(data);
                 data = Object.fromEntries(data.updateRequestSessions.objects.map((o) => [o.id, o]));
             else
@@ -1390,7 +1390,7 @@
         if (!(urId > 0) && _selUr?.urId)
             ({ urId } = _selUr);
         if (replaceVars && shortcutClicked && (text.indexOf('$SELSEGS') > -1)) {
-            // 2023.04.04.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
+            // 2023.04.05.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
             const selFeatures = (typeof W.selectionManager.getSelectedDataModelObjects === 'function')
                 ? W.selectionManager.getSelectedDataModelObjects()
                 : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes.repositoryObject);
@@ -1507,7 +1507,7 @@
                         }
                     }
                     if (text.indexOf('$DRIVEDATE_DAYS_AGO$') > -1) {
-                        if (_mapUpdateRequests[urId]?.urceData.driveDaysOld > -1)
+                        if (_mapUpdateRequests[urId]?.urceData?.driveDaysOld > -1)
                             text = text.replace('$DRIVEDATE_DAYS_AGO$', parseDaysAgo(_mapUpdateRequests[urId].urceData.driveDaysOld));
                         else
                             text = text.replace('$DRIVEDATE_DAYS_AGO$', '');
@@ -1640,7 +1640,7 @@
                 text = text.replace(/(\$USERNAME\$?)+/gmi, '');
         }
         if (replaceVars && (text.indexOf('$PLACE_NAME$') > -1)) {
-            // 2023.04.04.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
+            // 2023.04.05.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
             const placeObj = (typeof W.selectionManager.getSelectedDataModelObjects === 'function')
                 ? W.selectionManager.getSelectedDataModelObjects()[0]
                 : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes.repositoryObject)[0];
@@ -1655,7 +1655,7 @@
             }
         }
         if (replaceVars && (text.indexOf('$PLACE_ADDRESS$') > -1)) {
-            // 2023.04.04.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
+            // 2023.04.05.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
             const placeObj = (typeof W.selectionManager.getSelectedDataModelObjects === 'function')
                 ? W.selectionManager.getSelectedDataModelObjects()[0]
                 : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes.repositoryObject)[0];
@@ -2156,7 +2156,7 @@
                 checkMarkerStacking(markerId, unstackedX, unstackedY);
                 if (!_settings.disableUrMarkerPopup) {
                     doSpinner('markerMouseDown', true);
-                    if (!_mapUpdateRequests[markerId].urceData)
+                    if (!_mapUpdateRequests[markerId]?.urceData)
                         await updateUrceData(getMapUrsObjArr([markerId]));
                     popupX = unstackedX - parsePxString(W.map.segmentLayer.div.style.left) + popupXOffset + 10;
                     popupY = unstackedY - parsePxString(W.map.segmentLayer.div.style.top) + 10;
@@ -2744,7 +2744,8 @@
             };
         while (processMUrObjs.length > 0) {
             const autoSentRemindersFor = [],
-                chunk = processMUrObjs.splice(0, 500),
+                // 2023.04.05.01: Lowered to 400 due to request header size limits experienced by ojlaw
+                chunk = processMUrObjs.splice(0, 400),
                 urIds = chunk.map((a) => a.attributes.id);
             let includingKeyword,
                 keywordIncludingRegex,
@@ -3075,16 +3076,7 @@
         }
         await updateUrceData(mUrsObjArr);
         updateUrMapMarkers(mUrsObjArr, filter);
-        if (_settings.enableUrOverflowHandling && (mUrsObjArr.length > 499)) {
-            if (phase !== 'overflow')
-                handleUrOverflow();
-        }
-        else if (mUrsObjArr.length > 499) {
-            alertBoxInPanel(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), undefined, true, 9999);
-        }
-        else if (mUrsObjArr.length < 500) {
-            dismissAlertBoxInPanel(undefined, 9999);
-        }
+        // 2023.04.05.01: Used to check for conditions and either run handleUrOverflow or panel alert box or remove it. But now using W.app.on('change:loadingFeedMapData') event listener.
         if (phase !== 'overflow')
             _filtersAppliedOnZoom = filter;
         doSpinner('handleUrLayer', false);
@@ -3126,9 +3118,19 @@
         });
     }
 
-    function handleUrOverflow() {
+    function handleUrOverflow(evt) {
+        if (evt?.changed?.loadingFeedMapData || evt?.changed?.attributes?.loadingFeedMapData)
+            return;
         if (W.map.getZoom() < 10) {
             logDebug('UR overflow handling does not work with zoom levels < 10.');
+            return;
+        }
+        if (W.model.mapUpdateRequests.getObjectArray().length < 500) {
+            dismissAlertBoxInPanel(undefined, 9999);
+            return;
+        }
+        if (!_settings.enableUrOverflowHandling && (W.model.mapUpdateRequests.getObjectArray().length > 499)) {
+            alertBoxInPanel(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), undefined, true, 9999);
             return;
         }
         doSpinner('handleUrOverflow', true);
@@ -3203,7 +3205,9 @@
         _mouseIsDown = false;
     }
 
-    function invokeMoveEnd(/* evt */) {
+    /**
+     * 2024.04.05.01: With the removal of the handleUrOverflow call from this function, it and the event listener are no longer needed.
+    function invokeMoveEnd(/* evt *-/) {
         /**
          * Enable Auto Refresh: Disabled 2023.03.29
          *      Due to W.controller.reloadData() causing issues with new Issue Tracker.
@@ -3221,17 +3225,10 @@
             alertBoxInPanel(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), undefined, true, 9999);
         else
             dismissAlertBoxInPanel(undefined, 9999);
-         */
-        if (W.model.mapUpdateRequests.getObjectArray().length > 499) {
-            if (_settings.enableUrOverflowHandling)
-                handleUrOverflow();
-            else
-                alertBoxInPanel(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), undefined, true, 9999);
-        }
-        else if (W.model.mapUpdateRequests.getObjectArray().length < 500) {
-            dismissAlertBoxInPanel(undefined, 9999);
-        }
+         *-/
+        // 2023.04.05.01: Used to check for conditions and either run handleUrOverflow or panel alert box or remove it. But now using W.app.on('change:loadingFeedMapData') event listener.
     }
+     */
 
     function invokeZoomEnd(evt) {
         const zoomLevel = evt?.object?.zoom || W.map.getZoom();
@@ -3258,15 +3255,7 @@
             if (_filtersAppliedOnZoom && _settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))
                 filter = false;
         }
-        if (W.model.mapUpdateRequests.getObjectArray().length > 499) {
-            if (_settings.enableUrOverflowHandling)
-                handleUrOverflow();
-            else
-                alertBoxInPanel(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), undefined, true, 9999);
-        }
-        else if (W.model.mapUpdateRequests.getObjectArray().length < 500) {
-            dismissAlertBoxInPanel(undefined, 9999);
-        }
+        // 2023.04.05.01: Used to check for conditions and either run handleUrOverflow or panel alert box or remove it. But now using W.app.on('change:loadingFeedMapData') event listener.
         if (filter !== undefined)
             handleUrLayer('zoomEnd', filter, getMapUrsObjArr());
     }
@@ -4118,11 +4107,11 @@
             logDebug('Registering event hooks.');
             W.map.events.registerPriority('mousedown', null, mouseDown);
             W.map.events.register('zoomend', undefined, invokeZoomEnd);
-            W.map.events.register('moveend', undefined, invokeMoveEnd);
             W.map.events.register('mouseup', undefined, mouseUp);
             W.prefs.on('change:isImperial', invokeModeChange);
             W.model.mapUpdateRequests.on('objectsadded', mUrsAdded);
             W.model.mapUpdateRequests.on('objectsremoved', mUrsRemoved);
+            W.app.on('change:loadingFeedMapData', handleUrOverflow);
             W.model.states.on('objectsadded', checkRestrictions);
             W.model.countries.on('objectsadded', checkRestrictions);
         }
@@ -4149,10 +4138,10 @@
             logDebug('Unregistering map.events event hook.');
             W.map.events.unregister('mousedown', undefined, mouseDown);
             W.map.events.unregister('zoomend', undefined, invokeZoomEnd);
-            W.map.events.unregister('moveend', undefined, invokeMoveEnd);
             W.map.events.unregister('mouseup', undefined, mouseUp);
             W.model.mapUpdateRequests.off('objectsadded', mUrsAdded);
             W.model.mapUpdateRequests.off('objectsremoved', mUrsRemoved);
+            W.app.off('change:loadingFeedMapData', handleUrOverflow);
             W.model.states.off('objectsadded', checkRestrictions);
             W.model.countries.off('objectsadded', checkRestrictions);
         }
