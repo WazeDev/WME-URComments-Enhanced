@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name        WME URComments-Enhanced (beta)
+// @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
 // @version     2023.04.05.01
 // eslint-disable-next-line max-len
