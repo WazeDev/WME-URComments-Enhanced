@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.04.05.01
+// @version     2023.04.05.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -63,7 +63,8 @@
         _wmeUserId = null,
         _initUrIdInUrlObserver,
         _lastVersionChecked = '0',
-        _needUrId = false;
+        _needUrId = false,
+        _mapUpdateRequests = {};
 
     // eslint-disable-next-line no-nested-ternary
     const _SCRIPT_SHORT_NAME = `URC-E${(/beta/.test(GM_info.script.name) ? ' β' : /\(DEV\)/i.test(GM_info.script.name) ? ' Ω' : '')}`,
@@ -89,7 +90,7 @@
             '<b>CHANGE:</b> Auto-send reminder comment will no longer send if zoom level is less than 10.',
             '<b>CHANGE:</b> Miscellaneous code variable changes.',
             '<b>CHANGE:</b> Issue tracker bugfix also resulted in necessity to disable auto refresh setting.',
-            '<b>CHANGE:</b> Future (possible) WME changes preparation.'
+            '<b>CHANGE:</b> Future (possible) WME changes preparation. (fixed)'
         ],
         _DEBUG = /[βΩ]/.test(_SCRIPT_SHORT_NAME),
         _LOAD_BEGIN_TIME = performance.now(),
@@ -119,7 +120,6 @@
             isps: { commentNum: null, urNum: 22 }, // Incorrect street prefix or suffix
             sl: { commentNum: null, urNum: 23 } // Speed Limit
         },
-        _mapUpdateRequests = {},
         _overflowUrsUrls = [],
         _restrictions = {},
         _spinners = {
@@ -824,7 +824,10 @@
     }
 
     function mUrsRemoved(objectsArr = []) {
-        objectsArr.forEach((mUrObj) => delete (_mapUpdateRequests[mUrObj.attributes.id]));
+        if (W.model.mapUpdateRequests.getObjectArray().length === 0)
+            _mapUpdateRequests = {};
+        else
+            objectsArr.forEach((mUrObj) => delete (_mapUpdateRequests[mUrObj.attributes.id]));
     }
 
     async function getUpdateRequestSessions(urIds = []) {
@@ -1393,7 +1396,7 @@
             // 2023.04.05.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
             const selFeatures = (typeof W.selectionManager.getSelectedDataModelObjects === 'function')
                 ? W.selectionManager.getSelectedDataModelObjects()
-                : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes.repositoryObject);
+                : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes?.repositoryObject || feature.model);
             let output = '';
             if ((selFeatures.length > 0) && (selFeatures.length < 3)) {
                 let street1Name = '',
@@ -1643,7 +1646,7 @@
             // 2023.04.05.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
             const placeObj = (typeof W.selectionManager.getSelectedDataModelObjects === 'function')
                 ? W.selectionManager.getSelectedDataModelObjects()[0]
-                : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes.repositoryObject)[0];
+                : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes?.repositoryObject || feature.model)[0];
             if (placeObj?.type === 'venue') {
                 if (placeObj.attributes.residential === true)
                     text = text.replace('$PLACE_NAME$', I18n.t('objects.venue.fields.residential'));
@@ -1658,7 +1661,7 @@
             // 2023.04.05.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
             const placeObj = (typeof W.selectionManager.getSelectedDataModelObjects === 'function')
                 ? W.selectionManager.getSelectedDataModelObjects()[0]
-                : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes.repositoryObject)[0];
+                : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes?.repositoryObject || feature.model)[0];
             if ((placeObj?.type === 'venue') && ((placeObj?.attributes.houseNumber.length > 0) || (placeObj?.attributes.streetID.length > 0))) {
                 let placeAddress = '';
                 if (placeObj.attributes.houseNumber.length > 0)
@@ -2315,15 +2318,15 @@
         $('#_urceOpenInNewTab').off().on('mouseup', saveSettingsToStorage);
         $('#_urceRecenterSession').off().on('click', { urId: popupObj.urId }, recenterOnUr);
         let rw = parseInt($('#urceDiv')[0].clientWidth);
-        if (rw > ($(window)[0].innerWidth * 0.45)) {
-            rw = ($(window)[0].innerWidth * 0.45);
+        if (rw > (window.innerWidth * 0.45)) {
+            rw = (window.innerWidth * 0.45);
             $('#urceDiv').css({ width: `${rw}px` });
         }
         const rh = parseInt($('#urceDiv')[0].clientHeight);
-        if ((popupObj.popupX + rw) > $(window)[0].innerWidth)
+        if ((popupObj.popupX + rw) > window.innerWidth)
             popupObj.popupX -= (rw + 20);
-        if ((popupObj.popupY + rh) > $(window)[0].innerHeight)
-            popupObj.popupY -= (((popupObj.popupY + rh) - $(window)[0].innerHeight) + 30);
+        if ((popupObj.popupY + rh) > window.innerHeight)
+            popupObj.popupY -= (((popupObj.popupY + rh) - window.innerHeight) + 30);
         popupObj.popupX = (popupObj.popupX < 0) ? 0 : popupObj.popupX;
         popupObj.popupY = (popupObj.popupY < 0) ? 0 : popupObj.popupY;
         $('#urceDiv').css({ top: `${popupObj.popupY}px`, left: `${popupObj.popupX}px`, visibility: 'visible' });
@@ -3479,7 +3482,7 @@
                 checkTimeout({ timeout: 'checkForStaticListArray' });
                 if (tries > 100)
                     reject(new Error(I18n.t('urce.prompts.TimedOutWaitingStatic')));
-                else if (!window[`Urcomments${oldVarName}Array2`])
+                else if (!(typeof unsafeWindow !== 'undefined' ? unsafeWindow : window)[`Urcomments${oldVarName}Array2`])
                     _timeouts.checkForStaticListArray = window.setTimeout(retry, 100, oldVarName, ++tries);
                 else
                     resolve();
@@ -3493,9 +3496,9 @@
             const { oldVarName } = getCommentListInfo(commentListIdx);
             checkForStaticListArray(oldVarName).then(() => {
                 try {
-                    const oldUrcArr = window[`Urcomments${oldVarName}Array2`],
-                        defaultReminderIdx = parseInt(window[`Urcomments${oldVarName}ReminderPosistion`]),
-                        closedNiIdx = parseInt(window[`Urcomments${oldVarName}CloseNotIdentifiedPosistion`]),
+                    const oldUrcArr = (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window)[`Urcomments${oldVarName}Array2`],
+                        defaultReminderIdx = parseInt((typeof unsafeWindow !== 'undefined' ? unsafeWindow : window)[`Urcomments${oldVarName}ReminderPosistion`]),
+                        closedNiIdx = parseInt((typeof unsafeWindow !== 'undefined' ? unsafeWindow : window)[`Urcomments${oldVarName}CloseNotIdentifiedPosistion`]),
                         data = [];
                     let entryIdx;
                     logDebug(`Converting static comment list to URC-E format for comment list: ${oldVarName}`);
@@ -3520,7 +3523,7 @@
                         + `${((oldUrcArrIdx === closedNiIdx) ? '|default_is_true' : '|')}`;
                         for (let i = 6; i < 24; i++) {
                             if ((i !== 17) && (i !== 20))
-                                temp += ((window[`Urcomments${oldVarName}def_names`][i]) && (window[`Urcomments${oldVarName}def_names`][i].toLowerCase() === oldUrcArr[oldUrcArrIdx].toLowerCase())) ? '|default_is_true' : '|';
+                                temp += (((typeof unsafeWindow !== 'undefined' ? unsafeWindow : window)[`Urcomments${oldVarName}def_names`][i]) && ((typeof unsafeWindow !== 'undefined' ? unsafeWindow : window)[`Urcomments${oldVarName}def_names`][i].toLowerCase() === oldUrcArr[oldUrcArrIdx].toLowerCase())) ? '|default_is_true' : '|';
                         }
                         data[entryIdx] = [temp];
                         entryIdx++;
@@ -5345,6 +5348,7 @@
                             else {
                                 initFinish(urIdInUrl, false);
                             }
+                            unsafeWindow._mapUpdateRequests = _mapUpdateRequests;
                             doSpinner('init', false);
                         });
                 });
