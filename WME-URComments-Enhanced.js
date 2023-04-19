@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.04.05.03
+// @version     2023.04.19.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -80,17 +80,8 @@
         _BETA_META_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXViV1YwWVM1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Check for updated version on load.',
-            '<b>BUGFIX:</b> Issues when Issue Tracker has greater than 499 URs.',
-            '<b>BUGFIX:</b> UR Panel showed -1 for urId in certain situations.',
-            '<b>BUGFIX:</b> Save button observer in WME beta.',
-            '<b>BUGFIX:</b> Restore settings resulted in error before completion.',
-            '<b>CHANGE:</b> Moved urceData to private object instead of WME model.',
-            '<b>CHANGE:</b> "Enable UR Overflow" no longer applies if zoom level is less than 10.',
-            '<b>CHANGE:</b> Auto-send reminder comment will no longer send if zoom level is less than 10.',
-            '<b>CHANGE:</b> Miscellaneous code variable changes.',
-            '<b>CHANGE:</b> Issue tracker bugfix also resulted in necessity to disable auto refresh setting.',
-            '<b>CHANGE:</b> Future (possible) WME changes preparation. (fixed)'
+        _SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Steps for custom Google sheet creation updated.',
+            '<b>CHANGE:</b> WME production now includes function from WME beta.'
         ],
         _DEBUG = /[βΩ]/.test(_SCRIPT_SHORT_NAME),
         _LOAD_BEGIN_TIME = performance.now(),
@@ -1393,10 +1384,7 @@
         if (!(urId > 0) && _selUr?.urId)
             ({ urId } = _selUr);
         if (replaceVars && shortcutClicked && (text.indexOf('$SELSEGS') > -1)) {
-            // 2023.04.05.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
-            const selFeatures = (typeof W.selectionManager.getSelectedDataModelObjects === 'function')
-                ? W.selectionManager.getSelectedDataModelObjects()
-                : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes?.repositoryObject || feature.model);
+            const selFeatures = W.selectionManager.getSelectedDataModelObjects();
             let output = '';
             if ((selFeatures.length > 0) && (selFeatures.length < 3)) {
                 let street1Name = '',
@@ -1643,10 +1631,7 @@
                 text = text.replace(/(\$USERNAME\$?)+/gmi, '');
         }
         if (replaceVars && (text.indexOf('$PLACE_NAME$') > -1)) {
-            // 2023.04.05.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
-            const placeObj = (typeof W.selectionManager.getSelectedDataModelObjects === 'function')
-                ? W.selectionManager.getSelectedDataModelObjects()[0]
-                : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes?.repositoryObject || feature.model)[0];
+            const placeObj = W.selectionManager.getSelectedDataModelObjects()[0];
             if (placeObj?.type === 'venue') {
                 if (placeObj.attributes.residential === true)
                     text = text.replace('$PLACE_NAME$', I18n.t('objects.venue.fields.residential'));
@@ -1658,10 +1643,7 @@
             }
         }
         if (replaceVars && (text.indexOf('$PLACE_ADDRESS$') > -1)) {
-            // 2023.04.05.01: W.selectionManager.getSelectedDataModelObjects() only available in WME beta for now
-            const placeObj = (typeof W.selectionManager.getSelectedDataModelObjects === 'function')
-                ? W.selectionManager.getSelectedDataModelObjects()[0]
-                : W.selectionManager.getSelectedFeatures().map((feature) => feature.attributes?.repositoryObject || feature.model)[0];
+            const placeObj = W.selectionManager.getSelectedDataModelObjects()[0];
             if ((placeObj?.type === 'venue') && ((placeObj?.attributes.houseNumber.length > 0) || (placeObj?.attributes.streetID.length > 0))) {
                 let placeAddress = '';
                 if (placeObj.attributes.houseNumber.length > 0)
@@ -1702,7 +1684,7 @@
         doSpinner('handleClickedShortcut', true);
         let $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
         if (!$domElement) {
-            handleReadyError(false, true, 'handleClickedShortcut', true, 'UR Panel comment box is missing.');
+            handleReadyError(false, true, 'handleClickedShortcut', true, 'UR panel comment box is missing.');
             return;
         }
         const cursorPos = $domElement[0].selectionStart,
@@ -1883,8 +1865,8 @@
             postNls = 0;
         let $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
         if (!$domElement) {
-            logError('UR Panel comment box is missing at beginning of postUrComment function.');
-            handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+            logError('UR panel comment box is missing at beginning of postUrComment function.');
+            handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
             return;
         }
         if (_settings.enableAppendMode && ($domElement.val() !== '') && !doubleClick) {
@@ -1930,14 +1912,14 @@
                 $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
                 if (!$domElement) {
                     logError('Timed out waiting on text box to set value with selectRange.');
-                    handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                    handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
                     return;
                 }
                 $domElement.val(commentOutput).selectRange((newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls));
                 $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
                 if (!$domElement) {
                     logError('Timed out waiting on text box shadow root to dispatch event with selectRange.');
-                    handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                    handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
                     return;
                 }
                 $domElement[0].dispatchEvent(new Event('input'));
@@ -1946,14 +1928,14 @@
                 $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
                 if (!$domElement) {
                     logError('Timed out waiting on text box to set value without selectRange.');
-                    handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                    handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
                     return;
                 }
                 $domElement.val(commentOutput);
                 $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
                 if (!$domElement) {
                     logError('Timed out waiting on text box shadow root to dispatch event without selectRange.');
-                    handleReadyError(false, true, 'postUrComment', true, 'UR Panel comment box is missing.');
+                    handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
                     return;
                 }
                 $domElement[0].dispatchEvent(new Event('input'));
@@ -3437,39 +3419,38 @@
             WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.ConversionLoadAddonFirst'));
             return;
         }
-        let htmlOut = `<div class="URCE-disableWme-text-header">${(convert ? I18n.t('urce.tools.ConvertCreateConvertProcess') : I18n.t('urce.tools.ConvertCreateCreateProcess'))}</div>`
-            + `<div class="URCE-disableWme-text-body"><div style="font-size:14px;font-weight:600;">${I18n.t('urce.tools.ConvertCreateSteps')}:</div>`
-            + `     <ol><li><p>${I18n.t('urce.tools.ConvertCreateStep1')}: <a id="_openTemplate" href="https://bit.ly/urc-e_cc-template" target="_blank">${I18n.t('urce.common.Link')}</a></p></li>`
-            + `         <li><p>${I18n.t('urce.tools.ConvertCreateStep2')}</p></li>`
-            + `         <li><p>${I18n.t('urce.tools.ConvertCreateStep3')}</p></li>`
-            + `         <li><p>${I18n.t('urce.tools.ConvertCreateStep4')}</p></li>`
-            + `         <li><p>${I18n.t('urce.tools.ConvertCreateStep5')}</p></li>`
-            + `         <li><p>${I18n.t('urce.tools.ConvertCreateStep6')}</p></li>`
-            + `         <li><p>${I18n.t('urce.tools.ConvertCreateStep7')}</p></li>`
-            + `         <li><p>${I18n.t('urce.tools.ConvertCreateStep8')}</p></li>`
-            + `         <li><p>${I18n.t('urce.tools.ConvertCreateStep9')}</p></li>`
-            + `         <li><p>${I18n.t('urce.tools.ConvertCreateStep10')}</p></li>`
-            + `         <li><p>${I18n.t('urce.tools.ConvertCreateStep11')}</p></li>`;
-        if (convert) {
-            htmlOut += `<li><p>${I18n.t('urce.tools.ConvertCreateStep12')}: <a id="_downloadDefaults">${I18n.t('urce.common.Link')}</a></p></li>`
-                + `     <li><p>${I18n.t('urce.tools.ConvertCreateStep13')}: <a id="_downloadComments">${I18n.t('urce.common.Link')}</a></p></li>`
-                + `     <li><p>${I18n.t('urce.tools.ConvertCreateStep14')}</p></li>`
-                + `     <li><p>${I18n.t('urce.tools.ConvertCreateStep15')}</p></li>`
-                + `     <li><p>${I18n.t('urce.tools.ConvertCreateStep16')}</p></li>`
-                + `     <li><p>${I18n.t('urce.tools.ConvertCreateStep17')}</p></li>`
-                + `     <li><p>${I18n.t('urce.tools.ConvertCreateStep18')}</p></li>`
-                + `     <li><p>${I18n.t('urce.tools.ConvertCreateStep19')}</p></li>`
-                + `     <li><p>${I18n.t('urce.tools.ConvertCreateStep20')}</p></li>`
-                + `     <li><p>${I18n.t('urce.tools.ConvertCreateStep21')}</p></li>`
-                + `     <li><p>${I18n.t('urce.tools.ConvertCreateStep22')}</p></li>`
-                + `     <li><p>${I18n.t('urce.tools.ConvertCreateStep23')}</p></li>`
-                + `     <li><p>${I18n.t('urce.tools.ConvertCreateStep24')}</p></li>`;
+        const createSteps = Object.keys(I18n.translations['en-US'].urce.tools).filter((k) => /^CreateStep[0-9]+/.test(k)),
+            finalSteps = Object.keys(I18n.translations['en-US'].urce.tools).filter((k) => /^FinalStep[0-9]+/.test(k));
+        let spreadsheetStep,
+            downloadDefaultsStep,
+            downloadCommentsStep,
+            htmlOut = `<div class="URCE-disableWme-text-header">${(convert ? I18n.t('urce.tools.ConvertCreateConvertProcess') : I18n.t('urce.tools.ConvertCreateCreateProcess'))}</div>`
+                + `<div class="URCE-disableWme-text-body"><div style="font-size:14px;font-weight:600;">${I18n.t('urce.tools.ConvertCreateSteps')}:</div><ol>`;
+        for (let i = 0; i < createSteps.length; i++) {
+            if (/\$SPREADSHEET_STEP\$/.test(I18n.t(`urce.tools.${createSteps[i]}`)))
+                spreadsheetStep = i + 1;
+            htmlOut += `<li><p>${
+                I18n.t(`urce.tools.${createSteps[i]}`).replace('$TEMPLATE_LINK$', `<a id="_openTemplate" href="https://bit.ly/urc-e_cc-template" target="_blank">${I18n.t('urce.common.Link')}</a>`).replace('$SPREADSHEET_STEP$', '')
+            }</p></li>`;
         }
-        htmlOut += `    <li><p>${I18n.t('urce.tools.ConvertCreateStep25')}</p></li>`
-            + `         <li><p>${I18n.t('urce.tools.ConvertCreateStep26')}</p></li>`
-            + '     </ol>'
-            + '</div>'
-            + `<div class="URCE-disableWme-text-footer"><button id="_dismissSteps" urceprefs="tools" class="urceToolsButton">${I18n.t('urce.common.Finish')}</button></div>`;
+        if (convert) {
+            const convertSteps = Object.keys(I18n.translations['en-US'].urce.tools).filter((k) => /^ConvertStep[0-9]+/.test(k));
+            for (let i = 0; i < convertSteps.length; i++) {
+                if (/\$DOWNLOAD_DEFAULTS_LINK\$/.test(I18n.t(`urce.tools.${convertSteps[i]}`)))
+                    downloadDefaultsStep = createSteps.length + i + 1;
+                if (/\$DOWNLOAD_COMMENTS_LINK\$/.test(I18n.t(`urce.tools.${convertSteps[i]}`)))
+                    downloadCommentsStep = createSteps.length + i + 1;
+                htmlOut += `<li><p>${
+                    I18n.t(`urce.tools.${convertSteps[i]}`).replace('$DOWNLOAD_DEFAULTS_LINK$', `<a id="_downloadDefaults">${I18n.t('urce.common.Link')}</a>`)
+                        .replace('$DOWNLOAD_COMMENTS_LINK$', `<a id="_downloadComments">${I18n.t('urce.common.Link')}</a>`).replace('$DOWNLOAD_DEFAULTS_STEP$', downloadDefaultsStep).replace('$DOWNLOAD_COMMENTS_STEP$', downloadCommentsStep)
+                }</p></li>`;
+            }
+        }
+        for (let i = 0; i < finalSteps.length; i++) {
+            const stepText = I18n.t(`urce.tools.${finalSteps[i]}`).replace('$SPREADSHEET_STEP$', spreadsheetStep);
+            htmlOut += `<li><p>${stepText}</p></li>`;
+        }
+        htmlOut += `</ol></div><div class="URCE-disableWme-text-footer"><button id="_dismissSteps" urceprefs="tools" class="urceToolsButton">${I18n.t('urce.common.Finish')}</button></div>`;
         disableWme(htmlOut, false);
         $('#_dismissSteps').off().on('click', () => disableWme(undefined, true));
         $('#_downloadDefaults').off().on('click', () => createCommentListCSV('defaults'));
@@ -4276,7 +4257,7 @@
             + '}'
             + '#urceDiv .urceDivContent { padding:5px 15px 0px 5px; }'
             + '#urceDiv .urceDivDisablePopups { float:right; cursor:pointer; margin-top:-12px; margin-right:10px; font-size:10px; text-decoration:underline; }'
-            // UR Panel Manipulation
+            // UR panel Manipulation
             + '#panel-container .mapUpdateRequest.panel { width:380px; max-height:87vh; }'
             + '#panel-container .mapUpdateRequest.panel>* { max-height:87vh; }'
             + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment-list { padding: 0px 6px; margin-bottom: 6px; max-height: 26vh; }'
@@ -5236,11 +5217,11 @@
         _markerCountOnInit = -1;
         maskBoxes(undefined, true, 'init', (urId > 0));
         if (urPanelMissing && W.model.mapUpdateRequests.objects[urId]) {
-            logDebug(`UR ${urId} marker in URL. UR Panel did not appear after 15 seconds, attempting to activate marker.`);
+            logDebug(`UR ${urId} marker in URL. UR panel did not appear after 15 seconds, attempting to activate marker.`);
             openUrPanel(urId, false);
         }
         else if (urPanelMissing) {
-            log(`UR ${urId} marker in URL. UR Panel did not appear after 15 seconds. Marker not found.`);
+            log(`UR ${urId} marker in URL. UR panel did not appear after 15 seconds. Marker not found.`);
         }
         else {
             logDebug(`UR ${urId} marker in URL. Re-opening.`);
@@ -5328,7 +5309,7 @@
                                 });
                             }
                             else if ($('#panel-container').children().length === 0) {
-                                logDebug(`urId ${urIdInUrl} found in URL, but the UR Panel has not shown up yet. Waiting up to 15 seconds.`);
+                                logDebug(`urId ${urIdInUrl} found in URL, but the UR panel has not shown up yet. Waiting up to 15 seconds.`);
                                 _initUrIdInUrlObserver = new MutationObserver((mutations) => {
                                     mutations.forEach((mutation) => {
                                         if ((mutation.type === 'attributes')
@@ -5492,6 +5473,7 @@
                             PleaseWait: 'Please wait',
                             Reset: 'Reset',
                             Restore: 'Restore',
+                            Static: 'Static',
                             Style: 'Style',
                             Success: 'Success',
                             Total: 'Total',
@@ -5521,10 +5503,10 @@
                             DefaultListTitle: 'Select the custom list you would like to use. CommentTeam is the default. If you would like your comment list built into this script or have '
                                         + 'suggestions on the CommentTeam list, please contact a WazeDev team member.',
                             CustomSsId: 'Custom Google Spreadsheet ID',
-                            CustomSsIdTitle: 'Enter the Google Spreadsheet ID for the Custom comment list you would like to load when you select "Custom G Sheet" comment list.',
+                            CustomSsIdTitle: 'Enter the Google Spreadsheet ID for the Custom comment list you would like to load when you select \'Custom G Sheet\' comment list.',
                             CommentListStyleTitle: 'Select the style you would like the URC-E panel to be displayed in. This only affects the look of the tab, no functionality is changed.',
                             SpreadsheetLink: 'URC-E Master Spreadsheet',
-                            SpreadsheetLinkTitle: 'Click here to view the URC-E spreadsheet.',
+                            SpreadsheetLinkTitle: 'Click here to view the URC-E master spreadsheet.',
                             CustomSpreadsheetLink: 'Custom Google Spreadsheet',
                             CustomSpreadsheetLinkTitle: 'Click here to view your custom google spreadsheet.',
                             StyleDefault: 'Default',
@@ -5533,14 +5515,13 @@
                             TagEmailTitle: 'Some comment lists have specific comments that use a replacement tag.\nThe replacement tag is used to specify an email address to send correspondence '
                                         + 'to.\nIf you are setup to use one of these email addresses, please specify it here. If not, leave it blank.',
                             CustomTagline: 'Custom tagline',
-                            CustomTaglineTitle: 'Some comments use a custom tagline variable.\nSpecify the text, if any, you would like to have put in place of this custom tagline variable in the '
-                                        + 'comment.',
+                            CustomTaglineTitle: 'Some comments use a custom tagline variable.\nSpecify the text, if any, you would like to have put in place of this custom tagline variable in the comment.',
                             AutoSwitchCommentList: 'Automatically switch comment lists',
                             AutoSwitchCommentListTitle: 'Automatically switch to the comment list designated for the area the UR is in, if there is a list associated with the area.\nOpening a UR '
-                                        + 'in an area that does not have a list associated will use the "Comment List" you have selected above.',
+                                        + 'in an area that does not have a list associated will use the \'Comment List\' you have selected above.',
                             PerCommentListSettings: 'Per comment list settings',
                             SettingsFor: 'Settings for',
-                            UseDefault: 'Use "URC-E Master Settings" setting',
+                            UseDefault: 'Use \'URC-E Master Settings\' setting',
                             UrcePrefs: 'URC-E Master Settings',
                             AutoCenterOnUr: 'Auto center on UR',
                             AutoCenterOnUrTitle: 'Auto center the map to the selected UR at the current map zoom level.',
@@ -5550,15 +5531,14 @@
                             AutoCloseUrPanel: 'Auto close UR panel',
                             AutoCloseUrPanelTitle: 'Automatically close the UR panel after you click send on a comment.',
                             AutoSaveAfterSolvedOrNiComment: 'Auto save after solved or NI',
-                            AutoSaveAfterSolvedOrNiCommentTitle: 'This will automatically click the save button after you close the UR panel in with you set the UR status to Solved or Not '
-                                        + 'Identified.',
+                            AutoSaveAfterSolvedOrNiCommentTitle: 'This will automatically click the save button after you close the UR panel in with you set the UR status to Solved or Not Identified.',
                             AutoSendReminders: 'Auto send reminders',
                             AutoSendRemindersTitle: 'Automatically send the reminder comment to the URs in the map window (as you pan around) you were the last to comment on and it has reached the '
-                                        + 'days specified in "Reminder Days". Restricted to editor rank 4+.',
+                                        + 'days specified in \'Reminder Days\'. Restricted to editor rank 4+.',
                             AutoSendRemindersWarning: 'WARNING',
                             AutoSendRemindersWarningTitle: 'AUTOMATICALLY SEND REMINDERS at the reminder days setting.\nThis only happens when they are visible on your screen.\n\nNOTE: When using '
                                         + 'this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to '
-                                        + 'all open URs\nafter "Reminder days".',
+                                        + 'all open URs\nafter \'Reminder days\'.',
                             AutoSendRemindersExceptTagged: 'Except tagged',
                             AutoSendRemindersExceptTaggedTitle: 'Enabling this setting will prevent the \'Auto send reminders\' setting (if enabled as well) from automatically sending a reminder '
                                         + 'comment to a tagged UR.',
@@ -5569,10 +5549,9 @@
                             AutoSetNewUrCommentWithDescription: 'Auto set new UR comment (with description)',
                             AutoSetNewUrCommentWithDescriptionTitle: 'Automatically set the default UR comment for the UR type on new (do not already have comments) URs that have a description.',
                             AutoSetReminderUrComment: 'Auto set reminder UR comment',
-                            AutoSetReminderUrCommentTitle: 'Automatically set the UR reminder comment for URs that are older than the "Reminder days" setting and have only one comment.',
+                            AutoSetReminderUrCommentTitle: 'Automatically set the UR reminder comment for URs that are older than the \'Reminder days\' setting and have only one comment.',
                             AutoSwitchToUrCommentsTab: 'Auto switch to the URC-E tab',
-                            AutoSwitchToUrCommentsTabTitle: 'Automatically switch to the URComments-Enhanced tab when opening a UR. When the UR panel is closed you will be switched back to your '
-                                        + 'previous tab.',
+                            AutoSwitchToUrCommentsTabTitle: 'Automatically switch to the URComments-Enhanced tab when opening a UR. When the UR panel is closed you will be switched back to your previous tab.',
                             AutoZoomInOnNewUr: 'Auto zoom in on new UR',
                             AutoZoomInOnNewUrTitle: 'Automatically zoom in when opening new (no comments) URs.',
                             AutoZoomOutAfterClosePanel: 'Auto zoom out after close panel',
@@ -5584,48 +5563,48 @@
                             ReplaceNextWithDoneButton: 'Replace Next UR button with Done button',
                             ReplaceNextWithDoneButtonTitle: 'Replace the Next Update Request button with a Done button.',
                             DoubleClickLinkNiComments: 'Double click link - NI comments',
-                            DoubleClickLinkNiCommentsTitle: 'Add an image (extra link) to the "not identified" comments. When double clicked it will automatically set and send the UR comment of the '
-                                        + 'one you double clicked, and then launch all of the other options that are enabled.',
+                            DoubleClickLinkNiCommentsTitle: 'Add an image (extra link) to the \'not identified\' comments. When double clicked it will automatically set and send the UR comment of the '
+                                            + 'one you double clicked, and then launch all of the other options that are enabled.',
                             DoubleClickLinkOpenComments: 'Double click link - Open comments',
-                            DoubleClickLinkOpenCommentsTitle: 'Add an image (extra link) to the "open" comments. When double clicked it will automatically set and send the UR comment of the one you '
-                                        + 'double clicked, and then launch all of the other options that are enabled.',
+                            DoubleClickLinkOpenCommentsTitle: 'Add an image (extra link) to the \'open\' comments. When double clicked it will automatically set and send the UR comment of the one you '
+                                            + 'double clicked, and then launch all of the other options that are enabled.',
                             DoubleClickLinkSolvedComments: 'Double click link - Solved comments',
-                            DoubleClickLinkSolvedCommentsTitle: 'Add an image (extra link) to the "solved" comments. When double clicked it will automatically set and send the UR comment of the one '
-                                        + 'you double clicked, and then launch all of the other options that are enabled.',
+                            DoubleClickLinkSolvedCommentsTitle: 'Add an image (extra link) to the \'solved\' comments. When double clicked it will automatically set and send the UR comment of the one '
+                                            + 'you double clicked, and then launch all of the other options that are enabled.',
                             HideZoomOutLinks: 'Hide zoom out links',
                             HideZoomOutLinksTitle: 'Hide the zoom out links on the comments tab.',
                             UnfollowUrAfterSend: 'Unfollow UR after send',
                             UnfollowUrAfterSendTitle: 'Unfollow the UR after sending a comment.',
                             EnableUrOverflowHandling: 'Enable UR overflow handling',
                             EnableUrOverflowHandlingTitle: 'If this setting is enabled and there are more than 499 URs on the screen, URC-E will attempt to gather more URs and add them to the map, '
-                                        + 'if they do not already exist.\nWME does not display more than 500 URs on a single screen on its own.',
+                                            + 'if they do not already exist.\nWME does not display more than 500 URs on a single screen on its own.',
                             EnableAutoRefresh: 'Enable auto refresh on zoom / pan',
                             EnableAutoRefreshTitle: 'Reloads the map data when zooming or panning to show URs that may have been missed due to WME\'s 500 UR limit.  Will only reload if the zoom '
-                                        + 'level is between 15 and 22, there are not pending edits, and there are more than 499 URs loaded.',
+                                            + 'level is between 15 and 22, there are not pending edits, and there are more than 499 URs loaded.',
                             ExpandMoreInfo: 'Auto expand more info section',
                             ExpandMoreInfoTitle: 'Automatically expand the more info section of the UR Panel.',
                             ExpandShortcuts: 'Auto expand shortcuts section',
                             ExpandShortcutsTitle: 'Automatically expand the shortcuts section of the UR Panel.',
-                            AutoScrollComments: 'Auto scroll comments in UR Panel',
+                            AutoScrollComments: 'Auto scroll comments in UR panel',
                             AutoScrollCommentsTitle: 'Automatically scroll the comments in the UR panel to the bottom if enabled, or top if disabled.',
                             ReverseCommentSort: 'Sort Comments in reverse order',
                             ReverseCommentSortTitle: 'Sort comments in the UR Panel in the reverse order.',
                             UrMarkerPrefs: 'UR Marker Settings',
                             EnableUrPillCounts: 'Enable UR pill counts',
                             EnableUrPillCountsTitle: 'Enable or disable the pill with UR counts on the map marker.',
-                            DisableUrMarkerPopup: 'Disable UR marker popup',
+                            DisableUrMarkerPopup: 'Disable UR marker popups',
                             DisableUrMarkerPopupTitle: 'Do not show the UR popup tooltip when you mouse over a UR marker.',
                             UrMarkerPopupDelay: 'UR marker popup delay',
                             UrMarkerPopupDelayTitle: 'The number of milliseconds (* 100) to delay before the UR marker tooltip will be displayed.',
                             UrMarkerPopupTimeout: 'UR marker popup timeout',
                             UrMarkerPopupTimeoutTitle: 'Specify the number of seconds to leave the UR marker tooltip displayed, while hovering over the marker.\nLeaving the marker, unless to the '
-                                        + 'tooltip itself, will cause the tooltip to close.\nEntering the tooltip will cancel the timer and leaving the tooltip will close the tooltip.\nDouble '
-                                        + 'click to quickly close.',
+                                            + 'tooltip itself, will cause the tooltip to close.\nEntering the tooltip will cancel the timer and leaving the tooltip will close the tooltip.\nDouble '
+                                            + 'click to quickly close.',
                             DoNotShowTagNameOnPill: 'Don\'t show tag name on pill',
                             DoNotShowTagNameOnPillTitle: 'Do not show the tag name on the pill where there is a tag. Example: [NOTE]',
                             ReplaceTagNameWithEditorName: 'Replace tag name with editor name',
                             ReplaceTagNameWithEditorNameTitle: 'When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds '
-                                        + 'when commenting), replace the tag type with the editors name.',
+                                            + 'when commenting), replace the tag type with the editors name.',
                             UnstackMarkers: 'Unstack markers',
                             UnstackMarkersTitle: 'Attempt to unstack markers by offsetting them. Similar to how URO+ unstacks markers.',
                             UnstackSensitivity: 'Unstack sensitivity',
@@ -5633,23 +5612,23 @@
                             UnstackDisableAboveZoom: 'Unstack disable when zoom level <',
                             UnstackDisableAboveZoomTitle: 'When you zoom out wider than the specified zoom level, marker unstacking will be disabled.\nDefault: 15',
                             UseCustomMarkersFor: 'Use Custom Markers for',
-                            BogTitle: 'Replace default UR marker with custom marker for the URs with "[BOG]" (boots on ground) / "[BOTG]" (boots on the ground) in the description or comments.',
-                            ClosureTitle: 'Replace default UR marker with custom marker for the URs with "[CLOSURE]" in the description or comments.',
-                            ConstructionTitle: 'Replace default UR marker with custom marker for the URs with "[CONSTRUCTION]" in the description or comments.',
-                            DifficultTitle: 'Replace default UR marker with custom marker for the URs with "[DIFFICULT]" in the description or comments.',
-                            EventTitle: 'Replace default UR marker with custom marker for the URs with "[EVENT]" in the description or comments.',
-                            NoteTitle: 'Replace default UR marker with custom marker for the URs with "[NOTE]" in the description or comments.',
-                            RoadworksTitle: 'Replace default UR marker with custom marker for the URs with "[ROADWORKS]" in the description or comments. Used in the UK.',
+                            BogTitle: 'Replace default UR marker with custom marker for the URs with \'[BOG]\' (boots on ground) / \'[BOTG]\' (boots on the ground) in the description or comments.',
+                            ClosureTitle: 'Replace default UR marker with custom marker for the URs with \'[CLOSURE]\' in the description or comments.',
+                            ConstructionTitle: 'Replace default UR marker with custom marker for the URs with \'[CONSTRUCTION]\' in the description or comments.',
+                            DifficultTitle: 'Replace default UR marker with custom marker for the URs with \'[DIFFICULT]\' in the description or comments.',
+                            EventTitle: 'Replace default UR marker with custom marker for the URs with \'[EVENT]\' in the description or comments.',
+                            NoteTitle: 'Replace default UR marker with custom marker for the URs with \'[NOTE]\' in the description or comments.',
+                            RoadworksTitle: 'Replace default UR marker with custom marker for the URs with \'[ROADWORKS]\' in the description or comments. Used in the UK.',
                             WslmTitle: 'Waze Speed Limit Marker',
                             NativeSpeedLimits: 'Native speed limits',
-                            NativeSpeedLimitsTitle: 'Replace default UR marker with custom marker for the URs with "speed limit" type.',
+                            NativeSpeedLimitsTitle: 'Replace default UR marker with custom marker for the URs with \'speed limit\' type.',
                             CustomTitle: 'Replace default UR marker with custom marker for the URs with the text in the box to the right in the description or comments.',
                             UrFilteringPrefs: 'UR Filtering Settings',
                             EnableUrceUrFiltering: 'Enable URC-E UR filtering',
                             EnableUrceUrFilteringTitle: 'Enable or disable URComments-Enhanced built-in UR filtering.',
                             InvertFilters: 'Invert filters',
-                            InvertFiltersTitle: 'This will invert the filters you select / do not select.\n\nExample: If a filter were to match a selected / enabled setting, it would normally '
-                                        + 'be hidden.\nBut, if you enable "invert filters", the marker would be shown and all others that do not match will be hidden.',
+                            InvertFiltersTitle: 'This will invert the filters you select / do not select.\nExample: If a filter were to match a selected / enabled setting, it would normally '
+                                        + 'be hidden.\nBut, if you enable \'invert filters\', the marker would be shown and all others that do not match will be hidden.',
                             HideOutsideEditableArea: 'Hide outside editable area',
                             HideOutsideEditableAreaTitle: 'Hide URs outside your editable area.',
                             DoNotFilterTaggedUrs: 'Do not filter tagged URs',
@@ -5657,9 +5636,9 @@
                             DoNotHideSelectedUr: 'Do not hide selected UR',
                             DoNotHideSelectedUrTitle: 'Do not hide a UR if it is currently being selected.',
                             DisableFilteringAboveZoomLevel: 'Disable filtering when zoom level <',
-                            DisableFilteringAboveZoomLevelTitle: 'Disable UR filtering when zoomed out wider than the specified zoom level. Set to "12" to enable all filtering.',
+                            DisableFilteringAboveZoomLevelTitle: 'Disable UR filtering when zoomed out wider than the specified zoom level. Set to \'12\' to enable all filtering.',
                             DisableFilteringBelowZoomLevel: 'Disable filtering when zoom level >',
-                            DisableFilteringBelowZoomLevelTitle: 'Disable UR filtering when zoomed in tighter than the specified zoom level. Set to "22" to enable all filtering.',
+                            DisableFilteringBelowZoomLevelTitle: 'Disable UR filtering when zoomed in tighter than the specified zoom level. Set to \'22\' to enable all filtering.',
                             LifeCycleStatus: 'Hide by lifecycle status',
                             LifeCycleStatusInverted: 'Show by lifecycle status',
                             HideWaiting: 'Waiting',
@@ -5709,7 +5688,7 @@
                             HideByAgeOfSubmissionLessThanTitle: 'Hide/show URs that were originally created less than specified number of days ago.',
                             HideByAgeOfSubmissionMoreThanTitle: 'Hide/show URs that were originally created more than specified number of days ago.',
                             DescriptionCommentsFollowing: 'Hide by description, comment, following',
-                            DescriptionCommentsFollowingInverted: 'Show by description, comment following',
+                            DescriptionCommentsFollowingInverted: 'Show by description, comment, following',
                             HideFollowingTitle: 'Hide/show URs you are following.',
                             HideNotFollowingTitle: 'Hide/show URs you are not following.',
                             HideWithDescriptionTitle: 'Hide/show URs that have a description.',
@@ -5751,11 +5730,11 @@
                                         + 'comment.\nSet to 0 if you do not use reminders.',
                             CloseDays: 'Close days',
                             CloseDaysTitle: 'Number of days to use when calculating UR filtering.\nThis is the number of days since the last comment.\nExample: If you close 4 days after the last '
-                                        + 'comment set to 4.\nAnything less than this time will be considered "waiting" as long as there is at least one comment already.',
+                                        + 'comment, set to 4.\nAnything less than this time will be considered \'waiting\' as long as there is at least one comment already.',
                             EnableAppendMode: 'Enable append comment mode',
                             EnableAppendModeTitle: 'Enabling append comment mode will allow you to append a comment to the existing text in the new-comment box.\nThe comment is appended with a blank '
-                                    + 'line between the existing text and the new text.\nThe status of the UR is set to the status of the new comment you clicked to append.\nIf the comment would end '
-                                    + 'up being longer than 2000 characters, append mode will give a warning and not alter the text in the comment box, but the status would have been changed.'
+                                        + 'line between the existing text and the new text.\nThe status of the UR is set to the status of the new comment you clicked to append.\nIf the comment would end '
+                                        + 'up being longer than 2000 characters, append mode will give a warning and not alter the text in the comment box, but the status would have been changed.'
                         },
                         tabs: {
                             Comments: 'Comments',
@@ -5775,46 +5754,49 @@
                         tools: {
                             BackupSettingsTitle: 'Download a backup copy of your URC-E settings in JSON format.\nThis backup can be used to restore your settings to another computer, or in the event '
                                         + 'you lose your settings.\n\nNote: Please do not modify the JSON file in any way. The format is crucial to proper restoral of settings.',
+                            CreateStep1: 'Open the template spreadsheet: $TEMPLATE_LINK$',
+                            CreateStep2: 'Click <i>File</i> then <i>Make a copy</i>.',
+                            CreateStep3: 'Give your file a name and specify the folder you want to save it in.',
+                            CreateStep4: 'Click <i>Make a copy</i>.',
+                            CreateStep5: 'Your sheet will open in a new tab. Look at the URL to get the <i>Spreadsheet ID</i>.<br>It is between <i>https://docs.google.com/spreadsheets/d/</i> and <i>/edit#...</i>.\n<br><b>Example:</b> <i>1JVtw4xwjKmPX_H1Xo1uwyYwxguM-oSi0LotD4lEwmK4</i> $SPREADSHEET_STEP$',
+                            CreateStep6: 'Click <i>Share</i> at the top right.',
+                            CreateStep7: 'Under <i>General access</i>, click the down arrow next to <i>Restricted</i>.',
+                            CreateStep8: 'Select <i>Anyone with the link</i>.',
+                            CreateStep9: 'Ensure <i>Viewer</i> is listed as to right and <i>Anyone on the internet with the link can view</i> below.',
+                            CreateStep10: 'Click <i>Done</i>.',
+                            ConvertStep1: 'Download your converted default UR type responses: $DOWNLOAD_DEFAULTS_LINK$',
+                            ConvertStep2: 'Download your converted comment list: $DOWNLOAD_COMMENTS_LINK$',
+                            ConvertStep3: 'In your custom Google Sheet, select the <b>CustomComments</b> tab, then click cell <b>B5</b>.',
+                            ConvertStep4: 'Click <i>File</i> then <i>Import</i>.',
+                            ConvertStep5: 'Click <i>Upload</i> at the top.',
+                            ConvertStep6: 'Either click <i>Browse</i> and select your <i>default UR type responses</i> file that was downloaded in step $DOWNLOAD_DEFAULTS_STEP$ '
+                                        + '(<b>default_responses_DATETIME.csv</b>),<br>or drag and drop your <i>default UR type responses</i> file to the box.',
+                            ConvertStep7: 'For <i>Import location</i> select <b>Replace data at selected cell</b>.',
+                            ConvertStep8: 'For <i>Separator type</i> select <i>Custom</i> and put <b>|</b> in the box.',
+                            ConvertStep9: 'Click <i>Import data</i>.',
+                            ConvertStep10: 'Click cell <b>A25</b>.',
+                            ConvertStep11: 'Click <i>File</i> then <i>Import</i>.',
+                            ConvertStep12: 'Click <i>Upload</i> at the top.',
+                            ConvertStep13: 'Either click <i>Browse</i> and select your <i>comment list</i> file that was downloaded in step $DOWNLOAD_COMMENTS_STEP$ '
+                                        + '(<b>comment_list_DATETIME.csv</b>),<br>or drag and drop your <i>comment list</i> file to the box.',
+                            ConvertStep14: 'For <i>Import location</i> select <b>Replace data at selected cell</b>.',
+                            ConvertStep15: 'For <i>Separator type</i> select <i>Custom</i> and put <b>|</b> in the box.',
+                            ConvertStep16: 'Click <i>Import data</i>.',
+                            FinalStep1: 'Put your <b>Spreadsheet ID</b> (step $SPREADSHEET_STEP$) in the Custom <i>Google Spreadsheet ID</i> settings box in URC-E settings.',
+                            FinalStep2: 'You can now use the <i>Custom G Sheet</i> comment list.',
                             ConvertCreateConvertProcess: 'Convert Process',
                             ConvertCreateCreateProcess: 'Create Process',
-                            ConvertCreateStep1: 'Open the template spreadsheet',
-                            ConvertCreateStep2: 'Click <i>File</i> then <i>Make a copy</i>.',
-                            ConvertCreateStep3: 'Give your file a name and specify the folder you want to save it in.',
-                            ConvertCreateStep4: 'Click <i>OK</i>.',
-                            ConvertCreateStep5: 'Your sheet will open in a new tab. Look at the URL to get the <i>Spreadsheet ID</i>.<br>It is between <i>https://docs.google.com/spreadsheets/d/</i> and '
-                                    + '<i>/edit#...</i>.<br><b>Example:</b> <i>1JVtw4xwjKmPX_H1Xo1uwyYwxguM-oSi0LotD4lEwmK4</i>',
-                            ConvertCreateStep6: 'Click <i>Share</i> at the top right.',
-                            ConvertCreateStep7: 'Click <i>Advanced</i> at the bottom right.',
-                            ConvertCreateStep8: 'Click <i>Change...</i> next to <i>Specific people can access</i>',
-                            ConvertCreateStep9: 'Select <i>On - Anyone with the link</i>',
-                            ConvertCreateStep10: 'Ensure <i>Access: Anyone (no sign-in required)</i> is set to <i>Can view</i>.',
-                            ConvertCreateStep11: 'Click <i>Save</i> then <i>Done</i>.',
-                            ConvertCreateStep12: 'Download your converted default UR type responses',
-                            ConvertCreateStep13: 'Download your converted comment list',
-                            ConvertCreateStep14: 'In your custom Google Sheet click cell <i>A25</i>.',
-                            ConvertCreateStep15: 'Click <i>File</i> then <i>Import</i>.',
-                            ConvertCreateStep16: 'Click <i>Upload</i> at the top.',
-                            ConvertCreateStep17: 'Select your <i>comment list</i> file that was downloaded in step 12 (<i>comment_list_DATETIME.csv</i>).',
-                            ConvertCreateStep18: 'For <i>Import location</i> select <i>Replace data at selected cell</i>.',
-                            ConvertCreateStep19: 'For <i>Separator type</i> select <i>Custom</i> and put <i>|</i> in the box.',
-                            ConvertCreateStep20: 'Click <i>Import data</i>.',
-                            ConvertCreateStep21: 'Click cell <i>B5</i>.',
-                            ConvertCreateStep22: 'Repeat steps 15 and 16.',
-                            ConvertCreateStep23: 'Select your <i>default UR type responses</i> file that was downloaded in step 11 (<i>default_responses_DATETIME.csv</i>).',
-                            ConvertCreateStep24: 'Repeat steps 16-18.',
-                            ConvertCreateStep25: 'Put your <i>Spreadsheet ID</i> (step 5) in the <i>Custom Google Spreadsheet ID</i> settings box in URC-E settings.',
-                            ConvertCreateStep26: 'You can now use the <i>Custom G Sheet</i> comment list.',
                             ConvertCreateSteps: 'Steps',
                             ConvertCurrentCustom: 'Convert current custom',
                             ConvertCurrentCustomTitle: 'Convert your current custom comment list addon to URC-E style Google Sheet for easy maintenance, sharing, etc.',
                             CreateNewCustom: 'Create new custom',
                             CreateNewCustomTitle: 'Create your own URC-E custom comment list Google sheet for easy maintenance, sharing, etc.',
                             CustomGoogleSpreadsheet: 'Custom Google Spreadsheet',
-                            IntersectionOf: 'at the intersection of $SEG1NAME$ and $SEG2NAME$',
-                            IntersectionOfWithCity: 'at the intersection of $SEG1NAME$ and $SEG2NAME$ in $SEGCITY$',
+                            IntersectionOf: 'the intersection of $SEG1NAME$ and $SEG2NAME$',
+                            IntersectionOfWithCity: 'the intersection of $SEG1NAME$ and $SEG2NAME$ in $SEGCITY$',
                             ResetSettingsTitle: 'Reset all URC-E settings back to their default values.\n\nNote: Almost all settings default to disabled.',
                             RestoreSettingsFileError: 'Invalid URC-E settings JSON file.',
-                            RestoreSettingsSelectFileTitle: 'Select the JSON file created by the URC-E "Backup" settings button.',
+                            RestoreSettingsSelectFileTitle: 'Select the JSON file created by the URC-E \'Backup\' settings button.',
                             RestoreSettingsTitle: 'Restore a backup copy of your URC-E settings from the JSON backup file created with the backup settings button.\n\nNote: Please do not modify the '
                                         + 'JSON file in any way. The format is crucial to proper restoral of settings.',
                             SegmentWithCity: '$SEG1NAME$ in $SEGCITY$',
@@ -5856,10 +5838,10 @@
                                         + 'insert the address of the currently selected place into the comment box at the current cursor position.',
                             InsertPlaceNameTitle: 'Shortcut - Place name: Click this icon to either replace \'$PLACE_NAME$\' with the name of the currently selected place, or it will insert the name '
                                         + 'of the currently selected place into the comment box at the current cursor position.',
-                            InsertSelSegsTitle: 'Shortcut - Segment name(s): Click this icon to either replace "$SELSEGS$" (or "$SELSEGS") with the name of the currently selected segment(s), or\nit '
+                            InsertSelSegsTitle: 'Shortcut - Segment name(s): Click this icon to either replace \'$SELSEGS$\' (or \'$SELSEGS\') with the name of the currently selected segment(s), or\nit '
                                         + 'will insert the name of the currently selected segment(s) into the comment box at the cursor position.',
                             InsertSelSegsWithCityTitle: 'Shortcut - Segment name(s) with city: Click this icon to either replace \'$SELSEGS_WITH_CITY$\' (or \'$SELSEGS$\' or \'$SELSEGS\') with the '
-                                        + 'name and city of the currently selected segment(s), or\nit will insert the name and city of the currently selected segment(s) into the comment box at the '
+                                        + 'name and city of the currently selected segment(s), or \nit will insert the name and city of the currently selected segment(s) into the comment box at the '
                                         + 'cursor position.',
                             InsertTimeCasualTitle: 'Shortcut - Drive time of day (casual): Click this icon to insert the drive date time of day into the new comment box at the cursor position (in '
                                         + 'locale language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
@@ -5867,7 +5849,7 @@
                                         + '2-digit minute in locale format).',
                             InsertUrPermalinkTitle: 'Shortcut - Insert permalink to this UR. URL will include your locale, your \'env\', the latitude and longitude of this UR, zoom level of 17, '
                                         + 'mapUpdateRequest of this UR ID number, and s=20489175039 (which ensures the UR layer is turned on).',
-                            InsertUrTypeTitle: 'Shortcut - UR type: Click this icon to insert the UR type into the new comment box at the cursor position.',
+                            InsertUrTypeTitle: 'Shortcut - UR Type: Click this icon to insert the UR type into the new comment box at the cursor position.',
                             InsertWazeUsernameTitle: 'Shortcut - Waze username: Click this icon to insert your Waze username into the new comment box at the cursor position.',
                             Shortcuts: 'Shortcuts'
                         },
@@ -5884,18 +5866,17 @@
                                         + 'selected comment and left the new-comment box with the same text it had.',
                             ConversionLoadAddonFirst: 'In order to convert a custom comments addon script to the new URC-E style Google Sheet, you must first ensure your custom comments addon is '
                                         + 'enabled in TamperMonkey and selected in URC-E\'s Comment List settings box.',
-                            CustomGSheetLoadError: 'An error has occurred loading your URC-E custom comment Google sheet.<br><br>Please make sure you have done the following:\n<ul><li>Used '
-                                        + '<b><i>Make a copy...</i></b> on the original spreadsheet that was created for you and saved it to your own Google Drive.\n<li>Set the correct <b><i>Custom '
+                            CustomGSheetLoadError: 'An error has occurred loading your URC-E custom comment Google sheet.<br><br>Please make sure you have done the following:\n<ul><li>Set the correct <b><i>Custom '
                                         + 'Google Spreadsheet ID</i></b> (should be the ID of the copy created in the previous step) set on the settings tab.\n<li>Ensured your spreadsheet is shared '
                                         + 'to everyone with a link can view.\n</ul>If all these have been done and you are still having issues, please contact a WazeDev team member.',
                             NoCommentBox: 'URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.',
-                            PlaceAddressFound: 'The selected comment contains "$PLACE_ADDRESS$".\n\nIn order to replace this text with the place address, please select a place and click the place '
+                            PlaceAddressFound: 'The selected comment contains \'$PLACE_ADDRESS$\'.\n\nIn order to replace this text with the place address, please\nselect a place and click the place '
                                         + 'address shortcut button in the UR panel.',
                             PlaceAddressInsertError: 'In order to use the <i class="fa fa-map-marker" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
-                            PlaceNameFound: 'The selected comment contains "$PLACE_NAME$".\n\nIn order to replace this text with the place name, please select a place and click the place name '
+                            PlaceNameFound: 'The selected comment contains \'$PLACE_NAME$\'.\n\nIn order to replace this text with the place name, please\nselect a place and click the place name '
                                         + 'shortcut button in the UR panel.',
                             PlaceNameInsertError: 'In order to use the <i class="fa fa-home" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
-                            ReminderMessageAuto: 'URC-E: Automatically sending reminder message to UR:',
+                            ReminderMessageAuto: 'Automatically sent reminder message to UR(s)',
                             ResetSettings: 'Reset Settings',
                             ResetSettingsComplete: 'Settings reset complete',
                             ResetSettingsConfirmation: 'Are you sure you want to reset URC-E settings back to their default values?',
@@ -5907,7 +5888,7 @@
                             RestoreSettingsRetainedSettings: 'Retained current settings',
                             RestrictionsEnforced: 'Restrictions enforced!',
                             RestrictionsEnforcedTitle: 'The following restrictions have been enforced',
-                            SelSegsFound: 'The selected comment contains "$SELSEGS$".\n\nIn order to replace this text with the road name(s), please\nselect one or two segments and click the road '
+                            SelSegsFound: 'The selected comment contains \'$SELSEGS$\'.\n\nIn order to replace this text with the road name(s), please\nselect one or two segments and click the road '
                                         + 'button in the\nUR panel.',
                             SelSegsInsertError: 'In order to use the <i class="fa fa-road" aria-hidden="true"></i> button in the UR Panel, you must first select one or two segments.',
                             SetCustomSsIdFirst: 'Before you can select <b><i>Custom G Sheet</i></b> as your comment list, you must first set the <b><i>Custom Google Spreadsheet ID</i></b> setting on '
@@ -5915,8 +5896,7 @@
                             SwitchingCommentLists: 'Switching comment lists',
                             TimedOutWaitingStatic: 'Timed out waiting for the static list to become available. Is it enabled?',
                             UpdateRequired: 'You are using an older version of URC-E, which has caused an error. Please update to at least version',
-                            UrOverflowErrorWithoutOverflowEnabled: 'WME will not load more than 500 URs per screen. Some URs may be missing. You can try to enable overflow handling, or zoom in and '
-                                        + 'refresh.',
+                            UrOverflowErrorWithoutOverflowEnabled: 'WME will not load more than 500 URs per screen. Some URs may be missing. You can try to enable overflow handling, or zoom in and refresh.',
                             VarFound: 'The selected comment contains variables: $VARSFOUND$.\n\nUntil these are replaced, the send button is disabled.',
                             WaitingOnInit: 'Waiting for URC-E to fully initialize',
                             WaitingToGetUrId: 'Waiting to get urId'
@@ -5925,7 +5905,7 @@
                             ACoupleMonthsAgo: 'a couple months ago',
                             AFewWeeksAgo: 'a few weeks ago',
                             Afternoon: 'afternoon',
-                            AWhileBack: 'a while back',
+                            AWhileBack: 'a while ago',
                             Evening: 'evening',
                             Morning: 'morning',
                             LastNight: 'last night',
