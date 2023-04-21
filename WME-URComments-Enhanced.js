@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.04.19.01
+// @version     2023.04.19.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -81,7 +81,8 @@
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
         _SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Steps for custom Google sheet creation updated.',
-            '<b>CHANGE:</b> WME production now includes function from WME beta.'
+            '<b>CHANGE:</b> WME production now includes function from WME beta.',
+            '<b>BUGFIX:</b> Autosave after close or not identified comment.'
         ],
         _DEBUG = /[βΩ]/.test(_SCRIPT_SHORT_NAME),
         _LOAD_BEGIN_TIME = performance.now(),
@@ -869,7 +870,7 @@
                 autoScrollComments(numComments);
             }
             if (_settings.autoSaveAfterSolvedOrNiComment && ((_selUr.newStatus === 'solved') || (_selUr.newStatus === 'notidentified')))
-                $('.toolbar-button.waze-icon-save').trigger('click');
+                document.querySelector('wz-button[id="save-button"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
             else
                 handleUrLayer('sendComment', undefined, getMapUrsObjArr([_selUr.urId]));
         }
@@ -910,7 +911,7 @@
         if (_settings.autoZoomOutAfterClosePanel)
             autoZoomOut();
         if (_settings.autoSaveAfterSolvedOrNiComment && ((newStatus === 'solved') || (newStatus === 'notidentified'))) {
-            $('.toolbar-button.waze-icon-save').trigger('click');
+            document.querySelector('wz-button[id="save-button"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
         }
         else {
             if (_settings.autoSwitchToUrCommentsTab)
