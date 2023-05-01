@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.04.19.02
+// @version     2023.05.01.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -11,11 +11,12 @@
 // @author      dBsooner
 // @license     MIT/BSD/X11
 // @connect     greasyfork.org
+// @connect     sheets.googleapis.com
 // @icon        data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC0AAAAwCAYAAACFUvPfAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNS1jMDIxIDc5LjE1NTc3MiwgMjAxNC8wMS8xMy0xOTo0NDowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTQgKFdpbmRvd3MpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjQyQjZDNjdEODYzODExRTRBRDY0Q0I2QjA1MjU4N0EyIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOjQyQjZDNjdFODYzODExRTRBRDY0Q0I2QjA1MjU4N0EyIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6NDJCNkM2N0I4NjM4MTFFNEFENjRDQjZCMDUyNTg3QTIiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6NDJCNkM2N0M4NjM4MTFFNEFENjRDQjZCMDUyNTg3QTIiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz6++Bk8AAANOElEQVR42tRZCWxU1xW9M39mPB5v431fMLYJdmpjthQUVsdlS9IQQkpIIDRhl5pKQUpbKkAEpakQIhVVRUytQIGwihCaBkgItQELQosxdrDZ7Njjbbx7vM0+f3ruZDz1NmTGhEj59tOb//979553313fl9jtdvqpXbLHRVgikTz0NbdJkyYJERERUp1OJ1Wr1WJLS4tYXFxswzu7s408+XFJ2g1oSUZGhtzf318piqLKx8dHZbPZFFKpVMC9TRAEs8lk0uNe39vbaywvL7eMBP5HAz179myZxWLxxfNg3IZHRkbG5OTkpEPSkQAs1Wq1nQUFBVXt7e2twNSGMdx3yuVyQ2FhofVHBw01kCsUigA8i1m9evXc3Nzc5TExMRMhUfnAOZC6VaPRlJ8+ffrzM2fOXMW9BvgazWZzD9TG8qOBZgnr9fqg5OTklPfff39bUlLSfL3ZKvmmqZ2q2rqoy2h2jAtSKmhsaBD9LDqUVAqZ/fbt29c2b978IfS9HCqjUalUXf0Sfyygp0+f7kB8584d6bhx4/xTU1PT9uzZk69WB2derdHSxQf1ZLTaRpyrlAmUkxpH05OiqbGxoWrjxo07Wltbb0KFNNevX+/FENEBmqUyWvCTJ0+WDPEKrh4S8oFXiDp+/HhedHT0M6fKvqWbDa0e0Z0YG05LMpPp/v37xWvXrn0XqlRWX1+vraysNEkfZu38zE1zXHPmzOH53ARuAQEBUuieBM2OJoaFhSl27NixAPr7TGFVo8eA+eKxPAc7Nen111/PgX5HxMXF+TIsmSe+1bkbEuintKamRoBeyqxWq6Knp0eA2xJAUAJ3Zce9+PTTT9tkMpkF7opgQEEwwjU6g4kKKhu83sWCynrKjg2jhQsXPrd///4L2Dkm0iv9PntiSUIF5JmZmSpMCsI2hwNMNBYSC4+QgLUkoE909vF4HoP3kVhY+Pz589Mh/czi+layiqLXoK2inXhuVFRUUlZWViIE45eSkiI8LCKyZAUAZbfki8sfxhA4bdq0+GXLluUmJCRMBqCxkHQY9E2BdxwY2iDtqtra2hsHDhy4jIVOYTqV8BIDr3ERakd/r0Xn9nf/9aBNx4YpmTlzZtrNmzcvBwUFuQXNIZaDgRJS84eDV8+bN2/cqlWr1rF+AqTMbDFRU72WdI29ZNZbSaGSKdQx/jFRcdExERGTZ6Snp/8GYbmGiXVBPQZeyyakOvrtX/7X7e/+S2f4ziXCPoIhaam73MMBGJcvBgXBP4bv3LnztSlTpmwAWOW9svtU/kkd1V/rINE23ONIBQnFTQuh1OciZXHJsSn8TBwy7NitB67g7O53/yX8386sHOqhgnbZSCrBEoaOqpVKZXReXt5W6OfC5uZGuvjnW9RU2v1QPbRZ7aS50kbVl5spY2kHLdg4i0L9lNRtMrvGDNx+d7/7rxCVj6Nva2vTArARPts21BClHR0dPqy7MKgIAOYItrD8ZgUdWXmFtCVdZIfYPGsILufqsBsipYYHjTpQpYWrCXjEixcv3oKX6oNXGgRasmDBAhkyMD+MCd21a9dKAF5QUVxB598uJZvR5nB9njZHcOm20oOva2lKfAT5yASvAXN0nIy5zc3NJRUVFd/CvvpY26QDsjABhqMEw0AYXQZ0eG1TUwOd+30pr9QrwA7Q+JfapVT0j1sE46BF4xO9Bv1sehIDF8+ePfsR7KmF01UOG/06LUGIFIKDg33hwtRvvPHGagzyOf9uMVlNVrdEx+ZEUdZLSZSYlkBymYK6ejrp/rVqupFfTT3NBodNNd1pp6IjJTRzxSRHcsR5hyfXL9LiaWJcOOcvJ/Pz8wvgSjud+bXLe0iR3yogIb+JEyeOiY+Pn1VRUkHaMt3I5Y5CSs/unkTjJ4wf9FwdGEJT54VQ1px0Or21kKqLWhGdZHRpXwn5h6goZ9F4ig5UEecgBsvIwghVKSHhRPjsYIIgv3jrrbfeMxqNWrhQA0DbXaChGhKkjwpI2W/JkiXsh4XS4xq3SdSczRnDAA+8fBS+9OKOuZS/4jPS1fUhlRTo0z8VUGeHjua+Ng3pp47+U9viGv8Egkp0oB+NCQlEehrI6mhEarpvw4YNfzMYDM3IEntPnjxpG1QjsmogPCtgnX6JiYnZJrPRISW7OBy0b4Ccsudkfu/2KuQ+NGXtGPrij9+QiD8b/vyDVWSDfVQ0dTrGBPjI6YUnk+mJyGDOF+wACCj1Xx47duwQ9Pge7ruReJmcdePgwjY8PFzKtRoinxKpZFJjbSNXESOCCc8IIgQdj/QyeUI8AkupA3DChCiaujCTyps7KF7tT2mQ7oSYMJJJyFp840beoUOHjiBM17OHAG8DUgTzgCJ3eDXOKSUsU4ZtUSDHUHc0drlVjYAYpcfWLyBL6KczY/kkkkgl9CQqE27skZAb30Cuve/ChQuFiA9aCM9YVFRke1gl7gKN1UkQtlnaUq7bLMglyA3omGzPA0VjdZODDjJwOrXlIl3PKiOFv5ySc8IoKT2BkMt8AL4VXMjCyPq+D+ywcw+AtbNKoFnkKplctItDPIZArx6cRWOSx3oMuvhgFfXTsejtVH2tyZHspuZGENwru68upAt9UDeLp4DJWXUQJyFI6kVMtvX19XWExquHBQsL/PX9As8T+Suffk0PLjcOCjZkl3CFR5Fjwnh3O2BDlv4kyJvA5QDNFYczizK3t7fXxMbHkVQhcUhpYCvaW0H7Vp+iqsoHDwX87xNF9MWOkmHzuTHdmLg4gg5XMz/m6+RPXkkamZOIbeItMty7d++WXCan1LnRHOaHtbpbzVT4QZljxTbRRof/8E/au+oEHd3+LxewygtNI87llga6TP/u3bulzI/5Mn+vz/JQMNpQdXCmrj948GBRbm7uqqmvjfOpOKsZcdK317T0l5c/JptJpM7671LV+jJCFvixw0O01ejcV++vphFU0XT48OEi2I+e8yrm77WkCwsLRURDM3S6j8t0RKPC1CfSaOysGLd61VrZSR11XYOetWl01Frd6XYO00sbP47gKQpRkmmZH/Nl/l6DZhMBWOT+FnY7nbt37z4Bwfcs3jaLfIOUXmd4IzWmw/SYLtNnPsyP+XrjOQaBhqO3wmfqwUBXVVVVjVj/kTooxL48fzYJPsKIRuVp4/lMh+kxXabPfJgf8x0taEcph2TbzPEev1v27t174dKlS6fGpqTSm0fnU0C4alQS5nk8n+mA3idMl+kzH+bntFAaLWiWNm+VHv6zHX3D1q1bD3/11VcnksYki7898yvKfGkMOHgGlsdlvphMPI/nMx3QO8R0nfT1Tn5en8e5zvIGFrZc6fDBDIhHwJfGvvLKK7NXrFjxa+QoIVptA109WUqlJ2uot1M/jKBcIaOpq9Jo+tIsio6O5RjQgWToo6NHj15C1G2AHrfA+PggxAgDdOUZ3pwlDgU9CDhcUgDcUxisPDIkJCQBCflzTz311BzUkUG1dTX01+c/Iat5sLd6YefPadaiGQy2+/r16wV79uz5rLOzUwNazdDhNtDqGQr4hwDtAg7GCpVK5YeQq4bUQyCpSDCOfeedd55HHTm/8MwV+nTzVdekJ+cn0Zu7XubsrWLNmjUfYpfq0Jqw8HaEah0KjT5OOYcC/qFAu87xAF6u0+mU2FJ/gOZTnkg8jz9w4MCm5OTkjL+/fYxun9eQOiqAfvf5ShQOEt26deve1Wg0d0FbC3VoR+tBns7StTgNzz7SIedoDJFGOGfmbbYhxzZBWj0A3c6SQ2vYtm1bPpKrruXvLSJ1tD+9ujeHfJV+Yl5e3n4EjkoGDJVoY8A8f0ColgykP6qvDCPp9NKlS6UlJSUyqIYMDAU+u8MYmfNLlD+kHQbgcYsXL56xadOm9XpDr9RPFUAFBQVfbtmy5Qho1rFb4zVjjhH31sDAQCvcHJ+7WLu7u22IitaBn94eRT1cugxg/CXKl8/vMEbOF/d8tIBxfIIaivvI7du3/zInJ2d2XV1dzcqVKz+EZDlb4tPzHrw3YryZQXNihN0y8yIw1xAREWE8d+5cv7o8EmhpSkqKHGWPH0Cr+XiMz4TZk3Apxh6tHziYx+J3KNYSCA+xaOfOnVeqq6ubQUuH941o7NYYlJULC4w14Z0ehtyLe37XY8SFOtD6HWa7d1newEVwkcuqwODQs5T5k4EvepY+PxMgMTkWwc9l4Gtfv379ebwX0QS89+HzE/Qc7fhs28qVCcYL/LUAcy0Od65QCJj7g3xmtrPBREVFOXJrMOdi1wYAnLbKISHWbWbOC+vg+XzPjZUV4/mrq5V7bpC2o7jghnszABv4EJH9NPhY+w9fHhl0dna2FQQNXE1gK01wdQpIhMexWjgAcyXt7LmxivEnGTvXmUyDF8D3zm13nCszcNZrVhN4HRaC2Z37G5X36P/YjtJLCA0NlfIRA38UQi+BtCT8Ycj5hVUy/NhAcIFgb8H3SqVSZCH4+fmJ7DmgguLjiIhDvwmyG+SyTALmHvtYLNIOcHaei5S0H5X9UYPL/wQYAOwQASZqvrLnAAAAAElFTkSuQmCC
 // @contributionURL https://github.com/WazeDev/Thank-The-Authors
 // ==/UserScript==
 
-/* global unsafeWindow, $, GM_info, GM_xmlhttpRequest, I18n, OpenLayers, W, WazeWrap */
+/* global unsafeWindow, GM_info, GM_xmlhttpRequest, I18n, OpenLayers, trustedTypes W, WazeWrap */
 
 /*
  * Original concept and code for URComments (URC) was written by rickzabel and licensed under MIT/BSD/X11.
@@ -64,13 +65,16 @@
         _initUrIdInUrlObserver,
         _lastVersionChecked = '0',
         _needUrId = false,
-        _mapUpdateRequests = {};
+        _mapUpdateRequests = {},
+        _initError = false,
+        _policyTrustedHTML,
+        _policyUntrustedHTML;
 
     // eslint-disable-next-line no-nested-ternary
-    const _SCRIPT_SHORT_NAME = `URC-E${(/beta/.test(GM_info.script.name) ? ' β' : /\(DEV\)/i.test(GM_info.script.name) ? ' Ω' : '')}`,
+    const _SCRIPT_SHORT_NAME = `URC-E${(GM_info.script.name.includes('beta') ? ' β' : GM_info.script.name.includes('(DEV)') ? ' Ω' : '')}`,
         _SCRIPT_LONG_NAME = GM_info.script.name,
-        _IS_ALPHA_VERSION = /[Ω]/.test(_SCRIPT_SHORT_NAME),
-        _IS_BETA_VERSION = /[β]/.test(_SCRIPT_SHORT_NAME),
+        _IS_ALPHA_VERSION = _SCRIPT_SHORT_NAME.includes('Ω'),
+        _IS_BETA_VERSION = _SCRIPT_SHORT_NAME.includes('β'),
         _SCRIPT_AUTHOR = GM_info.script.author,
         _PROD_URL = 'https://greasyfork.org/scripts/375430-wme-urcomments-enhanced/code/WME-URComments-Enhanced.user.js',
         _PROD_META_URL = 'https://greasyfork.org/scripts/375430-wme-urcomments-enhanced/code/WME-URComments-Enhanced.meta.js',
@@ -80,11 +84,15 @@
         _BETA_META_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXViV1YwWVM1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['<b>CHANGE:</b> Steps for custom Google sheet creation updated.',
-            '<b>CHANGE:</b> WME production now includes function from WME beta.',
-            '<b>BUGFIX:</b> Autosave after close or not identified comment.'
+        _SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Further prepwork for possible future spreadsheet changes.',
+            '<b>CHANGE:</b> A lot. Reverted to 100% vanilla JavaScript, removing reliance on jQuery.'
         ],
-        _DEBUG = /[βΩ]/.test(_SCRIPT_SHORT_NAME),
+        _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
+        _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
+        _MIN_VERSION_COMMENTS = '2019.08.16.01',
+        _MIN_VERSION_RESTRICTIONS = '2019.03.08.01',
+        _MIN_VERSION_TRANSLATIONS = '2019.08.16.01',
+        _DEBUG = _SCRIPT_SHORT_NAME.includes('β') || _SCRIPT_SHORT_NAME.includes('Ω') || false,
         _LOAD_BEGIN_TIME = performance.now(),
         _STATIC_ONLY_USERS = ['itzwolf'],
         _URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c',
@@ -112,6 +120,28 @@
             isps: { commentNum: null, urNum: 22 }, // Incorrect street prefix or suffix
             sl: { commentNum: null, urNum: 23 } // Speed Limit
         },
+        _elems = {
+            a: document.createElement('a'),
+            br: document.createElement('br'),
+            button: document.createElement('button'),
+            div: document.createElement('div'),
+            hr: document.createElement('hr'),
+            i: document.createElement('i'),
+            img: document.createElement('img'),
+            input: document.createElement('input'),
+            fieldset: document.createElement('fieldset'),
+            label: document.createElement('label'),
+            legend: document.createElement('legend'),
+            li: document.createElement('li'),
+            ol: document.createElement('ol'),
+            option: document.createElement('option'),
+            p: document.createElement('p'),
+            select: document.createElement('select'),
+            span: document.createElement('span'),
+            style: document.createElement('style'),
+            textarea: document.createElement('textarea'),
+            ul: document.createElement('ul')
+        },
         _overflowUrsUrls = [],
         _restrictions = {},
         _spinners = {
@@ -129,6 +159,7 @@
             postUrComment: false
         },
         _timeouts = {
+            areTranslationsReady: undefined,
             autoCloseUrPanel: undefined,
             autoScrollComments: undefined,
             checkForStaticListArray: undefined,
@@ -145,16 +176,7 @@
         },
         _saveButtonObserver = new MutationObserver((mutations) => {
             if ((W.model.actionManager._redoStack.length === 0)
-                // 2023.04.05.01: Production save button observer mutations
-                && (mutations.some((mutation) => (mutation.attributeName === 'class')
-                        && mutation.target.classList.contains('waze-icon-save')
-                        && (mutation.oldValue.indexOf('ItemDisabled') === -1)
-                        && mutation.target.classList.contains('ItemDisabled'))
-                // 2023.04.05.01: Beta save button observer mutations
-                    || mutations.some((mutation) => ((mutation.attributeName === 'disabled')
-                        && (mutation.oldValue === 'false')
-                        && (mutation.target.attributes.disabled.value === 'true')))
-                )
+                && mutations.some((mutation) => ((mutation.attributeName === 'disabled') && (mutation.oldValue === 'false') && (mutation.target.attributes.disabled.value === 'true')))
             )
                 handleAfterSave();
         }),
@@ -177,7 +199,7 @@
         _urPanelContainerObserver = new MutationObserver((mutations) => {
             if (_selUr.handling
                 && (mutations.filter(
-                    (mutation) => (mutation.removedNodes.length > 0) && $(mutation.target).is('#panel-container')
+                    (mutation) => (mutation.removedNodes.length > 0) && mutation.target.matches('#panel-container')
                 ).filter(
                     (removedChild) => removedChild.removedNodes[0].classList.contains('show') && removedChild.removedNodes[0].classList.contains('mapUpdateRequest')
                 ).length > 0)
@@ -186,19 +208,22 @@
             else if (mutations.filter(
                 (mutation) => (mutation.type === 'attributes')
             ).filter(
-                (mutation) => (mutation.oldValue?.match('mapUpdateRequest panel') && mutation.target.classList.contains('show'))
+                (mutation) => (mutation.oldValue?.includes('mapUpdateRequest panel') && mutation.target.classList.contains('show'))
             ).length > 0)
                 handleUpdateRequestContainer();
         }),
         _urMarkerObserver = new MutationObserver((mutations) => {
             mutations.filter((mutation) => (mutation.addedNodes.length > 0)).forEach((newMarker) => {
-                const $addedNode = $(newMarker.addedNodes[0]);
-                if (!$addedNode.data('urce_hasListeners'))
-                    $addedNode.on({ mouseover: markerMouseOver, mouseout: markerMouseOut, click: markerClick }).data('urce_hasListeners', true);
+                if (!newMarker.addedNodes[0].dataset.urceHasListeners) {
+                    newMarker.addedNodes[0].addEventListener('mouseover', markerMouseOver);
+                    newMarker.addedNodes[0].addEventListener('mouseout', markerMouseOut);
+                    newMarker.addedNodes[0].addEventListener('click', markerClick);
+                    newMarker.addedNodes[0].dataset.urceHasListeners = true;
+                }
             });
             if (_needUrId) {
                 const urId = mutations.filter(
-                    (mutation) => ((mutation.attributeName === 'class') && !/marker-selected/.test(mutation.oldValue) && /marker-selected/.test(mutation.target.className))
+                    (mutation) => ((mutation.attributeName === 'class') && !mutation.oldValue.includes('marker-selected') && mutation.target.classList.contains('marker-selected'))
                 )[0]?.target.attributes['data-id'].value;
                 if (urId > 0) {
                     _needUrId = false;
@@ -223,7 +248,7 @@
         _userInfoTabContentObserver = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 mutation.addedNodes.forEach((node) => {
-                    if (/^userscripts-api-docs-link-container/.test(node.className) && !_userscriptsApiDocsLinkIntersectionObserver.isObserving) {
+                    if (node.classList.contains('userscripts-api-docs-link-container') && !_userscriptsApiDocsLinkIntersectionObserver.isObserving) {
                         _userscriptsApiDocsLinkIntersectionObserver.observing = true;
                         _userscriptsApiDocsLinkIntersectionObserver.observe(node);
                     }
@@ -243,13 +268,67 @@
         let sortOrder = 1;
         if (property[0] === '-') {
             sortOrder = -1;
-            property = property.substr(1);
+            property = property.substring(1);
         }
         return function (a, b) {
             if (sortOrder === -1)
                 return b[property].localeCompare(a[property]);
             return a[property].localeCompare(b[property]);
         };
+    }
+
+    function $extend(...args) {
+        const extended = {},
+            deep = Object.prototype.toString.call(args[0]) === '[object Boolean]' ? args[0] : false,
+            merge = function (obj) {
+                Object.keys(obj).forEach((prop) => {
+                    if (Object.prototype.hasOwnProperty.call(obj, prop)) {
+                        if (deep && Object.prototype.toString.call(obj[prop]) === '[object Object]')
+                            extended[prop] = $extend(true, extended[prop], obj[prop]);
+                        else if ((obj[prop] !== undefined) && (obj[prop] !== null))
+                            extended[prop] = obj[prop];
+                    }
+                });
+            };
+        for (let i = deep ? 1 : 0, { length } = args; i < length; i++) {
+            if (args[i])
+                merge(args[i]);
+        }
+        return extended;
+    }
+
+    function trustedHTML(htmlStr) {
+        if (typeof trustedTypes === 'undefined')
+            return htmlStr;
+        if (!_policyTrustedHTML)
+            _policyTrustedHTML = trustedTypes.createPolicy('urceTrustedHTML', { createHTML: (html) => html });
+        return _policyTrustedHTML.createHTML(htmlStr);
+    }
+
+    function untrustedHTML(htmlStr) {
+        if (typeof trustedTypes === 'undefined')
+            return htmlStr.replace(/&/g, '&amp;').replace(/>/g, '&gt;').replace(/</g, '&lt;').replace(/"/g, '&quote;').replace(/'/g, '&#039;');
+        if (!_policyUntrustedHTML) {
+            _policyUntrustedHTML = trustedTypes.createPolicy('urceUntrustedHTML', {
+                createHTML: (html) => html.replace(/&/g, '&amp;').replace(/>/g, '&gt;').replace(/</g, '&lt;').replace(/"/g, '&quote;').replace(/'/g, '&#039;')
+            });
+        }
+        return _policyUntrustedHTML.createHTML(htmlStr);
+    }
+
+    function setElemAttrs(el, attrs, eventListener = []) {
+        Object.keys(attrs).forEach((attr) => {
+            if ((attr === 'disabled') || (attr === 'checked') || (attr === 'selected') || (attr === 'textContent') || (attr === 'innerHTML'))
+                el[attr] = attrs[attr];
+            else
+                el.setAttribute(attr, attrs[attr]);
+        });
+        if (eventListener.length > 0) {
+            eventListener.forEach((obj) => {
+                Object.entries(obj).map(([evt, cb]) => el.addEventListener(evt, cb));
+            });
+        }
+        return el;
     }
 
     function dec(s = '') {
@@ -467,12 +546,12 @@
             );
             return Promise.resolve();
         }
-        const loadedSettings = (restoreSettings === 'resetSettings') ? {} : restoreSettings || $.parseJSON(localStorage.getItem(_SETTINGS_STORE_NAME));
-        _settings = $.extend(true, {}, defaultSettings, loadedSettings);
+        const loadedSettings = (restoreSettings === 'resetSettings') ? {} : restoreSettings || JSON.parse(localStorage.getItem(_SETTINGS_STORE_NAME));
+        _settings = $extend(true, {}, defaultSettings, loadedSettings);
 
         const serverSettings = await WazeWrap.Remote.RetrieveSettings(_SETTINGS_STORE_NAME);
         if (!restoreSettings && (serverSettings?.lastSaved > _settings.lastSaved)) {
-            _settings = $.extend(true, _settings, serverSettings);
+            _settings = $extend(true, _settings, serverSettings);
             _timeouts.saveSettingsToStorage = window.setTimeout(saveSettingsToStorage, 5000);
         }
 
@@ -509,18 +588,18 @@
 
     function showScriptInfoAlert() {
         if (_ALERT_UPDATE && (_SCRIPT_VERSION !== _settings.lastVersion)) {
-            let releaseNotes = '';
-            releaseNotes += '<p>What\'s New:</p>';
+            const divElemRoot = _elems.div.cloneNode(false);
+            divElemRoot.appendChild(setElemAttrs(_elems.p.cloneNode(false), { textContent: 'What\'s New:' }));
+            const ulElem = _elems.ul.cloneNode(false);
             if (_SCRIPT_VERSION_CHANGES.length > 0) {
-                releaseNotes += '<ul>';
-                for (let idx = 0; idx < _SCRIPT_VERSION_CHANGES.length; idx++)
-                    releaseNotes += `<li>${_SCRIPT_VERSION_CHANGES[idx]}`;
-                releaseNotes += '</ul>';
+                for (let idx = 0, { length } = _SCRIPT_VERSION_CHANGES; idx < length; idx++)
+                    ulElem.appendChild(setElemAttrs(_elems.li.cloneNode(false), { innerHTML: trustedHTML(_SCRIPT_VERSION_CHANGES[idx]) }));
             }
             else {
-                releaseNotes += '<ul><li>Nothing major.</ul>';
+                ulElem.appendChild(setElemAttrs(_elems.li.cloneNode(false), { textContent: 'Nothing major.' }));
             }
-            WazeWrap.Interface.ShowScriptUpdate(_SCRIPT_SHORT_NAME, _SCRIPT_VERSION, releaseNotes, (_IS_BETA_VERSION ? dec(_BETA_URL) : _PROD_URL).replace(/code\/.*\.js/, ''), _FORUM_URL);
+            divElemRoot.appendChild(ulElem);
+            WazeWrap.Interface.ShowScriptUpdate(_SCRIPT_SHORT_NAME, _SCRIPT_VERSION, divElemRoot.innerHTML, (_IS_BETA_VERSION ? dec(_BETA_URL) : _PROD_URL).replace(/code\/.*\.js/, ''), _FORUM_URL);
         }
     }
 
@@ -569,37 +648,37 @@
         }
     }
 
-    function disableWme(message, remove) {
-        if (remove && ($('#urce-disableWme').length > 0)) {
-            $('#urce-disableWme').remove();
+    function disableWme(htmlElem, remove = true) {
+        if (remove && document.getElementById('urce-disableWme')) {
+            document.getElementById('urce-disableWme').remove();
         }
-        else if (!remove && ($('#urce-disableWme').length < 1)) {
-            $('body').append('<div id="urce-disableWme" class="URCE-disableWme-main">'
-                + `     <div id="urce-disableWme-text" class="URCE-disableWme-text">${message}</div>`
-                + '</div>');
+        else if (!remove && !document.getElementById('urce-disableWme')) {
+            const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: 'urce-disableWme', class: 'URCE-disableWme-main' }),
+                messageDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'urce-disableWme-text', class: 'URCE-disableWme-text' });
+            messageDiv.appendChild(htmlElem);
+            divElemRoot.appendChild(messageDiv);
+            document.body.appendChild(divElemRoot);
         }
     }
 
     function dismissAlertBoxInPanel(event, idx) {
-        if (((event?.data?.idx > -1) && ($(`#urceAlertPanelBox-${event?.data?.idx}`).length > 0))
-            || ((idx > 0) && ($(`#urceAlertPanelBox-${idx}`).length > 0))
-        )
-            $(`#urceAlertPanelBox-${((idx > -1) ? idx : event.data.idx)}`).remove();
+        idx = idx || this?.attributes?.index?.value || -1;
+        if ((idx > 0) && document.getElementById(`urceAlertPanelBox-${idx}`))
+            document.getElementById(`urceAlertPanelBox-${idx}`).remove();
     }
 
     function alertBoxInPanel(message, panelBoxTitle, panelBoxDismiss, index) {
-        if ($(`#urceAlertPanelBox-${index}`).length > 0)
-            $(`#urceAlertPanelBox-${index}`).remove();
-        const htmlOut = `<div id="urceAlertPanelBox-${index}" class="URCE-divWarningBox" title="${(panelBoxTitle || '')}">`
-            + `${(panelBoxDismiss ? `<div id="urceAlertPanelBox-${index}-dismiss" class="URCE-divDismiss"><i class="fa fa-close" "aria-hidden"="true"></i></div>` : '')}`
-            + `${message}</div>`;
-        $('#panel-urce-comments').prepend(htmlOut);
-        if (panelBoxDismiss)
-            $(`#urceAlertPanelBox-${index}-dismiss`).off().on('click', { idx: index }, dismissAlertBoxInPanel);
-    }
-
-    function isChecked(obj) {
-        return $(obj).is(':checked');
+        if (document.getElementById(`urceAlertPanelBox-${index}`))
+            document.getElementById(`urceAlertPanelBox-${index}`).remove();
+        const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: `urceAlertPanelBox-${index}`, class: 'URCE-divWarningBox', title: panelBoxTitle || '' });
+        divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { innerHTML: trustedHTML(message) }));
+        if (panelBoxDismiss) {
+            const divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { id: `urceAlertPanelBox-${index}-dismiss`, class: 'URCE-divDismiss', index }, [{ click: dismissAlertBoxInPanel }]);
+            divElemDiv.appendChild(setElemAttrs(_elems.i.cloneNode(false), { class: 'fa fa-close', 'aria-hidden': true }));
+            divElemRoot.insertBefore(divElemDiv, divElemRoot.firstChild);
+        }
+        const panelUrceComments = document.getElementById('panel-urce-comments');
+        panelUrceComments.insertBefore(divElemRoot, panelUrceComments.firstChild);
     }
 
     function isPanelReady(waitForAttr = '', retryInterval = 10, maxTries = 200) {
@@ -616,30 +695,30 @@
         });
     }
 
-    function getDomElement(element, shadowHost, retryInterval = 10, maxTries = 200) {
+    function getDomElement(element, shadowHost) {
         return new Promise((resolve) => {
-            (function retry(elementStr, shadowHostStr, tries, toIndex, retryInt, maxNumTries) {
+            (function retry(elementStr, shadowHostStr, tries, toIndex, retryInt, maxNumTries, retJquery) {
                 checkTimeout({ timeout: 'isDomElementReady', toIndex });
                 if (tries > maxNumTries) {
                     logError(`Timed out waiting for DOM element to appear: ${elementStr}`);
                     resolve(undefined);
                 }
                 else {
-                    let $returnElem;
+                    let returnElem;
                     if (shadowHostStr) {
-                        const $shadowHostElem = $(shadowHostStr);
-                        if ($shadowHostElem?.length > 0)
-                            $returnElem = $(elementStr, $shadowHostElem[0].shadowRoot);
+                        const shadowHostElem = document.querySelector(shadowHostStr);
+                        if (shadowHostElem?.shadowRoot)
+                            returnElem = shadowHostElem.shadowRoot.querySelector(elementStr);
                     }
                     else {
-                        $returnElem = $(elementStr);
+                        returnElem = document.querySelector(elementStr);
                     }
-                    if ($returnElem?.length > 0)
-                        resolve($returnElem);
+                    if (returnElem)
+                        resolve(returnElem);
                     else
-                        _timeouts.isDomElementReady[toIndex] = window.setTimeout(retry, retryInt, elementStr, shadowHostStr, ++tries, toIndex, retryInt, maxNumTries);
+                        _timeouts.isDomElementReady[toIndex] = window.setTimeout(retry, retryInt, elementStr, shadowHostStr, ++tries, toIndex, retryInt, maxNumTries, retJquery);
                 }
-            }(element, shadowHost, 1, getRandomId(), retryInterval, maxTries));
+            }(element, shadowHost, 1, getRandomId(), 10, 200));
         });
     }
 
@@ -651,36 +730,42 @@
         }
         if (spinnerStop)
             doSpinner(spinnerName, false);
-        if (reopenUrPanel && (parseInt($('.update-requests .marker-selected').attr('data-id')) > 0))
+        if (reopenUrPanel && (parseInt(document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value) > 0))
             openUrPanel(0, reopenUrPanel);
     }
 
     function getCollapsedGroups() {
         return new Promise((resolve) => {
-            const $getDivs = $('div[id$="_body_urce"]'),
+            const getDivs = document.querySelectorAll('div[id$="_body_urce"]'),
                 rObj = {};
-            for (let idx = 0; idx < $getDivs.length; idx++) {
-                if ($getDivs[idx].id.indexOf('urceComments-for-') > -1)
-                    rObj[$getDivs[idx].id] = $($getDivs[idx]).hasClass('collapse');
+            for (let idx = 0, { length } = getDivs; idx < length; idx++) {
+                if (getDivs[idx].id.includes('urceComments-for-'))
+                    rObj[getDivs[idx].id] = getDivs[idx].classList.contains('collapse');
             }
             resolve(rObj);
         });
     }
 
     function doSpinner(spinnerName = '', spin = true) {
-        const $btn = $('#urceUrMarkerProcessingSpinner');
-        if ($btn.length === 0) {
+        const btn = document.getElementById('urceUrMarkerProcessingSpinner');
+        if (!btn) {
             Object.keys(_spinners).forEach((a) => { _spinners[a] = false; });
         }
         else if (!spin) {
             _spinners[spinnerName] = false;
-            if (!Object.values(_spinners).some((a) => a === true))
-                $btn.removeClass('fa-spin').css({ color: 'lightgray' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingInactive'));
+            if (!Object.values(_spinners).some((a) => a === true)) {
+                btn.classList.remove('fa-spin');
+                btn.style.color = 'lightgray';
+                btn.setAttribute('title', I18n.t('urce.mouseOver.URMarkerProcessingInactive'));
+            }
         }
         else {
             _spinners[spinnerName] = true;
-            if (!$btn.hasClass('fa-spin'))
-                $btn.css({ color: 'black' }).attr('title', I18n.t('urce.mouseOver.URMarkerProcessingActive')).addClass('fa-spin');
+            if (!btn.classList.contains('fa-spin')) {
+                btn.classList.add('fa-spin');
+                btn.style.color = 'black';
+                btn.setAttribute('title', I18n.t('urce.mouseOver.URMarkerProcessingActive'));
+            }
         }
     }
 
@@ -696,16 +781,18 @@
                 doSpinner('checkRestrictions', true);
                 const displayWarning = (content, remove) => {
                     if (remove) {
-                        $('#restrictionsEnforcedWarning, #restrictionsEnforcedWarning-Settings').hide();
+                        document.querySelectorAll('[id|="restrictionsEnforcedWarning"').forEach((el) => { el.style.display = 'none'; });
                     }
                     else if (((evt?.[0]?.type === 'init') || (evt?.[0]?.type === 'modeChange'))
-                        || ($('#restrictionsEnforcedWarning').length === 0)
+                        || (!document.getElementById('restrictionsEnforcedWarning'))
                     ) {
                         _restrictionsEnforcedTitle = content;
                     }
                     else {
-                        $('#restrictionsEnforcedWarning, #restrictionsEnforcedWarning-Settings').children()[0].setAttribute('title', content);
-                        $('#restrictionsEnforcedWarning, #restrictionsEnforcedWarning-Settings').show();
+                        document.querySelectorAll('[id|="restrictionsEnforcedWarning"').forEach((el) => {
+                            el.firstChild.setAttribute('title', content);
+                            el.style.display = '';
+                        });
                     }
                 };
                 let moved = false,
@@ -797,7 +884,7 @@
         const mUrsObjArr = [],
             objsArray = (urIds.length > 0) ? W.model.mapUpdateRequests.getByIds(urIds) : W.model.mapUpdateRequests.getObjectArray();
         objsArray.forEach((urObj) => {
-            if (mUrsObjArr.indexOf(urObj.attributes.id) === -1)
+            if (!mUrsObjArr.includes(urObj.attributes.id))
                 mUrsObjArr.push(urObj);
         });
         return mUrsObjArr;
@@ -851,22 +938,23 @@
         }
         else {
             await updateUrceData(getMapUrsObjArr([_selUr.urId]));
-            if ($(domElem).has('#urceDaysAgo').length === 0) {
-                const shadowDOMstyle = document.createElement('style');
-                shadowDOMstyle.innerHTML = '.key-with-image-wrapper, .key-wrapper { width: 100% } '
-                    + '.wz-list-item, .wz-list-item.with-subtitle { --wz-list-item-vertical-padding: 0px !important; margin: 2px 0px !important; }';
-                $(domElem).find('span.date').css('float', 'right');
-                domElem.shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
-                $($(domElem).children()[0]).append(''
-                    + '<div class="date urce">'
-                    + `     <div>(${parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[_selUr.urId].comments[(_mapUpdateRequests[_selUr.urId].urceData.commentCount - 1)].createdOn))})</div>`
-                    + '</div>');
+            if (!domElem.querySelector('#urceDaysAgo')) {
+                domElem.querySelector('span.date').style.float = 'right';
+                domElem.shadowRoot.appendChild(setElemAttrs(_elems.style.cloneNode(false), {
+                    textContent: '.key-with-image-wrapper, .key-wrapper { width: 100% } '
+                        + '.wz-list-item, .wz-list-item.with-subtitle { --wz-list-item-vertical-padding: 0px !important; margin: 2px 0px !important; }'
+                }));
+                const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'date urce' });
+                divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                    textContent: `(${parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[_selUr.urId].comments[(_mapUpdateRequests[_selUr.urId].urceData.commentCount - 1)].createdOn))})`
+                }));
+                domElem.firstChild.appendChild(divElemRoot);
             }
             if (_settings.reverseCommentSort) {
-                const $commentList = $('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list'),
-                    numComments = $commentList.children().length;
+                const commentList = await getDomElement('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list'),
+                    numComments = commentList.children.length;
                 domElem.remove();
-                $commentList.prepend(domElem);
+                commentList.insertBefore(domElem, commentList.firstChild);
                 autoScrollComments(numComments);
             }
             if (_settings.autoSaveAfterSolvedOrNiComment && ((_selUr.newStatus === 'solved') || (_selUr.newStatus === 'notidentified')))
@@ -931,10 +1019,10 @@
     async function handleUpdateRequestContainer() {
         if (!_commentListLoaded)
             return;
-        if ((parseInt($('.update-requests .marker-selected').attr('data-id')) > 0)
-            && (!(_selUr.urId > 0) || (_selUr.urId !== parseInt($('.update-requests .marker-selected').attr('data-id'))))
+        if ((parseInt(document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value) > 0)
+            && (!(_selUr.urId > 0) || (_selUr.urId !== parseInt(document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value)))
         ) {
-            _selUr.urId = parseInt($('.update-requests .marker-selected').attr('data-id'));
+            _selUr.urId = parseInt(document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value);
             logDebug(`Selected UR from handleURContainer: ${_selUr.urId}`);
         }
         else if (!(_selUr.urId > 0)) {
@@ -946,6 +1034,14 @@
             openUrPanel(_selUr.urId, true);
             return;
         }
+        const clickedSendToSendComment = () => { logDebug('Clicked send to submit the comment.'); },
+            expandMoreInfoCallback = function () {
+                if (this?.parentElement?.classList?.contains('collapsed'))
+                    _settings.expandMoreInfo = true;
+                else
+                    _settings.expandMoreInfo = false;
+                saveSettingsToStorage();
+            };
         _selUr.handling = true;
         _urPanelContainerObserver.disconnect();
         _urPanelContainerObserver.observe(document.getElementById('panel-container'), {
@@ -975,192 +1071,203 @@
             }
         }
         await updateUrceData(getMapUrsObjArr([_selUr.urId]));
-        let $domElement = await getDomElement('#panel-container .top-section .header .main-title');
-        if (!$domElement) {
+        let domElement = await getDomElement('#panel-container .top-section .header .main-title');
+        if (!domElement) {
             handleReadyError(true, true, 'handleUpdateRequestContainer', false, 'isDomElementReady: .main-title');
             return;
         }
-        if ($domElement.html().indexOf(_selUr.urId) === -1)
-            $domElement.append(` (${_selUr.urId}) `);
-        $domElement = await getDomElement('#panel-container .top-section .header .reported');
-        if (!$domElement) {
+        if (!domElement.textContent.includes(_selUr.urId))
+            domElement.append(` (${_selUr.urId}) `);
+        domElement = await getDomElement('#panel-container .top-section .header .reported');
+        if (!domElement) {
             handleReadyError(true, true, 'handleUpdateRequestContainer', false, '');
             return;
         }
-        if (!$domElement.text().endsWith(')'))
-            $domElement[0].textContent += ` (${parseDaysAgo(_mapUpdateRequests[_selUr.urId].urceData.driveDaysOld)})`;
-        $domElement = (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.description) ? await getDomElement('#panel-container .top-section .body .problem-data .description .content') : undefined;
-        if ($domElement?.children().length === 0) {
-            const $content = await getDomElement('#panel-container .top-section .body .problem-data .description .content'),
-                newDiv = `<div class="URCE-divDesc">${$content.text()}</div>`;
-            if ($content) {
-                $content.text('');
-                $content.append(newDiv);
+        if (!domElement.textContent.endsWith(')'))
+            domElement.textContent += ` (${parseDaysAgo(_mapUpdateRequests[_selUr.urId].urceData.driveDaysOld)})`;
+        domElement = (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.description) ? await getDomElement('#panel-container .top-section .body .problem-data .description .content') : undefined;
+        if (domElement?.children.length === 0) {
+            const content = await getDomElement('#panel-container .top-section .body .problem-data .description .content'),
+                divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divDesc', textContent: content.textContent });
+            if (content) {
+                content.textContent = '';
+                content.appendChild(divElemRoot);
             }
         }
         if (_mapUpdateRequests[_selUr.urId].urceData.commentCount > 0) {
-            const shadowDOMstyle = document.createElement('style');
-            shadowDOMstyle.innerHTML = '.key-with-image-wrapper, .key-wrapper { width: 100% } '
-                    + '.wz-list-item, .wz-list-item.with-subtitle { --wz-list-item-vertical-padding: 0px !important; margin: 2px 0px !important; }';
-            for (let idx = 0; idx < _mapUpdateRequests[_selUr.urId].urceData.commentCount; idx++) {
-                // eslint-disable-next-line no-await-in-loop
-                $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title');
-                if (!$domElement) {
-                    handleReadyError(false, false, '', false, 'isConversationLoaded: loadingConversation');
-                }
-                else {
-                    const $currComment = $($domElement[idx]);
-                    if ($currComment.has('#urceDaysAgo').length === 0) {
-                        $currComment.children().filter('span.date').css('float', 'right');
-                        $currComment.parent()[0].shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
-                        $currComment.append(''
-                                + '<div class="date urce">'
-                                + `     <div>(${parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[_selUr.urId].comments[idx].createdOn))})</div>`
-                                + '</div>');
+            domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title');
+            if (!domElement) {
+                handleReadyError(false, false, '', false, 'isConversationLoaded: loadingConversation');
+            }
+            else {
+                const comments = document.querySelectorAll('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title');
+                for (let idx = 0, { commentCount } = _mapUpdateRequests[_selUr.urId].urceData; idx < commentCount; idx++) {
+                    const currComment = comments[idx];
+                    if (currComment.getElementsByClassName('date urce').length === 0) {
+                        currComment.querySelector('span.date').style.float = 'right';
+                        currComment.parentElement.shadowRoot.appendChild(setElemAttrs(_elems.style.cloneNode(false), {
+                            textContent: '.key-with-image-wrapper, .key-wrapper { width: 100% } '
+                                + '.wz-list-item, .wz-list-item.with-subtitle { --wz-list-item-vertical-padding: 0px !important; margin: 2px 0px !important; }'
+                        }));
+                        currComment.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                            class: 'date urce', textContent: `(${parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[_selUr.urId].comments[idx].createdOn))})`
+                        }));
                     }
                 }
             }
             if (_settings.reverseCommentSort && (_mapUpdateRequests[_selUr.urId].urceData.commentCount > 1)) {
-                const $commentList = await getDomElement(
-                        '#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list'
-                    ),
-                    sortedComments = $commentList.children('wz-list-item').get().reverse();
-                if ($commentList)
-                    $commentList.append(sortedComments);
+                const commentList = await getDomElement('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list');
+                if (commentList) {
+                    const docFrags = document.createDocumentFragment(),
+                        reverseCommentList = [...commentList.querySelectorAll('wz-list-item.comment')].reverse();
+                    reverseCommentList.forEach((el) => docFrags.appendChild(el));
+                    commentList.replaceChildren(docFrags);
+                }
             }
         }
         _selUr.urOpen = W.model.mapUpdateRequests.objects[_selUr.urId].attributes.open;
         if (_settings.autoSwitchToUrCommentsTab)
             autoSwitchToUrceTab();
         if (_settings.disableDoneNextButtons) {
-            $domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .navigation');
-            if ($domElement)
-                $domElement.css({ display: 'none' });
+            domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .navigation');
+            if (domElement)
+                domElement.style.display = 'none';
         }
-        $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .header .title .focus');
-        if ($domElement)
-            $domElement.off('click', recenterOnUr).on('click', { urId: _selUr.urId }, recenterOnUr);
-        $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-        if (!$domElement) {
+        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .header .title .focus');
+        if (domElement)
+            domElement.addEventListener('click', recenterOnUr);
+        domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+        if (!domElement) {
             handleReadyError(true, true, 'handleUpdateRequestContainer', false, '');
             return;
         }
-        $domElement
-            .css('background-color', (_settings.enableAppendMode ? 'peachpuff' : ''))
-            .off('keyup', checkValue).on('keyup', checkValue);
-        if ($('#urceShortcuts').length === 0) {
-            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form').prepend(''
-                + '<div id="urceShortcuts" style="text-align:left;padding-bottom:8px;font-size:12px;width:100%">'
-                + `<div id="urceShortcutsExpand" style="padding-bottom:4px;font-size:13px;cursor:pointer;border-bottom:1px solid darkgray;">${I18n.t('urce.urPanel.Shortcuts')}`
-                + `<div style="display:inline;float:right;padding-right:8px;font-size:11px;"><i class="fa fa-fw ${(_settings.expandShortcuts ? 'fa-chevron-up' : 'fa-chevron-down')} URCE-chevron"></i></div></div>`
-                + `<div id="urceShortcutsExpandDiv" style="${(_settings.expandShortcuts ? '' : 'display:none;')}border-bottom:1px solid darkgray;padding: 5px 0 5px 0;"><div><i id="urceShortcuts-selSegs" class="fa fa-road" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertSelSegsTitle')}"></i>`
-                + '<span class="fa-stack" style="width:1.8em;height:1.8em;line-height:1.8em;">'
-                + `<i id="urceShortcuts-selSegsWithCity" class="fa fa-road" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')}"></i>`
-                + `<i id="urceShortcuts-selSegsWithCity" class="fa fa-plus fa-stack-2x" "area-hidden"="true" style="font-size:xx-small;text-align:right;cursor:pointer;" title="${I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')}"></i>`
-                + '</span><div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
-                + `<i id="urceShortcuts-placeName" class="fa fa-home" "aria-hidden"="true" style="cursor:pointer;" title="${I18n.t('urce.urPanel.InsertPlaceNameTitle')}"></i>`
-                + `<i id="urceShortcuts-placeAddress" class="fa fa-map-marker" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertPlaceAddressTitle')}"></i>`
-                + '<div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
-                + `<i id="urceShortcuts-description" class="fa fa-paragraph" "aria-hidden"="true" style="cursor:pointer;" title="${I18n.t('urce.urPanel.InsertDescriptionTitle')}"></i>`
-                + `<i id="urceShortcuts-wazeUsername" class="fa fa-user-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertWazeUsernameTitle')}"></i>`
-                + `<i id="urceShortcuts-urType" class="fa fa-info-circle" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertUrTypeTitle')}"></i>`
-                + `<i id="urceShortcuts-customTagline" class="fa fa-tag" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCustomTaglineTitle')}"></i>`
-                + `<i id="urceShortcuts-urPermalink" class="fa fa-link" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertUrPermalinkTitle')}"></i>`
-                + '</div>'
-                + `<div><i id="urceShortcuts-driveTime" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertTimeTitle')}"></i>`
-                + `<i id="urceShortcuts-driveDayOfWeek" class="fa fa-sun-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDayOfWeekTitle')}"></i>`
-                + `<i id="urceShortcuts-driveDate" class="fa fa-calendar-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDateTitle')}"></i>`
-                + '<div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
-                + `<i id="urceShortcuts-driveTimeCasual" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer" title="${I18n.t('urce.urPanel.InsertTimeCasualTitle')}"></i>`
-                + `<i id="urceShortcuts-driveDateCasual" class="fa fa-calendar" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDateCasualTitle')}"></i>`
-                + `<i id="urceShortcuts-driveDateTimeCasualMode" class="fa fa-calendar-plus-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertDateTimeCasualModeTitle')}"></i>`
-                + `<div style="display:inline-block;padding-left:8px;">- ${I18n.t('urce.urPanel.DriveDate')}</div></div>`
-                + `<div><i id="urceShortcuts-currentTime" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentTimeTitle')}"></i>`
-                + `<i id="urceShortcuts-currentDayOfWeek" class="fa fa-sun-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentDayOfWeekTitle')}"></i>`
-                + `<i id="urceShortcuts-currentDate" class="fa fa-calendar-o" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentDateTitle')}"></i>`
-                + '<div style="display:inline-block;padding-left:8px;padding-right:8px;">||</div>'
-                + `<i id="urceShortcuts-currentTimeCasual" class="fa fa-clock-o" "aria-hidden"="true" style="cursor:pointer;" title="${I18n.t('urce.urPanel.InsertCurrentTimeCasualTitle')}"></i>`
-                + `<i id="urceShortcuts-currentDateCasual" class="fa fa-calendar" "aria-hidden"="true" style="cursor:pointer;padding-left:4px;" title="${I18n.t('urce.urPanel.InsertCurrentDateCasualTitle')}"></i>`
-                + `<div style="display:inline-block;padding-left:24px;">- ${I18n.t('urce.urPanel.CurrentDate')}</div></div></div></div>`);
-            $('i[id|="urceShortcuts"]').off().on('click', function () {
-                handleClickedShortcut(this.id.substr(14));
-            });
-            $('#urceShortcutsExpand').off().on('click', function () {
-                if ($($(this).find('i')[0]).hasClass('fa-chevron-up'))
-                    _settings.expandShortcuts = false;
-                else
-                    _settings.expandShortcuts = true;
-                $($(this).find('i')[0]).toggleClass('fa-chevron-down fa-chevron-up');
-                if (_settings.expandShortcuts)
-                    $('#urceShortcutsExpandDiv').show();
-                else
-                    $('#urceShortcutsExpandDiv').hide();
-                saveSettingsToStorage();
-            });
+        domElement.style.backgroundColor = _settings.enableAppendMode ? 'peachpuff' : '';
+        domElement.addEventListener('keyup', checkValue);
+        if (!document.getElementById('urceShortcuts')) {
+            const urceShortcutsExpand = function () {
+                    const iElem = this.querySelector('i');
+                    if (iElem.classList.contains('fa-chevron-up'))
+                        _settings.expandShortcuts = false;
+                    else
+                        _settings.expandShortcuts = true;
+                    iElem.classList.toggle('fa-chevron-down');
+                    iElem.classList.toggle('fa-chevron-up');
+                    if (_settings.expandShortcuts)
+                        document.getElementById('urceShortcutsExpandDiv').style.display = '';
+                    else
+                        document.getElementById('urceShortcutsExpandDiv').style.display = 'none';
+                    saveSettingsToStorage();
+                },
+                createIElem = (id = '', classStr = '', style = '', title = '') => setElemAttrs(_elems.i.cloneNode(false), {
+                    id, class: classStr, 'aria-hidden': true, style, title
+                }, [{ click: handleClickedShortcut }]),
+                createSeparator = () => setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline-block;padding-left:8px;padding-right:8px;', textContent: '||' });
+            let divElemDiv = setElemAttrs(_elems.div.cloneNode(false), {
+                id: 'urceShortcutsExpand', style: 'padding-bottom:4px;font-size:13px;cursor:pointer;border-bottom:1px solid darkgray;', textContent: I18n.t('urce.urPanel.Shortcuts')
+            }, [{ click: urceShortcutsExpand }]);
+            let divElemDivDiv = setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline;float:right;padding-right:8px;font-size:11px;' });
+            divElemDivDiv.appendChild(setElemAttrs(_elems.i.cloneNode(false), { class: `fa fa-fw ${(_settings.expandShortcuts ? 'fa-chevron-up' : 'fa-chevron-down')} URCE-chevron` }));
+            divElemDiv.appendChild(divElemDivDiv);
+            const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceShortcuts', style: 'text-align:left;padding-bottom:8px;font-size:12px;width:100%;' });
+            divElemRoot.appendChild(divElemDiv);
+            divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceShortcutsExpandDiv', style: `${_settings.expandShortcuts ? '' : 'display:none;'}border-bottom:1px solid darkgray;padding: 5px 0 5px 0;` });
+            divElemDivDiv = _elems.div.cloneNode(false);
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-selSegs', 'fa fa-road', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertSelSegsTitle')));
+            const spanElem = setElemAttrs(_elems.span.cloneNode(false), { class: 'fa-stack', style: 'width:1.8em;height:1.8em;line-height:1.8em;' });
+            spanElem.appendChild(createIElem('urceShortcuts-selSegsWithCity', 'fa fa-road', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')));
+            spanElem.appendChild(createIElem('urceShortcuts-selSegsWithCity', 'fa fa-plus fa-stack-2x', 'font-size:xx-small;text-align:right;cursor:pointer;', I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')));
+            divElemDivDiv.appendChild(spanElem);
+            divElemDivDiv.appendChild(createSeparator());
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-placeName', 'fa fa-home', 'cursor:pointer;', I18n.t('urce.urPanel.InsertPlaceNameTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-placeAddress', 'fa fa-map-marker', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertPlaceAddressTitle')));
+            divElemDivDiv.appendChild(createSeparator());
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-description', 'fa fa-paragraph', 'cursor:pointer;', I18n.t('urce.urPanel.InsertDescriptionTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-wazeUsername', 'fa fa-user-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertWazeUsernameTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-urType', 'fa fa-info-circle', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertUrTypeTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-customTagline', 'fa fa-tag', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCustomTaglineTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-urPermalink', 'fa fa-link', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertUrPermalinkTitle')));
+            divElemDiv.appendChild(divElemDivDiv);
+            divElemDivDiv = _elems.div.cloneNode(false);
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveTime', 'fa fa-clock-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertTimeTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDayOfWeek', 'fa fa-sun-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDayOfWeekTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDate', 'fa fa-calendar-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDateTitle')));
+            divElemDivDiv.appendChild(createSeparator());
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveTimeCasual', 'fa fa-clock-o', 'cursor:pointer;', I18n.t('urce.urPanel.InsertTimeCasualTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDateCasual', 'fa fa-calendar', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDateCasualTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDateTimeCasualMode', 'fa fa-calendar-plus-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDateTimeCasualModeTitle')));
+            divElemDivDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline-block;padding-left:8px;', textContent: `- ${I18n.t('urce.urPanel.DriveDate')}` }));
+            divElemDiv.appendChild(divElemDivDiv);
+            divElemDivDiv = _elems.div.cloneNode(false);
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentTime', 'fa fa-clock-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentTimeTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentDayOfWeek', 'fa fa-sun-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentDayOfWeekTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentDate', 'fa fa-calendar-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentDateTitle')));
+            divElemDivDiv.appendChild(createSeparator());
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentTimeCasual', 'fa fa-clock-o', 'cursor:pointer;', I18n.t('urce.urPanel.InsertCurrentTimeCasualTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentDateCasual', 'fa fa-calendar', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentDateCasualTitle')));
+            divElemDivDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline-block;padding-left:24px;', textContent: `- ${I18n.t('urce.urPanel.CurrentDate')}` }));
+            divElemDiv.appendChild(divElemDivDiv);
+            divElemRoot.appendChild(divElemDiv);
+            domElement = document.querySelector('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form');
+            domElement.insertBefore(divElemRoot, domElement.firstChild);
         }
-        $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button');
-        if ($domElement)
-            $domElement.on('click', () => { logDebug('Clicked send to submit the comment.'); });
-        const shadowDOMstyle = document.createElement('style');
-        shadowDOMstyle.innerHTML = '.wz-button.md { height: 30px !important; min-width: 60px !important; max-widt: 140px !important; padding: 0px 10px !important; overflow: hidden; }';
-        $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button');
-        if ($domElement)
-            $domElement[0].shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
+        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button');
+        if (domElement)
+            domElement.addEventListener('click', clickedSendToSendComment);
+        const shadowDOMstyle = setElemAttrs(_elems.style.cloneNode(false), {
+            textContent: '.wz-button.md { height: 30px !important; min-width: 60px !important; max-widt: 140px !important; padding: 0px 10px !important; overflow: hidden; }'
+        });
+        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button');
+        if (domElement)
+            domElement.shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
         else
             logWarning('Could not appendChild CSS to send-button shadow root due to timeout waiting for DOM element.');
 
-        shadowDOMstyle.innerHTML = '.wz-textarea textarea { font-size: 13px !important; line-height: 14px; padding: 6px !important; } '
+        shadowDOMstyle.textContent = '.wz-textarea textarea { font-size: 13px !important; line-height: 14px; padding: 6px !important; } '
             + '.wz-textarea .length-text { font-size: 12px !important; padding: 2px 6px 0px 0px !important; }';
-        $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .new-comment-text');
-        if ($domElement)
-            $domElement[0].shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
+        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .new-comment-text');
+        if (domElement)
+            domElement.shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
         else
             logWarning('Could not appendChild CSS to new-comment-text shadow root due to timeout waiting for DOM element.');
-        shadowDOMstyle.innerHTML = '.wz-checkbox { font-size: 12px !important; } .wz-checkbox .border { height: 15px !important; width: 15px !important; }';
-        $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form wz-checkbox[name=follow]');
-        if ($domElement)
-            $domElement[0].shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
+        shadowDOMstyle.textContent = '.wz-checkbox { font-size: 12px !important; } .wz-checkbox .border { height: 15px !important; width: 15px !important; }';
+        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form wz-checkbox[name=follow]');
+        if (domElement)
+            domElement.shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
         else
             logWarning('Could not appendChild CSS to new-comment-follow shadow root due to timeout waiting for DOM element.');
         if (!_urDataStateObserver.isObserving) {
-            _urDataStateObserver.observe($('#panel-container .mapUpdateRequest.panel.show .problem-edit')[0], {
+            _urDataStateObserver.observe(document.querySelector('#panel-container .mapUpdateRequest.panel.show .problem-edit'), {
                 childList: false, attributes: true, attributeOldValue: true, characterData: false, characterDataOldValue: false, subtree: false
             });
             _urDataStateObserver.isObserving = true;
         }
         if (!_urCommentsObserver.isObserving) {
-            _urCommentsObserver.observe($('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list')[0], {
+            _urCommentsObserver.observe(document.querySelector('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list'), {
                 childList: true, attributes: false, attributeOldValue: false, characterData: false, characterDataOldValue: false, subtree: false
             });
             _urCommentsObserver.isObserving = true;
         }
         if (!(await isPanelReady('loadingMoreInfo', 10, 200)).error) {
-            $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info');
-            if (_settings.expandMoreInfo && W.map.panelRegion.currentView.model.attributes.moreInfoAvailable && $domElement.hasClass('collapsed')) {
-                $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info .title');
-                $domElement.click();
+            domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info');
+            if (_settings.expandMoreInfo && W.map.panelRegion.currentView.model.attributes.moreInfoAvailable && domElement.classList.contains('collapsed')) {
+                domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info .title');
+                domElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
             }
-            else if (!_settings.expandMoreInfo && !$domElement.hasClass('collapsed')) {
-                $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info .title');
-                $domElement.click();
+            else if (!_settings.expandMoreInfo && !domElement.classList.contains('collapsed')) {
+                domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info .title');
+                domElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
             }
         }
-        $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info .title');
-        $domElement.on('click', function () {
-            if (this.parentElement.classList.contains('collapsed'))
-                _settings.expandMoreInfo = true;
-            else
-                _settings.expandMoreInfo = false;
-            saveSettingsToStorage();
-        });
-        $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation');
-        if ($domElement?.hasClass('collapsed')) {
-            $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .title');
-            $domElement.click();
+        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info .title');
+        domElement.addEventListener('click', expandMoreInfoCallback);
+        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation');
+        if (domElement?.classList?.contains('collapsed')) {
+            domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .title');
+            domElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
         }
-        $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section');
-        if ($domElement)
-            $domElement.scrollTop($domElement[0].scrollHeight);
+        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section');
+        if (domElement)
+            domElement.scrollTop = domElement.scrollHeight;
         autoScrollComments(_mapUpdateRequests[_selUr.urId].urceData.commentCount, 10, 1);
         if (_mapUpdateRequests[_selUr.urId].urceData.commentCount === 0) {
             if (_settings.autoZoomInOnNewUr)
@@ -1203,7 +1310,7 @@
             }
         }
         if (_settings.autoCenterOnUr)
-            recenterOnUr({ data: { urId: _selUr.urId } });
+            recenterOnUr();
         doSpinner('handleUpdateRequestContainer', false);
     }
 
@@ -1211,73 +1318,63 @@
         const varsFound = this.value.match(/\B\$\S*\$\B/gm) || this.value.match(/(\$SELSEGS|\$USERNAME|\$URD)/gm);
         if (varsFound) {
             let title;
-            if (this.value.indexOf('$SELSEGS') > -1)
+            if (this.value.includes('$SELSEGS'))
                 title = I18n.t('urce.prompts.SelSegsFound');
-            else if (this.value.indexOf('$PLACE_ADDRESS$') > -1)
+            else if (this.value.includes('$PLACE_ADDRESS$'))
                 title = I18n.t('urce.prompts.PlaceAddressFound');
-            else if (this.value.indexOf('$PLACE_NAME$') > -1)
+            else if (this.value.inclues('$PLACE_NAME$'))
                 title = I18n.t('urce.prompts.PlaceNameFound');
             else
                 title = I18n.t('urce.prompts.VarFound').replace('$VARSFOUND$', varsFound.join(', '));
-            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').prop('disabled', true).attr('title', title);
+            document.querySelector('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').disabled = true;
+            document.querySelector('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').setAttribute('title', title);
         }
-        else if ($('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').prop('disabled') === true) {
-            $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').prop('disabled', false).attr('title', '');
+        else if (document.querySelector('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').disabled) {
+            document.querySelector('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').disabled = false;
+            document.querySelector('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').setAttribute('title', '');
         }
     }
 
     async function handleClickedComment(commentNum, doubleClick) {
         _selUr.doubleClick = doubleClick;
-        const $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-        if (!$domElement) {
+        const domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+        if (!domElement) {
             logWarning('No comment box found after clicking a comment from the list.');
             WazeWrap.Alerts.info(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.NoCommentBox'));
             return;
         }
         if (doubleClick)
-            $domElement.off('blur', autoClickSendButton).on('blur', autoClickSendButton);
+            domElement.addEventListener('autoclicksendbutton', autoClickSendButton);
         if (_settings.autoClickOpenSolvedNi && _selUr.urOpen)
             autoClickOpenSolvedNi(commentNum);
         postUrComment(_commentList[commentNum].comment, doubleClick);
     }
 
     function autoSwitchToUrceTab() {
-        _restoreDrawerTab = $('#drawer').find('[selected="true"]').children('.w-icon')[0] || 'none-selected';
-        if (!$(_restoreDrawerTab).hasClass('w-icon-script')) {
-            document.querySelector('.w-icon-script').dispatchEvent(new MouseEvent('click', {
-                view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
-            }));
-        }
-        _restoreTab = _restoreTab || $('#user-tabs .nav-tabs .active > a').first()[0];
-        _restoreTabPosition = _restoreTabPosition || $($('#user-info .tab-content')[0]).scrollTop();
-        document.querySelector('img#urceIcon').closest('a[href^="#userscript"').dispatchEvent(new MouseEvent('click', {
-            view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
-        }));
-        document.querySelector('a[href="#panel-urce-comments"]').dispatchEvent(new MouseEvent('click', {
-            view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
-        }));
-        $($('#user-info .tab-content')[0]).scrollTop(0);
+        _restoreDrawerTab = document.getElementById('drawer')?.querySelector('[selected="true"]')?.querySelector('.w-icon') || 'none-selected';
+        if (!_restoreDrawerTab.classList?.contains('w-icon-script'))
+            document.querySelector('.w-icon-script').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        _restoreTab = _restoreTab || document.querySelector('#user-tabs .nav-tabs .active > a');
+        _restoreTabPosition = _restoreTabPosition || document.querySelector('#user-info .tab-content').scrollTop;
+        document.querySelector('img#urceIcon').closest('a[href^="#userscript"').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        document.querySelector('a[href="#panel-urce-comments"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        document.querySelector('#user-info .tab-content').scrollTop = 0;
+        document.querySelector('#user-info .tab-content .URCE-divTabs').scrollTop = 0;
     }
 
     function autoSwitchToPrevTab() {
-        if (!$(W.map.getOLMap().div).hasClass('problem-selected')) {
-            if ($(_restoreDrawerTab).hasClass('w-icon-script')) {
-                if ($(_restoreTab).length > 0) {
-                    _restoreTab.dispatchEvent(new MouseEvent('click', {
-                        view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
-                    }));
-                    $($('#user-info .tab-content')[0]).scrollTop(_restoreTabPosition);
+        if (!document.querySelector('#panel-container .show')) {
+            if (_restoreDrawerTab?.classList?.contains('w-icon-script')) {
+                if (_restoreTab) {
+                    _restoreTab.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    document.querySelector('#user-info .tab-content').scrollTop = _restoreTabPosition;
                 }
             }
             else if (_restoreDrawerTab && _restoreDrawerTab !== 'none-selected') {
-                _restoreDrawerTab.dispatchEvent(new MouseEvent('click', {
-                    view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
-                }));
+                _restoreDrawerTab.dispatchEvent(new MouseEvent('click', { bubbles: true }));
             }
             else if (_restoreDrawerTab === 'none-selected') {
-                $('#drawer').find('.w-icon-script')[0].dispatchEvent(new MouseEvent('click', {
-                    view: (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window), bubbles: true, cancelable: true, button: 0
-                }));
+                document.querySelector('.w-icon-script').dispatchEvent(new MouseEvent('click', { bubbles: true }));
             }
             _restoreDrawerTab = undefined;
             _restoreTab = undefined;
@@ -1302,7 +1399,7 @@
                 checkTimeout({ timeout: 'autoCloseUrPanel' });
                 if (tries > maxNumTries)
                     resolve({ error: true });
-                else if (!$('#panel-container .mapUpdateRequest .top-section .body .problem-data .more-info').hasClass('loading'))
+                else if (document.querySelector('#panel-container .mapUpdateRequest .top-section .body .problem-data .more-info')?.classList?.contains('loading') === false)
                     resolve({ error: false });
                 else
                     _timeouts.autoCloseUrPanel = window.setTimeout(retry, ++tries, retryInt, maxNumTries);
@@ -1312,44 +1409,35 @@
             handleReadyError(false, false, '', false, '');
             return Promise.resolve();
         }
-        W.map.panelRegion.currentView.destroy();
+        W?.map?.panelRegion?.currentView?.destroy();
         return Promise.resolve();
     }
 
     async function autoClickSendButton() {
-        let $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button');
-        if ($domElement)
-            $domElement.trigger('click');
-        $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-        if ($domElement)
-            $domElement.off('blur', autoClickSendButton);
+        let domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button');
+        if (domElement)
+            domElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+        if (domElement)
+            domElement.removeEventListener('autoclicksendbutton', autoClickSendButton);
     }
 
     async function autoClickOpenSolvedNi(commentNum) {
-        const confirmHold = window.confirm;
-        window.confirm = function () {
-            // Dummy confirm to prevent WME from being able to send confirmations during auto clicking
-            return true;
-        };
-        let $domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body');
-        if ($domElement)
-            $domElement.scrollTop($domElement[0].scrollHeight);
         if ((_commentList[commentNum].urstatus === 'notidentified') && (_selUr.newStatus !== 'notidentified')) {
-            $domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="not-identified"]');
-            if ($domElement)
-                $domElement.trigger('click');
+            const domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="not-identified"]');
+            if (domElement)
+                domElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
         }
         else if ((_commentList[commentNum].urstatus === 'solved') && (_selUr.newStatus !== 'solved')) {
-            $domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="solved"]');
-            if ($domElement)
-                $domElement.trigger('click');
+            const domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="solved"]');
+            if (domElement)
+                domElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
         }
         else if ((_commentList[commentNum].urstatus === 'open') && ((_selUr.newStatus === 'solved') || (_selUr.newStatus === 'notidentified'))) {
-            $domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="open"]');
-            if ($domElement)
-                $domElement.trigger('click');
+            const domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="open"]');
+            if (domElement)
+                domElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
         }
-        window.confirm = confirmHold;
     }
 
     function autoZoomIn() {
@@ -1358,7 +1446,7 @@
     }
 
     function autoZoomOut() {
-        if (_restoreZoom && !$(W.map.getOLMap().div).hasClass('problem-selected')) {
+        if (_restoreZoom && !document.querySelector('#panel-container .show')) {
             if (_restoreZoom !== W.map.olMap.getZoom()) {
                 W.map.getOLMap().zoomTo(_restoreZoom);
                 _restoreZoom = null;
@@ -1384,7 +1472,7 @@
     function formatText(text = '', replaceVars = false, shortcutClicked = false, urId = -1) {
         if (!(urId > 0) && _selUr?.urId)
             ({ urId } = _selUr);
-        if (replaceVars && shortcutClicked && (text.indexOf('$SELSEGS') > -1)) {
+        if (replaceVars && shortcutClicked && text.includes('$SELSEGS')) {
             const selFeatures = W.selectionManager.getSelectedDataModelObjects();
             let output = '';
             if ((selFeatures.length > 0) && (selFeatures.length < 3)) {
@@ -1392,7 +1480,7 @@
                     street2Name = '',
                     cityName = '',
                     firstCityId;
-                for (let idx = 0; idx < selFeatures.length; idx++) {
+                for (let idx = 0, { length } = selFeatures; idx < length; idx++) {
                     if (selFeatures[idx].type === 'segment') {
                         if (selFeatures.length > 1) {
                             const streetObj = W.model.streets.getObjectById(selFeatures[idx].attributes.primaryStreetID);
@@ -1402,13 +1490,13 @@
                             }
                             else {
                                 street2Name = (streetObj.name?.length > 0) ? streetObj.name : I18n.t('urce.tools.UnknownRoadName');
-                                if ((firstCityId !== 999940) && (text.indexOf('$SELSEGS_WITH_CITY$') > -1)) {
+                                if ((firstCityId !== 999940) && text.includes('$SELSEGS_WITH_CITY$')) {
                                     if ((firstCityId === streetObj.cityID) || (streetObj.cityID === 999940)) {
                                         const cityObj = W.model.cities.getObjectById(firstCityId);
                                         cityName = (cityObj.attributes.name !== '') ? cityObj.attributes.name : '';
                                     }
                                 }
-                                else if ((firstCityId === 999940) && (streetObj.cityID !== 999940) && (text.indexOf('$SELSEGS_WITH_CITY$') > -1)) {
+                                else if ((firstCityId === 999940) && (streetObj.cityID !== 999940) && text.includes('$SELSEGS_WITH_CITY$')) {
                                     const cityObj = W.model.cities.getObjectById(streetObj.cityID);
                                     cityName = (cityObj.attributes.name !== '') ? cityObj.attributes.name : '';
                                 }
@@ -1418,7 +1506,7 @@
                             const streetObj = W.model.streets.getObjectById(selFeatures[idx].attributes.primaryStreetID);
                             street1Name = (streetObj.name?.length > 0) ? streetObj.name : '';
                             const cityObj = W.model.cities.getObjectById(streetObj.cityID);
-                            if ((cityObj.attributes?.name !== '') && (street1Name !== '') && (text.indexOf('$SELSEGS_WITH_CITY$') > -1))
+                            if ((cityObj.attributes?.name !== '') && (street1Name !== '') && text.includes('$SELSEGS_WITH_CITY$'))
                                 cityName = cityObj.attributes.name;
                         }
                     }
@@ -1449,20 +1537,20 @@
         }
         if (replaceVars && (urId > -1)) {
             if (/(\$(CURRENTDATE_DAY_OF_WEEK|CURRENTDATE_DATE|CURRENTDATE_DATE_CASUAL|CURRENTDATE_TIME|CURRENTDATE_TIME_CASUAL)\$)/gm.test(text)) {
-                if (text.indexOf('$CURRENTDATE_DAY_OF_WEEK$') > -1)
+                if (text.includes('$CURRENTDATE_DAY_OF_WEEK$'))
                     text = text.replace('$CURRENTDATE_DAY_OF_WEEK$', new Date().toLocaleDateString(I18n.currentLocale(), { weekday: 'long' }));
-                if (text.indexOf('$CURRENTDATE_DATE$') > -1)
+                if (text.includes('$CURRENTDATE_DATE$'))
                     text = text.replace('$CURRENTDATE_DATE$', new Date().toLocaleDateString(I18n.currentLocale(), { month: '2-digit', day: '2-digit', year: 'numeric' }));
-                if (text.indexOf('$CURRENTDATE_DATE_CASUAL$') > -1)
+                if (text.includes('$CURRENTDATE_DATE_CASUAL$'))
                     text = text.replace('$CURRENTDATE_DATE_CASUAL$', new Date().toLocaleDateString(I18n.currentLocale(), { month: 'long', day: '2-digit' }));
-                if (text.indexOf('$CURRENTDATE_TIME$') > -1)
+                if (text.includes('$CURRENTDATE_TIME$'))
                     text = text.replace('$CURRENTDATE_TIME$', new Date().toLocaleDateString(I18n.currentLocale(), { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }));
-                if (text.indexOf('$CURRENTDATE_TIME_CASUAL$') > -1)
+                if (text.includes('$CURRENTDATE_TIME_CASUAL$'))
                     text = text.replace('$CURRENTDATE_TIME_CASUAL$', convertTimeOfDayToCasual(new Date().getHours()));
             }
             if (/(\$(DRIVEDATE_DAY_OF_WEEK|DRIVEDATE_DATE|DRIVEDATE_DATE_CASUAL|DRIVEDATE_DAYS_AGO|DRIVEDATE_TIME|DRIVEDATE_TIME_CASUAL|DRIVEDATE_TIME_CASUALMODE)\$)/gm.test(text)) {
                 if (W.model.mapUpdateRequests.objects[urId]) {
-                    if (text.indexOf('$DRIVEDATE_DAY_OF_WEEK$') > -1) {
+                    if (text.includes('$DRIVEDATE_DAY_OF_WEEK$')) {
                         if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1) {
                             text = text.replace(
                                 '$DRIVEDATE_DAY_OF_WEEK$',
@@ -1473,7 +1561,7 @@
                             text = text.replace('$DRIVEDATE_DAY_OF_WEEK$', '');
                         }
                     }
-                    if (text.indexOf('$DRIVEDATE_DATE$') > -1) {
+                    if (text.includes('$DRIVEDATE_DATE$')) {
                         if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1) {
                             text = text.replace(
                                 '$DRIVEDATE_DATE$',
@@ -1487,7 +1575,7 @@
                             text = text.replace('$DRIVEDATE_DATE$', '');
                         }
                     }
-                    if (text.indexOf('$DRIVEDATE_DATE_CASUAL$') > -1) {
+                    if (text.includes('$DRIVEDATE_DATE_CASUAL$')) {
                         if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1) {
                             text = text.replace(
                                 '$DRIVEDATE_DATE_CASUAL$',
@@ -1498,13 +1586,13 @@
                             text = text.replace('$DRIVEDATE_DATE_CASUAL$', '');
                         }
                     }
-                    if (text.indexOf('$DRIVEDATE_DAYS_AGO$') > -1) {
+                    if (text.includes('$DRIVEDATE_DAYS_AGO$')) {
                         if (_mapUpdateRequests[urId]?.urceData?.driveDaysOld > -1)
                             text = text.replace('$DRIVEDATE_DAYS_AGO$', parseDaysAgo(_mapUpdateRequests[urId].urceData.driveDaysOld));
                         else
                             text = text.replace('$DRIVEDATE_DAYS_AGO$', '');
                     }
-                    if (text.indexOf('$DRIVEDATE_TIME$') > -1) {
+                    if (text.includes('$DRIVEDATE_TIME$')) {
                         if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1) {
                             text = text.replace(
                                 '$DRIVEDATE_TIME$',
@@ -1518,13 +1606,13 @@
                             text = text.replace('$DRIVEDATE_TIME$', '');
                         }
                     }
-                    if (text.indexOf('$DRIVEDATE_TIME_CASUAL$') > -1) {
+                    if (text.includes('$DRIVEDATE_TIME_CASUAL$')) {
                         if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1)
                             text = text.replace('$DRIVEDATE_TIME_CASUAL$', convertTimeOfDayToCasual(new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).getHours()));
                         else
                             text = text.replace('$DRIVEDATE_TIME_CASUAL$', '');
                     }
-                    if (text.indexOf('$DRIVEDATE_TIME_CASUALMODE$') > -1) {
+                    if (text.includes('$DRIVEDATE_TIME_CASUALMODE$')) {
                         if (_mapUpdateRequests[urId]?.urceData) {
                             const driveDaysAgo = _mapUpdateRequests[urId].urceData.driveDaysOld,
                                 driveHour = new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).getHours();
@@ -1587,21 +1675,21 @@
                     }
                 }
             }
-            if (text.indexOf('$URD') > -1) {
+            if (text.includes('$URD')) {
                 if (W.model.mapUpdateRequests.objects[urId]?.attributes.description)
                     text = text.replace(/("?\$URD\$?"?)+/gmi, `"${W.model.mapUpdateRequests.objects[urId].attributes.description}"`).replace(/\n+/gmi, '');
                 else
                     text = text.replace(/("?\$URD\$?"?)+/gmi, '');
             }
-            if (text.indexOf('$CUSTOMTAGLINE$') > -1) {
+            if (text.includes('$CUSTOMTAGLINE$')) {
                 if (_settings.perCommentListSettings[_currentCommentList].customTagline.length > 0)
                     text = text.replace('$CUSTOMTAGLINE$', formatText(_settings.perCommentListSettings[_currentCommentList].customTagline, true, shortcutClicked, urId));
                 else
                     text = text.replace('$CUSTOMTAGLINE$', '');
             }
-            if (text.indexOf('$URTYPE$') > -1)
+            if (text.includes('$URTYPE$'))
                 text = text.replace('$URTYPE$', W.model.mapUpdateRequests.objects[urId].attributes.typeText);
-            if (text.indexOf('$PERMALINK$') > -1) {
+            if (text.includes('$PERMALINK$')) {
                 if (W.model.mapUpdateRequests.objects[urId]) {
                     const lonLat = WazeWrap.Geometry.ConvertTo4326(W.model.mapUpdateRequests.objects[urId].attributes.geometry.x, W.model.mapUpdateRequests.objects[urId].attributes.geometry.y),
                         urlParams = new URLSearchParams(window.location.search);
@@ -1613,25 +1701,25 @@
                 }
             }
         }
-        if (replaceVars && (text.indexOf('$CLOSED_NOR_EMAIL_TAG$') > -1)) {
+        if (replaceVars && text.includes('$CLOSED_NOR_EMAIL_TAG$')) {
             if ((_settings.perCommentListSettings[_currentCommentList].tagEmail.length > 0) && (W.loginManager.user.userName.length > 0))
                 text = text.replace('$CLOSED_NOR_EMAIL_TAG$', `Since this report is closed, please send further correspondence to ${_settings.perCommentListSettings[_currentCommentList].tagEmail} and include ${W.loginManager.user.userName} in the subject line.`);
             else
                 text = text.replace('$CLOSED_NOR_EMAIL_TAG$', '');
         }
-        if (replaceVars && (text.indexOf('$TAG_EMAIL$') > -1)) {
+        if (replaceVars && text.includes('$TAG_EMAIL$')) {
             if (_settings.perCommentListSettings[_currentCommentList].tagEmail.length > 0)
                 text = text.replace('$TAG_EMAIL$', _settings.perCommentListSettings[_currentCommentList].tagEmail);
             else
                 text = text.replace('$TAG_EMAIL$', '');
         }
-        if (replaceVars && (text.indexOf('$USERNAME') > -1)) {
+        if (replaceVars && text.includes('$USERNAME')) {
             if (W.loginManager.user.userName)
                 text = text.replace(/(\$USERNAME\$?)+/gmi, W.loginManager.user.userName);
             else
                 text = text.replace(/(\$USERNAME\$?)+/gmi, '');
         }
-        if (replaceVars && (text.indexOf('$PLACE_NAME$') > -1)) {
+        if (replaceVars && text.includes('$PLACE_NAME$')) {
             const placeObj = W.selectionManager.getSelectedDataModelObjects()[0];
             if (placeObj?.type === 'venue') {
                 if (placeObj.attributes.residential === true)
@@ -1643,7 +1731,7 @@
                 WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.PlaceNameInsertError'));
             }
         }
-        if (replaceVars && (text.indexOf('$PLACE_ADDRESS$') > -1)) {
+        if (replaceVars && text.includes('$PLACE_ADDRESS$')) {
             const placeObj = W.selectionManager.getSelectedDataModelObjects()[0];
             if ((placeObj?.type === 'venue') && ((placeObj?.attributes.houseNumber.length > 0) || (placeObj?.attributes.streetID.length > 0))) {
                 let placeAddress = '';
@@ -1674,22 +1762,23 @@
         }
         if (replaceVars && (_customReplaceVars?.length > 0)) {
             _customReplaceVars.forEach((customReplaceVar) => {
-                if (text.indexOf(customReplaceVar.customVar) > -1)
+                if (text.includes(customReplaceVar.customVar))
                     text = text.replace(customReplaceVar.customVar, formatText(customReplaceVar.replaceText, true, shortcutClicked, urId));
             });
         }
         return text.replace(/\\[r|n]+/gm, '\n');
     }
 
-    async function handleClickedShortcut(shortcut) {
+    async function handleClickedShortcut() {
+        const shortcut = this.id.substring(14);
         doSpinner('handleClickedShortcut', true);
-        let $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-        if (!$domElement) {
+        let domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+        if (!domElement) {
             handleReadyError(false, true, 'handleClickedShortcut', true, 'UR panel comment box is missing.');
             return;
         }
-        const cursorPos = $domElement[0].selectionStart,
-            currVal = $domElement.val();
+        const cursorPos = domElement.selectionStart,
+            currVal = domElement.value;
         let newVal = currVal.slice(0, cursorPos),
             useCurrVal = false,
             replaceText;
@@ -1758,7 +1847,7 @@
             replaceText = '$CUSTOMTAGLINE$';
         }
         else if (shortcut === 'placeName') {
-            if (/\$PLACE_NAME\$/.test(currVal)) {
+            if (currVal.includes('$PLACE_NAME$')) {
                 useCurrVal = true;
                 replaceText = currVal;
             }
@@ -1767,7 +1856,7 @@
             }
         }
         else if (shortcut === 'placeAddress') {
-            if (/\$PLACE_ADDRESS\$/.test(currVal)) {
+            if (currVal.includes('$PLACE_ADDRESS$')) {
                 useCurrVal = true;
                 replaceText = currVal;
             }
@@ -1784,8 +1873,8 @@
         }
         let outputText = formatText(replaceText, true, true, -1);
         if ((((shortcut === 'selSegs') || (shortcut === 'selSegsWithCity')) && /\$SELSEGS\$?/gm.test(outputText))
-            || ((shortcut === 'placeName') && (outputText.indexOf('$PLACE_NAME$') > -1))
-            || ((shortcut === 'placeAddress') && (outputText.indexOf('$PLACE_ADDRESS$') > -1))
+            || ((shortcut === 'placeName') && outputText.includes('$PLACE_NAME$'))
+            || ((shortcut === 'placeAddress') && outputText.includes('$PLACE_ADDRESS$'))
         ) {
             doSpinner('handleClickedShortcut', false);
             return;
@@ -1794,7 +1883,7 @@
             if ((newVal.length > 0) && !/\s/.test(newVal.slice(-1)))
                 outputText = ` ${outputText}`;
             if (currVal.slice(cursorPos).length > 0) {
-                if (!/[\t\f\v ]/.test(currVal.substr(cursorPos, 1)))
+                if (!/[\t\f\v ]/.test(currVal.substring(cursorPos, 1)))
                     outputText = `${outputText} `;
             }
             newVal = `${newVal}${outputText}${currVal.slice(cursorPos)}`;
@@ -1803,35 +1892,44 @@
                 doSpinner('handleClickedShortcut', false);
                 return;
             }
-            $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-            if (!$domElement)
+            domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            if (!domElement) {
                 logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut with selectRange.');
-            else
-                $domElement.val(newVal).selectRange((cursorPos + outputText.length));
-            $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-            if (!$domElement)
+            }
+            else {
+                domElement.value = newVal;
+                domElement.selectionStart = cursorPos + outputText.length;
+            }
+            domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            if (!domElement)
                 logWarning('Timed out waiting for DOM elements before dispatching input event after clicking a shortcut with selectRange.');
             else
-                $domElement[0].dispatchEvent(new Event('input'));
+                domElement.dispatchEvent(new Event('input'));
         }
         else if (useCurrVal) {
-            $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-            if (!$domElement)
+            domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            if (!domElement) {
                 logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut without selectRange.');
-            else
-                $domElement.val(outputText).selectRange((cursorPos + outputText.length));
-            $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-            if (!$domElement)
+            }
+            else {
+                domElement.value = outputText;
+                domElement.selectionStart = cursorPos + outputText.length;
+            }
+            domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            if (!domElement)
                 logWarning('Timed out waiting for DOM elements before dispatching input event after clicking a shortcut without selectRange.');
             else
-                $domElement[0].dispatchEvent(new Event('input'));
+                domElement.dispatchEvent(new Event('input'));
         }
         if ((outputText && !useCurrVal) || useCurrVal) {
-            $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-            if (!$domElement)
+            domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            if (!domElement) {
                 logWarning('Timed out waiting for DOM elements before triggering keyup and focus events after clicking a shortcut.');
-            else
-                $domElement.keyup().focus();
+            }
+            else {
+                domElement.dispatchEvent(new KeyboardEvent('keyup'));
+                domElement.dispatchEvent(new Event('focus', { bubbles: true }));
+            }
         }
         doSpinner('handleClickedShortcut', false);
     }
@@ -1864,16 +1962,16 @@
             cursorPos,
             newCursorPos,
             postNls = 0;
-        let $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-        if (!$domElement) {
+        let domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+        if (!domElement) {
             logError('UR panel comment box is missing at beginning of postUrComment function.');
             handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
             return;
         }
-        if (_settings.enableAppendMode && ($domElement.val() !== '') && !doubleClick) {
-            cursorPos = $domElement[0].selectionStart;
+        if (_settings.enableAppendMode && (domElement.value !== '') && !doubleClick) {
+            cursorPos = domElement.selectionStart;
             newCursorPos = cursorPos;
-            const currVal = $domElement.val();
+            const currVal = domElement.value;
             let newVal = currVal.slice(0, cursorPos);
             if ((newVal.length > 0) && /[\n\r]/.test(newVal.slice(-1))) {
                 if (!/[\n\r]/.test(newVal.slice(-2, -1))) {
@@ -1887,8 +1985,8 @@
             }
             newVal += formatText(comment, true, false, -1);
             if (currVal.slice(cursorPos).length > 0) {
-                if (/[\n\r]/.test(currVal.substr(cursorPos, 1))) {
-                    if (!/[\n\r]/.test(currVal.substr(cursorPos + 1, 1))) {
+                if (/[\n\r]/.test(currVal.substring(cursorPos, 1))) {
+                    if (!/[\n\r]/.test(currVal.substring(cursorPos + 1, 1))) {
                         newVal += '\n';
                         postNls++;
                     }
@@ -1910,46 +2008,49 @@
         }
         else {
             if (cursorPos) {
-                $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-                if (!$domElement) {
+                domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+                if (!domElement) {
                     logError('Timed out waiting on text box to set value with selectRange.');
                     handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
                     return;
                 }
-                $domElement.val(commentOutput).selectRange((newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls));
-                $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-                if (!$domElement) {
+                domElement.value = commentOutput;
+                domElement.selectionStart = newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls;
+                domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+                if (!domElement) {
                     logError('Timed out waiting on text box shadow root to dispatch event with selectRange.');
                     handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
                     return;
                 }
-                $domElement[0].dispatchEvent(new Event('input'));
+                domElement.dispatchEvent(new Event('input'));
             }
             else {
-                $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-                if (!$domElement) {
+                domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+                if (!domElement) {
                     logError('Timed out waiting on text box to set value without selectRange.');
                     handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
                     return;
                 }
-                $domElement.val(commentOutput);
-                $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-                if (!$domElement) {
+                domElement.value = commentOutput;
+                domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+                if (!domElement) {
                     logError('Timed out waiting on text box shadow root to dispatch event without selectRange.');
                     handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
                     return;
                 }
-                $domElement[0].dispatchEvent(new Event('input'));
+                domElement.dispatchEvent(new Event('input'));
             }
             if (doubleClick && !/\B\$\S*\$\B/gm.test(commentOutput) && !/(\$SELSEGS|\$USERNAME|\$URD)/gm.test(commentOutput)) {
-                $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-                if ($domElement)
-                    $domElement.blur();
+                domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+                if (domElement)
+                    domElement.dispatchEvent(new Event('autoclicksendbutton', { bubbles: true }));
             }
             else {
-                $domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-                if ($domElement)
-                    $domElement.keyup().focus();
+                domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+                if (domElement) {
+                    domElement.dispatchEvent(new KeyboardEvent('keyup'));
+                    domElement.dispatchEvent(new Event('focus', { bubbles: true }));
+                }
             }
         }
         doSpinner('postUrComment', false);
@@ -1984,7 +2085,7 @@
     function isIdAlreadyUnstacked(urId) {
         if (_markerStackArray.length === 0)
             return false;
-        for (let idx = 0; idx < _markerStackArray.length; idx++) {
+        for (let idx = 0, { length } = _markerStackArray; idx < length; idx++) {
             if (_markerStackArray[idx].urId === urId)
                 return true;
         }
@@ -2027,11 +2128,11 @@
                             && (!((markerModelObj.attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs)))
                     ) {
                         if (markerMapObj.marker.icon.imageDiv.style.display === 'none')
-                            $(markerMapObj.marker.icon.imageDiv).show();
+                            markerMapObj.marker.icon.imageDiv.style.display = '';
                     }
                 }
             });
-            for (let idx = 0; idx < _markerStackArray.length; idx++) {
+            for (let idx = 0, { length } = _markerStackArray; idx < length; idx++) {
                 if (markerMapCollection[_markerStackArray[idx].urId]) {
                     markerMapCollection[_markerStackArray[idx].urId].marker.icon.imageDiv.style.left = `${_markerStackArray[idx].x}px`;
                     markerMapCollection[_markerStackArray[idx].urId].marker.icon.imageDiv.style.top = `${_markerStackArray[idx].y}px`;
@@ -2097,7 +2198,7 @@
                 _unstackedMasterId = urId;
                 _markerStackArray = [];
                 _markerStackArray.push(new StackListObj(urId, unstackedX, unstackedY));
-                for (let idx = 0; idx < stackList.length; idx++) {
+                for (let idx = 0, { length } = stackList; idx < length; idx++) {
                     const thisUrId = stackList[idx],
                         x = parsePxString(markerMapCollection[thisUrId].marker.icon.imageDiv.style.left),
                         y = parsePxString(markerMapCollection[thisUrId].marker.icon.imageDiv.style.top);
@@ -2113,7 +2214,7 @@
                     Object.keys(markerMapCollection).forEach((marker) => {
                         if (markerMapCollection.hasOwnProperty(marker)) {
                             if (!isIdAlreadyUnstacked(parseInt(marker)))
-                                $(markerMapCollection[marker].marker.icon.imageDiv).hide();
+                                markerMapCollection[marker].marker.icon.imageDiv.style.display = 'none';
                         }
                     });
                 }
@@ -2131,12 +2232,12 @@
         const popupDelayTime = (Date.now() + (_settings.urMarkerPopupDelay * 100));
         let popupX,
             popupY;
-        if (this.className.indexOf('user-generated') > -1) {
-            const markerId = parseInt(this.attributes['data-id'].value);
-            if ((markerId > 0) && ((_mousedOverMarkerId !== markerId) || ($('#urceDiv').css('visibility') === 'hidden'))) {
+        if (this.className.includes('user-generated')) {
+            const markerId = parseInt(this.attributes['data-id']?.value);
+            if ((markerId > 0) && ((_mousedOverMarkerId !== markerId) || (getComputedStyle(document.getElementById('urceDiv')).visibility === 'hidden'))) {
                 _mousedOverMarkerId = markerId;
                 const targetTab = `_urceTab_${Math.round(Math.random() * 1000000)}`,
-                    popupXOffset = parsePxString($('#sidebar').css('width')) + parsePxString($('#drawer').css('width')),
+                    popupXOffset = parsePxString(getComputedStyle(document.getElementById('sidebar')).width) + parsePxString(getComputedStyle(document.getElementById('drawer')).width),
                     unstackedX = parsePxString(W.map.updateRequestLayer.featureMarkers[markerId].marker.icon.imageDiv.style.left),
                     unstackedY = parsePxString(W.map.updateRequestLayer.featureMarkers[markerId].marker.icon.imageDiv.style.top);
                 checkMarkerStacking(markerId, unstackedX, unstackedY);
@@ -2144,78 +2245,15 @@
                     doSpinner('markerMouseDown', true);
                     if (!_mapUpdateRequests[markerId]?.urceData)
                         await updateUrceData(getMapUrsObjArr([markerId]));
-                    popupX = unstackedX - parsePxString(W.map.segmentLayer.div.style.left) + popupXOffset + 10;
-                    popupY = unstackedY - parsePxString(W.map.segmentLayer.div.style.top) + 10;
-                    let popupContent = `<b>${I18n.t('problems.panel.titles.map_update_request')} (${markerId}): `
-                        + `${I18n.t(`update_requests.types.${W.model.mapUpdateRequests.objects[markerId].attributes.type}`)}</b><br>`;
-                    if (!W.model.mapUpdateRequests.objects[markerId].attributes.description)
-                        popupContent += `<i>${I18n.t('urce.mouseOver.NoDescription')}</i>`;
-                    else
-                        popupContent += clickify(W.model.mapUpdateRequests.objects[markerId].attributes.description.replace(/((?:.{80}).*?)\s/gm, '$1\n'), '');
-                    if (_mapUpdateRequests[markerId].urceData.driveDaysOld > -1) {
-                        popupContent += `<br><i>${I18n.t('mte.edit.submitted')} ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.driveDaysOld)} `;
-                        if (W.model.mapUpdateRequests.objects[markerId].attributes.driveDate > -1) {
-                            popupContent += `(${new Date(W.model.mapUpdateRequests.objects[markerId].attributes.driveDate).toLocaleDateString('en-us')}`
-                                + ` ${new Date(W.model.mapUpdateRequests.objects[markerId].attributes.driveDate).toLocaleTimeString('en-us')}) `;
-                        }
-                        if (W.model.mapUpdateRequests.objects[markerId]?.attributes.guestUserName) {
-                            popupContent += I18n.t('urce.mouseOver.ViaLivemap');
-                            if (W.model.mapUpdateRequests.objects[markerId].attributes.guestUserName !== '')
-                                popupContent += ` by ${W.model.mapUpdateRequests.objects[markerId].attributes.guestUserName.replace(/<\/?[^>]+(>|$)/g, '')}`;
-                        }
-                        popupContent += '</i>';
-                    }
-                    if ((W.model.mapUpdateRequests.objects[markerId].attributes.resolvedOn) && (_mapUpdateRequests[markerId].urceData.resolveDaysAgo > -1)) {
-                        popupContent += `<br><i>${I18n.t('urce.urStatus.Closed')} ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.resolveDaysAgo)} `
-                            + `(${new Date(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedOn).toLocaleDateString('en-us')}`
-                            + ` ${new Date(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedOn).toLocaleTimeString('en-us')})</i>`
-                            + `<br><i>${I18n.t('urce.mouseOver.MarkedAs')} `;
-                        if (W.model.mapUpdateRequests.objects[markerId].attributes.resolution === 0)
-                            popupContent += I18n.t('venues.update_requests.panel.solved');
-                        else if (W.model.mapUpdateRequests.objects[markerId].attributes.resolution === 1)
-                            popupContent += I18n.t('urce.urStatus.NotIdentified');
-                        else
-                            popupContent += I18n.t('segment.direction.0');
-                        if (W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy) {
-                            popupContent += ` ${I18n.t('element_history.changed_by')} `
-                                + `<a href="${W.Config.user_profile.url}${getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).username}">`
-                                + `${getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).username}</a>`
-                                + ` (${getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).rank})`;
-                        }
-                        popupContent += '</i>';
-                    }
-                    popupContent += `<br><br>${_mapUpdateRequests[markerId].urceData.commentCount} ${I18n.t('urce.tabs.Comments')}`;
-                    if (!_mapUpdateRequests[markerId].urceData.commentsByMe && (_mapUpdateRequests[markerId].urceData.commentCount > 0))
-                        popupContent += ` (${I18n.t('urce.mouseOver.NoneByMe')})`;
-                    if ((_mapUpdateRequests[markerId].urceData.commentCount > 0) && (_mapUpdateRequests[markerId].urceData.lastCommentDaysOld > -1))
-                        popupContent += `, ${I18n.t('element_history.actions.default.UPDATE')} ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.lastCommentDaysOld)}`;
-                    if (_mapUpdateRequests[markerId].urceData.commentCount > 0) {
-                        popupContent += `<br>${I18n.t('urce.mouseOver.FirstComment')}: ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.firstCommentDaysOld)}`
-                            + ` ${I18n.t('element_history.changed_by')} `;
-                        if (_mapUpdateRequests[markerId].urceData.firstCommentBy === -1) {
-                            popupContent += I18n.t('conversation.reporter');
-                        }
-                        else {
-                            popupContent += `<a href="${W.Config.user_profile.url}${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.firstCommentBy).username}">`
-                                + `${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.firstCommentBy).username}</a>`
-                                + ` (${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.firstCommentBy).rank})`;
-                        }
-                        if (_mapUpdateRequests[markerId].urceData.commentCount > 1) {
-                            popupContent += `<br>${I18n.t('urce.mouseOver.LastComment')}: ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.lastCommentDaysOld)}`
-                                + ` ${I18n.t('element_history.changed_by')} `;
-                            if (_mapUpdateRequests[markerId].urceData.lastCommentBy === -1) {
-                                popupContent += I18n.t('conversation.reporter');
-                            }
-                            else {
-                                popupContent += `<a href="${W.Config.user_profile.url}${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.lastCommentBy).username}">`
-                                    + `${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.lastCommentBy).username}</a>`
-                                    + ` (${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.lastCommentBy).rank})`;
-                            }
-                        }
-                        popupContent += `<br>${I18n.t('urce.mouseOver.ReporterHasCommented')}: <i>${(_mapUpdateRequests[markerId].urceData.reporterHasCommented) ? I18n.t('urce.common.Yes') : I18n.t('urce.common.No')}</i>`;
-                    }
-                    let x,
+                    let divElemRoot,
+                        innerHTML,
+                        lmLink,
+                        urLink,
+                        x,
                         y;
+                    const docFrags = document.createDocumentFragment(),
+                        popupDelay = (Date.now() > popupDelayTime) ? -1 : (popupDelayTime - Date.now()),
+                        ulElem = _elems.ul.cloneNode(false);
                     if (W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealX)
                         x = W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealX;
                     else if (W.model.mapUpdateRequests.objects[markerId].attributes.geometry.realX)
@@ -2229,29 +2267,118 @@
                     else
                         ({ y } = W.model.mapUpdateRequests.objects[markerId].attributes.geometry);
                     const urPos = WazeWrap.Geometry.ConvertTo4326(x, y);
-                    let urLink = $(document)[0].location.href;
-                    urLink = `${urLink.substr(0, urLink.indexOf('?zoom'))}?zoomLevel=17&lat=${urPos.lat}&lon=${urPos.lon}&mapUpdateRequest=${markerId}`;
-                    popupContent += `<hr><ul><li><a href="${urLink}" id="_urceOpenInNewTab" target="${targetTab}">${I18n.t('urce.mouseOver.OpenInNewTab')}</a> - `
-                        + `<a href="#" id="_urceRecenterSession" data-id="${markerId}">${I18n.t('urce.mouseOver.CenterInCurrentTab')}</a>`;
-                    let lmLink;
-                    if ($('#livemap-link').length > 0)
-                        lmLink = $('#livempa-link').href;
-                    else if ($('.livemap-link').length > 0)
-                        lmLink = $('.livemap-link')[0].href;
-                    if (lmLink) {
-                        lmLink = `${((lmLink.indexOf('?') > -1) ? lmLink.substr(0, lmLink.indexOf('?')) : lmLink)}?zoomLevel=17&lat=${urPos.lat}&lon=${urPos.lon}&layers=BTTTT`;
-                        popupContent += `<li><a href="${lmLink}" target="${targetTab}_lmTab">${I18n.t('urce.mouseOver.OpenInNewLivemapTab')}</a>`;
+                    urLink = document.location.href;
+                    urLink = `${urLink.substring(0, urLink.indexOf('?zoom'))}?zoomLevel=17&lat=${urPos.lat}&lon=${urPos.lon}&mapUpdateRequest=${markerId}`;
+                    popupX = unstackedX - parsePxString(W.map.segmentLayer.div.style.left) + popupXOffset + 10;
+                    popupY = unstackedY - parsePxString(W.map.segmentLayer.div.style.top) + 10;
+                    docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                        style: 'font-weight:bold;', textContent: `${I18n.t('problems.panel.titles.map_update_request')} (${markerId}): ${I18n.t(`update_requests.types.${W.model.mapUpdateRequests.objects[markerId].attributes.type}`)}`
+                    }));
+                    if (!W.model.mapUpdateRequests.objects[markerId].attributes.description)
+                        divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { style: 'font-style:italic;', textContent: I18n.t('urce.mouseOver.NoDescription') });
+                    else
+                        divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { textContent: clickify(W.model.mapUpdateRequests.objects[markerId].attributes.description.replace(/((?:.{80}).*?)\s/gm, '$1\n'), '') });
+                    docFrags.appendChild(divElemRoot);
+                    if (_mapUpdateRequests[markerId].urceData.driveDaysOld > -1) {
+                        divElemRoot = setElemAttrs(_elems.div.cloneNode(false), {
+                            style: 'font-style:italic;', textContent: `${I18n.t('mte.edit.submitted')} ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.driveDaysOld)} `
+                        });
+                        if (W.model.mapUpdateRequests.objects[markerId].attributes.driveDate > -1) {
+                            divElemRoot.textContent += `(${new Date(W.model.mapUpdateRequests.objects[markerId].attributes.driveDate).toLocaleDateString('en-us')}`
+                                + ` ${new Date(W.model.mapUpdateRequests.objects[markerId].attributes.driveDate).toLocaleTimeString('en-us')}) `;
+                        }
+                        if (W.model.mapUpdateRequests.objects[markerId]?.attributes.guestUserName) {
+                            divElemRoot.textContent += I18n.t('urce.mouseOver.ViaLivemap');
+                            if (W.model.mapUpdateRequests.objects[markerId].attributes.guestUserName !== '')
+                                divElemRoot.textContent += ` by ${W.model.mapUpdateRequests.objects[markerId].attributes.guestUserName.replace(/<\/?[^>]+(>|$)/g, '')}`;
+                        }
+                        docFrags.appendChild(divElemRoot);
                     }
-                    const popupDelay = (Date.now() > popupDelayTime) ? -1 : (popupDelayTime - Date.now());
+                    if ((W.model.mapUpdateRequests.objects[markerId].attributes.resolvedOn) && (_mapUpdateRequests[markerId].urceData.resolveDaysAgo > -1)) {
+                        docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                            style: 'font-style:italic;',
+                            textContent: `${I18n.t('urce.urStatus.Closed')} ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.resolveDaysAgo)} `
+                                + `(${new Date(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedOn).toLocaleDateString('en-us')}`
+                                + ` ${new Date(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedOn).toLocaleTimeString('en-us')})`
+                        }));
+                        innerHTML = `${I18n.t('urce.mouseOver.MarkedAs')} `;
+                        if (W.model.mapUpdateRequests.objects[markerId].attributes.resolution === 0)
+                            innerHTML += I18n.t('venues.update_requests.panel.solved');
+                        else if (W.model.mapUpdateRequests.objects[markerId].attributes.resolution === 1)
+                            innerHTML += I18n.t('urce.urStatus.NotIdentified');
+                        else
+                            innerHTML += I18n.t('segment.direction.0');
+                        if (W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy) {
+                            innerHTML += ` ${I18n.t('element_history.changed_by')} `
+                            + `<a href="${W.Config.user_profile.url}${getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).username}">`
+                            + `${getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).username}</a>`
+                            + ` (${getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).rank})`;
+                        }
+                        docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), { style: 'font-style:italic;', innerHTML: trustedHTML(innerHTML) }));
+                    }
+                    docFrags.appendChild(_elems.br.cloneNode(false));
+                    divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { textContent: `${_mapUpdateRequests[markerId].urceData.commentCount} ${I18n.t('urce.tabs.Comments')}` });
+                    if (!_mapUpdateRequests[markerId].urceData.commentsByMe && (_mapUpdateRequests[markerId].urceData.commentCount > 0))
+                        divElemRoot.textContent += ` (${I18n.t('urce.mouseOver.NoneByMe')})`;
+                    if ((_mapUpdateRequests[markerId].urceData.commentCount > 0) && (_mapUpdateRequests[markerId].urceData.lastCommentDaysOld > -1))
+                        divElemRoot.textContent += `, ${I18n.t('element_history.actions.default.UPDATE')} ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.lastCommentDaysOld)}`;
+                    docFrags.appendChild(divElemRoot);
+                    if (_mapUpdateRequests[markerId].urceData.commentCount > 0) {
+                        innerHTML = `${I18n.t('urce.mouseOver.FirstComment')}: ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.firstCommentDaysOld)} ${I18n.t('element_history.changed_by')} `;
+                        if (_mapUpdateRequests[markerId].urceData.firstCommentBy === -1) {
+                            innerHTML += I18n.t('conversation.reporter');
+                        }
+                        else {
+                            innerHTML += `<a href="${W.Config.user_profile.url}${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.firstCommentBy).username}">`
+                                + `${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.firstCommentBy).username}</a>`
+                                + ` (${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.firstCommentBy).rank})`;
+                        }
+                        docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), { innerHTML: trustedHTML(innerHTML) }));
+                        if (_mapUpdateRequests[markerId].urceData.commentCount > 1) {
+                            innerHTML = `${I18n.t('urce.mouseOver.LastComment')}: ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.lastCommentDaysOld)} ${I18n.t('element_history.changed_by')} `;
+                            if (_mapUpdateRequests[markerId].urceData.lastCommentBy === -1) {
+                                innerHTML += I18n.t('conversation.reporter');
+                            }
+                            else {
+                                innerHTML += `<a href="${W.Config.user_profile.url}${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.lastCommentBy).username}">`
+                                + `${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.lastCommentBy).username}</a>`
+                                + ` (${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.lastCommentBy).rank})`;
+                            }
+                            docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), { innerHTML: trustedHTML(innerHTML) }));
+                        }
+                        divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { textContent: `${I18n.t('urce.mouseOver.ReporterHasCommented')}: ` });
+                        divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                            style: 'font-style:italic;display:inline-block;', textContent: _mapUpdateRequests[markerId].urceData.reporterHasCommented ? I18n.t('urce.common.Yes') : I18n.t('urce.common.No')
+                        }));
+                        docFrags.appendChild(divElemRoot);
+                    }
+                    docFrags.appendChild(_elems.hr.cloneNode(false));
+                    const liElem = setElemAttrs(_elems.li.cloneNode(false), {
+                        innerHTML: trustedHTML(`<a href="${urLink}" id="_urceOpenInNewTab" target="${targetTab}">${I18n.t('urce.mouseOver.OpenInNewTab')}</a> - `
+                            + `<a href="#" id="_urceRecenterSession" data-id="${markerId}">${I18n.t('urce.mouseOver.CenterInCurrentTab')}</a>`)
+                    });
+                    liElem.querySelector('#_urceOpenInNewTab').addEventListener('mouseup', saveSettingsToStorage);
+                    liElem.querySelector('#_urceRecenterSession').addEventListener('click', recenterOnUr);
+                    ulElem.appendChild(liElem);
+                    if (document.getElementById('livemap-link'))
+                        lmLink = document.getElementById('livemap-link').href;
+                    else if (document.querySelector('.livemap-link'))
+                        lmLink = document.querySelector('.livemap-link').href;
+                    if (lmLink) {
+                        ulElem.appendChild(setElemAttrs(_elems.li.cloneNode(false), {
+                            innerHTML: trustedHTML(`<li><a href="${(lmLink.includes('?') ? lmLink.substring(0, lmLink.indexOf('?')) : lmLink)}?zoomLevel=17&lat=${urPos.lat}&lon=${urPos.lon}&layers=BTTTT" target="${targetTab}_lmTab">${I18n.t('urce.mouseOver.OpenInNewLivemapTab')}</a>`)
+                        }));
+                    }
+                    docFrags.appendChild(ulElem);
                     if (popupDelay < 0) {
                         handlePopup({
-                            popupContent, popupX, popupY, urId: markerId
+                            docFrags, popupX, popupY, markerId
                         });
                     }
                     else {
                         checkTimeout({ timeout: 'popupDelay' });
                         _timeouts.popupDelay = window.setTimeout(handlePopup, popupDelay, {
-                            popupContent, popupX, popupY, urId: markerId
+                            docFrags, popupX, popupY, markerId
                         });
                     }
                     doSpinner('markerMouseDown', false);
@@ -2261,9 +2388,9 @@
     }
 
     function markerMouseOut(event) {
-        const newUrId = (parseInt($(event?.relatedTarget).attr('data-id')) > -1) ? parseInt($(event.relatedTarget).attr('data-id')) : false;
+        const newUrId = (parseInt(event?.relatedTarget?.attributes?.['data-id']) > -1) ? parseInt(event.relatedTarget.attributes['data-id']) : false;
         if (((newUrId > 0) && isIdAlreadyUnstacked(newUrId))
-            || ((event?.relatedTarget?.id === 'urceDiv') || (event?.relatedTarget?.id?.indexOf('urceCounts') > -1) || (event?.relatedTarget?.parentNode?.id?.indexOf('urce') > -1))
+            || ((event?.relatedTarget?.id === 'urceDiv') || event?.relatedTarget?.id?.includes('urceCounts') || event?.relatedTarget?.parentNode?.id?.includes('urce'))
         )
             return;
         if (!newUrId)
@@ -2285,34 +2412,35 @@
         }
     }
 
+    function checkPopupTimeouts() {
+        checkTimeout({ timeout: 'popup' });
+        checkTimeout({ timeout: 'popupDelay' });
+    }
+
+    function dispatchPopupDoubleClick() {
+        hidePopup({ doubleClick: true });
+    }
+
     function handlePopup(popupObj) {
-        if (_mousedOverMarkerId !== popupObj.urId)
+        if (_mousedOverMarkerId !== popupObj.markerId)
             return;
-        $('#urceDiv .urceDivContent').html(popupObj.popupContent);
-        $('#urceDiv')
-            .css({ height: 'auto', width: 'auto' })
-            .off()
-            .on('mouseleave', hidePopup)
-            .on('mouseenter', () => {
-                checkTimeout({ timeout: 'popup' });
-                checkTimeout({ timeout: 'popupDelay' });
-            })
-            .on('dblclick', { doubleClick: true }, hidePopup);
-        $('#_urceOpenInNewTab').off().on('mouseup', saveSettingsToStorage);
-        $('#_urceRecenterSession').off().on('click', { urId: popupObj.urId }, recenterOnUr);
-        let rw = parseInt($('#urceDiv')[0].clientWidth);
+        const urceDiv = document.getElementById('urceDiv'),
+            urceDivContent = urceDiv.querySelector('.urceDivContent');
+        urceDivContent.replaceChildren(popupObj.docFrags);
+        Object.assign(urceDiv.style, { height: 'auto', width: 'auto' });
+        let rw = parseInt(urceDiv.clientWidth);
         if (rw > (window.innerWidth * 0.45)) {
             rw = (window.innerWidth * 0.45);
-            $('#urceDiv').css({ width: `${rw}px` });
+            urceDiv.style.width = `${rw}px`;
         }
-        const rh = parseInt($('#urceDiv')[0].clientHeight);
+        const rh = parseInt(urceDiv.clientHeight);
         if ((popupObj.popupX + rw) > window.innerWidth)
             popupObj.popupX -= (rw + 20);
         if ((popupObj.popupY + rh) > window.innerHeight)
             popupObj.popupY -= (((popupObj.popupY + rh) - window.innerHeight) + 30);
         popupObj.popupX = (popupObj.popupX < 0) ? 0 : popupObj.popupX;
         popupObj.popupY = (popupObj.popupY < 0) ? 0 : popupObj.popupY;
-        $('#urceDiv').css({ top: `${popupObj.popupY}px`, left: `${popupObj.popupX}px`, visibility: 'visible' });
+        Object.assign(urceDiv.style, { top: `${popupObj.popupY}px`, left: `${popupObj.popupX}px`, visibility: 'visible' });
         checkTimeout({ timeout: 'popup' });
         checkTimeout({ timeout: 'popupDelay' });
         if (_settings.urMarkerPopupTimeout > 0)
@@ -2320,15 +2448,14 @@
     }
 
     function hidePopup(event) {
-        const newUrId = (parseInt($(event?.relatedTarget).attr('data-id')) > -1) ? parseInt($(event.relatedTarget).attr('data-id')) : -1;
+        const newUrId = (parseInt(event?.relatedTarget?.attributes?.['data-id']) > -1) ? parseInt(event.relatedTarget.attributes['data-id']) : false;
         checkTimeout({ timeout: 'popup' });
-        if ($('#urceDiv').css('visibility') !== 'hidden')
-            $('#urceDiv').css({ visibility: 'hidden' });
-        $('#urceDiv').off();
+        if (getComputedStyle(document.getElementById('urceDiv')).visibility !== 'hidden')
+            document.getElementById('urceDiv').style.visibility = 'hidden';
         if (((newUrId > 0) && isIdAlreadyUnstacked(newUrId))
-            || ((event?.relatedTarget?.id === 'urceDiv') || (event?.relatedTarget?.id?.indexOf('urceCounts') > -1) || (event?.relatedTarget?.parentNode?.id?.indexOf('urce') > -1))
+            || ((event?.relatedTarget?.id === 'urceDiv') || event?.relatedTarget?.id?.includes('urceCounts') || event?.relatedTarget?.parentNode?.id?.includes('urce'))
         ) {
-            if (!event?.data?.doubleClick)
+            if (!event?.doubleClick)
                 return;
         }
         if (!newUrId && (event?.type === 'mouseleave') && ((event?.target?.id === 'urceDiv') || (event?.target?.offsetParent?.id === 'urceDiv')))
@@ -2356,11 +2483,14 @@
                 urOpen: false
             };
         }
-        W.reqres.request('problems:browse', $.extend(t, { problem: W.model.mapUpdateRequests.objects[urId] }));
+        W.reqres.request('problems:browse', $extend(t, { problem: W.model.mapUpdateRequests.objects[urId] }));
     }
 
-    function recenterOnUr(event) {
-        const urId = event?.data?.urId || -1;
+    function recenterOnUr(urId = -1) {
+        if (this?.classList?.contains('focus'))
+            urId = _selUr.urId;
+        if (this?.attributes?.['data-id']?.value)
+            urId = parseInt(this.attributes['data-id'].value);
         if (urId < 0)
             return;
         if (this?.id === '_urceRecenterSession')
@@ -2369,7 +2499,7 @@
         W.map.setCenter(W.map.updateRequestLayer.featureMarkers[urId].marker.lonlat);
     }
 
-    function addCustomMarker(urId, urOpen, customType, $node) {
+    function addCustomMarker(urId, urOpen, customType, node) {
         let useCustomMarker = false;
         if (customType === 0)
             useCustomMarker = _settings.customMarkersRoadworks;
@@ -2392,13 +2522,13 @@
         if (customType === 99)
             useCustomMarker = _settings.customMarkersCustom;
         if (useCustomMarker)
-            return renderCustomMarker(urId, urOpen, customType, $node);
+            return renderCustomMarker(urId, urOpen, customType, node);
         return removeCustomMarker(urId);
     }
 
     function removeCustomMarker(urId) {
-        if ($(`#urceCustomMarker_${urId}`).length > 0) {
-            $(`#urceCustomMarker_${urId}`).remove();
+        if (document.getElementById(`urceCustomMarker_${urId}`)) {
+            document.getElementById(`urceCustomMarker_${urId}`).remove();
             return 'removed';
         }
         return false;
@@ -2412,7 +2542,7 @@
         return false;
     }
 
-    function renderCustomMarker(urId, urOpen, customType, $node) {
+    function renderCustomMarker(urId, urOpen, customType, node) {
         // URO+ Alt Markers, courtesy of URO+. Thank you!
         const uroAltMarkers = [
             // each altMarker has 4 variants: 0 = normal open, 1 = selected open, 2 = normal closed, 3 = selected closed
@@ -2508,13 +2638,12 @@
                 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACEAAAAoCAYAAABw65OnAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4QMQFy4FZHEHngAAAAZiS0dEAP8A/wD/oL2nkwAAB/xJREFUWMO1WAtsFFUU3YX+BFsQsUCtUvqR7e7O7JvPdtuu7dJKMH5AoqD8DLQlrf3tzlYr+I+fQEGoiBZFjYZQJRFBjAJqQCMxYkSjlVATFf8fihpIQUBlwXte39TtOrsFjJ2cbOfNe/ecue++++4bm+0s/5wznUPGB8YP1Wq1pKLmomQTuEc7ntv+hz87DINEnieneUPe871B7wVKvTJabVQzPQs9Y/CLe7TjOfqhvxBkP2dmGBinjUtSqpVhzhnO4VqDNorILmb1LE9pUlyeBo+iGIrOmlkRfvk9teM5+qE/xsFL5yQGg/QWPU2ul0dJTVKeO+guVoKKu/yJ8qsqP69slw5JuzJPZP6YHEn+w3badhq/uEc7nqMf+mtB7VKI8TZ4z4NnzlgIBLir3MPkBnmcs87JHE2Oa+Tn5aXaQW370MjQv0Daf+HuLsIDUfd0oR/6V3ZWTmdNrJDVsnFqvZoOrwwqxBSgNWoZuqFfQgbUiu6K9tSTqcdtpwbQ910vEOYKbIl5FrGdxriKrkntsAN7sDuYEDtcBsVwo75Y9+kH9K0W1H3Xt4T5hOcEagg91n31d1xb9ds1H+xy+/Gmhi8vCiQEFQJNO6BtiyvgJKGDUEs4JFBHeEY8t/Ca1iVvY7dIulLHLgYP+P7lheJwcSpfcvUeOdAdWB1XAK4uwk2Et6LadhLmET6LP654g7JarnHL4AHfAG/APUqtMoKWWH75c+WzUyIpJ+KaOkJoI9xD6CXsIuwQ/99NeJRwLL6Qsqcunw0e8Ilp6fNCdnF2qlwlj9Vu03RPj2dnXBNw8x7CjYSPCC+L/4ENog3/740vAvbBAz7wcm9gbhAsSDJla8tmJpyGowSDsEzct0WJWCralople9zaxpDIkJPg4UmNeHlsiKm4UAtrcll32dqEIjaLWOgS98+Ke+DpmHjZkWBKiAd8nBdTApcgmciNconjF8cHcYf+LALv8ai2VwmzCbMIm6LaEdZVhMMWdijHggd84OVTgpSqNCrj2a2sYtSxUQfjiniQcLNYjua1mzBHCIleKb+JBLbKIqboAg/4wAt+m3+RfzjmRw7JVyZFkv60FPCemPdXY9q/EGQQ8nHMs1eEhyyCFDzgAy/4bdh6lQalQApKV1kKwBbVQmi2eHZYeAdCvrN43kS409qz4AMv+LkIPazno9HSE+Yy3BdnmhYIIUcsnu0VU/Xmvz0BPvByEXAHJY9cmqMpo38ffWBA9x8IDYRHrFNx/4rpTJBXVgpP/vpPO3jAB96+6cBeTxsLC7NJhQcK3ze3Y/7bKTaprxMs290iZffGeb5feOvlvp0Vdp09zt3gAy8PTHOJsiDzlX5Y+mT/4G+EKzeIwfEEVImYeCbBZtcp+v3c1wYe8PUvUSQLVD9KsyLpS/R5fN/AwBWEEOH7BF7YGZUxlyTo950IbBKacjLlBHjAB16erFDI8BWCuGhhV7Cv2Ou2bmF4c9TcxsK81ol57xmk7+Y+m7APHvCB16zO+QaGqplXQA/r1cl3JffyWHiRsJ2wLQF2CI+g39YE/UhEUm1SL7uPVYMHfP0bmFnQYDPh3gizSvdj7lUUTKd4mp4TVcKdK+bwlH8qrzVvlcfwVICnf/OKLmqgCmcHlO20hq9he9gW27aYpHWu15dU4u3TN8Eu7INngBeii1ycMYrCRWOpumKSIV3H3mUv2b4iI5/+BwF0pW9M7ylYWLAQZxPY52eZOCc1XugiWHidGVQUX5vvWn2j3p70eNJxXkH9NYhHYhKafbM9Uri98DXfEt9U2INd2B/sDNIvBGs4sDIg+Vf4J5esKanJfjZ799m8/Zj1Y/b6Ony1JW0lk7EcYe9MBAwQApcFlgQu8t/vL/C3+X3KYmWadLfUOHL5yP2JyNPWpx0uWlNk+Jb5pnuaPMXyQrlAD+kXwd5ZncLQEZFbeltpGtWCIymQsvVWXVIXq5OlxVJ1xrqMn6wEZBzNOFSyriSMzQlxpTaol2A87IiVcOYCTBE4LfGihyrj4juKs7yLvG6lVZnC2piRfiz9MI+BSB/sEXtEf0lvl8PyVAiAcAjAeLaApUR9Nhh8KgL3BYZi+fCTOB3bxGkcR/9sT53HwQx2udtwz1I3qR32U/aIWdBKXdIbzpBzvhyUK3EYRtWEhIQ60tfiG4G8YApKJKY/FjAQpDgf4EDLi9KQoiktSim2YFfINdsRdhiFnxS+DQFZB7O+drQ6FnERhnw1CS2jDcqrGqqHfy5oZJepTWoOynzuVTr4WC5RNMIDfDOjjAaXUvb0I89jjilvTHM1u25wh91zJhoTW/OMvLbc23PXZO7P/DZ/eX5nbjh3ZYFRcA8JqZHC0gzkGSQn8swUuVkOQBR/oaCWFfeEjjmDu7jrm5WJiGxKsZMxxyCXWqRZ0q3SXGfQuYDI7s0L563ICeV05LTkrM0xcp6YEJqwKj+U/5DDcARdhutmeIvGzKTx0/ES9ELlPFZomvRmfaSlCNMT+OSDYoO7EerJtZhnvBH3CL0dvCKFpOtBAnGuoOtGLhRvH5KuRT9eyJIX6UUCKO8hAMsVcSItkM7HVyCruOBBieWEeUNnfFOQa+QJmFO4kud9gJIP5huGkYr5cqR7HjsISuqjhlQnH4fPS/T2mAbEGgREBWf8j2RwFT5+IUh5rUGi4ELuJRQiiBsEbwzMZwDPLzQO84+VZq6Ms0lYdlMQYgUeiv1kOBjMT4oYCzuJluXfr6I77x2SiggAAAAASUVORK5CYII='
             ]
         ];
-        let status = 'updated';
-        if ($(`#urceCustomMarker_${urId}`).length === 0) {
-            $($node).append(`<span id="urceCustomMarker_${urId}" style="position:absolute;pointer-events:none;top:-3px;left:-2px;"></span>`);
-            status = 'added';
-        }
-        const variant = (!urOpen) ? 2 : 0;
-        $(`#urceCustomMarker_${urId}`).empty().append(`<img src="${uroAltMarkers[getCustomMarkerIdx(customType)][variant]}">`);
+        const docFrags = document.createDocumentFragment(),
+            spanElem = setElemAttrs(_elems.span.cloneNode(false), { id: `urceCustomMarker_${urId}`, style: 'position:absolute;pointer-events:none;top:-3px;left:-2px;' }),
+            status = document.getElementById(`urceCustomMarker_${urId}`) ? 'updated' : 'added';
+        spanElem.appendChild(setElemAttrs(_elems.img.cloneNode(false), { src: uroAltMarkers[getCustomMarkerIdx(customType)][(!urOpen) ? 2 : 0] }));
+        docFrags.appendChild(spanElem);
+        node.appendChild(docFrags);
         return status;
     }
 
@@ -2582,11 +2711,15 @@
                 }
             };
         mUrsObjArr.forEach((mUrObj) => {
-            const $marker = $(`.map-problem.user-generated[data-id="${mUrObj.attributes.id}"]`),
+            const marker = document.querySelector(`.map-problem.user-generated[data-id="${mUrObj.attributes.id}"]`),
                 mUrObjUrceData = _mapUpdateRequests[mUrObj.attributes.id];
-            if (($marker.length > 0) && mUrObjUrceData?.urceData) {
-                if (!$marker.data('urce_hasListeners'))
-                    $marker.on({ mouseover: markerMouseOver, mouseout: markerMouseOut, click: markerClick }).data('urce_hasListeners', true);
+            if (marker && mUrObjUrceData?.urceData) {
+                if (!marker.dataset.urceHasListeners) {
+                    marker.addEventListener('mouseover', markerMouseOver);
+                    marker.addEventListener('mouseout', markerMouseOut);
+                    marker.addEventListener('click', markerClick);
+                    marker.dataset.urceHasListeners = true;
+                }
                 if (filter
                     && _settings.enableUrceUrFiltering
                     && (mUrObjUrceData.urceData.hideUr || (_settings.hideOutsideEditableArea && !mUrObj.canEdit()))
@@ -2594,12 +2727,12 @@
                     && (!((mUrObjUrceData.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs))
                 ) {
                     markerChanges.markers.hidden.push(mUrObj.attributes.id);
-                    $marker.hide();
+                    marker.style.display = 'none';
                 }
                 else {
-                    if ($marker.css('display') === 'none') {
+                    if (marker.style.display === 'none') {
                         markerChanges.markers.unhidden.push(mUrObj.attributes.id);
-                        $marker.show();
+                        marker.style.display = '';
                     }
                     if (_settings.enableUrPillCounts || customMarkersEnabledCheck()) {
                         if (_settings.enableUrPillCounts) {
@@ -2639,26 +2772,31 @@
                                 tagOffset = (tagContent.length < 3) ? 0 : Math.round(tagContent.length * 2.28);
                             }
                             tagOffset = `-${tagOffset}px`;
-                            if ($(`#urceCounters-${mUrObj.attributes.id}`).length > 0) {
+                            if (document.getElementById(`urceCounters-${mUrObj.attributes.id}`)) {
                                 markerChanges.pills.updated.push(mUrObj.attributes.id);
-                                $(`#urceCounters-${mUrObj.attributes.id}`).remove();
+                                document.getElementById(`urceCounters-${mUrObj.attributes.id}`).remove();
                             }
                             else {
                                 markerChanges.pills.added.push(mUrObj.attributes.id);
                             }
-                            const $divContainer = $(`<div id="urceCounters-${mUrObj.attributes.id}" data-id="${mUrObj.attributes.id}" style="clear:both; margin-bottom:10px;"></div>`),
-                                $divInner = $(`<div id="urceCounters-${mUrObj.attributes.id}-text" data-id="${mUrObj.attributes.id}" class="urceCountersPill urceCounts" style="background-color:${urCountBackground}; right:${tagOffset}">${tagContent}</div>`);
-                            $divInner.data('model', $marker.data('model'));
-                            $marker.append($divContainer.append($divInner));
+                            const divContainer = setElemAttrs(_elems.div.cloneNode(false), { id: `urceCounters-${mUrObj.attributes.id}`, 'data-id': mUrObj.attributes.id, style: 'clear:both; margin-bottom:10px;' });
+                            divContainer.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                                id: `urceCounters-${mUrObj.attributes.id}-text`,
+                                'data-id': mUrObj.attributes.id,
+                                class: 'urceCountersPill urceCounts',
+                                style: `background-color:${urCountBackground}; right:${tagOffset};`,
+                                textContent: tagContent
+                            }));
+                            marker.appendChild(divContainer);
                         }
-                        else if ($(`#urceCounters-${mUrObj.attributes.id}`).length > 0) {
+                        else if (document.getElementById(`urceCounters-${mUrObj.attributes.id}`)) {
                             markerChanges.pills.removed.push(mUrObj.attributes.id);
-                            $(`#urceCounters-${mUrObj.attributes.id}`).remove();
+                            document.getElementById(`urceCounters-${mUrObj.attributes.id}`).remove();
                         }
                         let status;
                         if (customMarkersEnabledCheck()) {
                             if (mUrObjUrceData.urceData.customType > -1)
-                                status = addCustomMarker(mUrObj.attributes.id, mUrObj.attributes.open, mUrObjUrceData.urceData.customType, $marker);
+                                status = addCustomMarker(mUrObj.attributes.id, mUrObj.attributes.open, mUrObjUrceData.urceData.customType, marker);
                             else
                                 status = removeCustomMarker(mUrObj.attributes.id);
                         }
@@ -2669,9 +2807,9 @@
                             markerChanges.customMarkers[status].push(mUrObj.attributes.id);
                     }
                     else {
-                        if ($(`#urceCounters-${mUrObj.attributes.id}`).length > 0) {
+                        if (document.getElementById(`urceCounters-${mUrObj.attributes.id}`)) {
                             markerChanges.pills.removed.push(mUrObj.attributes.id);
-                            $(`#urceCounters-${mUrObj.attributes.id}`).remove();
+                            document.getElementById(`urceCounters-${mUrObj.attributes.id}`).remove();
                         }
                         removeCustomMarker(mUrObj.attributes.id);
                     }
@@ -2723,7 +2861,7 @@
             checkCommentedUsers = (userIdsToCheck, userIds) => {
                 let retVal = false;
                 userIdsToCheck.forEach((userId) => {
-                    if (userIds.indexOf(parseInt(userId)) > -1)
+                    if (userIds.includes(parseInt(userId)))
                         retVal = true;
                 });
                 return retVal;
@@ -2754,7 +2892,7 @@
             }
             // eslint-disable-next-line no-await-in-loop
             const urSessions = await getUpdateRequestSessions(urIds);
-            for (let idx = 0; idx < chunk.length; idx++) {
+            for (let idx = 0, { length } = chunk; idx < length; idx++) {
                 const urSessionsObj = urSessions[chunk[idx].attributes.id];
                 if (urSessionsObj) {
                     let autoSendReminder = false;
@@ -2790,15 +2928,15 @@
                         urceData.lastCommentDaysOld = uroDateToDays(urSessionsObj.comments[(urceData.commentCount - 1)].createdOn);
                         urceData.lastCommentBy = parseInt(urSessionsObj.comments[(urceData.commentCount - 1)].userID);
                         urceData.fullText += (chunk[idx].attributes.description) ? `${chunk[idx].attributes.description} ` : '';
-                        for (let commentIdx = 0; commentIdx < urceData.commentCount; commentIdx++) {
+                        for (let commentIdx = 0, { commentCount } = urceData; commentIdx < commentCount; commentIdx++) {
                             urceData.fullText += `${urSessionsObj.comments[commentIdx].text} `;
                             urceData.commentUserIds.push(urSessionsObj.comments[commentIdx].userID);
                         }
                         if (/\[\s*\S+[\s\S]*\]/m.test(urceData.fullText))
                             urceData.containsSquareBrackets = true;
-                        if (urceData.commentUserIds.indexOf(_wmeUserId) > -1)
+                        if (urceData.commentUserIds.includes(_wmeUserId))
                             urceData.commentsByMe = true;
-                        if (urceData.commentUserIds.indexOf(-1) > -1)
+                        if (urceData.commentUserIds.includes(-1))
                             urceData.reporterHasCommented = true;
                         if (chunk[idx].attributes.open && urceData.commentCount === 1) {
                             if ((reminderDays !== 0) && (_restrictionsEnforce.reminderDays !== 0) && (urceData.lastCommentDaysOld > (reminderDays - 1))) {
@@ -2844,7 +2982,7 @@
                     }
                     if (!chunk[idx].attributes.open && _settings.hideByStatusClosedBy && (_settings.hideByStatusClosedByUsers.length > 0)) {
                         const userIdsToCheck = getUserIdsToCheck(_settings.hideByStatusClosedByUsers);
-                        if ((userIdsToCheck.length > 0) && (userIdsToCheck.indexOf(chunk[idx].attributes.resolvedBy) > -1))
+                        if ((userIdsToCheck.length > 0) && userIdsToCheck.includes(chunk[idx].attributes.resolvedBy))
                             urceData.hideByStatusClosedBy = true;
                     }
                     if (_settings.hideWithCommentBy && (_settings.hideWithCommentByUsers.length > 0)) {
@@ -2911,7 +3049,7 @@
                                     autoSentRemindersFor.push(chunk[idx].attributes.id);
                                     if (_settings.unfollowAfterSend)
                                         unfollowUrAfterSend(chunk[idx].attributes.id);
-                                    urceData = $.extend({}, urceData, {
+                                    urceData = $extend({}, urceData, {
                                         autoSentReminder: true,
                                         commentCount: urceData.commentCount + 1,
                                         commentsByMe: true,
@@ -2921,7 +3059,7 @@
                                         waiting: true
                                     });
                                 }
-                                if (parseInt($('.update-requests .marker-selected').attr('data-id')) === _selUr.urId)
+                                if (parseInt(document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value) === _selUr.urId)
                                     reopenPanel = true;
                                 updateMarkersArr.push(chunk[idx]);
                             }
@@ -3075,31 +3213,53 @@
             (async function retry(url, tries, toIndex) {
                 checkTimeout({ timeout: 'getOverflowUrsFromUrl', toIndex });
                 const errorObj = { error: false, url };
-                let data;
-                try {
-                    data = await $.getJSON(url);
-                    data.url = url;
-                }
-                catch (error) {
-                    if (error.status === 429)
-                        data = { error: { status: 429 } };
-                    else if (!errorObj.error)
-                        errorObj.error = (typeof error === 'object') ? error : { error };
-                }
-                if (tries > 10) {
-                    resolve({ error: { reason: 'Too many retries.' }, url });
-                }
-                else if (errorObj.error) {
-                    resolve(errorObj);
-                }
-                else if (!data || (data?.error?.status === 429)) {
-                    log('Rate limited by Waze server. Retrying overflow request.');
-                    _timeouts.getOverflowUrsFromUrl[toIndex] = window.setTimeout(retry, 100, url, ++tries, toIndex);
-                }
-                else {
-                    checkTimeout({ timeout: 'getOverflowUrsFromUrl', toIndex });
-                    resolve(data);
-                }
+                GM_xmlhttpRequest({
+                    url,
+                    method: 'GET',
+                    onload(res) {
+                        if (res.status < 400) {
+                            const data = JSON.parse(res.responseText);
+                            if (!data) {
+                                if (tries > 10) {
+                                    resolve({ error: { reason: 'Too many retries.' }, url });
+                                }
+                                else {
+                                    log('Rate limited by Waze server. Retrying overflow request.');
+                                    _timeouts.getOverflowUrsFromUrl[toIndex] = window.setTimeout(retry, 100, url, ++tries, toIndex);
+                                }
+                            }
+                            else {
+                                data.url = url;
+                                checkTimeout({ timeout: 'getOverflowUrsFromUrl', toIndex });
+                                resolve(data);
+                            }
+                        }
+                        else if (tries > 10) {
+                            resolve({ error: { reason: 'Too many retries.' }, url });
+                        }
+                        else if (res.status === 429) {
+                            log('Rate limited by Waze server. Retrying overflow request.');
+                            _timeouts.getOverflowUrsFromUrl[toIndex] = window.setTimeout(retry, 100, url, ++tries, toIndex);
+                        }
+                        else {
+                            logWarning(`HTTP request error: ${JSON.stringify(res)}`);
+                            _timeouts.getOverflowUrsFromUrl[toIndex] = window.setTimeout(retry, 100, url, ++tries, toIndex);
+                        }
+                    },
+                    onerror(res) {
+                        if (tries > 10) {
+                            resolve({ error: { reason: 'Too many retries.' }, url });
+                        }
+                        else if (res.status === 429) {
+                            log('Rate limited by Waze server. Retrying overflow request.');
+                            _timeouts.getOverflowUrsFromUrl[toIndex] = window.setTimeout(retry, 100, url, ++tries, toIndex);
+                        }
+                        else if (!errorObj.error) {
+                            errorObj.error = (typeof res === 'object') ? res : { res };
+                            resolve(errorObj);
+                        }
+                    }
+                });
             }(urlStr, 1, getRandomId()));
         });
     }
@@ -3121,7 +3281,7 @@
         }
         doSpinner('handleUrOverflow', true);
         const baseUrl = `https://${document.location.host}${W.Config.paths.features}?language=en&mapUpdateRequestFilter=`
-                + `${(($('#layer-switcher-item_closed_update_requests').is(':checked')) ? '3' : '1')}%2C0&bbox=`,
+                + `${((W.issuesTrackerController.options.app.attributes.issuesTrackerFilter.attributes.mapUpdateRequestsFilter.attributes.status === 'BOTH') ? '3' : '1')}%2C0&bbox=`,
             vpBounds = W.map.getExtent().transform(W.map.getProjectionObject(), new OpenLayers.Projection('EPSG:4326')),
             vpBoundsFrom = { lon: vpBounds.left, lat: vpBounds.bottom },
             vpBoundsTo = { lon: vpBounds.right, lat: vpBounds.top },
@@ -3261,27 +3421,30 @@
     async function maskBoxes(message, unmask, phase, maskUrPanel) {
         const zIndex = (phase === 'init') ? 19999 : 10000;
         if (unmask) {
-            $(`#urceTabLightbox-${phase}`).remove();
-            $(`#urPanelLightbox-${phase}`).remove();
-            if ($('[id^="urceTabLightbox-"').length === 0)
-                $('#sidepanel-urc-e').css('position', '');
+            document.getElementById(`urceTabLightbox-${phase}`)?.remove();
+            document.getElementById(`urPanelLightbox-${phase}`)?.remove();
+            if ((document.querySelectorAll('[id^="urceTabLightbox-"').length === 0) && document.getElementById('sidepanel-urc-e'))
+                document.getElementById('sidepanel-urc-e').style.position = '';
         }
         else if (!unmask) {
-            if ($(`#urceTabLightbox-${phase}`).length === 0) {
-                $('#sidepanel-urc-e').css('position', 'relative');
-                const $urceTabDisabled = $('<div>', { id: `urceTabLightbox-${phase}`, class: 'urceMaskLightbox', style: `z-index:${zIndex};` });
-                $urceTabDisabled.html(`<div class="urceMaskLightbox text">${message}</div>`);
-                $('#sidepanel-urc-e').prepend($urceTabDisabled);
+            if (!document.getElementById(`urceTabLightbox-${phase}`)) {
+                const domElement = document.getElementById('sidepanel-urc-e');
+                domElement.style.position = 'relative';
+                const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: `urceTabLightbox-${phase}`, class: 'urceMaskLightbox', style: `z-index:${zIndex};` });
+                divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { class: 'urceMaskLightbox text', innerHTML: trustedHTML(message) }));
+                domElement.insertBefore(divElemRoot, domElement.firstChild);
             }
-            if (maskUrPanel && ($(`#urPanelLightbox-${phase}`).length === 0)) {
-                const $domElement = await getDomElement('#panel-container .mapUpdateRequest.panel.show');
-                $($domElement.children()[0]).css('position', 'relative');
-                const $urPanelDisabled = $('<div>', { id: `urPanelLightbox-${phase}`, class: 'urceMaskLightbox', style: `z-index:${zIndex};` });
-                $urPanelDisabled.html(`<div class="urceMaskLightbox text">${message}</div>`);
-                if (!$domElement)
+            if (maskUrPanel && !document.getElementById(`urPanelLightbox-${phase}`)) {
+                const domElement = await getDomElement('#panel-container .mapUpdateRequest.panel.show');
+                if (!domElement) {
                     handleReadyError(false, false, '', false, 'Timed out trying to add mask to UR panel.');
-                else
-                    $($domElement.children()[0]).prepend($urPanelDisabled);
+                }
+                else {
+                    domElement.firstChild.style.position = 'relative';
+                    const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: `urPanelLightbox-${phase}`, class: 'urceMaskLightbox', style: `z-index:${zIndex};` });
+                    divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { class: 'urceMaskLightbox text', innerHTML: trustedHTML(message) }));
+                    domElement.firstChild.insertBefore(divElemRoot, domElement.firstChild.firstChild);
+                }
             }
         }
     }
@@ -3293,14 +3456,14 @@
                 logWarning(`Timed out trying to scroll to the bottom. commentCount: ${commentCountInt}, tries: ${tries}, retryInt: ${retryInt}, maxTries: ${maxTries}`);
                 return;
             }
-            const $commentList = await getDomElement('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list');
-            if ($commentList && (commentCountInt > 0)
-                && (commentCountInt === $commentList.children().length)
+            const commentList = await getDomElement('#panel-container .mapUpdateRequest.panel.show .top-section .body .conversation.section .conversation-view .comment-list');
+            if (commentList && (commentCountInt > 0)
+                && (commentCountInt === commentList.children.length)
                 && (!_settings.autoScrollComments
-                    || (($commentList[0].scrollHeight - $commentList.scrollTop() - $commentList.outerHeight()) > 1)
+                    || ((commentList.scrollHeight - commentList.scrollTop - commentList.offsetHeight) > 1)
                 )
             )
-                $commentList.scrollTop((_settings.autoScrollComments ? $commentList[0].scrollHeight : 0));
+                commentList.scrollTop = _settings.autoScrollComments ? commentList.scrollHeight : 0;
             else if ((commentCountInt !== 0) && W.map.panelRegion.currentView.model.attributes.loadingConversation)
                 _timeouts.autoScrollComments = window.setTimeout(retry, retryInt, commentCountInt, ++tries, retryInt, maxNumTries);
         }(commentCount, 1, retryInterval, maxTries));
@@ -3309,12 +3472,12 @@
     function changeCommentListStyle(settingVal) {
         if (_settings.commentListStyle !== settingVal) {
             if (settingVal === 'default') {
-                $('fieldset[id^="urceComments-for-"], legend[id^="urceComments-for-"], div[id^="urceComments-for-"], fieldset[id^="urce-prefs-fieldset"], legend[id^="urce-prefs-legend"], '
-                    + '#URCE-expandCollapseAllComments').removeClass('urStyle');
+                document.querySelectorAll('fieldset[id^="urceComments-for-"], legend[id^="urceComments-for-"], div[id^="urceComments-for-"], fieldset[id^="urce-prefs-fieldset"], legend[id^="urce-prefs-legend"], '
+                    + '#URCE-expandCollapseAllComments').forEach((el) => { el.classList.remove('urStyle'); });
             }
             else if (settingVal === 'urStyle') {
-                $('fieldset[id^="urceComments-for-"], legend[id^="urceComments-for-"], div[id^="urceComments-for-"], fieldset[id^="urce-prefs-fieldset"], legend[id^="urce-prefs-legend"], '
-                    + '#URCE-expandCollapseAllComments').addClass('urStyle');
+                document.querySelectorAll('fieldset[id^="urceComments-for-"], legend[id^="urceComments-for-"], div[id^="urceComments-for-"], fieldset[id^="urce-prefs-fieldset"], legend[id^="urce-prefs-legend"], '
+                    + '#URCE-expandCollapseAllComments').forEach((el) => { el.classList.add('urStyle'); });
             }
             _settings.commentListStyle = settingVal;
         }
@@ -3386,11 +3549,9 @@
                 defaultsArr[idx] = (_defaultComments[key].commentNum !== null) ? [_commentList[_defaultComments[key].commentNum].title] : [''];
             });
             defaultsArr = Object.values(defaultsArr);
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([defaultsArr.join('\n')], { type: 'text/csv' }));
-            a.download = `default_responses_${dateTs}.csv`;
-            a.click();
-            $(a).remove();
+            const a = setElemAttrs(_elems.a.cloneNode(false), { href: URL.createObjectURL(new Blob([defaultsArr.join('\n')], { type: 'text/csv' })), download: `default_responses_${dateTs}.csv` });
+            a.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            a.remove();
         }
         else if (section === 'comments') {
             const commentsArr = _commentList.map((entry) => {
@@ -3407,12 +3568,18 @@
                     urstatus = '';
                 return [`"${entry.title.replace(/"/gmi, '\\"')}"|"${entry.comment.replace(/"/gmi, '\\"')}"|${urstatus}`];
             });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([commentsArr.join('\n')], { type: 'text/csv' }));
-            a.download = `comment_list_${dateTs}.csv`;
-            a.click();
-            $(a).remove();
+            const a = setElemAttrs(_elems.a.cloneNode(false), { href: URL.createObjectURL(new Blob([commentsArr.join('\n')], { type: 'text/csv' })), download: `comment_list_${dateTs}.csv` });
+            a.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            a.remove();
         }
+    }
+
+    function invokeCreateCommentListCsvDefaults() {
+        createCommentListCSV('defaults');
+    }
+
+    function invokeCreateCommentListCsvComments() {
+        createCommentListCSV('comments');
     }
 
     function createStaticToGoogleSheet(convert) {
@@ -3424,38 +3591,58 @@
             finalSteps = Object.keys(I18n.translations['en-US'].urce.tools).filter((k) => /^FinalStep[0-9]+/.test(k));
         let spreadsheetStep,
             downloadDefaultsStep,
-            downloadCommentsStep,
-            htmlOut = `<div class="URCE-disableWme-text-header">${(convert ? I18n.t('urce.tools.ConvertCreateConvertProcess') : I18n.t('urce.tools.ConvertCreateCreateProcess'))}</div>`
-                + `<div class="URCE-disableWme-text-body"><div style="font-size:14px;font-weight:600;">${I18n.t('urce.tools.ConvertCreateSteps')}:</div><ol>`;
-        for (let i = 0; i < createSteps.length; i++) {
-            if (/\$SPREADSHEET_STEP\$/.test(I18n.t(`urce.tools.${createSteps[i]}`)))
+            downloadCommentsStep;
+        const divElemRoot = _elems.div.cloneNode(false);
+        divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+            class: 'URCE-disableWme-text-header', textContent: convert ? I18n.t('urce.tools.ConvertCreateConvertProcess') : I18n.t('urce.tools.ConvertCreateCreateProcess')
+        }));
+        let divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-disableWme-text-body' });
+        divElemDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), { style: 'font-size:14px;font-weight:600;', textContent: I18n.t('urce.tools.ConvertCreateSteps') }));
+        const olElem = _elems.ol.cloneNode(false);
+        for (let i = 0, { length } = createSteps; i < length; i++) {
+            if (I18n.t(`urce.tools.${createSteps[i]}`).includes('$SPREADSHEET_STEP$'))
                 spreadsheetStep = i + 1;
-            htmlOut += `<li><p>${
-                I18n.t(`urce.tools.${createSteps[i]}`).replace('$TEMPLATE_LINK$', `<a id="_openTemplate" href="https://bit.ly/urc-e_cc-template" target="_blank">${I18n.t('urce.common.Link')}</a>`).replace('$SPREADSHEET_STEP$', '')
-            }</p></li>`;
+            const liElem = _elems.li.cloneNode(false);
+            liElem.appendChild(setElemAttrs(_elems.p.cloneNode(false), { innerHTML: trustedHTML(I18n.t(`urce.tools.${createSteps[i]}`).replace('$TEMPLATE_LINK$', `<a id="_openTemplate" href="https://bit.ly/urc-e_cc-template" target="_blank">${I18n.t('urce.common.Link')}</a>`).replace('$SPREADSHEET_STEP$', '')) }));
+            olElem.appendChild(liElem);
         }
         if (convert) {
             const convertSteps = Object.keys(I18n.translations['en-US'].urce.tools).filter((k) => /^ConvertStep[0-9]+/.test(k));
-            for (let i = 0; i < convertSteps.length; i++) {
-                if (/\$DOWNLOAD_DEFAULTS_LINK\$/.test(I18n.t(`urce.tools.${convertSteps[i]}`)))
+            for (let i = 0, { length } = convertSteps; i < length; i++) {
+                if (I18n.t(`urce.tools.${convertSteps[i]}`).includes('$DOWNLOAD_DEFAULTS_LINK$'))
                     downloadDefaultsStep = createSteps.length + i + 1;
-                if (/\$DOWNLOAD_COMMENTS_LINK\$/.test(I18n.t(`urce.tools.${convertSteps[i]}`)))
+                if (I18n.t(`urce.tools.${convertSteps[i]}`).includes('$DOWNLOAD_COMMENTS_LINK$'))
                     downloadCommentsStep = createSteps.length + i + 1;
-                htmlOut += `<li><p>${
-                    I18n.t(`urce.tools.${convertSteps[i]}`).replace('$DOWNLOAD_DEFAULTS_LINK$', `<a id="_downloadDefaults">${I18n.t('urce.common.Link')}</a>`)
-                        .replace('$DOWNLOAD_COMMENTS_LINK$', `<a id="_downloadComments">${I18n.t('urce.common.Link')}</a>`).replace('$DOWNLOAD_DEFAULTS_STEP$', downloadDefaultsStep).replace('$DOWNLOAD_COMMENTS_STEP$', downloadCommentsStep)
-                }</p></li>`;
+                const liElem = _elems.li.cloneNode(false);
+                liElem.appendChild(
+                    setElemAttrs(_elems.p.cloneNode(false), {
+                        innerHTML: trustedHTML(I18n.t(`urce.tools.${convertSteps[i]}`)
+                            .replace('$DOWNLOAD_DEFAULTS_LINK$', `<a id="_downloadDefaults">${I18n.t('urce.common.Link')}</a>`)
+                            .replace('$DOWNLOAD_COMMENTS_LINK$', `<a id="_downloadComments">${I18n.t('urce.common.Link')}</a>`)
+                            .replace('$DOWNLOAD_DEFAULTS_STEP$', downloadDefaultsStep)
+                            .replace('$DOWNLOAD_COMMENTS_STEP$', downloadCommentsStep))
+                    })
+                );
+                if ((downloadDefaultsStep > 0) && (i === (downloadDefaultsStep - createSteps.length - 1)))
+                    liElem.querySelector('#_downloadDefaults').addEventListener('click', invokeCreateCommentListCsvDefaults);
+                if ((downloadCommentsStep > 0) && (i === (downloadCommentsStep - createSteps.length - 1)))
+                    liElem.querySelector('#_downloadComments').addEventListener('click', invokeCreateCommentListCsvComments);
+                olElem.appendChild(liElem);
             }
         }
-        for (let i = 0; i < finalSteps.length; i++) {
-            const stepText = I18n.t(`urce.tools.${finalSteps[i]}`).replace('$SPREADSHEET_STEP$', spreadsheetStep);
-            htmlOut += `<li><p>${stepText}</p></li>`;
+        for (let i = 0, { length } = finalSteps; i < length; i++) {
+            const liElem = _elems.li.cloneNode(false);
+            liElem.appendChild(setElemAttrs(_elems.p.cloneNode(false), { innerHTML: trustedHTML(I18n.t(`urce.tools.${finalSteps[i]}`).replace('$SPREADSHEET_STEP$', spreadsheetStep)) }));
+            olElem.appendChild(liElem);
         }
-        htmlOut += `</ol></div><div class="URCE-disableWme-text-footer"><button id="_dismissSteps" urceprefs="tools" class="urceToolsButton">${I18n.t('urce.common.Finish')}</button></div>`;
-        disableWme(htmlOut, false);
-        $('#_dismissSteps').off().on('click', () => disableWme(undefined, true));
-        $('#_downloadDefaults').off().on('click', () => createCommentListCSV('defaults'));
-        $('#_downloadComments').off().on('click', () => createCommentListCSV('comments'));
+        divElemDiv.appendChild(olElem);
+        divElemRoot.appendChild(divElemDiv);
+        divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-disableWme-text-footer' });
+        divElemDiv.appendChild(setElemAttrs(_elems.button.cloneNode(false), {
+            id: '_dismissSteps', urceprefs: 'tools', class: 'urceToolsButton', textContent: I18n.t('urce.common.Finish')
+        }, [{ click: disableWme }]));
+        divElemRoot.appendChild(divElemDiv);
+        disableWme(divElemRoot, false);
     }
 
     function checkForStaticListArray(oldVarNameStr) {
@@ -3494,10 +3681,11 @@
                     else {
                         entryIdx = 3;
                     }
-                    for (let oldUrcArrIdx = 0; oldUrcArrIdx < oldUrcArr.length; oldUrcArrIdx += 3) {
+                    for (let oldUrcArrIdx = 0, { length } = oldUrcArr; oldUrcArrIdx < length; oldUrcArrIdx += 3) {
                         if (/<br>/gi.test(oldUrcArr[oldUrcArrIdx]) || (oldUrcArr[oldUrcArrIdx + 2] === '')) {
+                            const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { textContent: untrustedHTML(oldUrcArr[oldUrcArrIdx].replace(/<br>/gi, '')) });
                             oldUrcArr[oldUrcArrIdx + 2] = 'GROUP TITLE';
-                            oldUrcArr[oldUrcArrIdx] = $('<div>').html(oldUrcArr[oldUrcArrIdx]).text();
+                            oldUrcArr[oldUrcArrIdx] = divElemRoot.innerText;
                         }
                         let temp = `${oldUrcArr[oldUrcArrIdx]}|${oldUrcArr[oldUrcArrIdx + 1]}|`
                         + `${((oldUrcArr[oldUrcArrIdx + 2] !== '') ? oldUrcArr[oldUrcArrIdx + 2].toLowerCase() : '')}`
@@ -3531,7 +3719,7 @@
                     outputItems = [],
                     rowObj = {},
                     findObjIndex = (array, fldName, value) => array.map((a) => a[fldName]).indexOf(value),
-                    checkFieldNames = (fldName) => ssFieldNames.indexOf(fldName) > -1,
+                    checkFieldNames = (fldName) => ssFieldNames.includes(fldName),
                     createRowObj = (entry, i) => {
                         i = i || 0;
                         if (ssFieldNames[i].trim().toLowerCase() === 'comment')
@@ -3541,11 +3729,23 @@
                         else
                             rowObj[ssFieldNames[i].trim().toLowerCase()] = entry.trim().toLowerCase();
                         i++;
+                    },
+                    legendClickToggle = function () {
+                        this.firstChild.classList.toggle('fa-chevron-down');
+                        this.firstChild.classList.toggle('fa-chevron-right');
+                        this.nextSibling.classList.toggle('collapse');
+                        saveSettingsToStorage();
+                    },
+                    cidSingleClick = function () {
+                        handleClickedComment(parseInt(this.id.replace('urce-cid-', '')), false);
+                    },
+                    cidDoubleClick = function () {
+                        handleClickedComment(parseInt(this.id.replace('urce-img-cid-', '')), true);
                     };
                 let groupDivId,
                     commentId = 0,
                     blankGroup = 0;
-                for (let entryIdx = 0; entryIdx < data.length; entryIdx++) {
+                for (let entryIdx = 0, { length } = data; entryIdx < length; entryIdx++) {
                     if (entryIdx === 0) {
                         if (data[entryIdx][0] !== 'URCE')
                             return reject(new Error('Incorrect format in spreadsheet data received.'));
@@ -3553,6 +3753,8 @@
                     else if (entryIdx === 1) {
                         if (_SCRIPT_VERSION < data[entryIdx][0])
                             return reject(new Error(`updateRequired|${data[entryIdx][0]}`));
+                        if (data[entryIdx][0] < _MIN_VERSION_COMMENTS)
+                            return reject(new Error(`spreadsheetUpdateRequired|${_MIN_VERSION_COMMENTS}`));
                     }
                     else if (entryIdx === 2) {
                         ssFieldNames = data[entryIdx][0].split('|').map((fldName) => fldName.trim());
@@ -3613,10 +3815,10 @@
                                 if ((rowObj.urstatus !== 'solved') && (rowObj.urstatus !== 'notidentified') && (rowObj.urstatus !== 'open') && (rowObj.urstatus !== 'blank line'))
                                     return reject(new Error(`Your current selected list does not have a status set for ${rowObj.title}. Please contact list owner: ${getCommentListInfo(_settings.commentList).listOwner}`));
                                 _commentList[commentId] = { title: rowObj.title, comment: rowObj.comment, urstatus: rowObj.urstatus };
-                                if (Object.values(rowObj).indexOf('default_is_true') > -1) {
+                                if (Object.values(rowObj).includes('default_is_true')) {
                                     const drIdx = ssFieldNames.indexOf('DR'),
                                         splitRowDefaultCommentsBoolean = Object.values(rowObj).slice(drIdx);
-                                    for (let boolIdx = 0; boolIdx < splitRowDefaultCommentsBoolean.length; boolIdx++) {
+                                    for (let boolIdx = 0, len = splitRowDefaultCommentsBoolean.length; boolIdx < len; boolIdx++) {
                                         if (splitRowDefaultCommentsBoolean[boolIdx].toLowerCase() === 'default_is_true')
                                             _defaultComments[ssFieldNames[(boolIdx + drIdx)].toLowerCase()].commentNum = commentId;
                                     }
@@ -3660,38 +3862,37 @@
                 if (outputItems.length > 0) {
                     const urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '',
                         DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
-                    let htmlOut = '';
+                    const divElemCommentList = _elems.div.cloneNode(false);
                     outputItems.forEach((item) => {
-                        htmlOut += `<fieldset id="${item.groupDivId}" class="URCE-field ${urStyle}">`
-                        + `<legend id="${item.groupDivId}_legend" class="URCE-legend ${urStyle}"><i class="fa fa-fw ${item.chevron} URCE-chevron"></i>`
-                        + `<span class="URCE-span"${(item.title ? ` title="${item.title}` : '')}">${item.name}</span></legend>`
-                        + `<div id="${item.groupDivId}_body_urce" class="${item.collapsed} URCE-group_body ${urStyle}">`;
+                        const legendElem = setElemAttrs(_elems.legend.cloneNode(false), { id: `${item.groupDivId}_legend`, class: `URCE-legend ${urStyle}` }, [{ click: legendClickToggle }]);
+                        legendElem.appendChild(setElemAttrs(_elems.i.cloneNode(false), { class: `fa fa-fw ${item.chevron} URCE=chevron` }));
+                        legendElem.appendChild(setElemAttrs(_elems.span.cloneNode(false), { class: 'URCE-span', title: item.title, textContent: item.name }));
+                        const fieldsetElem = setElemAttrs(_elems.fieldset.cloneNode(false), { id: item.groupDivId, class: `URCE-field ${urStyle}` });
+                        fieldsetElem.appendChild(legendElem);
                         if (item.items.length > 0) {
-                            for (let idx = 0; idx < item.items.length; idx++) {
-                                htmlOut += `<div class="URCE-divComment hover expand ${item.items[idx].linkClass}" style="position:relative;">`
-                                    + '         <div style="width:225px;display:inline-flex;">'
-                                    + `             <a id="urce-cid-${item.items[idx].commentId}" class="URCE-Comments ${item.items[idx].linkClass} URCE-Comments" title="${item.items[idx].title.replace(/"/g, '\'')}">${item.items[idx].name}</a>`
-                                    + '         </div>'
-                                    + `         <div id="${item.items[idx].divDoubleClickId}" class="URCE-divDoubleClick" style="${item.items[idx].divDoubleClickStyle}" title="${item.items[idx].divDoubleClickTitle.replace(/"/g, '\'')}">`
-                                    + `             <img id="urce-img-cid-${item.items[idx].commentId}" src="${DOUBLE_CLICK_ICON}" class="URCE-doubleClickIcon"></img>`
-                                    + '         </div>'
-                                    + '</div>';
+                            const divElemGroup = setElemAttrs(_elems.div.cloneNode(false), { id: `${item.groupDivId}_body_urce`, class: `${item.collapsed} URCE-group_body ${urStyle}` });
+                            for (let idx = 0, { length } = item.items; idx < length; idx++) {
+                                const curItem = item.items[idx],
+                                    divElemItemName = setElemAttrs(_elems.div.cloneNode(false), { style: 'width:225px;display:inline-flex;' });
+                                divElemItemName.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+                                    id: `urce-cid-${curItem.commentId}`, class: `URCE-Comments ${curItem.linkClass} URCE-Comments`, title: curItem.title.replace(/"/g, '\''), textContent: item.items[idx].name
+                                }, [{ click: cidSingleClick }]));
+                                const divElemItemParent = setElemAttrs(_elems.div.cloneNode(false), { class: `URCE-divComment hover expand ${curItem.linkClass}`, style: 'position:relative' });
+                                divElemItemParent.appendChild(divElemItemName);
+                                const divElemDoubleClick = setElemAttrs(_elems.div.cloneNode(false), {
+                                    id: curItem.divDoubleClickId, class: 'URCE-divDoubleClick', style: curItem.divDoubleClickStyle, title: curItem.divDoubleClickTitle.replace(/"/g, '\'')
+                                });
+                                divElemDoubleClick.appendChild(setElemAttrs(_elems.img.cloneNode(false), {
+                                    id: `urce-img-cid-${item.items[idx].commentId}`, src: DOUBLE_CLICK_ICON, class: 'URCE-doubleClickIcon'
+                                }, [{ dblclick: cidDoubleClick }]));
+                                divElemItemParent.appendChild(divElemDoubleClick);
+                                divElemGroup.appendChild(divElemItemParent);
                             }
+                            fieldsetElem.appendChild(divElemGroup);
                         }
-                        htmlOut += '</div></fieldset>';
+                        divElemCommentList.appendChild(fieldsetElem);
                     });
-                    $('#_commentList').append(htmlOut);
-                    $('legend[id$="_legend"]').off().on('click', function () {
-                        $($(this).children()[0]).toggleClass('fa-chevron-down fa-chevron-right');
-                        $($(this).siblings()[0]).toggleClass('collapse');
-                        saveSettingsToStorage();
-                    });
-                    $('a[id^="urce-cid-"]').off().on('click', function () {
-                        handleClickedComment(parseInt(this.id.replace('urce-cid-', '')), false);
-                    });
-                    $('img[id^="urce-img-cid-"]').off().on('dblclick', function () {
-                        handleClickedComment(parseInt(this.id.replace('urce-img-cid-', '')), true);
-                    });
+                    document.getElementById('_commentList').appendChild(divElemCommentList);
                 }
                 else {
                     return reject(new Error(`There is an error in the output. Please contact the list owner: ${getCommentListInfo(_settings.commentList).listOwner}`));
@@ -3709,15 +3910,30 @@
             commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
             const commentListInfo = getCommentListInfo(commentListIdx);
             logDebug(`Beginning comment list async for comment list: ${commentListInfo.name}`);
-            $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${((commentListIdx === 1001) ? _settings.customSsId : _URCE_SPREADSHEET_ID)}/values/${commentListInfo.gSheetRange}?key=${_URCE_API_KEY}`, (data) => {
-                if (data.values.length > 0)
-                    resolve(data.values);
-                else
-                    reject(new Error('No comments found in the spreadsheet sheet.'));
-            })
-                .fail((response) => {
-                    reject(new Error(`Spreadsheet call failed. Code: ${response.status} - Text: ${response.statusText}`));
-                });
+            GM_xmlhttpRequest({
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${((commentListIdx === 1001) ? _settings.customSsId : _URCE_SPREADSHEET_ID)}/values/${commentListInfo.gSheetRange}?key=${_URCE_API_KEY}`,
+                headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
+                method: 'GET',
+                onload(res) {
+                    if (res.status < 400) {
+                        const data = JSON.parse(res.responseText);
+                        if (data.values?.length > 0)
+                            resolve(data.values);
+                        else if (data.values?.length === 0)
+                            reject(new Error('No comments found in the spreadsheet sheet.'));
+                        else if (data.error)
+                            reject(new Error(`Comment list call failed with: ${data.error.message}`));
+                        else
+                            reject(new Error('Comment list call failed with unknown error.'));
+                    }
+                    else {
+                        reject(new Error(`HTTP request error: ${JSON.stringify(res)}`));
+                    }
+                },
+                onerror(res) {
+                    reject(new Error(`xmlhttpRequest error: ${JSON.stringify(res)}`));
+                }
+            });
         });
     }
 
@@ -3725,62 +3941,78 @@
         return new Promise((resolve, reject) => {
             doSpinner('buildCommentList', true);
             commentListIdx = commentListIdx || _settings.commentList;
-            const commentListInfo = getCommentListInfo(commentListIdx);
+            const docFrags = document.createDocumentFragment(),
+                commentListInfo = getCommentListInfo(commentListIdx),
+                selectionChange = function () {
+                    if ((parseInt(this.value) === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
+                        this.value = _currentCommentList;
+                        WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
+                    }
+                    else {
+                        changeCommentList(parseInt(this.value), false, true);
+                    }
+                },
+                appendModeToggle = function () {
+                    _settings[this.id.substring(3)] = this.checked;
+                    if (W.map.panelRegion.currentView?.adapter?.problem) {
+                        document.querySelector('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')
+                            .shadowRoot.querySelector('textarea[id=id').style.backgroundColor = this.checked ? 'peachpuff' : '';
+                    }
+                    saveSettingsToStorage();
+                },
+                expandCollapseAll = function () {
+                    const legends = document.querySelectorAll('legend[id^="urceComments-for"]');
+                    for (let idx = 0, { length } = legends; idx < length; idx++) {
+                        if (this.id === 'URCE-expandAllComments') {
+                            if (legends[idx].nextElementSibling.classList.contains('collapse'))
+                                legends[idx].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                        }
+                        else if (this.id === 'URCE-collapseAllComments') {
+                            if (!legends[idx].nextElementSibling.classList.contains('collapse'))
+                                legends[idx].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                        }
+                    }
+                };
             Object.values(_defaultComments).forEach((a) => { a.commentNum = null; });
             logDebug(`Building comment list for: ${commentListInfo.name}`);
             if (phase !== 'init')
                 maskBoxes(`${I18n.t('urce.prompts.SwitchingCommentLists')}<br><br>${I18n.t('urce.common.PleaseWait')}.`, false, phase, (_selUr.urId > 0));
-            let htmlOut = `<div class="URCE-commentListName">${I18n.t('urce.common.CommentList')}: `
-                + `<select id="_selcurrentCommentList" title="${I18n.t('urce.common.CurrentCommentListTitle')}">`;
+            const selectElem = setElemAttrs(_elems.select.cloneNode(false), { id: '_selcurrentCommentList', title: I18n.t('urce.common.CurrentCommentListTitle') }, [{ change: selectionChange }]);
             _commentLists.forEach((cList) => {
-                if (cList.status !== 'disabled')
-                    htmlOut += `<option value="${cList.idx}"${((cList.idx === commentListIdx) ? ' selected' : '')}>${(!autoSwitch ? cList.name : `${cList.name} (${I18n.t('urce.common.AutoSwitched')})`)}`;
+                if (cList.status !== 'disabled') {
+                    selectElem.appendChild(setElemAttrs(_elems.option.cloneNode(false), {
+                        value: cList.idx, textContent: !autoSwitch ? cList.name : `${cList.name} (${I18n.t('urce.common.AutoSwitched')})`, selected: (cList.idx === commentListIdx)
+                    }));
+                }
             });
-            htmlOut += '</select>'
-                + `<div id="restrictionsEnforcedWarning" style="float:right;padding-top:8px;color:red;font-size:18px;${(_restrictionsEnforcedTitle ? '' : 'display:none;')}">`
-                + `     <i class="fa fa-exclamation-triangle" aria-hidden="true"${(_restrictionsEnforcedTitle ? ` title="${_restrictionsEnforcedTitle}"` : '')}></i>`
-                + '</div></div>'
-                + '<div class="URCE-commentListName URCE-controls URCE-divCC">'
-                + `     <input type="checkbox" id="_cbenableAppendMode" class="urceSettingsCheckbox2" title="${I18n.t('urce.prefs.EnableAppendModeTitle')}"${(_settings.enableAppendMode ? ' checked' : '')}>`
-                + `     <label for="_cbenableAppendMode" title="${I18n.t('urce.prefs.EnableAppendModeTitle')}" class="URCE-label">${I18n.t('urce.prefs.EnableAppendMode')}</label><br>`
-                + '</div>'
-                + `<div id="URCE-expandCollapseAllComments" class="URCE-expandCollapseAll${((_settings.commentListStyle === 'urStyle') ? ' urStyle' : '')}">`
-                + `     <div id="URCE-expandAllComments" class="URCE-expandCollapseAllItem">${I18n.t('urce.common.ExpandAll')}</div>`
-                + '     <div style="display:inline;"> : </div>'
-                + `     <div id="URCE-collapseAllComments" class="URCE-expandCollapseAllItem">${I18n.t('urce.common.CollapseAll')}</div>`
-                + '</div>';
-            $('#_commentList').empty().append(htmlOut);
+            let divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-commentListName', textContent: `${I18n.t('urce.common.CommentList')}: ` });
+            divElemRoot.appendChild(selectElem);
+            const divElemRestrictionEnforcedParent = setElemAttrs(_elems.div.cloneNode(false), {
+                id: 'restrictionsEnforcedWarning', style: `float:right;padding-top:8px;color:red;font-size:18px;${(_restrictionsEnforcedTitle ? '' : 'display:none;')}`
+            });
+            divElemRestrictionEnforcedParent.appendChild(setElemAttrs(_elems.i.cloneNode(false), { class: 'fa fa-exclamation-triangle', 'aria-hidden': true, title: _restrictionsEnforcedTitle || '' }));
+            divElemRoot.appendChild(divElemRestrictionEnforcedParent);
+            docFrags.appendChild(divElemRoot);
+            divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-commentListName URCE-controls URCE-divCC' });
+            divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                type: 'checkbox', id: '_cbenableAppendMode', class: 'urceSettingsCheckbox2', title: I18n.t('urce.prefs.EnableAppendModeTitle'), checked: _settings.enableAppendMode
+            }, [{ change: appendModeToggle }]));
+            divElemRoot.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                for: '_cbenableAppendMode', title: I18n.t('urce.prefs.EnableAppendModeTitle'), class: 'URCE-label', textContent: I18n.t('urce.prefs.EnableAppendMode')
+            }));
+            divElemRoot.appendChild(_elems.br.cloneNode(false));
+            docFrags.appendChild(divElemRoot);
+            divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: 'URCE-expandCollapseAllComments', class: `URCE-expandCollapseAll${((_settings.commentListStyle === 'urStyle') ? ' urStyle' : '')}` });
+            divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                id: 'URCE-expandAllComments', class: 'URCE-expandCollapseAllItem', textContent: I18n.t('urce.common.ExpandAll')
+            }, [{ click: expandCollapseAll }]));
+            divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline;', textContent: ' : ' }));
+            divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                id: 'URCE-collapseAllComments', class: 'URCE-expandCollapseAllItem', textContent: I18n.t('urce.common.CollapseAll')
+            }, [{ click: expandCollapseAll }]));
+            docFrags.appendChild(divElemRoot);
+            document.getElementById('_commentList').replaceChildren(docFrags);
             _restrictionsEnforcedTitle = undefined;
-            $('#_selcurrentCommentList').off().on('change', function () {
-                if ((parseInt(this.value) === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
-                    $(this).val(_currentCommentList);
-                    WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
-                }
-                else {
-                    changeCommentList(parseInt(this.value), false, true);
-                }
-            });
-            $('#_cbenableAppendMode').off().on('change', function () {
-                _settings[$(this)[0].id.substr(3)] = isChecked(this);
-                if (W.map.panelRegion.currentView?.adapter?.problem) {
-                    $('textarea[id=id]', $('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')[0].shadowRoot)
-                        .css('background-color', (isChecked(this) ? 'peachpuff' : ''));
-                }
-                saveSettingsToStorage();
-            });
-            $('#URCE-expandAllComments, #URCE-collapseAllComments').off().on('click', function () {
-                const $legends = $('legend[id^="urceComments-for"');
-                for (let idx = 0; idx < $legends.length; idx++) {
-                    if (this.id === 'URCE-expandAllComments') {
-                        if ($legends[idx].nextElementSibling.className.indexOf('collapse') > -1)
-                            $($legends[idx]).click();
-                    }
-                    else if (this.id === 'URCE-collapseAllComments') {
-                        if ($legends[idx].nextElementSibling.className.indexOf('collapse') === -1)
-                            $($legends[idx]).click();
-                    }
-                }
-            });
             _commentList = [];
             _customReplaceVars = [];
             _currentCommentList = commentListIdx;
@@ -3841,28 +4073,29 @@
     }
 
     function processPerCommentListSettings(commentListIdx) {
-        const defaultPerCommentListSettings = {
-            autoSendReminders: _settings.autoSendReminders,
-            autoSendReminders_useDefault: true,
-            autoSendRemindersExceptTagged: _settings.autoSendRemindersExceptTagged,
-            autoSendRemindersExceptTagged_useDefault: true,
-            autoSetNewUrComment: _settings.autoSetNewUrComment,
-            autoSetNewUrComment_useDefault: true,
-            autoSetNewUrCommentSlur: _settings.autoSetNewUrCommentSlur,
-            autoSetNewUrCommentSlur_useDefault: true,
-            autoSetNewUrCommentWithDescription: _settings.autoSetNewUrCommentWithDescription,
-            autoSetNewUrCommentWithDescription_useDefault: true,
-            autoSetReminderUrComment: _settings.autoSetReminderUrComment,
-            autoSetReminderUrComment_useDefault: true,
-            customTagline: _settings.customTagline,
-            customTagline_useDefault: true,
-            tagEmail: _settings.tagEmail,
-            tagEmail_useDefault: true,
-            reminderDays: _settings.reminderDays,
-            reminderDays_useDefault: true,
-            closeDays: _settings.closeDays,
-            closeDays_useDefault: true
-        };
+        const docFrags = document.createDocumentFragment(),
+            defaultPerCommentListSettings = {
+                autoSendReminders: _settings.autoSendReminders,
+                autoSendReminders_useDefault: true,
+                autoSendRemindersExceptTagged: _settings.autoSendRemindersExceptTagged,
+                autoSendRemindersExceptTagged_useDefault: true,
+                autoSetNewUrComment: _settings.autoSetNewUrComment,
+                autoSetNewUrComment_useDefault: true,
+                autoSetNewUrCommentSlur: _settings.autoSetNewUrCommentSlur,
+                autoSetNewUrCommentSlur_useDefault: true,
+                autoSetNewUrCommentWithDescription: _settings.autoSetNewUrCommentWithDescription,
+                autoSetNewUrCommentWithDescription_useDefault: true,
+                autoSetReminderUrComment: _settings.autoSetReminderUrComment,
+                autoSetReminderUrComment_useDefault: true,
+                customTagline: _settings.customTagline,
+                customTagline_useDefault: true,
+                tagEmail: _settings.tagEmail,
+                tagEmail_useDefault: true,
+                reminderDays: _settings.reminderDays,
+                reminderDays_useDefault: true,
+                closeDays: _settings.closeDays,
+                closeDays_useDefault: true
+            };
         let perCommentListSettingsChanged = false;
         if (!_settings.perCommentListSettings[commentListIdx]) {
             _settings.perCommentListSettings[commentListIdx] = defaultPerCommentListSettings;
@@ -3879,166 +4112,207 @@
         if (perCommentListSettingsChanged)
             saveSettingsToStorage();
         const perCListSettings = _settings.perCommentListSettings[commentListIdx],
-            htmlOut = ''
-                + `<div>${I18n.t('urce.prefs.SettingsFor')}: ${getCommentListInfo(commentListIdx).name}</div>`
-                + '<div class="URCE-controls">'
-                + '   <div>'
-                + '      <div style="width:calc(100% - 18px); display:inline-block">'
-                + `         <input type="checkbox" id="_cbperCommentList_autoSendReminders" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSendReminders_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSendRemindersTitle')}" ${((perCListSettings.autoSendReminders) ? 'checked="true"' : '')} ${((perCListSettings.autoSendReminders_useDefault) ? 'disabled="true"' : '')}>`
-                + `         <label for="_cbperCommentList_autoSendReminders" title="${I18n.t('urce.prefs.AutoSendRemindersTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSendReminders_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSendReminders')}</label>`
-                + `         <div class="URCE-divWarning URCE-divWarningPre">(<div class="URCE-divWarning URCE-divWarningTitle" title="${I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}">${I18n.t('urce.prefs.AutoSendRemindersWarning')}</div><div class="URCE-divWarning">)</div></div>`
-                + '      </div>'
-                + `      <input type="checkbox" style="float:right;" id="_cbperCommentList_autoSendReminders_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSendReminders_useDefault) ? 'checked="true"' : '')}>`
-                + '   </div>'
-                + '   <div>'
-                + '      <div style="width:calc(100% - 18px); display:inline-block; padding-left:15px; font-style:italic;">'
-                + `         <input type="checkbox" id="_cbperCommentList_autoSendRemindersExceptTagged" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSendRemindersExceptTagged_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle')}" ${((perCListSettings.autoSendRemindersExceptTagged) ? 'checked="true"' : '')} ${((perCListSettings.autoSendRemindersExceptTagged_useDefault) ? 'disabled="true"' : '')}>`
-                + `         <label for="_cbperCommentList_autoSendRemindersExceptTagged" title="${I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSendRemindersExceptTagged_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSendRemindersExceptTagged')}</label>`
-                + '      </div>'
-                + `      <input type="checkbox" style="float:right;" id="_cbperCommentList_autoSendRemindersExceptTagged_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSendRemindersExceptTagged_useDefault) ? 'checked="true"' : '')}>`
-                + '   </div>'
-                + '   <div>'
-                + '      <div style="width:calc(100% - 18px); display:inline-block">'
-                + `         <input type="checkbox" id="_cbperCommentList_autoSetNewUrComment" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSetNewUrComment_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSetNewUrCommentTitle')}" ${((perCListSettings.autoSetNewUrComment) ? 'checked="true"' : '')} ${((perCListSettings.autoSetNewUrComment_useDefault) ? 'disabled="true"' : '')}>`
-                + `         <label for="_cbperCommentList_autoSetNewUrComment" title="${I18n.t('urce.prefs.AutoSetNewUrCommentTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSetNewUrComment_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSetNewUrComment')}</label>`
-                + '      </div>'
-                + `      <input type="checkbox" style="float:right;" id="_cbperCommentList_autoSetNewUrComment_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSetNewUrComment_useDefault) ? 'checked="true"' : '')}>`
-                + '   </div>'
-                + '   <div>'
-                + '      <div style="width:calc(100% - 18px); display:inline-block">'
-                + `         <input type="checkbox" id="_cbperCommentList_autoSetNewUrCommentSlur" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSetNewUrCommentSlurTitle')}" ${((perCListSettings.autoSetNewUrCommentSlur) ? 'checked="true"' : '')} ${((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? 'disabled="true"' : '')}>`
-                + `         <label for="_cbperCommentList_autoSetNewUrCommentSlur" title="${I18n.t('urce.prefs.AutoSetNewUrCommentSlurTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSetNewUrCommentSlur')}</label>`
-                + '      </div>'
-                + `      <input type="checkbox" style="float:right;" id="_cbperCommentList_autoSetNewUrCommentSlur_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSetNewUrCommentSlur_useDefault) ? 'checked="true"' : '')}>`
-                + '   </div>'
-                + '   <div>'
-                + '      <div style="width:calc(100% - 18px); display:inline-block">'
-                + `         <input type="checkbox" id="_cbperCommentList_autoSetNewUrCommentWithDescription" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSetNewUrCommentWithDescription_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSetNewUrCommentWithDescriptionTitle')}" ${((perCListSettings.autoSetNewUrCommentWithDescription) ? 'checked="true"' : '')} ${((perCListSettings.autoSetNewUrCommentWithDescription_useDefault) ? 'disabled="true"' : '')}>`
-                + `         <label for="_cbperCommentList_autoSetNewUrCommentWithDescription" title="${I18n.t('urce.prefs.AutoSetNewUrCommentWithDescriptionTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSetNewUrCommentWithDescription_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSetNewUrCommentWithDescription')}</label>`
-                + '      </div>'
-                + `      <input type="checkbox" style="float:right;" id="_cbperCommentList_autoSetNewUrCommentWithDescription_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSetNewUrCommentWithDescription_useDefault) ? 'checked="true"' : '')}>`
-                + '   </div>'
-                + '   <div>'
-                + '      <div style="width:calc(100% - 18px); display:inline-block">'
-                + `         <input type="checkbox" id="_cbperCommentList_autoSetReminderUrComment" urceprefs="perCommentList" class="urceSettingsCheckbox${((perCListSettings.autoSetReminderUrComment_useDefault) ? ' urceDisabled' : '')}" title="${I18n.t('urce.prefs.AutoSetReminderUrCommentTitle')}" ${((perCListSettings.autoSetReminderUrComment) ? 'checked="true"' : '')} ${((perCListSettings.autoSetReminderUrComment_useDefault) ? 'disabled="true"' : '')}>`
-                + `         <label for="_cbperCommentList_autoSetReminderUrComment" title="${I18n.t('urce.prefs.AutoSetReminderUrCommentTitle')}" urceprefs="perCommentList" class="URCE-label${((perCListSettings.autoSetReminderUrComment_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.AutoSetReminderUrComment')}</label>`
-                + '      </div>'
-                + `      <input type="checkbox" style="float:right;" id="_cbperCommentList_autoSetReminderUrComment_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.autoSetReminderUrComment_useDefault) ? 'checked="true"' : '')}>`
-                + '   </div>'
-                + '</div>'
-                + '<div class="URCE-controls URCE-textFirst">'
-                + '   <div>'
-                + '      <div style="width:calc(100% - 18px); display:inline-block">'
-                + `         <div style="display:inline;" title="${I18n.t('urce.prefs.TagEmailTitle')}" class="URCE-label${((perCListSettings.tagEmail_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.TagEmail')}:</div>`
-                + `         <input type="text" id="_textperCommentList_tagEmail" class="URCE-textInput urceSettingsTextBox${((perCListSettings.tagEmail_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList" value="${perCListSettings.tagEmail}" title="${I18n.t('urce.prefs.TagEmailTitle')}" ${((perCListSettings.tagEmail_useDefault) ? 'disabled="true"' : '')}>`
-                + '      </div>'
-                + `      <input type="checkbox" style="float:right;" id="_cbperCommentList_tagEmail_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.tagEmail_useDefault) ? 'checked="true"' : '')}>`
-                + '   </div>'
-                + '   <div>'
-                + '      <div style="width:calc(100% - 18px); display:inline-block">'
-                + `         <div style="display:inline;" title="${I18n.t('urce.prefs.ReminderDaysTitle')}" class="URCE-label${((perCListSettings.reminderDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList">${I18n.t('urce.prefs.ReminderDays')}:</div>`
-                + `         <input type="number" id="_numperCommentList_reminderDays" class="URCE-daysInput urceSettingsNumberBox${((perCListSettings.reminderDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList" min="0" max="9999" step="1" value="${perCListSettings.reminderDays}" title="${I18n.t('urce.prefs.ReminderDaysTitle')}" ${((perCListSettings.reminderDays_useDefault) ? 'disabled="true"' : '')}>`
-                + `         <div style="display:inline;" class="URCE-label${((perCListSettings.reminderDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList">${I18n.t('common.time.days', { days: 0 }).replace('0 ', '')}</div>`
-                + '      </div>'
-                + `      <input type="checkbox" style="float:right;" id="_cbperCommentList_reminderDays_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.reminderDays_useDefault) ? 'checked="true"' : '')}>`
-                + '   </div>'
-                + '   <div>'
-                + '      <div style="width:calc(100% - 18px); display:inline-block">'
-                + `         <div style="display:inline;" title="${I18n.t('urce.prefs.CloseDaysTitle')}" class="URCE-label${((perCListSettings.closeDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList">${I18n.t('urce.prefs.CloseDays')}:</div>`
-                + `         <input type="number" id="_numperCommentList_closeDays" class="URCE-daysInput urceSettingsNumberBox${((perCListSettings.closeDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList" min="1" max="9999" step="1" value="${perCListSettings.closeDays}" title="${I18n.t('urce.prefs.CloseDaysTitle')}" ${((perCListSettings.closeDays_useDefault) ? 'disabled="true"' : '')}>`
-                + `         <div style="display:inline;" class="URCE-label${((perCListSettings.closeDays_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList">${I18n.t('common.time.days', { days: 0 }).replace('0 ', '')}</div>`
-                + '      </div>'
-                + `      <input type="checkbox" style="float:right;" id="_cbperCommentList_closeDays_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.closeDays_useDefault) ? 'checked="true"' : '')}>`
-                + '   </div>'
-                + '   <div>'
-                + '      <div style="width:calc(100% - 18px); display:inline-block">'
-                + `         <div style="display:inline;" title="${I18n.t('urce.prefs.CustomTaglineTitle')}" class="URCE-label${((perCListSettings.customTagline_useDefault) ? ' urceDisabled' : '')}">${I18n.t('urce.prefs.CustomTagline')}:</div>`
-                + `         <textarea id="_textperCommentList_customTagline" class="URCE-textInput urceSettingsTextBox${((perCListSettings.customTagline_useDefault) ? ' urceDisabled' : '')}" urceprefs="perCommentList" title="${I18n.t('urce.prefs.CustomTaglineTitle')}" style="resize:none;width:230px;height:50px" ${((perCListSettings.customTagline_useDefault) ? 'disabled="true"' : '')}>${perCListSettings.customTagline}</textarea>`
-                + '      </div>'
-                + `      <input type="checkbox" style="float:right;" id="_cbperCommentList_customTagline_useDefault" urceprefs="perCommentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.UseDefault')}" ${((perCListSettings.customTagline_useDefault) ? 'checked="true"' : '')}>`
-                + '   </div>'
-                + '</div>';
-        $('#URCE-divPerCommentListSettings').html(htmlOut);
-        $('input[urceprefs="perCommentList"], textarea[urceprefs="perCommentList"]').off().on('change', function () {
-            const settingName = $(this)[0].id.replace(/(_.+perCommentList_)/gmi, '');
-            if (this.type === 'checkbox') {
-                _settings.perCommentListSettings[_currentCommentList][settingName] = isChecked(this);
-                saveSettingsToStorage();
-            }
-            if (this.type === 'text') {
-                const newVal = this.value.trim();
-                if ((newVal !== this.value) || (_settings.perCommentListSettings[_currentCommentList][settingName] !== newVal)) {
-                    if (newVal !== this.value)
-                        this.value = newVal;
-                    _settings.perCommentListSettings[_currentCommentList][settingName] = newVal;
+            settingsChange = function () {
+                const settingName = this.id.replace(/(_.+perCommentList_)/gmi, ''),
+                    toggleDisabled = (elem) => {
+                        elem.classList?.toggle('urceDisabled');
+                        elem.toggleAttribute('disabled');
+                        for (let i = 0, { length } = elem.children; i < length; i++)
+                            toggleDisabled(elem.children[i]);
+                    };
+                if (this.type === 'checkbox') {
+                    _settings.perCommentListSettings[_currentCommentList][settingName] = this.checked;
                     saveSettingsToStorage();
-                    if (settingName === 'tagEmail')
-                        changeCommentList(_currentCommentList, false, true);
                 }
-            }
-            if (this.type === 'number') {
-                const val = Math.min(9999, Math.max(0, Math.abs((parseInt(this.value) || 0))));
-                if ((val !== this.value) || (_settings.perCommentListSettings[_currentCommentList][settingName] !== val)) {
-                    if (val !== parseInt(this.value))
-                        this.value = val;
-                    _settings.perCommentListSettings[_currentCommentList][settingName] = val;
+                if (this.type === 'text') {
+                    const newVal = this.value.trim();
+                    if ((newVal !== this.value) || (_settings.perCommentListSettings[_currentCommentList][settingName] !== newVal)) {
+                        if (newVal !== this.value)
+                            this.value = newVal;
+                        _settings.perCommentListSettings[_currentCommentList][settingName] = newVal;
+                        saveSettingsToStorage();
+                        if (settingName === 'tagEmail')
+                            changeCommentList(_currentCommentList, false, true);
+                    }
+                }
+                if (this.type === 'number') {
+                    const val = Math.min(9999, Math.max(0, Math.abs((parseInt(this.value) || 0))));
+                    if ((val !== this.value) || (_settings.perCommentListSettings[_currentCommentList][settingName] !== val)) {
+                        if (val !== parseInt(this.value))
+                            this.value = val;
+                        _settings.perCommentListSettings[_currentCommentList][settingName] = val;
+                        saveSettingsToStorage();
+                        handleUrLayer('settingsToggle', undefined, getMapUrsObjArr());
+                    }
+                }
+                if (settingName.includes('_useDefault')) {
+                    for (let i = 0, { length } = this.parentElement.children; i < length; i++) {
+                        if (this !== this.parentElement.children[i])
+                            toggleDisabled(this.parentElement.children[i]);
+                    }
+                    const parentSettingName = settingName.replace('_useDefault', '');
+                    if (_settings.perCommentListSettings[_currentCommentList][parentSettingName] !== _settings[parentSettingName]) {
+                        _settings.perCommentListSettings[_currentCommentList][parentSettingName] = _settings[parentSettingName];
+                        const parentSettingElem = document.querySelector(`input[id$="${parentSettingName}"]:not([urceprefs="perCommentList"])`);
+                        if (parentSettingElem?.type === 'checkbox') {
+                            if (_settings[parentSettingName])
+                                document.getElementById(`_cbperCommentList_${parentSettingName}`).checked = true;
+                            else
+                                document.getElementById(`_cbperCommentList_${parentSettingName}`).checked = false;
+                            document.getElementById(`_cbperCommentList_${parentSettingName}`).checked = _settings[parentSettingName];
+                        }
+                        else if (parentSettingElem?.type === 'number') {
+                            document.getElementById(`_numperCommentList_${parentSettingName}`).value = _settings[parentSettingName];
+                        }
+                        else if (parentSettingElem?.type === 'text') {
+                            document.getElementById(`_textperCommentList_${parentSettingName}`).value = _settings[parentSettingName];
+                        }
+                        else if (document.querySelector(`textarea[id$="${parentSettingName}"]:not([urceprefs="perCommentList"])`)) {
+                            document.getElementById(`_textperCommentList_${parentSettingName}`).value = _settings[parentSettingName];
+                        }
+                    }
                     saveSettingsToStorage();
-                    handleUrLayer('settingsToggle', undefined, getMapUrsObjArr());
                 }
-            }
-            if (settingName.indexOf('_useDefault') > -1) {
-                if (!isChecked(this)) {
-                    $(this).siblings().removeClass('urceDisabled').removeAttr('disabled');
-                    $(this).siblings().children().removeClass('urceDisabled').removeAttr('disabled');
+            },
+            createDivSettingCb = (settingId = '', warningSetting = false) => {
+                const title = I18n.t(`urce.prefs.${settingId.charAt(0).toUpperCase() + settingId.slice(1)}Title`),
+                    divElemDiv = setElemAttrs(_elems.div.cloneNode(false), {
+                        style: `width:calc(100% - 18px);display:inline-block;${(settingId === 'autoSendRemindersExceptTagged') ? 'padding-left:15px;font-style:italic;' : ''}`
+                    });
+                divElemDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    type: 'checkbox',
+                    id: `_cbperCommentList_${settingId}`,
+                    urceprefs: 'perCommentList',
+                    class: `urceSettingsCheckbox${((perCListSettings[`${settingId}_useDefault`]) ? ' urceDisabled' : '')}`,
+                    title,
+                    checked: perCListSettings[settingId],
+                    disabled: perCListSettings[`${settingId}_useDefault`]
+                }, [{ change: settingsChange }]));
+                divElemDiv.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                    for: `_cbperCommentList_${settingId}`,
+                    title,
+                    urceprefs: 'perCommentList',
+                    class: `URCE-label${((perCListSettings[`${settingId}_useDefault`]) ? ' urceDisabled' : '')}`,
+                    textContent: I18n.t(`urce.prefs.${settingId.charAt(0).toUpperCase() + settingId.slice(1)}`)
+                }));
+                if (warningSetting) {
+                    const divElemWarning = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divWarning URCE-divWarningPre', textContent: '(' });
+                    divElemWarning.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                        class: 'URCE-divWarning URCE-divWarningTitle',
+                        title: I18n.t(`urce.prefs.${settingId.charAt(0).toUpperCase() + settingId.slice(1)}WarningTitle`),
+                        textContent: I18n.t(`urce.prefs.${settingId.charAt(0).toUpperCase() + settingId.slice(1)}Warning`)
+                    }));
+                    divElemWarning.appendChild(setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divWarning', textContent: ')' }));
+                    divElemDiv.appendChild(divElemWarning);
+                }
+                const divElemRoot = _elems.div.cloneNode(false);
+                divElemRoot.appendChild(divElemDiv);
+                divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    type: 'checkbox',
+                    style: 'float:right;',
+                    id: `_cbperCommentList_${settingId}_useDefault`,
+                    urceprefs: 'perCommentList',
+                    class: 'urceSettingsCheckbox',
+                    title: I18n.t('urce.prefs.UseDefault'),
+                    checked: perCListSettings[`${settingId}_useDefault`]
+                }, [{ change: settingsChange }]));
+                return divElemRoot;
+            },
+            createDivSettingInput = (settingId) => {
+                const title = I18n.t(`urce.prefs.${settingId.charAt(0).toUpperCase() + settingId.slice(1)}Title`),
+                    // eslint-disable-next-line no-nested-ternary
+                    type = (settingId === 'tagEmail') ? 'text' : (settingId !== 'customTagline') ? 'number' : '',
+                    divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { style: 'width:calc(100% - 18px);display:inline-block;' });
+                divElemDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                    style: 'display:inline;',
+                    title,
+                    class: `URCE-label${((perCListSettings[`${settingId}_useDefault`]) ? ' urceDisabled' : '')}`,
+                    urceprefs: 'perCommentList',
+                    textContent: `${I18n.t(`urce.prefs.${settingId.charAt(0).toUpperCase() + settingId.slice(1)}`)}:`
+                }));
+                let divElemDivInput;
+                if (settingId === 'customTagline') {
+                    divElemDivInput = setElemAttrs(_elems.textarea.cloneNode(false), {
+                        id: '_textperCommentList_customTagline',
+                        class: `URCE-textInput urceSettingsTextBox${((perCListSettings[`${settingId}_useDefault`]) ? ' urceDisabled' : '')}`,
+                        urceprefs: 'perCommentList',
+                        title,
+                        style: 'resize:none;width:230px;height:50px',
+                        textContent: perCListSettings[settingId],
+                        disabled: perCListSettings[`${settingId}_useDefault`]
+                    }, [{ change: settingsChange }]);
                 }
                 else {
-                    $(this).siblings().addClass('urceDisabled').attr('disabled', true);
-                    $(this).siblings().children().addClass('urceDisabled').attr('disabled', true);
+                    const extraAttributes = (type === 'number') ? { min: 0, max: 9999, step: 1 } : {};
+                    divElemDivInput = setElemAttrs(_elems.input.cloneNode(false), {
+                        type,
+                        id: `_${(type === 'text') ? type : 'num'}perCommentList_${settingId}`,
+                        class: `URCE-${(type === 'text') ? 'textInput' : 'daysInput'} urceSettings${type.charAt(0).toUpperCase() + type.slice(1)}Box${((perCListSettings[`${settingId}_useDefault`]) ? ' urceDisabled' : '')}`,
+                        urceprefs: 'perCommentList',
+                        value: perCListSettings[settingId],
+                        title,
+                        disabled: perCListSettings[`${settingId}_useDefault`],
+                        ...extraAttributes
+                    }, [{ change: settingsChange }]);
                 }
-                const parentSettingName = settingName.replace('_useDefault', '');
-                if (_settings.perCommentListSettings[_currentCommentList][parentSettingName] !== _settings[parentSettingName]) {
-                    _settings.perCommentListSettings[_currentCommentList][parentSettingName] = _settings[parentSettingName];
-                    if ($(`input[id$="${parentSettingName}"][urceprefs!="perCommentList"]`)[0].type === 'checkbox')
-                        $(`#_cbperCommentList_${parentSettingName}`).prop('checked', _settings[parentSettingName]);
-                    else if ($(`input[id$="${parentSettingName}"][urceprefs!="perCommentList"]`)[0].type === 'number')
-                        $(`#_numperCommentList_${parentSettingName}`).val(_settings[parentSettingName]);
-                    else if ($(`input[id$="${parentSettingName}"][urceprefs!="perCommentList"]`)[0].type === 'text')
-                        $(`#_textperCommentList_${parentSettingName}`).val(_settings[parentSettingName]);
-                    else if ($(`textarea[id$="${parentSettingName}"][urceprefs!="perCommentList"]`).length > 0)
-                        $(`#_textperCommentList_${parentSettingName}`).val(_settings[parentSettingName]);
+                if (type === 'number') {
+                    divElemDivInput.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                        style: 'display:inline;',
+                        class: `URCE-label${((perCListSettings[`${settingId}_useDefault`]) ? ' urceDisabled' : '')}`,
+                        urceprefs: 'perCommentList',
+                        textContent: I18n.t('common.time.days', { days: 0 }).replace('0 ', '')
+                    }));
                 }
-                saveSettingsToStorage();
-            }
+                divElemDiv.appendChild(divElemDivInput);
+                const divElemRoot = _elems.div.cloneNode(false);
+                divElemRoot.appendChild(divElemDiv);
+                divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    type: 'checkbox', style: 'float:right;', id: `_cbperCommentList_${settingId}_useDefault`, urceprefs: 'perCommentList', class: 'urceSettingsCheckbox', title: I18n.t('urce.prefs.UseDefault'), checked: perCListSettings[`${settingId}_useDefault`]
+                }, [{ change: settingsChange }]));
+                return divElemRoot;
+            };
+        docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), { textContent: `${I18n.t('urce.prefs.SettingsFor')}: ${getCommentListInfo(commentListIdx).name}` }));
+        let divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-controls' });
+        ['autoSendReminders', 'autoSendRemindersExceptTagged', 'autoSetNewUrComment', 'autoSetNewUrCommentSlur', 'autoSetNewUrCommentWithDescription', 'autoSetReminderUrComment'].forEach((settingId) => {
+            divElemRoot.appendChild(createDivSettingCb(settingId, (settingId === 'autoSendReminders')));
         });
+        docFrags.appendChild(divElemRoot);
+        divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-controls URCE-textFirst' });
+        ['tagEmail', 'reminderDays', 'closeDays', 'customTagline'].forEach((settingId) => {
+            divElemRoot.appendChild(createDivSettingInput(settingId));
+        });
+        docFrags.appendChild(divElemRoot);
+        document.getElementById('URCE-divPerCommentListSettings').appendChild(docFrags);
     }
 
     function handleError(err) {
         let errorText,
-            htmlOut = '<div class="URCE-divLoading">';
-        if (err.message?.indexOf('|') > -1) {
-            if (err.message.split('|')[0] === 'updateRequired')
-                errorText = `${I18n.t('urce.prompts.UpdateRequired')}: ${err.message.split('|')[1]}`;
-            htmlOut += errorText;
+            textContent;
+        if (err.message?.includes('|') > -1) {
+            const [reason, message] = err.message.split('|');
+            if ((reason === 'updateRequired') || (reason === 'spreadsheetUpdateRequired'))
+                errorText = `${I18n.t(`urce.prompts.${reason.charAt(0).toUpperCase()}${reason.slice(1)}`)}: ${message}`;
+            textContent = errorText;
         }
         else {
             errorText = err.message;
-            htmlOut += (err.commentList === 1001) ? I18n.t('urce.prompts.CustomGSheetLoadError') : I18n.t('urce.common.ErrorGeneric');
+            textContent = (err.commentList === 1001) ? I18n.t('urce.prompts.CustomGSheetLoadError') : I18n.t('urce.common.ErrorGeneric');
         }
         logError(errorText);
         _commentListLoaded = false;
         if (err.phase === 'changeList') {
             if (err.staticList) {
-                htmlOut += `\n\n${I18n.t('urce.common.Type')}: ${I18n.t('urce.common.Static')}`;
+                textContent += `\n\n${I18n.t('urce.common.Type')}: ${I18n.t('urce.common.Static')}`;
             }
             else if (err.commentList) {
                 const commentListInfo = getCommentListInfo(err.commentList);
-                htmlOut += `\n\n${I18n.t('urce.common.CommentList')}: ${commentListInfo.name}`
+                textContent += `\n\n${I18n.t('urce.common.CommentList')}: ${commentListInfo.name}`
                     + `\n${I18n.t('urce.common.ListOwner')}: ${commentListInfo.listOwner}`;
             }
         }
-        htmlOut += '</div>';
-        $('#_commentList').empty().append(htmlOut);
-        WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, htmlOut);
+        const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divLoading', textContent });
+        document.getElementById('_commentList')?.replaceChildren(divElemRoot);
+        WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, divElemRoot.outerHTML);
         maskBoxes(undefined, true, err.phase, err.maskUrPanel);
     }
 
@@ -4059,7 +4333,7 @@
             ) {
                 logDebug('Enabling MOs.');
                 if (!_saveButtonObserver.isObserving) {
-                    _saveButtonObserver.observe(document.querySelector('#toolbar .js-save-popover-target'), {
+                    _saveButtonObserver.observe(document.querySelector('wz-button[id="save-button"]'), {
                         childList: false, attributes: true, attributeOldValue: true, characterData: false, characterDataOldValue: false, subtree: false
                     });
                     _saveButtonObserver.isObserving = true;
@@ -4077,7 +4351,7 @@
                     _urMarkerObserver.isObserving = true;
                 }
                 if (!_urceSidepanelContentObserver.isObserving) {
-                    _urceSidepanelContentObserver.observe($('#sidepanel-urc-e').parent()[0], {
+                    _urceSidepanelContentObserver.observe(document.getElementById('sidepanel-urc-e').parentElement, {
                         childList: false, attributes: true, attributeOldValue: true, characterData: false, characterOldValue: false, subtree: false
                     });
                     _urceSidepanelContentObserver.isObserving = true;
@@ -4135,302 +4409,629 @@
 
     function injectCss() {
         logDebug('Injecting CSS.');
-        $('<style = type="text/css">'
-            // Comments tab
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:11px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-commentListName { padding-top:5px; font-size:10px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:12px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-icon { cursor:default; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment { padding:0px 4px 0px 4px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:before, #panel-urce-comments .URCE-divComment.hover:after { '
-            + '     content:""; position:absolute; bottom:-2px; width:0px; height:2px; transition:all 0.2s ease-in-out; transition-duration:0.5s; opacity:0;'
-            + '}'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:before { left:calc(50%); background-color:#000000; margin-right:5px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:after { right:calc(50%); background-color:#000000; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:before { left:calc(50%); background-color:#008F00; margin-right:5px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:after { right:calc(50%); background-color:#008F00;}'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:before { left:calc(50%); background-color:#E68A00; margin-right:5px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:after { right:calc(50%); background-color:#E68A00; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover { cursor:pointer; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.URCE-blankLine:hover { cursor:default; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:hover:after { width:100%; opacity:1; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:hover:before { width:100%; opacity:1; margin-right:5px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover.expand:after { width:50%; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover.expand:before { width:50%; margin-right:5px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-solvedLink { color:#008F00; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-niLink { color:#E68A00; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-openLink { color:#000000; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-top:4px; height:14px; float:right; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-group_body { line-height: 15px; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-group_body.urStyle { padding-left:23px !important; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; }'
-            + '#sidepanel-urc-e #panel-urce-comments .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; padding-left:16px; }'
-            // Settings tab
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-divDefaultSettings {'
-            + '     background-color:lightgray; border-top:1px solid gray; border-bottom:1px solid gray; margin-top:8px; text-align:center; font-size:10px; font-weight:600;'
-            + '     text-transform:uppercase;'
-            + '}'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-daysInput { width:38px; height:20px; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-textInput { width:175px; height:20px; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-textInput2 { width:75px; height:20px; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:10px;}'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-subHeading { font-weight:600; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 16px !important; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst.urceDisabled, .URCE-controls.URCE-textFirst.urceDisabled, div.URCE-label.urceDisabled { color:#808080; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline { display:inline; padding-left:3px; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline.urceDisabled { display:inline; padding-left:2px; cursor:default; color:#808080; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"][disabled] { margin:2px; vertical-align:middle; cursor:default; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls select { height:22px; vertical-align:middle; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080;  display:inline-block; position:relative; }'
-            + '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:11px; text-align:right; }'
-            // Tools tab
-            + '#sidepanel-urc-e #panel-urce-tools .URCE-divCC { text-align:center; }'
-            + '#sidepanel-urc-e #panel-urce-tools .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }'
-            + '#sidepanel-urc-e #panel-urce-tools .urceToolsButtonFile {'
-            + '     font-size:11px; background-color:lightgray; border:1px solid gray; cursor:default; height:22px; margin-top:6px; border-radius:4px;'
-            + '}'
-            + '#sidepanel-urc-e #panel-urce-tools .URCE-divRestoreFileError { font-weight:600; margin:6px; font-size:11px; text-align:left; }'
-            + '#sidepanel-urc-e #panel-urce-tools #urceGSheetCreateConvert { margin-top:5px; }'
-            // disable WME
-            + '#urce-disableWme.URCE-disableWme-main { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:2000; }'
-            + '#urce-disableWme #urce-disableWme-text.URCE-disableWme-text {'
-            + '     position:absolute; padding:8px; top:50%; left:50%; transform:translate(-50%,-50%); border:2px solid black; border-radius:5px;box-shadow:5px 5px 10px black;'
-            + '     background-color:#2F96B4; color:white; z-index:20001;'
-            + '}'
-            + '#urce-disableWme #urce-disableWme-text .URCE-disableWme-text-header { border-bottom:1px solid;padding: 0 5px 5px 5px;font-size: 18px;text-align:center;font-weight: 600; }'
-            + '#urce-disableWme #urce-disableWme-text .URCE-disableWme-text-body { border-bottom: 1px solid;padding: 5px 0 0 0; }'
-            + '#urce-disableWme #urce-disableWme-text .URCE-disableWme-text-footer { padding-top:5px; text-align:center; }'
-            + '#urce-disableWme #urce-disableWme-text li { font-weight:600; font-size:13px; }'
-            + '#urce-disableWme #urce-disableWme-text p { font-weight:normal; margin:0; font-size:13px; }'
-            + '#urce-disableWme #urce-disableWme-text a { cursor:pointer; }'
-            // Common
-            + '.urceToolsButton {'
-            + '     font-size:11px; margin-left:10px; background-color:lightgray; border:none !important; cursor:default; height:22px; border-radius:4px; border:1px solid gray;'
-            + '}'
-            + '.urceToolsButton.active, .urceToolsButtonFile:hover, .urceToolsButton:hover { background-color:gray !important; }'
-            + '#sidepanel-urc-e .URCE-divDismiss {'
-            + '     display:inline-block; float:right; width:16px; height:16px; margin-top:-12px; border-radius:50%; border:1px solid black; background-color:white; text-align:center; cursor:pointer;'
-            + '}'
-            + '#sidepanel-urc-e .URCE-divWarningBox { background-color:indianred; border:1px solid silver; margin:6px 0 6px 0; font-size:12px; border-radius:4px; padding:5px; font-weight:600; }'
-            + '#sidepanel-urc-e .URCE-expandCollapseAll { font-size:10px; margin-bottom:-10px; text-align:right; }'
-            + '#sidepanel-urc-e .URCE-expandCollapseAll.urStyle { margin-bottom:unset !important; }'
-            + '#sidepanel-urc-e .URCE-expandCollapseAllItem { display:inline; cursor:pointer; }'
-            + '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:12px; margin-right:4px; }'
-            + '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; }'
-            + '#sidepanel-urc-e .URCE-field.urStyle { border:unset !important; padding:unset !important; border-radius:unset !important; }'
-            + '#sidepanel-urc-e .URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }'
-            + '#sidepanel-urc-e .URCE-legend.urStyle {'
-            + '     border-bottom-style:unset !important; margin-bottom:2px !important; width:100% !important; background-color:#F6F7F7 !important; line-height:20px !important;'
-            + '     padding:0 2px 0 2px !important; border-top:1px solid #C0C0C0 !important; border-bottom:1px solid #C0C0C0 !important;'
-            + '}'
-            + '#sidepanel-urc-e .URCE-divCC { /* padding-top:2px !important; */ }'
-            + '#sidepanel-urc-e .URCE-label { white-space:pre-line; margin:0 0 0 0; }'
-            + '#sidepanel-urc-e .URCE-span { font-size:13px; font-weight:600; }'
-            + '#sidepanel-urc-e .URCE-spanTitle { font-size:14px; font-weight:600; }'
-            + '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:11px; color:#aaa; }'
-            + '#sidepanel-urc-e .URCE-divTabs { padding-right:5px; height:calc(100vh - var(--height-offset)); }'
-            + '#sidepanel-urc-e .URCE-navTabs { padding:0 0 6px; }'
-            + '#sidepanel-urc-e .URCE-navTabs li { flex-grow:1 !important; }' // Compatibility with FUME "Compress/enhance side panel contents" setting
-            + '#panel-urce-comments { padding: 0px !important; width:100% !important; }'
-            + '#panel-urce-settings { padding: 0px !important; width:100% !important; }'
-            + '#panel-urce-tools { padding: 0px !important; width:100% !important; }'
-            // Main Tabs
-            + '.URCE-tabIcon { margin-bottom:3px; width:18px; }'
-            + '.URCE-urFilteringToggleBtn { margin-left:4px; cursor:pointer; font-size:13px; }'
-            + '.URCE-spinner { margin-left:2px; color:lightgray; }'
-            // urceDiv
-            + '#urceDiv { position:absolute; visibility:hidden; top:0; left:0; z-index:15000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px;'
-            + '     box-shadow:5px 5px 10px silver;'
-            + '}'
-            + '#urceDiv hr { border-top:1px solid #000000; }'
-            + '#urceDiv .urceDivCloseButton { float:right; cursor:pointer; padding:2px 6px; margin-top:-15px; margin-right:-15px; background-color:aliceblue; border-width:3px; border-style:solid;'
-            + '     border-radius:10px; box-shadow: 5px 5px 10px silver; font-weight:600;'
-            + '}'
-            + '#urceDiv .urceDivContent { padding:5px 15px 0px 5px; }'
-            + '#urceDiv .urceDivDisablePopups { float:right; cursor:pointer; margin-top:-12px; margin-right:10px; font-size:10px; text-decoration:underline; }'
-            // UR panel Manipulation
-            + '#panel-container .mapUpdateRequest.panel { width:380px; max-height:87vh; }'
-            + '#panel-container .mapUpdateRequest.panel>* { max-height:87vh; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment-list { padding: 0px 6px; margin-bottom: 6px; max-height: 26vh; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .new-comment-form .new-comment-text { margin-bottom: 0px; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment .comment-title .date.urce { display: flex; justify-content: flex-end; margin-top: -4px; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit .header { padding-top: 5px; padding-bottom: 5px; font-size: 12px; line-height: 14px; padding-right: 0px; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit .header .main-title { font-size: 14px; line-height: 14px; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit .header .dot { top: 6px; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit .section .content { padding: 5px 12px; font-size: 12px; line-height: 14px; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit .section .content .URCE-divDesc { max-height: 82px; overflow-y: auto; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit .section .title { padding: 0 6px 0 6px; font-size: 13px; line-height: 13px; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .controls-container { margin-top: -2px; margin-bottom: -2px; text-align: center; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit .more-info .more-info-checkbox label { font-size: 12px; line-height: 14px; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .controls-container label[for|="state"] { height: 22px; width: unset; min-width: 162px; line-height: 26px; margin: 2px; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="open"] .actions .controls-container label[for="state-solved"]  { display: inline-block; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="open"] .actions .controls-container label[for|="state-not-identified"] { display: inline-block; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="solved"] .actions .controls-container label[for|="state-open"], '
-            + '     #panel-container .mapUpdateRequest.panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-open"] { display: inline-block !important; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-not-identified"], '
-            + '     #panel-container .mapUpdateRequest.panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-solved"] { display: none !important; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .navigation .waze-plain-btn { height: 30px; line-height: 18px; font-size: 13px; }'
-            + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .no-permissions-alert { margin-bottom: 8px; margin-top: 2px; padding: 4px; }'
-            // Map content
-            + '.urceCountersPill { color:black; position:absolute; top:30px; display:block; width:auto; white-space:nowrap; padding-left:5px; padding-right:5px; border:1px solid; border-radius:25px; }'
-            // URCE Lightbox
-            + '.urceMaskLightbox { position:absolute; width:100%; height:100%; background:rgba(0,0,0,.75); color:white; display:flex; align-items:center; justify-content:center; }'
-            + '.urceMaskLightbox .text { font-weight:800; }'
-            + '</style>').appendTo('head');
+        document.head.appendChild(setElemAttrs(_elems.style.cloneNode(false), {
+            type: 'text/css',
+            textContent: ''
+                // Comments tab
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-Comments { text-decoration:none; cursor:pointer; color: #000000; font-size:11px; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-commentListName { padding-top:5px; font-size:10px; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divLoading { text-align:left; color:red; font-size:12px; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divCCLinks { text-align:center; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divIcon { height:0px; position:relative; top:-3px; left:-100px; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-icon { cursor:default; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment { padding:0px 4px 0px 4px; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:before, #panel-urce-comments .URCE-divComment.hover:after { '
+                + '     content:""; position:absolute; bottom:-2px; width:0px; height:2px; transition:all 0.2s ease-in-out; transition-duration:0.5s; opacity:0;'
+                + '}'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:before { left:calc(50%); background-color:#000000; margin-right:5px; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-openLink:after { right:calc(50%); background-color:#000000; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:before { left:calc(50%); background-color:#008F00; margin-right:5px; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-solvedLink:after { right:calc(50%); background-color:#008F00;}'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:before { left:calc(50%); background-color:#E68A00; margin-right:5px; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.expand.URCE-niLink:after { right:calc(50%); background-color:#E68A00; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover { cursor:pointer; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover.URCE-blankLine:hover { cursor:default; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:hover:after { width:100%; opacity:1; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment:hover:before { width:100%; opacity:1; margin-right:5px; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover.expand:after { width:50%; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divComment.hover:hover.expand:before { width:50%; margin-right:5px; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-solvedLink { color:#008F00; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-niLink { color:#E68A00; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-openLink { color:#000000; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-doubleClickIcon { padding-top:4px; height:14px; float:right; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-divDoubleClick { display:inline; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-span { cursor:pointer; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-group_body { line-height: 15px; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-group_body.urStyle { padding-left:23px !important; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; }'
+                + '#sidepanel-urc-e #panel-urce-comments .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; padding-left:16px; }'
+                // Settings tab
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-divDefaultSettings {'
+                + '     background-color:lightgray; border-top:1px solid gray; border-bottom:1px solid gray; margin-top:8px; text-align:center; font-size:10px; font-weight:600;'
+                + '     text-transform:uppercase;'
+                + '}'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningPre { margin-left:3px; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-divWarning { display:inline; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-divWarningTitle { color:red; text-decoration:underline; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-daysInput { width:38px; height:20px; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-textInput { width:175px; height:20px; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-textInput2 { width:75px; height:20px; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-controls { padding:5px 0 5px 0; font-size:10px;}'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-subHeading { font-weight:600; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst, .URCE-controls.URCE-textFirst { padding:0 0 0 16px !important; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-textFirst.urceDisabled, .URCE-controls.URCE-textFirst.urceDisabled, div.URCE-label.urceDisabled { color:#808080; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline { display:inline; padding-left:3px; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-controls .URCE-divDaysInline.urceDisabled { display:inline; padding-left:2px; cursor:default; color:#808080; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"] { margin:2px; vertical-align:middle; cursor:pointer; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-controls input[type="checkbox"][disabled] { margin:2px; vertical-align:middle; cursor:default; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-controls select { height:22px; vertical-align:middle; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-controls label { font-weight:normal; cursor:pointer; display:inline-block; position:relative; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-controls label.urceDisabled { font-weight:normal; cursor:default; color:#808080;  display:inline-block; position:relative; }'
+                + '#sidepanel-urc-e #panel-urce-settings .URCE-spreadsheetLink { font-size:11px; text-align:right; }'
+                // Tools tab
+                + '#sidepanel-urc-e #panel-urce-tools .URCE-divCC { text-align:center; }'
+                + '#sidepanel-urc-e #panel-urce-tools .URCE-span { font-size:12px; text-transform:uppercase; cursor:pointer; }'
+                + '#sidepanel-urc-e #panel-urce-tools .urceToolsButtonFile {'
+                + '     font-size:11px; background-color:lightgray; border:1px solid gray; cursor:default; height:22px; margin-top:6px; border-radius:4px;'
+                + '}'
+                + '#sidepanel-urc-e #panel-urce-tools .URCE-divRestoreFileError { font-weight:600; margin:6px; font-size:11px; text-align:left; }'
+                + '#sidepanel-urc-e #panel-urce-tools #urceGSheetCreateConvert { margin-top:5px; }'
+                // disable WME
+                + '#urce-disableWme.URCE-disableWme-main { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:2000; }'
+                + '#urce-disableWme #urce-disableWme-text.URCE-disableWme-text {'
+                + '     position:absolute; padding:8px; top:50%; left:50%; transform:translate(-50%,-50%); border:2px solid black; border-radius:5px;box-shadow:5px 5px 10px black;'
+                + '     background-color:#2F96B4; color:white; z-index:20001;'
+                + '}'
+                + '#urce-disableWme #urce-disableWme-text .URCE-disableWme-text-header { border-bottom:1px solid;padding: 0 5px 5px 5px;font-size: 18px;text-align:center;font-weight: 600; }'
+                + '#urce-disableWme #urce-disableWme-text .URCE-disableWme-text-body { border-bottom: 1px solid;padding: 5px 0 0 0; }'
+                + '#urce-disableWme #urce-disableWme-text .URCE-disableWme-text-footer { padding-top:5px; text-align:center; }'
+                + '#urce-disableWme #urce-disableWme-text li { font-weight:600; font-size:13px; }'
+                + '#urce-disableWme #urce-disableWme-text p { font-weight:normal; margin:0; font-size:13px; }'
+                + '#urce-disableWme #urce-disableWme-text a { cursor:pointer; }'
+                // Common
+                + '.urceToolsButton {'
+                + '     font-size:11px; margin-left:10px; background-color:lightgray; border:none !important; cursor:default; height:22px; border-radius:4px; border:1px solid gray;'
+                + '}'
+                + '.urceToolsButton.active, .urceToolsButtonFile:hover, .urceToolsButton:hover { background-color:gray !important; }'
+                + '#sidepanel-urc-e .URCE-divDismiss {'
+                + '     display:inline-block; float:right; width:20px; height:20px; margin-top:-12px; border-radius:50%; border:1px solid black; background-color:white; text-align:center; cursor:pointer;'
+                + '}'
+                + '#sidepanel-urc-e .URCE-divWarningBox { background-color:indianred; border:1px solid silver; margin:6px 0 6px 0; font-size:12px; border-radius:4px; padding:5px; font-weight:600; }'
+                + '#sidepanel-urc-e .URCE-expandCollapseAll { font-size:10px; margin-bottom:-10px; text-align:right; }'
+                + '#sidepanel-urc-e .URCE-expandCollapseAll.urStyle { margin-bottom:unset !important; }'
+                + '#sidepanel-urc-e .URCE-expandCollapseAllItem { display:inline; cursor:pointer; }'
+                + '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:12px; margin-right:4px; }'
+                + '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; }'
+                + '#sidepanel-urc-e .URCE-field.urStyle { border:unset !important; padding:unset !important; border-radius:unset !important; }'
+                + '#sidepanel-urc-e .URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }'
+                + '#sidepanel-urc-e .URCE-legend.urStyle {'
+                + '     border-bottom-style:unset !important; margin-bottom:2px !important; width:100% !important; background-color:#F6F7F7 !important; line-height:20px !important;'
+                + '     padding:0 2px 0 2px !important; border-top:1px solid #C0C0C0 !important; border-bottom:1px solid #C0C0C0 !important;'
+                + '}'
+                + '#sidepanel-urc-e .URCE-divCC { /* padding-top:2px !important; */ }'
+                + '#sidepanel-urc-e .URCE-label { white-space:pre-line; margin:0 0 0 0; }'
+                + '#sidepanel-urc-e .URCE-span { font-size:13px; font-weight:600; }'
+                + '#sidepanel-urc-e .URCE-spanTitle { font-size:14px; font-weight:600; }'
+                + '#sidepanel-urc-e .URCE-spanVersion { font-size:11px; margin-left:11px; color:#aaa; }'
+                + '#sidepanel-urc-e .URCE-divTabs { padding-right:5px; height:calc(100vh - var(--height-offset)); }'
+                + '#sidepanel-urc-e .URCE-navTabs { padding:0 0 6px; }'
+                + '#sidepanel-urc-e .URCE-navTabs li { flex-grow:1 !important; }' // Compatibility with FUME "Compress/enhance side panel contents" setting
+                + '#panel-urce-comments { padding: 0px !important; width:100% !important; }'
+                + '#panel-urce-settings { padding: 0px !important; width:100% !important; }'
+                + '#panel-urce-tools { padding: 0px !important; width:100% !important; }'
+                // Main Tabs
+                + '.URCE-tabIcon { margin-bottom:3px; width:18px; }'
+                + '.URCE-urFilteringToggleBtn { margin-left:4px; cursor:pointer; font-size:13px; }'
+                + '.URCE-spinner { margin-left:2px; color:lightgray; }'
+                // urceDiv
+                + '#urceDiv { position:absolute; visibility:hidden; top:0; left:0; z-index:15000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px;'
+                + '     box-shadow:5px 5px 10px silver;'
+                + '}'
+                + '#urceDiv hr { border-top:1px solid #000000; }'
+                + '#urceDiv .urceDivCloseButton { float:right; cursor:pointer; padding:2px 6px; margin-top:-15px; margin-right:-15px; background-color:aliceblue; border-width:3px; border-style:solid;'
+                + '     border-radius:10px; box-shadow: 5px 5px 10px silver; font-weight:600;'
+                + '}'
+                + '#urceDiv .urceDivContent { padding:5px 15px 0px 5px; }'
+                + '#urceDiv .urceDivDisablePopups { float:right; cursor:pointer; margin-top:-12px; margin-right:10px; font-size:10px; text-decoration:underline; }'
+                // UR panel Manipulation
+                + '#panel-container .mapUpdateRequest.panel { width:380px; max-height:87vh; }'
+                + '#panel-container .mapUpdateRequest.panel>* { max-height:87vh; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment-list { padding: 0px 6px; margin-bottom: 6px; max-height: 26vh; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .new-comment-form .new-comment-text { margin-bottom: 0px; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment .comment-title .date.urce { display: flex; justify-content: flex-end; margin-top: -4px; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .header { padding-top: 5px; padding-bottom: 5px; font-size: 12px; line-height: 14px; padding-right: 0px; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .header .main-title { font-size: 14px; line-height: 14px; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .header .dot { top: 6px; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .section .content { padding: 5px 12px; font-size: 12px; line-height: 14px; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .section .content .URCE-divDesc { max-height: 82px; overflow-y: auto; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .section .title { padding: 0 6px 0 6px; font-size: 13px; line-height: 13px; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .controls-container { margin-top: -2px; margin-bottom: -2px; text-align: center; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .more-info .more-info-checkbox label { font-size: 12px; line-height: 14px; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .controls-container label[for|="state"] { height: 22px; width: unset; min-width: 162px; line-height: 26px; margin: 2px; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="open"] .actions .controls-container label[for="state-solved"]  { display: inline-block; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="open"] .actions .controls-container label[for|="state-not-identified"] { display: inline-block; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="solved"] .actions .controls-container label[for|="state-open"], '
+                + '     #panel-container .mapUpdateRequest.panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-open"] { display: inline-block !important; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-not-identified"], '
+                + '     #panel-container .mapUpdateRequest.panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-solved"] { display: none !important; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .navigation .waze-plain-btn { height: 30px; line-height: 18px; font-size: 13px; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .no-permissions-alert { margin-bottom: 8px; margin-top: 2px; padding: 4px; }'
+                // Map content
+                + '.urceCountersPill { color:black; position:absolute; top:30px; display:block; width:auto; white-space:nowrap; padding-left:5px; padding-right:5px; border:1px solid; border-radius:25px; }'
+                // URCE Lightbox
+                + '.urceMaskLightbox { position:absolute; width:100%; height:100%; background:rgba(0,0,0,.75); color:white; display:flex; align-items:center; justify-content:center; }'
+                + '.urceMaskLightbox .text { font-weight:800; }'
+        }));
     }
 
     function initCommentsTab() {
         logDebug('Initializing Comments tab.');
-        $('#panel-urce-comments').empty().append(''
-            + `<div id="_divZoomOutLinks" class="URCE-divCCLinks" style="${(_settings.hideZoomOutLinks ? 'display:none;' : '')}">`
-            + `     <div id="urceIcon" class="URCE-divIcon"><img src="${GM_info.script.icon}" class="URCE-icon"></div>`
-            + `     <a id="zoomOutLink1" class="URCE-Comments" zoomTo="12" title="${I18n.t('urce.commentsTab.ZoomOutLink1Title')}">${I18n.t('urce.commentsTab.ZoomOutLink1')}</a><br>`
-            + `     <a id="zoomOutLink2" class="URCE-Comments" zoomTo="14" title="${I18n.t('urce.commentsTab.ZoomOutLink2Title')}">${I18n.t('urce.commentsTab.ZoomOutLink2')}</a><br>`
-            + `     <a id="zoomOutLink3" class="URCE-Comments" zoomTo="15" title="${I18n.t('urce.commentsTab.ZoomOutLink3Title')}">${I18n.t('urce.commentsTab.ZoomOutLink3')}</a><br>`
-            + '</div>'
-            + '<div id="_commentList" class="URCE-divCC"></div>');
-        $('a[id^="zoomOutLink"]').off().on('click', function () {
-            if ($('#panel-container .mapUpdateRequest .top-section .close-panel').length > 0)
-                autoCloseUrPanel();
-            W.map.getOLMap().zoomTo(parseInt(this.getAttribute('zoomTo')));
-        });
+        const docFrags = document.createDocumentFragment(),
+            zoomOutLinkClicked = function () {
+                if (document.querySelector('#panel-container .mapUpdateRequest .top-section .close-panel'))
+                    autoCloseUrPanel();
+                W.map.getOLMap().zoomTo(parseInt(this.getAttribute('zoomTo')));
+            };
+        const imgDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceIcon', class: 'URCE-divIcon' }),
+            contentHeaderDiv = setElemAttrs(_elems.div.cloneNode(false), { id: '_divZoomOutLinks', class: 'URCE-divCCLinks', style: _settings.hideZoomOutLinks ? 'display:none;' : '' });
+        imgDiv.replaceChildren(setElemAttrs(_elems.img.cloneNode(false), { src: GM_info.script.icon, class: 'URCE-icon' }));
+        contentHeaderDiv.appendChild(imgDiv);
+
+        contentHeaderDiv.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+            id: 'zoomOutLink1', class: 'URCE-Comments', zoomTo: '12', title: I18n.t('urce.commentsTab.ZoomOutLink1Title'), textContent: I18n.t('urce.commentsTab.ZoomOutLink1')
+        }, [{ click: zoomOutLinkClicked }]));
+        contentHeaderDiv.appendChild(_elems.br.cloneNode(false));
+        contentHeaderDiv.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+            id: 'zoomOutLink2', class: 'URCE-Comments', zoomTo: '14', title: I18n.t('urce.commentsTab.ZoomOutLink2Title'), textContent: I18n.t('urce.commentsTab.ZoomOutLink2')
+        }, [{ click: zoomOutLinkClicked }]));
+        contentHeaderDiv.appendChild(_elems.br.cloneNode(false));
+        contentHeaderDiv.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+            id: 'zoomOutLink3', class: 'URCE-Comments', zoomTo: '15', title: I18n.t('urce.commentsTab.ZoomOutLink3Title'), textContent: I18n.t('urce.commentsTab.ZoomOutLink3')
+        }, [{ click: zoomOutLinkClicked }]));
+        contentHeaderDiv.appendChild(_elems.br.cloneNode(false));
+        docFrags.appendChild(contentHeaderDiv);
+        docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), { id: '_commentList', class: 'URCE-divCC' }));
+        document.getElementById('panel-urce-comments').replaceChildren(docFrags);
         if (_needTranslation)
-            alertBoxInPanel(`URC-E does not currently have a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>). Translations are setup on a Google Sheet, so they are simple to do.<br><br>If you would like to provide a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>), please contact ${_SCRIPT_AUTHOR} via forum PM or Discord, or click reply on the forum thread:<br><a href="https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278" target="_blank">https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278</a>`, undefined, true, 9998);
+            alertBoxInPanel(`URC-E does not currently have a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>). Translations are setup on a Google Sheet, so they are simple to do.<br><br>If you would like to provide a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>), please contact ${_SCRIPT_AUTHOR} via forum PM or Discord, or click reply on the <a href="https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278" target="_blank">forum thread.</a>`, undefined, true, 9998);
     }
 
     function initToolsTab() {
         logDebug('Initializing Tools tab.');
-        const urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '';
-        $('#panel-urce-tools').empty().append(''
-            + `<div id="expandCollapseAllTools" class="URCE-expandCollapseAll${urStyle}">`
-            + `     <div id="URCE-expandAllTools" class="URCE-expandCollapseAllItem">${I18n.t('urce.common.ExpandAll')}</div>`
-            + '     <div style="display:inline;"> : </div>'
-            + `     <div id="URCE-collapseAllTools" class="URCE-expandCollapseAllItem">${I18n.t('urce.common.CollapseAll')}</div>`
-            + '</div>'
-            + `<fieldset id="urce-tools-fieldset-settings" class="URCE-field${urStyle}">`
-            + `     <legend id="urce-tools-legend-settings" class="URCE-legend${urStyle}"><i class="fa fa-fw fa-chevron-down URCE-chevron"></i><span class="URCE-span">${I18n.t('urce.tabs.Settings')}</span></legend>`
-            + '     <div class="URCE-controls URCE-divCC">'
-            + `         <button id="_butbackupSettings" urceprefs="tools" class="urceToolsButton" title="${I18n.t('urce.tools.BackupSettingsTitle')}">${I18n.t('urce.common.Backup')}</button>`
-            + `         <button id="_butrestoreSettings" urceprefs="tools" class="urceToolsButton" title="${I18n.t('urce.tools.RestoreSettingsTitle')}">${I18n.t('urce.common.Restore')}</button>`
-            + `         <button id="_butresetSettings" urceprefs="tools" class="urceToolsButton" title="${I18n.t('urce.tools.ResetSettingsTitle')}">${I18n.t('urce.common.Reset')}</button>`
-            + '         <div id="urceRestoreSettingsFile" style="display:none;">'
-            + `             <input type="file" id="_filerestoreSettings" urceprefs="tools" class="urceToolsButtonFile" title="${I18n.t('urce.tools.RestoreSettingsSelectFileTitle')}">`
-            + `             <div id="urceRestoreSettingsFileError" class="URCE-divRestoreFileError error" style="display:none;">* ${I18n.t('urce.tools.RestoreSettingsFileError')}</div>`
-            + '         </div>'
-            + '     </div>'
-            + '</fieldset>'
-            + `<fieldset id="urce-tools-fieldset-customGoogleSpreadsheet" class="URCE-field${urStyle}">`
-            + `     <legend id="urce-tools-legend-customGoogleSpreadsheet" class="URCE-legend${urStyle}"><i class="fa fa-fw fa-chevron-down URCE-chevron"></i><span class="URCE-span">${I18n.t('urce.tools.CustomGoogleSpreadsheet')}</span></legend>`
-            + '     <div id="urceGSheetCreateConvert" urceprefs="tools">'
-            + `         <button id="_butconvertCurrentCustom" urceprefs="tools" class="urceToolsButton" title="${I18n.t('urce.tools.ConvertCurrentCustomTitle')}">${I18n.t('urce.tools.ConvertCurrentCustom')}</button>`
-            + `         <button id="_butcreateNewCustom" urceprefs="tools" class="urceToolsButton" title="${I18n.t('urce.tools.CreateNewCustomTitle')}">${I18n.t('urce.tools.CreateNewCustom')}</button>`
-            + '     </div>'
-            + '</fieldset>');
-        $('#_butbackupSettings').off().on('click', () => {
-            saveSettingsToStorage();
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([JSON.stringify({ URCE: _settings })], { type: 'application/json' }));
-            a.download = `urce-settings-v${_SCRIPT_VERSION}.json`;
-            a.click();
-            $(a).remove();
-        });
-        $('#_butrestoreSettings').off().on('click', function () {
-            if (this.className.indexOf('active') === -1) {
-                $(this).addClass('active');
-                $('#urceRestoreSettingsFile').show();
-            }
-            else {
-                $(this).removeClass('active');
-                $('#_filerestoreSettings').val('');
-                $('#urceRestoreSettingsFile').hide().removeClass('error');
-                $('#urceRestoreSettingsFileError').empty();
-            }
-        });
-        $('#_butresetSettings').off().on('click', () => {
-            WazeWrap.Alerts.confirm(
-                _SCRIPT_SHORT_NAME,
-                I18n.t('urce.prompts.ResetSettingsConfirmation'),
-                () => { loadSettingsFromStorage('resetSettings', true); },
-                () => { },
-                I18n.t('urce.common.Yes'),
-                I18n.t('urce.common.No')
-            );
-        });
-        $('#_filerestoreSettings').off().on('change', function () {
-            const file = this.files[0];
-            if (((file.type === 'application/json') || (file.type === 'text/json')) && (file.size < 102400)) {
-                const reader = new FileReader();
-                reader.onload = function () {
-                    let restoreSettings;
-                    try {
-                        restoreSettings = $.parseJSON(this.result);
+        const docFrags = document.createDocumentFragment(),
+            urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '',
+            expandCollapseAll = function () {
+                const legends = document.querySelectorAll('legend[id^="urce-tools-legend"]');
+                for (let idx = 0, { length } = legends; idx < length; idx++) {
+                    if (this.id === 'URCE-expandAllTools') {
+                        if (legends[idx].nextElementSibling.classList.contains('collapse'))
+                            legends[idx].dispatchEvent(new MouseEvent('click', { bubbles: true }));
                     }
-                    catch (error) {
-                        logError('Unable to parse the input file.', error);
-                        return $('#_filerestoreSettings').val('');
+                    else if (this.id === 'URCE-collapseAllTools') {
+                        if (!legends[idx].nextElementSibling.classList.contains('collapse'))
+                            legends[idx].dispatchEvent(new MouseEvent('click', { bubbles: true }));
                     }
-                    if (!restoreSettings.hasOwnProperty('URCE')) {
-                        logWarning('Invalid URCE settings JSON file.');
-                        $('#urceRestoreSettingsFileError').show();
-                        $('#urceRestoreSettingsFile').addClass('error');
-                    }
-                    else {
-                        loadSettingsFromStorage(restoreSettings.URCE, false);
-                    }
-                    return true;
-                };
-                reader.readAsText(file);
-            }
-            else {
-                logWarning('Invalid URCE settings JSON file.');
-                $('#urceRestoreSettingsFileError').show();
-                $('#urceRestoreSettingsFile').addClass('error');
-            }
-        });
-        $('#URCE-expandAllTools, #URCE-collapseAllTools').off().on('click', function () {
-            const $legends = $('legend[id^="urce-tools-legend"');
-            for (let idx = 0; idx < $legends.length; idx++) {
-                if (this.id === 'URCE-expandAllTools') {
-                    if ($legends[idx].nextElementSibling.className.indexOf('collapse') > -1)
-                        $($legends[idx]).click();
                 }
-                else if (this.id === 'URCE-collapseAllTools') {
-                    if ($legends[idx].nextElementSibling.className.indexOf('collapse') === -1)
-                        $($legends[idx]).click();
+            },
+            backupSettingsClick = () => {
+                saveSettingsToStorage();
+                const a = _elems.a.cloneNode(false);
+                a.href = URL.createObjectURL(new Blob([JSON.stringify({ URCE: _settings })], { type: 'application/json' }));
+                a.download = `urce-settings-v${_SCRIPT_VERSION}.json`;
+                a.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                a.remove();
+            },
+            restoreSettingsClick = function () {
+                if (!this.classList.contains('active')) {
+                    this.classList.add('active');
+                    document.getElementById('urceRestoreSettingsFile').style.display = '';
                 }
-            }
-        });
-        $('legend[id^="urce-tools-legend-"]').off().on('click', function () {
-            $($(this).children()[0]).toggleClass('fa-chevron-down fa-chevron-right');
-            $($(this).siblings()[0]).toggleClass('collapse');
-        });
-        $('#_butconvertCurrentCustom').off().on('click', () => createStaticToGoogleSheet(true));
-        $('#_butcreateNewCustom').off().on('click', () => createStaticToGoogleSheet(false));
+                else {
+                    this.classList.remove('active');
+                    document.getElementById('_filerestoreSettings').value = '';
+                    document.getElementById('urceRestoreSettingsFile').style.display = 'none';
+                    document.getElementById('urceRestoreSettingsFile').classList.remove('error');
+                    const urceRestoreSettingsFileErrorDiv = document.getElementById('urceRestoreSettingsFileError');
+                    urceRestoreSettingsFileErrorDiv.replaceChildren();
+                }
+            },
+            resetSettingsClick = () => {
+                WazeWrap.Alerts.confirm(
+                    _SCRIPT_SHORT_NAME,
+                    I18n.t('urce.prompts.ResetSettingsConfirmation'),
+                    () => { loadSettingsFromStorage('resetSettings', true); },
+                    () => { },
+                    I18n.t('urce.common.Yes'),
+                    I18n.t('urce.common.No')
+                );
+            },
+            inputFileChange = function () {
+                const file = this.files[0];
+                if (((file.type === 'application/json') || (file.type === 'text/json')) && (file.size < 102400)) {
+                    const reader = new FileReader();
+                    reader.onload = function () {
+                        let restoreSettings;
+                        try {
+                            restoreSettings = JSON.parse(this.result);
+                        }
+                        catch (error) {
+                            logError('Unable to parse the input file.', error);
+                            document.getElementById('_filerestoreSettings').value = '';
+                            return;
+                        }
+                        if (!restoreSettings.hasOwnProperty('URCE')) {
+                            logWarning('Invalid URCE settings JSON file.');
+                            document.getElementById('urceRestoreSettingsFileError').style.display = '';
+                            document.getElementById('urceRestoreSettingsFile').classList.add('error');
+                        }
+                        else {
+                            loadSettingsFromStorage(restoreSettings.URCE, false);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+                else {
+                    logWarning('Invalid URCE settings JSON file.');
+                    document.getElementById('urceRestoreSettingsFileError').style.display = '';
+                    document.getElementById('urceRestoreSettingsFile').classList.add('error');
+                }
+            },
+            legendClickToggle = function () {
+                this.firstChild.classList.toggle('fa-chevron-down');
+                this.firstChild.classList.toggle('fa-chevron-right');
+                this.nextSibling.classList.toggle('collapse');
+                saveSettingsToStorage();
+            },
+            buildFieldsetSection = (idTag, textContent, divAttrs = { class: 'URCE-controls URCE-divCC' }) => {
+                const legendElem = setElemAttrs(_elems.legend.cloneNode(false), { id: `urce-tools-legend-${idTag}`, class: `URCE-legend${urStyle}` }, [{ click: legendClickToggle }]);
+                legendElem.appendChild(setElemAttrs(_elems.i.cloneNode(false), { class: 'fa fa-fw fa-chevron-down URCE-chevron' }));
+                legendElem.appendChild(setElemAttrs(_elems.span.cloneNode(false), { class: 'URCE-span', textContent }));
+                const fieldsetElem = setElemAttrs(_elems.fieldset.cloneNode(false), { id: `urce-tools-fieldset-${idTag}`, class: `URCE-field${urStyle}` });
+                fieldsetElem.appendChild(legendElem);
+                const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), divAttrs);
+                fieldsetElem.appendChild(divElemRoot);
+                return { fieldsetElem, contentDiv: divElemRoot };
+            },
+            convertCurrentCustomClick = () => createStaticToGoogleSheet(true),
+            createNewCustomClick = () => createStaticToGoogleSheet(false);
+        const contentHeaderDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'expandCollapseAllTools', class: `URCE-expandCollapseAll${urStyle}` });
+        contentHeaderDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+            id: 'URCE-expandAllTools', class: 'URCE-expandCollapseAllItem', textContent: I18n.t('urce.common.ExpandAll')
+        }, [{ click: expandCollapseAll }]));
+        contentHeaderDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline;', textContent: ' : ' }));
+        contentHeaderDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+            id: 'URCE-collapseAllTools', class: 'URCE-expandCollapseAllItem', textContent: I18n.t('urce.common.CollapseAll')
+        }, [{ click: expandCollapseAll }]));
+        docFrags.appendChild(contentHeaderDiv);
+        let { fieldsetElem, contentDiv } = buildFieldsetSection('settings', I18n.t('urce.tabs.Settings'));
+        contentDiv.appendChild(setElemAttrs(_elems.button.cloneNode(false), {
+            id: '_butbackupSettings', urceprefs: 'tools', class: 'urceToolsButton', title: I18n.t('urce.tools.BackupSettingsTitle'), textContent: I18n.t('urce.common.Backup')
+        }, [{ click: backupSettingsClick }]));
+        contentDiv.appendChild(setElemAttrs(_elems.button.cloneNode(false), {
+            id: '_butrestoreSettings', urceprefs: 'tools', class: 'urceToolsButton', title: I18n.t('urce.tools.RestoreSettingsTitle'), textContent: I18n.t('urce.common.Restore')
+        }, [{ click: restoreSettingsClick }]));
+        contentDiv.appendChild(setElemAttrs(_elems.button.cloneNode(false), {
+            id: '_butresetSettings', urceprefs: 'tools', class: 'urceToolsButton', title: I18n.t('urce.tools.ResetSettingsTitle'), textContent: I18n.t('urce.common.Reset')
+        }, [{ click: resetSettingsClick }]));
+
+        const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceRestoreSettingsFile', style: 'display:none;' });
+        divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+            type: 'file', id: '_filerestoreSettings', urceprefs: 'tools', class: 'urceToolsButtonFile', title: I18n.t('urce.tools.RestoreSettingsSelectFileTitle')
+        }, [{ change: inputFileChange }]));
+        divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+            id: 'urceRestoreSettingsFileError', class: 'URCE-divRestoreFileError error', style: 'display:none;', textContent: `* ${I18n.t('urce.tools.RestoreSettingsFileError')}`
+        }));
+        contentDiv.appendChild(divElemRoot);
+        docFrags.appendChild(fieldsetElem);
+        ({ fieldsetElem, contentDiv } = buildFieldsetSection('customGoogleSpreadsheet', I18n.t('urce.tabs.Settings'), { id: 'urceGSheetCreateConvert', urceprefs: 'tools' }));
+        contentDiv.appendChild(setElemAttrs(_elems.button.cloneNode(false), {
+            id: '_butconvertCurrentCustom', urceprefs: 'tools', class: 'urceToolsButton', title: I18n.t('urce.tools.ConvertCurrentCustomTitle'), textContent: I18n.t('urce.tools.ConvertCurrentCustom')
+        }, [{ click: convertCurrentCustomClick }]));
+        contentDiv.appendChild(setElemAttrs(_elems.button.cloneNode(false), {
+            id: '_butcreateNewCustom', urceprefs: 'tools', class: 'urceToolsButton', title: I18n.t('urce.tools.CreateNewCustomTitle'), textContent: I18n.t('urce.tools.CreateNewCustom')
+        }, [{ click: createNewCustomClick }]));
+        docFrags.appendChild(fieldsetElem);
+        document.getElementById('panel-urce-tools').replaceChildren(docFrags);
     }
 
     function initSettingsTab() {
         logDebug('Initializing Settings tab.');
-        const urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '',
+        const docFrags = document.createDocumentFragment(),
+            urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '',
+            expandCollapseAll = function () {
+                const legends = document.querySelectorAll('legend[id^="urce-prefs-legend"');
+                for (let idx = 0, { length } = legends; idx < length; idx++) {
+                    if (this.id === 'URCE-expandAllSettings') {
+                        if (legends[idx].nextElementSibling.classList.contains('collapse'))
+                            legends[idx].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    }
+                    else if (this.id === 'URCE-collapseAllSettings') {
+                        if (!legends[idx].nextElementSibling.classList.contains('collapse'))
+                            legends[idx].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    }
+                }
+            },
+            legendClickToggle = function () {
+                this.firstChild.classList.toggle('fa-chevron-down');
+                this.firstChild.classList.toggle('fa-chevron-right');
+                this.nextSibling.classList.toggle('collapse');
+            },
+            commentListSelectionChange = function () {
+                if ((parseInt(this.value) === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
+                    this.value = _currentCommentList;
+                    WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
+                }
+                else {
+                    changeCommentList(parseInt(this.value), false, false);
+                }
+            },
+            commentListStyleSelectionChange = function () {
+                changeCommentListStyle(this.value);
+            },
+            spreadsheetLinkClick = function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                window.open(this.href, '_blank');
+            },
+            urceSettingsCheckboxChange = function () {
+                let otherSettingName;
+                const settingName = this.id.substring(3),
+                    urcePrefs = this.attributes.urceprefs.value;
+                if (settingName === 'hideFollowing')
+                    otherSettingName = 'hideNotFollowing';
+                if (settingName === 'hideNotFollowing')
+                    otherSettingName = 'hideFollowing';
+                if (settingName === 'hideWithDescription')
+                    otherSettingName = 'hideWithoutDescription';
+                if (settingName === 'hideWithoutDescription')
+                    otherSettingName = 'hideWithDescription';
+                if (settingName === 'hideWithCommentsFromMe')
+                    otherSettingName = 'hideWithoutCommentsFromMe';
+                if (settingName === 'hideWithoutCommentsFromMe')
+                    otherSettingName = 'hideWithCommentsFromMe';
+                if (settingName === 'hideFirstCommentByMe')
+                    otherSettingName = 'hideFirstCommentNotByMe';
+                if (settingName === 'hideFirstCommentNotByMe')
+                    otherSettingName = 'hideFirstCommentByMe';
+                if (settingName === 'hideLastCommentByMe')
+                    otherSettingName = 'hideLastCommentNotByMe';
+                if (settingName === 'hideLastCommentNotByMe')
+                    otherSettingName = 'hideLastCommentByMe';
+                if (settingName === 'hideLastCommentByReporter')
+                    otherSettingName = 'hideLastCommentNotByReporter';
+                if (settingName === 'hideLastCommentNotByReporter')
+                    otherSettingName = 'hideLastCommentByReporter';
+                if (settingName === 'replaceNextWithDoneButton')
+                    otherSettingName = 'disableDoneNextButtons';
+                if (settingName === 'disableDoneNextButtons')
+                    otherSettingName = 'replaceNextWithDoneButton';
+                if (otherSettingName) {
+                    if (this.checked && document.getElementById(`_cb${otherSettingName}`).checked) {
+                        _settings[otherSettingName] = false;
+                        document.getElementById(`_cb${otherSettingName}`).checked = false;
+                    }
+                }
+                if (settingName === 'disableDoneNextButtons') {
+                    if (this.checked)
+                        document.querySelector('#panel-container .content .navigation').style.display = 'none';
+                    else
+                        document.querySelector('#panel-container .content .navigation').style.display = '';
+                }
+                if (settingName === 'hideZoomOutLinks') {
+                    if (this.checked)
+                        document.getElementById('_divZoomOutLinks').style.display = 'none';
+                    else
+                        document.getElementById('_divZoomOutLinks').style.display = '';
+                }
+                if (settingName === 'unstackMarkers') {
+                    if (this.checked) {
+                        document.querySelectorAll('[urceprefs$="-unstack"]').forEach((el) => {
+                            el.disabled = false;
+                            el.classList.remove('urceDisabled');
+                        });
+                    }
+                    else {
+                        document.querySelectorAll('[urceprefs$="-unstack"]').forEach((el) => {
+                            el.disabled = true;
+                            el.classList.add('urceDisabled');
+                        });
+                    }
+                }
+                if (settingName === 'autoClickOpenSolvedNi') {
+                    if (document.getElementById('_cbdoubleClickLinkNiComments').checked) {
+                        _settings.doubleClickLinkNiComments = false;
+                        document.getElementById('_cbdoubleClickLinkNiComments').checked = false;
+                        document.getElementById('URCE-divDoubleClickNi').style.display = 'none';
+                    }
+                    if (document.getElementById('_cbdoubleClickLinkOpenComments').checked) {
+                        _settings.doubleClickLinkOpenComments = false;
+                        document.getElementById('_cbdoubleClickLinkOpenComments').checked = false;
+                        document.getElementById('URCE-divDoubleClickOpen').style.display = 'none';
+                    }
+                    if (document.getElementById('_cbdoubleClickLinkSolvedComments').checked) {
+                        _settings.doubleClickLinkSolvedComments = false;
+                        document.getElementById('_cbdoubleClickLinkSolvedComments').checked = false;
+                        document.getElementById('URCE-divDoubleClickSolved').style.display = 'none';
+                    }
+                }
+                if (settingName === 'doubleClickLinkOpenComments') {
+                    if (!this.checked) {
+                        document.getElementById('URCE-divDoubleClickOpen').style.display = 'none';
+                    }
+                    else {
+                        if (!document.getElementById('_cbautoClickOpenSolvedNi').checked) {
+                            _settings.autoClickOpenSolvedNi = true;
+                            document.getElementById('_cbautoClickOpenSolvedNi').checked = true;
+                        }
+                        document.getElementById('URCE-divDoubleClickOpen').style.display = '';
+                    }
+                }
+                if (settingName === 'doubleClickLinkNiComments') {
+                    if (!this.checked) {
+                        document.getElementById('URCE-divDoubleClickNi').style.display = 'none';
+                    }
+                    else {
+                        if (!document.getElementById('_cbautoClickOpenSolvedNi').checked) {
+                            _settings.autoClickOpenSolvedNi = true;
+                            document.getElementById('_cbautoClickOpenSolvedNi').checked = true;
+                        }
+                        document.getElementById('URCE-divDoubleClickNi').style.display = '';
+                    }
+                }
+                if (settingName === 'doubleClickLinkSolvedComments') {
+                    if (!this.checked) {
+                        document.getElementById('URCE-divDoubleClickSolved').style.display = 'none';
+                    }
+                    else {
+                        if (!document.getElementById('_cbautoClickOpenSolvedNi').checked) {
+                            _settings.autoClickOpenSolvedNi = true;
+                            document.getElementById('_cbautoClickOpenSolvedNi').checked = true;
+                        }
+                        document.getElementById('URCE-divDoubleClickSolved').style.display = '';
+                    }
+                }
+                if (urcePrefs === 'markerMaster') {
+                    if (!this.checked) {
+                        document.querySelectorAll('[urceprefs=marker]').forEach((el) => {
+                            el.disabled = true;
+                            el.classList.add('urceDisabled');
+                        });
+                    }
+                    else {
+                        document.querySelectorAll('[urceprefs=marker]').forEach((el) => {
+                            el.disabled = false;
+                            el.classList.remove('urceDisabled');
+                        });
+                    }
+                }
+                if (urcePrefs === 'filteringMaster') {
+                    if (!this.checked) {
+                        document.querySelectorAll('[urceprefs=filtering]').forEach((el) => {
+                            el.disabled = true;
+                            el.classList.add('urceDisabled');
+                        });
+                        document.getElementById('urceUrFilteringToggleBtn').style.color = '#ccc';
+                    }
+                    else {
+                        document.querySelectorAll('[urceprefs=marker]').forEach((el) => {
+                            el.disabled = false;
+                            el.classList.remove('urceDisabled');
+                        });
+                        document.getElementById('urceUrFilteringToggleBtn').style.color = '#00bd00';
+                    }
+                }
+                _settings[settingName] = this.checked;
+                if (document.getElementById(`_cbperCommentList_${settingName}_useDefault`).checked && (document.getElementById(`_cbperCommentList_${settingName}`).checked !== this.checked))
+                    document.getElementById(`_cbperCommentList_${settingName}`).checked = this.checked;
+                Object.values(_settings.perCommentListSettings).forEach((arr) => {
+                    if (arr[`${settingName}_useDefault`]) {
+                        if (arr[settingName] !== this.checked)
+                            arr[settingName] = this.checked;
+                    }
+                });
+                saveSettingsToStorage();
+                if (settingName === 'invertFilters')
+                    initSettingsTab();
+                if (((urcePrefs.includes('marker') || urcePrefs.includes('filtering')) && !settingName.includes('unstack'))
+                    || (settingName === 'enableUrOverflowHandling')
+                )
+                    handleUrLayer('settingsToggle', undefined, getMapUrsObjArr());
+            },
+            urceSettingsNumberBoxChange = function () {
+                const settingName = this.id.substring(4),
+                    maxVal = ['disableFilteringAboveZoomLevel', 'disableFilteringBelowZoomLevel', 'unstackDisableAboveZoom'].includes(settingName) ? 22 : 9999,
+                    minVal = ['disableFilteringAboveZoomLevel', 'disableFilteringBelowZoomLevel', 'unstackDisableAboveZoom'].includes(settingName) ? 12 : 0,
+                    val = Math.min(maxVal, Math.max(minVal, parseInt(Math.abs(parseInt(this.value) || minVal))));
+                if ((val !== parseInt(this.value)) || (_settings[settingName] !== val)) {
+                    if (val !== parseInt(this.value))
+                        this.value = val;
+                    _settings[settingName] = val;
+                    if (document.getElementById(`_cbperCommentList_${settingName}_useDefault`).checked && (`_numperCommentList_${settingName}` !== val))
+                        document.getElementById(`_numperCommentList_${settingName}`).value = val;
+                    Object.values(_settings.perCommentListSettings).forEach((arr) => {
+                        if (arr[`${settingName}_useDefault`]) {
+                            if (arr[settingName] !== val)
+                                arr[settingName] = val;
+                        }
+                    });
+                    saveSettingsToStorage();
+                    if (!settingName.includes('unstack'))
+                        handleUrLayer('settingsToggle', undefined, getMapUrsObjArr());
+                }
+            },
+            urceSettingsTextBoxChange = function () {
+                const settingName = this.id.substring(5),
+                    val = this.value.trim();
+                if ((val !== this.value) || (_settings[settingName] !== val)) {
+                    if (val !== this.value)
+                        this.value = val;
+                    _settings[settingName] = val;
+                    if (document.getElementById(`_cbperCommentList_${settingName}_useDefault`).checked && (`_numperCommentList_${settingName}` !== val))
+                        document.getElementById(`_textperCommentList_${settingName}`).value = val;
+                    Object.values(_settings.perCommentListSettings).forEach((arr) => {
+                        if (arr[`${settingName}_useDefault`]) {
+                            if (arr[settingName] !== val)
+                                arr[settingName] = val;
+                        }
+                    });
+                    saveSettingsToStorage();
+                    if (settingName === 'customSsId') {
+                        if (val && (val.length > 0)) {
+                            const customSsIdLinkClick = function (e) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.open(this.href, '_blank');
+                                },
+                                customSsIdLink = setElemAttrs(_elems.a.cloneNode(false), {
+                                    class: 'URCE-Controls URCE-spreadsheetLink',
+                                    id: 'urce-customSpreadsheet-link',
+                                    title: I18n.t('urce.prefs.CustomSpreadsheetLinkTitle'),
+                                    href: `https://docs.google.com/spreadsheets/d/${val}/edit`,
+                                    textContent: I18n.t('urce.prefs.CustomSpreadsheetLink')
+                                }, [{ click: customSsIdLinkClick }]);
+                            if (!document.getElementById('urceCustomSpreadsheetLinkDiv')) {
+                                const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceCustomSpreadsheetLinkDiv', class: 'URCE-spreadsheetLink' });
+                                divElemRoot.appendChild(customSsIdLink);
+                                document.getElementById('urceSpreadsheetLinks').appendChild(divElemRoot);
+                            }
+                            else {
+                                const urceCustomSpreadsheetLinkDiv = document.getElementById('urceCustomSpreadsheetLinkDiv');
+                                urceCustomSpreadsheetLinkDiv.replaceChildren(customSsIdLink);
+                            }
+                        }
+                        else if (document.getElementById('urceCustomSpreadsheetLinkDiv')) {
+                            document.getElementById('urceCustomSpreadsheetLinkDiv').remove();
+                        }
+                    }
+                    if ((settingName !== 'tagEmail') && (settingName !== 'customSsId') && (settingName !== 'customTagline'))
+                        handleUrLayer('settingsToggle', undefined, getMapUrsObjArr());
+                    else if ((settingName === 'tagEmail') || (settingName === 'customTagline') || ((settingName === 'customSsId') && (_currentCommentList === 1001)))
+                        changeCommentList(_settings.commentList, false, true);
+                }
+            },
+            buildFieldsetSection = (idTag, textContent, divAttrs = { class: 'URCE-controls URCE-divCC' }) => {
+                const legendElem = setElemAttrs(_elems.legend.cloneNode(false), { id: `urce-prefs-legend-${idTag}`, class: `URCE-legend${urStyle}` }, [{ click: legendClickToggle }]);
+                legendElem.appendChild(setElemAttrs(_elems.i.cloneNode(false), { class: 'fa fa-fw fa-chevron-down URCE-chevron' }));
+                legendElem.appendChild(setElemAttrs(_elems.span.cloneNode(false), { class: 'URCE-span', textContent }));
+                const fieldsetElem = setElemAttrs(_elems.fieldset.cloneNode(false), { id: `urce-prefs-fieldset-${idTag}`, class: `URCE-field${urStyle}` });
+                fieldsetElem.appendChild(legendElem);
+                const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), divAttrs);
+                fieldsetElem.appendChild(divElemRoot);
+                return { fieldsetElem, contentDiv: divElemRoot };
+            },
             buildStandardCbSetting = (setting, urceprefs) => {
                 let translationName,
-                    translationTitle;
+                    title,
+                    disabled = false,
+                    urceDisabled = '';
                 if (setting === 'disableFilteringBelowZoom') {
                     translationName = I18n.t('urce.prefs.DisableFilteringBelowZoomLevel');
-                    translationTitle = I18n.t('urce.prefs.DisableFilteringBelowZoomLevelTitle');
+                    title = I18n.t('urce.prefs.DisableFilteringBelowZoomLevelTitle');
                 }
                 else if (setting === 'disableFilteringAboveZoom') {
                     translationName = I18n.t('urce.prefs.DisableFilteringAboveZoomLevel');
-                    translationTitle = I18n.t('urce.prefs.DisableFilteringAboveZoomLevelTitle');
+                    title = I18n.t('urce.prefs.DisableFilteringAboveZoomLevelTitle');
                 }
                 else {
                     if (setting === 'hideByStatusOpen')
@@ -4479,47 +5080,149 @@
                         translationName = I18n.t('urce.urTypes.Undefined');
                     else
                         translationName = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}`);
-                    translationTitle = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`);
+                    title = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`);
                 }
-                let rVal = `<input type="checkbox" id="_cb${setting}" urceprefs="${urceprefs}" class="urceSettingsCheckbox" title="${translationTitle}"${((_settings[setting] === true) ? ' checked' : '')}>`
-                    + `<label for="_cb${setting}" urceprefs="${urceprefs}" title="${translationTitle}" class="URCE-label">${translationName}</label>`;
+                if (((urceprefs === 'filtering') && !_settings.enableUrceUrFiltering)
+                    || ((urceprefs === 'marker') && !_settings.enableUrPillCounts)
+                ) {
+                    disabled = true;
+                    urceDisabled = ' urceDisabled';
+                }
+                const divElemRoot = _elems.div.cloneNode(false);
+                divElemRoot.appendChild(
+                    setElemAttrs(_elems.input.cloneNode(false), {
+                        type: 'checkbox', id: `_cb${setting}`, urceprefs, class: `urceSettingsCheckbox${urceDisabled}`, title, disabled, checked: (_settings[setting] === true)
+                    }, [{ change: urceSettingsCheckboxChange }])
+                );
+                divElemRoot.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                    for: `_cb${setting}`, urceprefs, title, class: `URCE-label${urceDisabled}`, disabled, textContent: translationName
+                }));
                 if (setting === 'autoSendReminders') {
-                    rVal += `<div class="URCE-divWarning URCE-divWarningPre">(<div class="URCE-divWarning URCE-divWarningTitle" title="${I18n.t('urce.prefs.AutoSendRemindersWarningTitle')}">${I18n.t('urce.prefs.AutoSendRemindersWarning')}</div><div class="URCE-divWarning">)</div></div>`
-                    + `<div style="padding-left:15px; font-style:italic;"><input type="checkbox" id="_cbautoSendRemindersExceptTagged" urceprefs="${urceprefs}" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle')}"${((_settings.autoSendRemindersExceptTagged === true) ? ' checked' : '')}>`
-                    + `<label for="_cbautoSendRemindersExceptTagged" urceprefs="${urceprefs}" title="${I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle')}" class="URCE-label">${I18n.t('urce.prefs.AutoSendRemindersExceptTagged')}</label></div>`;
+                    const divElemWarning = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divWarning URCE-divWarningPre', textContent: '(' });
+                    divElemWarning.appendChild(
+                        setElemAttrs(_elems.div.cloneNode(false), {
+                            class: 'URCE-divWarning URCE-divWarningTitle', title: I18n.t('urce.prefs.AutoSendRemindersWarningTitle'), textContent: I18n.t('urce.prefs.AutoSendRemindersWarning')
+                        })
+                    );
+                    divElemWarning.appendChild(setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divWarning', textContent: ')' }));
+                    divElemRoot.appendChild(divElemWarning);
+                    const divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { style: 'padding-left:15px; font-style:italic;' });
+                    divElemDiv.appendChild(
+                        setElemAttrs(_elems.input.cloneNode(false), {
+                            type: 'checkbox',
+                            id: '_cbautoSendRemindersExceptTagged',
+                            urceprefs,
+                            class: 'urceSettingsCheckbox',
+                            title: I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle'),
+                            checked: (_settings.autoSendRemindersExceptTagged === true)
+                        }, [{ change: urceSettingsCheckboxChange }])
+                    );
+                    divElemDiv.appendChild(
+                        setElemAttrs(_elems.label.cloneNode(false), {
+                            for: '_cbautoSendRemindersExceptTagged',
+                            urceprefs,
+                            title: I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle'),
+                            class: 'URCE-label',
+                            textContent: I18n.t('urce.prefs.AutoSendRemindersExceptTagged')
+                        })
+                    );
+                    divElemRoot.appendChild(divElemDiv);
                 }
-                if (setting === 'disableFilteringAboveZoom')
-                    rVal += `<div class="URCE-divDaysInline"><input type="number" id="_numdisableFilteringAboveZoomLevel" class="URCE-daysInput urceSettingsNumberBox" urceprefs="filtering" min="12" max="22" step="1" value="${_settings.disableFilteringAboveZoomLevel}" title=${translationTitle}"></div>`;
-                if (setting === 'disableFilteringBelowZoom')
-                    rVal += `<div class="URCE-divDaysInline"><input type="number" id="_numdisableFilteringBelowZoomLevel" class="URCE-daysInput urceSettingsNumberBox" urceprefs="filtering" min="12" max="22" step="1" value="${_settings.disableFilteringBelowZoomLevel}" title=${translationTitle}"></div>`;
-                if (setting === 'hideByStatusClosedBy')
-                    rVal += `<div class="URCE-divDaysInline"><input type="text" id="_texthideByStatusClosedByUsers" class="urceSettingsTextBox" style="width:150px;height:20px" urceprefs="filtering" value="${_settings.hideByStatusClosedByUsers}" title="${translationTitle}"></div>`;
-                if (setting !== 'autoSendReminders')
-                    rVal += '<br>';
-                return rVal;
+                if ((setting === 'disableFilteringAboveZoom') || (setting === 'disableFilteringBelowZoom')) {
+                    const divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled });
+                    divElemDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                        type: 'number',
+                        id: `_num${setting}Level`,
+                        class: `URCE-daysInput urceSettingsNumberBox${urceDisabled}`,
+                        urceprefs: 'filtering',
+                        min: '12',
+                        max: '22',
+                        step: '1',
+                        value: _settings[`${setting}Level`],
+                        title,
+                        disabled
+                    }, [{ change: urceSettingsNumberBoxChange }]));
+                    divElemRoot.appendChild(divElemDiv);
+                }
+                if (setting === 'hideByStatusClosedBy') {
+                    const divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled });
+                    divElemDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                        type: 'text',
+                        id: '_texthideByStatusClosedByUsers',
+                        class: `urceSettingsTextBox${urceDisabled}`,
+                        style: 'width:150px;height:20px;',
+                        urceprefs: 'filtering',
+                        value: _settings.hideByStatusClosedByUsers,
+                        title,
+                        disabled
+                    }, [{ change: urceSettingsTextBoxChange }]));
+                    divElemRoot.appendChild(divElemDiv);
+                }
+                return divElemRoot;
             },
-            // eslint-disable-next-line arrow-body-style
-            buildTagCbSetting = (setting, urceprefs, translationName, translationTitle, lineBreak) => {
-                return `<input type="checkbox" id="_cb${setting}" urceprefs="${urceprefs}" class="urceSettingsCheckbox" title="${translationTitle}"${((_settings[setting] === true) ? ' checked' : '')}>`
-                    + `<label for="_cb${setting}" urceprefs="${urceprefs}" title="${translationTitle}" class="URCE-label">${translationName}</label>${(lineBreak ? '<br>' : '')}`;
+            buildTagCbSetting = (setting, urceprefs, translationName, title) => {
+                let disabled = false,
+                    urceDisabled = '';
+                if ((urceprefs === 'filtering') && !_settings.enableUrceUrFiltering) {
+                    disabled = true;
+                    urceDisabled = ' urceDisabled';
+                }
+                const divElemRoot = _elems.div.cloneNode(false);
+                divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    type: 'checkbox', id: `_cb${setting}`, urceprefs, class: `urceSettingsCheckbox${urceDisabled}`, title, disabled, checked: (_settings[setting] === true)
+                }, [{ change: urceSettingsCheckboxChange }]));
+                divElemRoot.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                    for: `_cb${setting}`, urceprefs, title, class: `URCE-label${urceDisabled}`, disabled, textContent: translationName
+                }));
+                return divElemRoot;
             },
             buildTextFirstTextSetting = (setting, urceprefs) => {
-                const translationName = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}`),
-                    translationTitle = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`);
-                return `<div title="${translationTitle}" class="URCE-label" urceprefs="${urceprefs}">${translationName}: <input type="text" id="_text${setting}" class="URCE-textInput urceSettingsTextBox" urceprefs="${urceprefs}" value="${_settings[setting]}" title="${translationTitle}"></div>`;
+                let disabled = false,
+                    urceDisabled = '';
+                if ((urceprefs === 'filtering') && !_settings.enableUrceUrFiltering) {
+                    disabled = true;
+                    urceDisabled = ' urceDisabled';
+                }
+                const title = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`),
+                    divElemRoot = setElemAttrs(_elems.div.cloneNode(false), {
+                        title, class: `URCE-label${urceDisabled}`, urceprefs, disabled, textContent: `${I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}`)}: `
+                    });
+                divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    type: 'text', id: `_text${setting}`, class: `URCE-textInput urceSettingsTextBox${urceDisabled}`, urceprefs, value: _settings[setting], title, disabled
+                }, [{ change: urceSettingsTextBoxChange }]));
+                return divElemRoot;
             },
             buildTextFirstNumSetting = (setting, urceprefs, min, max, step, postText) => {
+                let disabled = false,
+                    urceDisabled = '';
+                if (((urceprefs === 'filtering') && !_settings.enableUrceUrFiltering) || ((urceprefs === 'marker-nodisable-unstack') && !_settings.unstackMarkers)) {
+                    disabled = true;
+                    urceDisabled = ' urceDisabled';
+                }
                 const translationName = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}`),
-                    translationTitle = formatText(I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`), false, false, -1);
-                let rVal = `<div title="${translationTitle}" class="URCE-label" urceprefs="${urceprefs}">${translationName} <input type="number" id="_num${setting}" class="URCE-daysInput urceSettingsNumberBox" urceprefs="${urceprefs}" value="${_settings[setting]}" title="${translationTitle}" min="${min}" max="${max}" step="${step}">`;
-                if (postText)
-                    rVal += `<div class="URCE-divDaysInline" urceprefs="${urceprefs}">${postText}</div>`;
-                rVal += '</div>';
-                return rVal;
+                    title = formatText(I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`), false, false, -1),
+                    divElemRoot = setElemAttrs(_elems.div.cloneNode(false), {
+                        title, class: `URCE-label${urceDisabled}`, urceprefs, disabled, textContent: `${translationName} `
+                    });
+                divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    type: 'number', id: `_num${setting}`, class: `URCE-daysInput urceSettingsNumberBox${urceDisabled}`, urceprefs, value: _settings[setting], title, min, max, step, disabled
+                }, [{ change: urceSettingsNumberBoxChange }]));
+                if (postText) {
+                    divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                        title, class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled, textContent: postText
+                    }));
+                }
+                return divElemRoot;
             },
             buildTextFirstDoubleCbSetting = (setting1, setting2, textBefore, urceprefs) => {
                 let translationName1,
-                    translationName2;
+                    translationName2,
+                    disabled = false,
+                    urceDisabled = '';
+                if ((urceprefs === 'filtering') && !_settings.enableUrceUrFiltering) {
+                    disabled = true;
+                    urceDisabled = ' urceDisabled';
+                }
                 if (setting1 === 'hideFollowing') {
                     translationName1 = I18n.t('urce.common.Following');
                     translationName2 = I18n.t('urce.common.NotFollowing');
@@ -4533,121 +5236,203 @@
                     translationName2 = I18n.t('urce.common.No');
                 }
                 const translationTitle1 = I18n.t(`urce.prefs.${setting1.charAt(0).toUpperCase()}${setting1.slice(1)}Title`),
-                    translationTitle2 = I18n.t(`urce.prefs.${setting2.charAt(0).toUpperCase()}${setting2.slice(1)}Title`);
-                return `<div style="display:inline-flex;">${textBefore}: `
-                    + '     <div style="display:inline;">'
-                    + `         <input type="checkbox" id="_cb${setting1}" urceprefs="${urceprefs}" class="urceSettingsCheckbox" title="${translationTitle1}"${((_settings[setting1] === true) ? ' checked' : '')}>`
-                    + `         <label for="_cb${setting1}" urceprefs="${urceprefs}" class="URCE-label" title="${translationTitle1}">${translationName1}</label>`
-                    + `         <input type="checkbox" id="_cb${setting2}" urceprefs="${urceprefs}" class="urceSettingsCheckbox" title="${translationTitle2}"${((_settings[setting2] === true) ? ' checked' : '')}>`
-                    + `         <label for="_cb${setting2}" urceprefs="${urceprefs}" class="URCE-label" title="${translationTitle2}">${translationName2}</label>`
-                    + '     </div>'
-                    + '</div>';
+                    translationTitle2 = I18n.t(`urce.prefs.${setting2.charAt(0).toUpperCase()}${setting2.slice(1)}Title`),
+                    divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline-flex;', textContent: `${textBefore}: ` }),
+                    divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline;' });
+                divElemDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    type: 'checkbox', id: `_cb${setting1}`, urceprefs, class: `urceSettingsCheckbox${urceDisabled}`, title: translationTitle1, disabled, checked: (_settings[setting1] === true)
+                }, [{ change: urceSettingsCheckboxChange }]));
+                divElemDiv.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                    for: `_cb${setting1}`, urceprefs, class: `URCE-label${urceDisabled}`, title: translationTitle1, disabled, textContent: translationName1
+                }));
+                divElemDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    type: 'checkbox', id: `_cb${setting2}`, urceprefs, class: `urceSettingsCheckbox${urceDisabled}`, title: translationTitle2, disabled, checked: (_settings[setting2] === true)
+                }, [{ change: urceSettingsCheckboxChange }]));
+                divElemDiv.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                    for: `_cb${setting2}`, urceprefs, class: `URCE-label${urceDisabled}`, title: translationTitle2, disabled, textContent: translationName2
+                }));
+                divElemRoot.appendChild(divElemDiv);
+                return divElemRoot;
             },
             buildCbandNumSetting = (setting, numSetting, urceprefs, min, max, step, postText) => {
-                let translationName;
+                let translationName,
+                    disabled = false,
+                    urceDisabled = '';
+                if ((urceprefs === 'filtering') && !_settings.enableUrceUrFiltering) {
+                    disabled = true;
+                    urceDisabled = ' urceDisabled';
+                }
                 if ((setting === 'hideByAgeOfSubmissionLessThan') || (setting === 'hideByCommentCountLessThan'))
                     translationName = I18n.t('urce.common.LessThan');
                 else if ((setting === 'hideByAgeOfSubmissionMoreThan') || (setting === 'hideByCommentCountMoreThan'))
                     translationName = I18n.t('urce.common.MoreThan');
                 else
                     translationName = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}`);
-                const translationTitle = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`);
-                let rVal = '<div>'
-                    + `<input type="checkbox" id="_cb${setting}" urceprefs="${urceprefs}" class="urceSettingsCheckbox" title="${translationTitle}"${((_settings[setting] === true) ? ' checked' : '')}>`
-                    + `<label for="_cb${setting}" urceprefs="${urceprefs}" class="URCE-label" title="${translationTitle}">${translationName}: </label>`
-                    + `<div class="URCE-divDaysInline" urceprefs="${urceprefs}"><input type="number" id="_num${numSetting}" class="URCE-daysInput urceSettingsNumberBox" urceprefs="${urceprefs}" value="${_settings[numSetting]}" title="${translationTitle}" min="${min}" max="${max}" step="${step}"></div>`;
-                if (postText)
-                    rVal += `<div class="URCE-divDaysInline" urceprefs="${urceprefs}">${postText}</div>`;
-                rVal += '</div>';
-                return rVal;
+                const title = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`),
+                    divElemRoot = _elems.div.cloneNode(false);
+                divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    type: 'checkbox', id: `_cb${setting}`, urceprefs, class: `urceSettingsCheckbox${urceDisabled}`, title, disabled, checked: (_settings[setting] === true)
+                }, [{ change: urceSettingsCheckboxChange }]));
+                divElemRoot.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                    for: `_cb${setting}`, urceprefs, class: `URCE-label${urceDisabled}`, title, disabled, textContent: `${translationName}: `
+                }));
+                const divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled });
+                divElemDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    type: 'number', id: `_num${numSetting}`, urceprefs, class: `URCE-daysInput urceSettingsNumberBox${urceDisabled}`, value: _settings[numSetting], title, min, max, step, disabled
+                }, [{ change: urceSettingsNumberBoxChange }]));
+                divElemRoot.appendChild(divElemDiv);
+                if (postText) {
+                    divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                        class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled, textContent: postText
+                    }));
+                }
+                return divElemRoot;
             },
             buildCbandTextSetting = (setting, textSetting, urceprefs, postText) => {
+                let disabled = false,
+                    urceDisabled = '';
+                if ((urceprefs === 'filtering') && !_settings.enableUrceUrFiltering) {
+                    disabled = true;
+                    urceDisabled = ' urceDisabled';
+                }
                 const translationName = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}`),
-                    translationTitle = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`);
-                let rVal = '<div style="display:inline-flex;">'
-                    + `<input type="checkbox" id="_cb${setting}" urceprefs="${urceprefs}" class="urceSettingsCheckbox" title="${translationTitle}"${((_settings[setting] === true) ? ' checked' : '')}>`
-                    + `<label for="_cb${setting}" urceprefs="${urceprefs}" class="URCE-label" title="${translationTitle}">${translationName}: </label>`
-                    + `<div class="URCE-divDaysInline" urceprefs="${urceprefs}"><input type="text" id="_text${textSetting}" class="URCE-textInput2 urceSettingsTextBox" urceprefs="${urceprefs}" value="${_settings[textSetting]}" title="${translationTitle}"></div>`;
-                if (postText)
-                    rVal += `<div class="URCE-divDaysInline" urceprefs="${urceprefs}">${postText}</div>`;
-                rVal += '</div>';
-                return rVal;
+                    title = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`),
+                    divElemRooot = setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline-flex;' });
+                divElemRooot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    type: 'checkbox', id: `_cb${setting}`, urceprefs, class: `urceSettingsCheckbox${urceDisabled}`, title, disabled, checked: (_settings[setting] === true)
+                }, [{ change: urceSettingsCheckboxChange }]));
+                divElemRooot.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                    for: `_cb${setting}`, urceprefs, class: `URCE-label${urceDisabled}`, title, disabled, textContent: `${translationName}: `
+                }));
+                const divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled });
+                divElemDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    type: 'text', id: `_text${textSetting}`, urceprefs, class: `URCE-textInput2 urceSettingsTextBox${urceDisabled}`, value: _settings[textSetting], title, disabled
+                }, [{ change: urceSettingsTextBoxChange }]));
+                divElemRooot.appendChild(divElemDiv);
+                if (postText) {
+                    divElemRooot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                        class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled, textContent: postText
+                    }));
+                }
+                return divElemRooot;
             };
-        let htmlOut = ''
-            + `<div id="expandCollapseAllSettings" class="URCE-expandCollapseAll${urStyle}">`
-            + `     <div id="URCE-expandAllSettings" class="URCE-expandCollapseAllItem">${I18n.t('urce.common.ExpandAll')}</div>`
-            + '     <div style="display:inline;"> : </div>'
-            + `     <div id="URCE-collapseAllSettings" class="URCE-expandCollapseAllItem">${I18n.t('urce.common.CollapseAll')}</div>`
-            + '</div>'
-            + `<fieldset id="urce-prefs-fieldset-commentList" class="URCE-field${urStyle}">`
-            + `     <legend id="urce-prefs-legend-commentList" class="URCE-legend${urStyle}"><i class="fa fa-fw fa-chevron-down URCE-chevron"></i><span class="URCE-span">${I18n.t('urce.common.CommentList')}</span></legend>`
-            + '     <div class="URCE-controls URCE-divCC">'
-            + `         <div>${I18n.t('urce.prefs.DefaultList')}: <select id="_selCommentList" title="${I18n.t('urce.prefs.DefaultListTitle')}" urceprefs="commentList">`;
+        const contentHeaderDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'expandCollapseAllSettings', class: `URCE-expandCollapseAll${urStyle}` });
+        contentHeaderDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+            id: 'URCE-expandAllSettings', class: 'URCE-expandCollapseAllItem', textContent: I18n.t('urce.common.ExpandAll')
+        }, [{ click: expandCollapseAll }]));
+        contentHeaderDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline;', textContent: ' : ' }));
+        contentHeaderDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+            id: 'URCE-collapseAllSettings', class: 'URCE-expandCollapseAllItem', textContent: I18n.t('urce.common.CollapseAll')
+        }, [{ click: expandCollapseAll }]));
+        docFrags.appendChild(contentHeaderDiv);
+        // Comment List
+        let { fieldsetElem, contentDiv } = buildFieldsetSection('commentList', I18n.t('urce.common.CommentList')),
+            contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { textContent: `${I18n.t('urce.prefs.DefaultList')}: ` }),
+            selectElem = setElemAttrs(_elems.select.cloneNode(false), { id: '_selCommentList', title: I18n.t('urce.prefs.DefaultListTitle'), urceprefs: 'commentList' }, [{ change: commentListSelectionChange }]);
         _commentLists.forEach((cList) => {
             if (cList.status !== 'disabled')
-                htmlOut += `<option value="${cList.idx}"${((cList.idx === _settings.commentList) ? ' selected="true"' : '')}>${cList.name}</option>`;
+                selectElem.appendChild(setElemAttrs(_elems.option.cloneNode(false), { value: cList.idx, textContent: cList.name, selected: (cList.idx === _settings.commentList) }));
         });
-        htmlOut += ''
-            + '             </select>'
-            + `             <div id="restrictionsEnforcedWarning-Settings" style="float:right;padding-right:4px;color:red;font-size:18px;${(_restrictionsEnforcedTitle ? '' : 'display:none;')}">`
-            + `                 <i class="fa fa-exclamation-triangle" aria-hidden="true"${(_restrictionsEnforcedTitle ? ` title="${_restrictionsEnforcedTitle}"` : '')}></i>`
-            + '         </div></div>'
-            + `         <div>${I18n.t('urce.prefs.CustomSsId')}: <input type="text" id="_textcustomSsId" class="URCE-textInput urceSettingsTextBox" urceprefs="commentList" value="${_settings.customSsId}" title="${I18n.t('urce.prefs.CustomSsIdTitle')}" style="width:100px;margin-left:5px;"></div>`
-            + `         <div>${I18n.t('urce.common.Style')}: <select id="_selCommentListStyle" title="${I18n.t('urce.prefs.CommentListStyleTitle')}" urceprefs="commentList">`
-            + `             <option value="default"${((_settings.commentListStyle === 'default') ? ' selected="true"' : '')}>${I18n.t('urce.prefs.StyleDefault')}</option>`
-            + `             <option value="urStyle"${((_settings.commentListStyle === 'urStyle') ? ' selected="true"' : '')}>${I18n.t('urce.prefs.StyleUrStyle')}</option>`
-            + '         </select></div>'
-            + `         <input type="checkbox" id="_cbautoSwitchCommentList" urceprefs="commentList" class="urceSettingsCheckbox" title="${I18n.t('urce.prefs.AutoSwitchCommentListTitle')}"${(_settings.autoSwitchCommentList ? ' checked' : '')}">`
-            + `         <label for="_cbautoSwitchCommentList" urceprefs="commentList" title="${I18n.t('urce.prefs.AutoSwitchCommentListTitle')}" class="URCE-label">${I18n.t('urce.prefs.AutoSwitchCommentList')}</label>`
-            + '         <div id="urceSpreadsheetLinks">'
-            + `             <div class="URCE-spreadsheetLink" id="urceSpreadsheetLinkDiv"><a class="URCE-Controls URCE-spreadsheetLink" id="urce-spreadsheet-link" title="${I18n.t('urce.prefs.SpreadsheetLinkTitle')}" href="http://bit.ly/urc-e_ss">URC-E Master Spreadsheet</a></div>`;
-        if (_settings.customSsId?.length > 0)
-            htmlOut += `    <div class="URCE-spreadsheetLink" id="urceCustomSpreadsheetLinkDiv"><a class="URCE-Controls URCE-spreadsheetLink" id="urce-customSpreadsheet-link" title="${I18n.t('urce.prefs.CustomSpreadsheetLinkTitle')}" href="https://docs.google.com/spreadsheets/d/${_settings.customSsId}/edit">${I18n.t('urce.prefs.CustomSpreadsheetLink')}</a></div>`;
-        htmlOut += ''
-            + '</div></div></fieldset>'
-            // Per Comment List Settings Settings
-            + `<fieldset id="urce-prefs-fieldset-perCommentListSettings" class="URCE-field${urStyle}">`
-            + `     <legend id="urce-prefs-legend-perCommentListSettings" class="URCE-legend${urStyle}"><i class="fa fa-fw fa-chevron-down URCE-chevron"></i><span class="URCE-span">${I18n.t('urce.prefs.PerCommentListSettings')}</span></legend>`
-            + '<div id="URCE-divPerCommentListSettings"></div></fieldset>'
-            // URC-E Master Settings
-            + `<fieldset id="urce-prefs-fieldset-urc-e-prefs" class="URCE-field${urStyle}">`
-            + `     <legend id="urce-prefs-legend-urc-e-prefs" class="URCE-legend${urStyle}"><i class="fa fa-fw fa-chevron-down URCE-chevron"></i><span class="URCE-span">${I18n.t('urce.prefs.UrcePrefs')}</span></legend>`
-            + '     <div class="URCE-controls URCE-divCC">';
+        contentDivDiv.appendChild(selectElem);
+        let contentDivDivDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'restrictionsEnforcedWarning-Settings', style: `float:right;padding-right:4px;color:red;font-size:18px;${(_restrictionsEnforcedTitle ? '' : 'display:none;')}` });
+        contentDivDivDiv.appendChild(setElemAttrs(_elems.i.cloneNode(false), { class: 'fa fa-exclamation-triangle', 'aria-hidden': true, title: _restrictionsEnforcedTitle || '' }));
+        contentDivDiv.appendChild(contentDivDivDiv);
+        contentDiv.appendChild(contentDivDiv);
+        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { textContent: `${I18n.t('urce.prefs.CustomSsId')}: ` });
+        contentDivDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+            type: 'text',
+            id: '_textcustomSsId',
+            class: 'URCE-textInput urceSettingsTextBox',
+            urceprefs: 'commentList',
+            value: _settings.customSsId,
+            title: I18n.t('urce.prefs.CustomSsIdTitle'),
+            style: 'width:100px;margin-left:5px;'
+        }, [{ change: urceSettingsTextBoxChange }]));
+        contentDiv.appendChild(contentDivDiv);
+
+        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { textContent: `${I18n.t('urce.common.Style')}: ` });
+        selectElem = setElemAttrs(_elems.select.cloneNode(false), {
+            id: '_selCommentListStyle', title: I18n.t('urce.prefs.CommentListStyleTitle'), urceprefs: 'commentList'
+        }, [{ change: commentListStyleSelectionChange }]);
+        selectElem.appendChild(setElemAttrs(_elems.option.cloneNode(false), { value: 'default', textContent: I18n.t('urce.prefs.StyleDefault'), selected: (_settings.commentListStyle === 'default') }));
+        selectElem.appendChild(setElemAttrs(_elems.option.cloneNode(false), { value: 'urStyle', textContent: I18n.t('urce.prefs.StyleUrStyle'), selected: (_settings.commentListStyle === 'urStyle') }));
+        contentDivDiv.appendChild(selectElem);
+        contentDiv.appendChild(contentDivDiv);
+
+        contentDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+            type: 'checkbox', id: '_cbautoSwitchCommentList', class: 'urceSettingsCheckbox', urceprefs: 'commentList', title: I18n.t('urce.prefs.AutoSwitchCommentListTitle'), checked: _settings.autoSwitchCommentList
+        }, [{ change: urceSettingsCheckboxChange }]));
+        contentDiv.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+            for: '_cbautoSwitchCommentList', urceprefs: 'commentList', title: I18n.t('urce.prefs.AutoSwitchCommentListTitle'), class: 'URCE-label', textContent: I18n.t('urce.prefs.AutoSwitchCommentList')
+        }));
+
+        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceSpreadsheetLinks' });
+        contentDivDivDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceSpreadsheetLinkDiv', class: 'URCE-spreadsheetLink' });
+        contentDivDivDiv.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+            id: 'urce-spreadsheet-link', class: 'URCE-Controls URCE-spreadsheetLink', title: I18n.t('urce.prefs.SpreadsheetLinkTitle'), href: 'http://bit.ly/urc-e_ss', textContent: 'URC-E Master Spreadsheet'
+        }, [{ click: spreadsheetLinkClick }]));
+        contentDivDiv.appendChild(contentDivDivDiv);
+        if (_settings.customSsId?.length > 0) {
+            contentDivDivDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceCustomSpreadsheetLinkDiv', class: 'URCE-spreadsheetLink' });
+            contentDivDivDiv.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+                id: 'urce-customSpreadsheet-link',
+                class: 'URCE-Controls URCE-spreadsheetLink',
+                title: I18n.t('urce.prefs.CustomSpreadsheetLinkTitle'),
+                href: `https://docs.google.com/spreadsheets/d/${_settings.customSsId}/edit`,
+                textContent: I18n.t('urce.prefs.CustomSpreadsheetLink')
+            }, [{ click: spreadsheetLinkClick }]));
+            contentDivDiv.appendChild(contentDivDivDiv);
+        }
+        contentDiv.appendChild(contentDivDiv);
+        docFrags.appendChild(fieldsetElem);
+        // Per Comment List Settings Settings
+        ({ fieldsetElem } = buildFieldsetSection('perCommentListSettings', I18n.t('urce.prefs.PerCommentListSettings'), { id: 'URCE-divPerCommentListSettings' }));
+        docFrags.appendChild(fieldsetElem);
+        // URC-E Master Settings
+        ({ fieldsetElem, contentDiv } = buildFieldsetSection('urc-e-prefs', I18n.t('urce.prefs.UrcePrefs')));
         ['autoCenterOnUr', 'autoClickOpenSolvedNi', 'autoCloseUrPanel', 'autoSaveAfterSolvedOrNiComment', 'autoSendReminders', 'autoSetNewUrComment', 'autoSetNewUrCommentSlur',
             'autoSetNewUrCommentWithDescription', 'autoSetReminderUrComment', 'autoSwitchToUrCommentsTab', 'autoZoomInOnNewUr', 'autoZoomOutAfterClosePanel', 'autoZoomOutAfterComment',
             'disableDoneNextButtons', 'replaceNextWithDoneButton', 'doubleClickLinkNiComments', 'doubleClickLinkOpenComments', 'doubleClickLinkSolvedComments', 'hideZoomOutLinks',
             'unfollowUrAfterSend', 'enableUrOverflowHandling', 'enableAutoRefresh', 'expandMoreInfo', 'expandShortcuts', 'autoScrollComments',
-            'reverseCommentSort'].forEach((setting) => { htmlOut += buildStandardCbSetting(setting, 'urce'); });
-        htmlOut += '<div class="URCE-controls URCE-textFirst">';
-        htmlOut += buildTextFirstTextSetting('tagEmail', 'commentList');
-        htmlOut += buildTextFirstNumSetting('reminderDays', 'urce', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''));
-        htmlOut += buildTextFirstNumSetting('closeDays', 'urce', '1', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''));
-        htmlOut += `<div title="${I18n.t('urce.prefs.CustomTaglineTitle')}" class="URCE-label" urceprefs="commentList">${I18n.t('urce.prefs.CustomTagline')}: `
-            + `<textarea id="_textcustomTagline" class="URCE-textInput urceSettingsTextBox" style="width:230px;height:50px;resize:none;" urceprefs="commentList" title="${I18n.t('urce.prefs.CustomTaglineTitle')}">${_settings.customTagline}</textarea>`
-            + '</div></div></div></fieldset>'
-            // UR Marker Settings
-            + `<fieldset id="urce-prefs-fieldset-ur-marker-prefs" class="URCE-field${urStyle}">`
-            + `     <legend id="urce-prefs-legend-ur-marker-prefs" class="URCE-legend${urStyle}"><i class="fa fa-fw fa-chevron-down URCE-chevron"></i><span class="URCE-span">${I18n.t('urce.prefs.UrMarkerPrefs')}</span></legend>`
-            + '     <div class="URCE-controls URCE-divCC">';
-        htmlOut += buildStandardCbSetting('enableUrPillCounts', 'markerMaster');
-        htmlOut += buildStandardCbSetting('disableUrMarkerPopup', 'marker-nodisable');
-        htmlOut += '    <div class="URCE-textFirst" urceprefs="marker-nodisable">';
-        htmlOut += buildTextFirstNumSetting('urMarkerPopupDelay', 'marker-nodisable', '1', '99', '1', ' * 100ms');
-        htmlOut += buildTextFirstNumSetting('urMarkerPopupTimeout', 'marker-nodisable', '1', '99', '1', I18n.t('datetime.distance_in_words.x_seconds.other', { count: 30 }).replace('30', ''));
-        htmlOut += '    </div>';
-        ['doNotShowTagNameOnPill', 'replaceTagNameWithEditorName'].forEach((setting) => { htmlOut += buildStandardCbSetting(setting, 'marker'); });
-        htmlOut += buildStandardCbSetting('unstackMarkers', 'marker-nodisable');
-        htmlOut += '    <div class="URCE-textFirst" urceprefs="marker-nodisable-stack">';
-        htmlOut += buildTextFirstNumSetting('unstackSensitivity', 'marker-nodisable-unstack', '1', '99', '1', undefined);
-        htmlOut += buildTextFirstNumSetting('unstackDisableAboveZoom', 'marker-nodisable-unstack', '12', '22', '1', undefined);
-        htmlOut += '    </div>'
-            // -- Custom markers
-            + '<div>'
-            + `     <div class="URCE-subHeading" style="font-weight:600;">${I18n.t('urce.prefs.UseCustomMarkersFor')}<br></div>`;
+            'reverseCommentSort'].forEach((setting) => { contentDiv.appendChild(buildStandardCbSetting(setting, 'urce')); });
+        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-controls URCE-textFirst' });
+        contentDivDiv.appendChild(buildTextFirstTextSetting('tagEmail', 'commentList'));
+        contentDivDiv.appendChild(buildTextFirstNumSetting('reminderDays', 'urce', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', '')));
+        contentDivDiv.appendChild(buildTextFirstNumSetting('closeDays', 'urce', '1', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', '')));
+        contentDivDivDiv = setElemAttrs(_elems.div.cloneNode(false), {
+            class: 'URCE-label', urceprefs: 'commentList', title: I18n.t('urce.prefs.CustomTaglineTitle'), textContent: `${I18n.t('urce.prefs.CustomTagline')}: `
+        });
+        contentDivDivDiv.appendChild(setElemAttrs(_elems.textarea.cloneNode(false), {
+            id: '_textcustomTagline',
+            class: 'URCE-textInput urceSettingsTextBox',
+            style: 'width:230px;height:50px;resize:none;',
+            urceprefs: 'commentList',
+            title: I18n.t('urce.prefs.CustomTaglineTitle'),
+            textContent: _settings.customTagline
+        }, [{ change: urceSettingsTextBoxChange }]));
+        contentDivDiv.appendChild(contentDivDivDiv);
+        contentDiv.appendChild(contentDivDiv);
+        docFrags.appendChild(fieldsetElem);
+        // UR Marker Settings
+        ({ fieldsetElem, contentDiv } = buildFieldsetSection('ur-marker-prefs', I18n.t('urce.prefs.UrMarkerPrefs')));
+        contentDiv.appendChild(buildStandardCbSetting('enableUrPillCounts', 'markerMaster'));
+        contentDiv.appendChild(buildStandardCbSetting('disableUrMarkerPopup', 'marker-nodisable'));
+        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-textFirst', urceprefs: 'marker-nodisable' });
+        contentDivDiv.appendChild(buildTextFirstNumSetting('urMarkerPopupDelay', 'marker-nodisable', '1', '99', '1', ' * 100ms'));
+        contentDivDiv.appendChild(buildTextFirstNumSetting('urMarkerPopupTimeout', 'marker-nodisable', '1', '99', '1', I18n.t('datetime.distance_in_words.x_seconds.other', { count: 30 }).replace('30', '')));
+        contentDiv.appendChild(contentDivDiv);
+        ['doNotShowTagNameOnPill', 'replaceTagNameWithEditorName'].forEach((setting) => { contentDiv.appendChild(buildStandardCbSetting(setting, 'marker')); });
+        contentDiv.appendChild(buildStandardCbSetting('unstackMarkers', 'marker-nodisable'));
+        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-textFirst', urceprefs: 'marker-nodisable-stack' });
+        contentDivDiv.appendChild(buildTextFirstNumSetting('unstackSensitivity', 'marker-nodisable-unstack', '1', '99', '1', undefined));
+        contentDivDiv.appendChild(buildTextFirstNumSetting('unstackDisableAboveZoom', 'marker-nodisable-unstack', '12', '22', '1', undefined));
+        contentDiv.appendChild(contentDivDiv);
+        // -- Custom markers
+        contentDivDiv = _elems.div.cloneNode(false);
+        contentDivDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t('urce.prefs.UseCustomMarkersFor')}:` }));
         ['Bog', 'Closures', 'Construction', 'Difficult', 'Events', 'Notes', 'Roadworks', 'Wslm', 'NativeSl', 'Custom'].forEach((setting) => {
             let translationName,
-                translationTitle,
-                lineBreak = true;
+                translationTitle;
             if ((setting === 'Closures') || (setting === 'Events') || (setting === 'Notes')) {
                 translationName = I18n.t(`urce.tags.${setting.slice(0, -1)}`);
                 translationTitle = I18n.t(`urce.prefs.${setting.slice(0, -1)}Title`);
@@ -4659,326 +5444,98 @@
             else if (setting === 'Custom') {
                 translationName = `${I18n.t('urce.common.Custom')}: `;
                 translationTitle = I18n.t('urce.prefs.CustomTitle');
-                lineBreak = false;
             }
             else {
                 translationName = I18n.t(`urce.tags.${setting}`);
                 translationTitle = I18n.t(`urce.prefs.${setting}Title`);
             }
-            htmlOut += buildTagCbSetting(`customMarkers${setting}`, 'marker-nodisable', translationName, translationTitle, lineBreak);
+            contentDivDiv.appendChild(buildTagCbSetting(`customMarkers${setting}`, 'marker-nodisable', translationName, translationTitle));
         });
-        htmlOut += `<div class="URCE-divDaysInline"><input type="text" id="_textcustomMarkersCustomText" class="urceSettingsTextBox" style="width:100px;height:20px;" value="${_settings.customMarkersCustomText}" title="${I18n.t('urce.prefs.CustomTitle')}"></div>`
-            + '</div></div></fieldset>'
-            // UR Filtering Settings
-            + `<fieldset id="urce-prefs-fieldset-ur-filtering-prefs" class="URCE-field${urStyle}">`
-            + `     <legend id="urce-prefs-legend-ur-filtering-prefs" class="URCE-legend${urStyle}"><i class="fa fa-fw fa-chevron-down URCE-chevron"></i><span class="URCE-span">${I18n.t('urce.prefs.UrFilteringPrefs')}</span></legend>`
-            + '     <div class="URCE-controls URCE-divCC">';
-        htmlOut += buildStandardCbSetting('enableUrceUrFiltering', 'filteringMaster');
-        ['invertFilters', 'hideOutsideEditableArea', 'doNotFilterTaggedUrs', 'doNotHideSelectedUr', 'disableFilteringAboveZoom', 'disableFilteringBelowZoom'
-        ].forEach((setting) => { htmlOut += buildStandardCbSetting(setting, 'filtering'); });
+        contentDivDivDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divDaysInline' });
+        contentDivDivDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+            type: 'text', id: '_textcustomMarkersCustomText', class: 'urceSettingsTextBox', style: 'width:100px;height:20px;', value: _settings.customMarkersCustomText, title: I18n.t('urce.prefs.CustomTitle')
+        }, [{ change: urceSettingsTextBoxChange }]));
+        contentDivDiv.appendChild(contentDivDivDiv);
+        contentDiv.appendChild(contentDivDiv);
+        docFrags.appendChild(fieldsetElem);
+        // UR Filtering Settings
+        ({ fieldsetElem, contentDiv } = buildFieldsetSection('ur-filtering-prefs', I18n.t('urce.prefs.UrFilteringPrefs')));
+        contentDiv.appendChild(buildStandardCbSetting('enableUrceUrFiltering', 'filteringMaster'));
+        ['invertFilters', 'hideOutsideEditableArea', 'doNotFilterTaggedUrs', 'doNotHideSelectedUr', 'disableFilteringAboveZoom', 'disableFilteringBelowZoom'].forEach((setting) => {
+            contentDiv.appendChild(buildStandardCbSetting(setting, 'filtering'));
+        });
         // -- Lifecycle
-        htmlOut += `     <div class="URCE-subHeading" style="font-weight:600;">${I18n.t(`urce.prefs.LifeCycleStatus${((_settings.invertFilters) ? 'Inverted' : '')}`)}:<br></div>`;
-        ['hideWaiting', 'hideUrsCloseNeeded', 'hideUrsReminderNeeded'].forEach((setting) => { htmlOut += buildStandardCbSetting(setting, 'filtering'); });
+        contentDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+            class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t(`urce.prefs.LifeCycleStatus${((_settings.invertFilters) ? 'Inverted' : '')}`)}:`
+        }));
+        ['hideWaiting', 'hideUrsCloseNeeded', 'hideUrsReminderNeeded'].forEach((setting) => { contentDiv.appendChild(buildStandardCbSetting(setting, 'filtering')); });
         // -- Hide by status
-        htmlOut += `     <div class="URCE-subHeading" style="font-weight:600;">${I18n.t(`urce.prefs.HideByStatus${((_settings.invertFilters) ? 'Inverted' : '')}`)}:<br></div>`;
-        ['hideByStatusOpen', 'hideByStatusClosed', 'hideByStatusNotIdentified', 'hideByStatusSolved',
-            'hideByStatusClosedBy'].forEach((setting) => { htmlOut += buildStandardCbSetting(setting, 'filtering'); });
+        contentDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+            class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t(`urce.prefs.HideByStatus${((_settings.invertFilters) ? 'Inverted' : '')}`)}:`
+        }));
+        ['hideByStatusOpen', 'hideByStatusClosed', 'hideByStatusNotIdentified', 'hideByStatusSolved', 'hideByStatusClosedBy'].forEach((setting) => {
+            contentDiv.appendChild(buildStandardCbSetting(setting, 'filtering'));
+        });
         // -- Hide by type
-        htmlOut += `     <div class="URCE-subHeading" style="font-weight:600;">${I18n.t(`urce.prefs.HideByType${((_settings.invertFilters) ? 'Inverted' : '')}`)}:<br></div>`;
+        contentDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+            class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t(`urce.prefs.HideByType${((_settings.invertFilters) ? 'Inverted' : '')}`)}:`
+        }));
         ['hideByTypeBlockedRoad', 'hideByTypeGeneralError', 'hideByTypeIncorrectAddress', 'hideByTypeIncorrectJunction', 'hideByTypeIncorrectRoute', 'hideByTypeIncorrectStreetPrefixOrSuffix',
             'hideByTypeIncorrectTurn', 'hideByTypeMissingBridgeOverpass', 'hideByTypeMissingExit', 'hideByTypeMissingLandmark', 'hideByTypeMissingOrInvalidSpeedLimit', 'hideByTypeMissingRoad',
             'hideByTypeMissingRoundabout', 'hideByTypeMissingStreetName', 'hideByTypeTurnNotAllowed', 'hideByTypeUndefined', 'hideByTypeWrongDrivingDirection'
-        ].forEach((setting) => { htmlOut += buildStandardCbSetting(setting, 'filtering'); });
+        ].forEach((setting) => { contentDiv.appendChild(buildStandardCbSetting(setting, 'filtering')); });
         // -- Hide by tagged
-        htmlOut += `     <div class="URCE-subHeading" style="font-weight:600;">${I18n.t(`urce.prefs.HideByTagged${((_settings.invertFilters) ? 'Inverted' : '')}`)}:<br></div>`;
-        ['Bog', 'Closure', 'Construction', 'Difficult', 'Event', 'Note', 'Roadworks', 'Wslm'].forEach((setting) => { htmlOut += buildTagCbSetting(`hideByTagged${setting}`, 'filtering', I18n.t(`urce.tags.${setting}`), I18n.t(`urce.prefs.HideByTagged${setting}Title`), true); });
+        contentDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+            class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t(`urce.prefs.HideByTagged${((_settings.invertFilters) ? 'Inverted' : '')}`)}:`
+        }));
+        ['Bog', 'Closure', 'Construction', 'Difficult', 'Event', 'Note', 'Roadworks', 'Wslm'].forEach((setting) => {
+            contentDiv.appendChild(buildTagCbSetting(`hideByTagged${setting}`, 'filtering', I18n.t(`urce.tags.${setting}`), I18n.t(`urce.prefs.HideByTagged${setting}Title`), true));
+        });
         // -- Hide by age of submission
-        htmlOut += `     <div class="URCE-subHeading" style="font-weight:600;">${I18n.t(`urce.prefs.HideByAgeOfSubmission${((_settings.invertFilters) ? 'Inverted' : '')}`)}:<br></div>`;
-        htmlOut += buildCbandNumSetting('hideByAgeOfSubmissionLessThan', 'hideByAgeOfSubmissionLessThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''));
-        htmlOut += buildCbandNumSetting('hideByAgeOfSubmissionMoreThan', 'hideByAgeOfSubmissionMoreThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''));
+        contentDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+            class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t(`urce.prefs.HideByAgeOfSubmission${((_settings.invertFilters) ? 'Inverted' : '')}`)}:`
+        }));
+        contentDiv.appendChild(
+            buildCbandNumSetting('hideByAgeOfSubmissionLessThan', 'hideByAgeOfSubmissionLessThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''))
+        );
+        contentDiv.appendChild(
+            buildCbandNumSetting('hideByAgeOfSubmissionMoreThan', 'hideByAgeOfSubmissionMoreThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''))
+        );
         // -- Hide by description, comments, following
-        htmlOut += `     <div class="URCE-subHeading" style="font-weight:600;">${I18n.t(`urce.prefs.DescriptionCommentsFollowing${((_settings.invertFilters) ? 'Inverted' : '')}`)}:<br></div>`
-            + '             <div class="URCE-textFirst" urceprefs="filtering">';
-        htmlOut += buildTextFirstDoubleCbSetting('hideFollowing', 'hideNotFollowing', I18n.t('urce.common.Following'), 'filtering');
-        htmlOut += buildTextFirstDoubleCbSetting('hideWithDescription', 'hideWithoutDescription', I18n.t('objects.venue.fields.description'), 'filtering');
-        htmlOut += buildTextFirstDoubleCbSetting('hideWithCommentsFromMe', 'hideWithoutCommentsFromMe', I18n.t('urce.prefs.HideCommentsFromMe'), 'filtering');
-        htmlOut += buildTextFirstDoubleCbSetting('hideFirstCommentByMe', 'hideFirstCommentNotByMe', I18n.t('urce.prefs.HideFirstCommentByMe'), 'filtering');
-        htmlOut += buildTextFirstDoubleCbSetting('hideLastCommentByMe', 'hideLastCommentNotByMe', I18n.t('urce.prefs.HideLastCommentByMe'), 'filtering');
-        htmlOut += buildTextFirstDoubleCbSetting('hideLastCommentByReporter', 'hideLastCommentNotByReporter', I18n.t('urce.prefs.HideLastCommentByReporter'), 'filtering');
-        htmlOut += '        </div>';
-        htmlOut += buildCbandNumSetting('hideByCommentCountLessThan', 'hideByCommentCountLessThanNumber', 'filtering', '0', '9999', '1', I18n.t('urce.tabs.Comments'));
-        htmlOut += buildCbandNumSetting('hideByCommentCountMoreThan', 'hideByCommentCountMoreThanNumber', 'filtering', '0', '9999', '1', I18n.t('urce.tabs.Comments'));
-        htmlOut += buildCbandNumSetting('hideByAgeOfFirstCommentLessThan', 'hideByAgeOfFirstCommentLessThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 })
-            .replace('0 ', ''));
-        htmlOut += buildCbandNumSetting('hideByAgeOfFirstCommentMoreThan', 'hideByAgeOfFirstCommentMoreThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 })
-            .replace('0 ', ''));
-        htmlOut += buildCbandNumSetting('hideByAgeOfLastCommentLessThan', 'hideByAgeOfLastCommentLessThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 })
-            .replace('0 ', ''));
-        htmlOut += buildCbandNumSetting('hideByAgeOfLastCommentMoreThan', 'hideByAgeOfLastCommentMoreThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 })
-            .replace('0 ', ''));
-        htmlOut += buildCbandTextSetting('hideByKeywordIncluding', 'hideByKeywordIncludingKeyword', 'filtering', undefined);
-        htmlOut += buildCbandTextSetting('hideByKeywordNotIncluding', 'hideByKeywordNotIncludingKeyword', 'filtering', undefined);
-        htmlOut += '        <div style="padding-left:15px;font-style:italic;">';
-        htmlOut += buildStandardCbSetting('hideByKeywordCaseInsensitive', 'filtering');
-        htmlOut += '        </div>';
-        htmlOut += buildCbandTextSetting('hideWithCommentBy', 'hideWithCommentByUsers', 'filtering', undefined);
-        htmlOut += buildCbandTextSetting('hideWithoutCommentBy', 'hideWithoutCommentByUsers', 'filtering', undefined);
-        htmlOut += '</div></fieldset>';
-        $('#panel-urce-settings').empty().append(htmlOut);
-        if (!isChecked('#_cbenableUrPillCounts'))
-            $('[urceprefs=marker]').prop('disabled', true).addClass('urceDisabled');
-        else
-            $('[urceprefs=marker]').prop('disabled', false).removeClass('urceDisabled');
-        if (!isChecked('#_cbenableUrceUrFiltering'))
-            $('[urceprefs=filtering]').prop('disabled', true).addClass('urceDisabled');
-        else
-            $('[urceprefs=filtering]').prop('disabled', false).removeClass('urceDisabled');
-        if (!isChecked('#_cbunstackMarkers'))
-            $('[urceprefs$="-unstack"]').prop('disabled', true).addClass('urceDisabled');
-        else
-            $('[urceprefs$="-unstack"]').prop('disabled', false).removeClass('urceDisabled');
-        $('#URCE-expandAllSettings, #URCE-collapseAllSettings').off().on('click', function () {
-            const $legends = $('legend[id^="urce-prefs-legend"');
-            for (let idx = 0; idx < $legends.length; idx++) {
-                if (this.id === 'URCE-expandAllSettings') {
-                    if ($legends[idx].nextElementSibling.className.indexOf('collapse') > -1)
-                        $($legends[idx]).click();
-                }
-                else if (this.id === 'URCE-collapseAllSettings') {
-                    if ($legends[idx].nextElementSibling.className.indexOf('collapse') === -1)
-                        $($legends[idx]).click();
-                }
-            }
-        });
-        $('legend[id^="urce-prefs-legend-"]').off().on('click', function () {
-            $($(this).children()[0]).toggleClass('fa-chevron-down fa-chevron-right');
-            $($(this).siblings()[0]).toggleClass('collapse');
-        });
-        $('#_selCommentList').off().on('change', function () {
-            if ((parseInt(this.value) === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
-                $(this).val(_currentCommentList);
-                WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
-            }
-            else {
-                changeCommentList(parseInt(this.value), false, false);
-            }
-        });
-        $('#_selCommentListStyle').off().on('change', function () {
-            changeCommentListStyle(this.value);
-        });
-        $('#urce-spreadsheet-link, #urce-customSpreadsheet-link').off().on('click', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            window.open(this.href, '_blank');
-        });
-        $('.urceSettingsCheckbox').off().on('change', function () {
-            let otherSettingName;
-            const settingName = $(this)[0].id.substr(3),
-                urcePrefs = $(this).attr('urceprefs');
-            if (settingName === 'hideFollowing')
-                otherSettingName = 'hideNotFollowing';
-            if (settingName === 'hideNotFollowing')
-                otherSettingName = 'hideFollowing';
-            if (settingName === 'hideWithDescription')
-                otherSettingName = 'hideWithoutDescription';
-            if (settingName === 'hideWithoutDescription')
-                otherSettingName = 'hideWithDescription';
-            if (settingName === 'hideWithCommentsFromMe')
-                otherSettingName = 'hideWithoutCommentsFromMe';
-            if (settingName === 'hideWithoutCommentsFromMe')
-                otherSettingName = 'hideWithCommentsFromMe';
-            if (settingName === 'hideFirstCommentByMe')
-                otherSettingName = 'hideFirstCommentNotByMe';
-            if (settingName === 'hideFirstCommentNotByMe')
-                otherSettingName = 'hideFirstCommentByMe';
-            if (settingName === 'hideLastCommentByMe')
-                otherSettingName = 'hideLastCommentNotByMe';
-            if (settingName === 'hideLastCommentNotByMe')
-                otherSettingName = 'hideLastCommentByMe';
-            if (settingName === 'hideLastCommentByReporter')
-                otherSettingName = 'hideLastCommentNotByReporter';
-            if (settingName === 'hideLastCommentNotByReporter')
-                otherSettingName = 'hideLastCommentByReporter';
-            if (settingName === 'replaceNextWithDoneButton')
-                otherSettingName = 'disableDoneNextButtons';
-            if (settingName === 'disableDoneNextButtons')
-                otherSettingName = 'replaceNextWithDoneButton';
-            if (otherSettingName) {
-                if (isChecked(this) && isChecked(`#_cb${otherSettingName}`)) {
-                    _settings[otherSettingName] = false;
-                    $(`#_cb${otherSettingName}`).prop('checked', false);
-                }
-            }
-            if (settingName === 'disableDoneNextButtons') {
-                if (isChecked(this))
-                    $('#panel-container .content .navigation').css({ display: 'none' });
-                else
-                    $('#panel-container .content .navigation').css({ display: 'block' });
-            }
-            if (settingName === 'hideZoomOutLinks') {
-                if (isChecked(this))
-                    $('div#_divZoomOutLinks').hide();
-                else
-                    $('div#_divZoomOutLinks').show();
-            }
-            if (settingName === 'unstackMarkers') {
-                if (isChecked(this))
-                    $('[urceprefs$="-unstack"]').prop('disabled', false).removeClass('urceDisabled');
-                else
-                    $('[urceprefs$="-unstack"]').prop('disabled', true).addClass('urceDisabled');
-            }
-            if (settingName === 'autoClickOpenSolvedNi') {
-                if (isChecked('#_cbdoubleClickLinkNiComments')) {
-                    _settings.doubleClickLinkNiComments = false;
-                    $('#_cbdoubleClickLinkNiComments').prop('checked', false);
-                    $('div#URCE-divDoubleClickNi').hide();
-                }
-                if (isChecked('#_cbdoubleClickLinkOpenComments')) {
-                    _settings.doubleClickLinkOpenComments = false;
-                    $('#_cbdoubleClickLinkOpenComments').prop('checked', false);
-                    $('div#URCE-divDoubleClickOpen').hide();
-                }
-                if (isChecked('#_cbdoubleClickLinkSolvedComments')) {
-                    _settings.doubleClickLinkSolvedComments = false;
-                    $('#_cbdoubleClickLinkSolvedComments').prop('checked', false);
-                    $('div#URCE-divDoubleClickSolved').hide();
-                }
-            }
-            if (settingName === 'doubleClickLinkOpenComments') {
-                if (!isChecked(this)) {
-                    $('div#URCE-divDoubleClickOpen').hide();
-                }
-                else {
-                    if (!isChecked('#_cbautoClickOpenSolvedNi')) {
-                        _settings.autoClickOpenSolvedNi = true;
-                        $('#_cbautoClickOpenSolvedNi').prop('checked', true);
-                    }
-                    $('div#URCE-divDoubleClickOpen').show();
-                }
-            }
-            if (settingName === 'doubleClickLinkNiComments') {
-                if (!isChecked(this)) {
-                    $('div#URCE-divDoubleClickNi').hide();
-                }
-                else {
-                    if (!isChecked('#_cbautoClickOpenSolvedNi')) {
-                        _settings.autoClickOpenSolvedNi = true;
-                        $('#_cbautoClickOpenSolvedNi').prop('checked', true);
-                    }
-                    $('div#URCE-divDoubleClickNi').show();
-                }
-            }
-            if (settingName === 'doubleClickLinkSolvedComments') {
-                if (!isChecked(this)) {
-                    $('div#URCE-divDoubleClickSolved').hide();
-                }
-                else {
-                    if (!isChecked('#_cbautoClickOpenSolvedNi')) {
-                        _settings.autoClickOpenSolvedNi = true;
-                        $('#_cbautoClickOpenSolvedNi').prop('checked', true);
-                    }
-                    $('div#URCE-divDoubleClickSolved').show();
-                }
-            }
-            if (urcePrefs === 'markerMaster') {
-                if (!isChecked(this))
-                    $('[urceprefs=marker]').prop('disabled', true).addClass('urceDisabled');
-                else
-                    $('[urceprefs=marker]').prop('disabled', false).removeClass('urceDisabled');
-            }
-            if (urcePrefs === 'filteringMaster') {
-                if (!isChecked(this)) {
-                    $('[urceprefs=filtering]').prop('disabled', true).addClass('urceDisabled');
-                    $('#urceUrFilteringToggleBtn').css('color', '#ccc');
-                }
-                else {
-                    $('[urceprefs=filtering]').prop('disabled', false).removeClass('urceDisabled');
-                    $('#urceUrFilteringToggleBtn').css('color', '#00bd00');
-                }
-            }
-            _settings[settingName] = isChecked(this);
-            if (isChecked($(`input[id="_cbperCommentList_${settingName}_useDefault"]`)) && (isChecked($(`input[id="_cbperCommentList_${settingName}"]`)) !== isChecked(this)))
-                $(`input[id="_cbperCommentList_${settingName}"]`).prop('checked', isChecked(this));
-            Object.values(_settings.perCommentListSettings).forEach((arr) => {
-                if (arr[`${settingName}_useDefault`]) {
-                    if (arr[settingName] !== isChecked(this))
-                        arr[settingName] = isChecked(this);
-                }
-            });
-            saveSettingsToStorage();
-            if (settingName === 'invertFilters')
-                initSettingsTab();
-            if ((((urcePrefs.indexOf('marker') > -1) || (urcePrefs.indexOf('filtering') > -1)) && (settingName.indexOf('unstack') === -1))
-                || (settingName === 'enableUrOverflowHandling')
-            )
-                handleUrLayer('settingsToggle', undefined, getMapUrsObjArr());
-        });
-        $('.urceSettingsNumberBox').off().on('change', function () {
-            const settingName = $(this)[0].id.substr(4),
-                maxVal = (['disableFilteringAboveZoomLevel', 'disableFilteringBelowZoomLevel', 'unstackDisableAboveZoom'].indexOf(settingName) > -1) ? 22 : 9999,
-                minVal = (['disableFilteringAboveZoomLevel', 'disableFilteringBelowZoomLevel', 'unstackDisableAboveZoom'].indexOf(settingName) > -1) ? 12 : 0,
-                val = Math.min(maxVal, Math.max(minVal, parseInt(Math.abs(parseInt(this.value) || minVal))));
-            if ((val !== parseInt(this.value)) || (_settings[settingName] !== val)) {
-                if (val !== parseInt(this.value))
-                    this.value = val;
-                _settings[settingName] = val;
-                if (isChecked($(`input[id="_cbperCommentList_${settingName}_useDefault"]`)) && ($(`input[id="_numperCommentList_${settingName}"]`) !== val))
-                    $(`input[id="_numperCommentList_${settingName}"]`).val(val);
-                Object.values(_settings.perCommentListSettings).forEach((arr) => {
-                    if (arr[`${settingName}_useDefault`]) {
-                        if (arr[settingName] !== val)
-                            arr[settingName] = val;
-                    }
-                });
-                saveSettingsToStorage();
-                if (settingName.indexOf('unstack') === -1)
-                    handleUrLayer('settingsToggle', undefined, getMapUrsObjArr());
-            }
-        });
-        $('.urceSettingsTextBox').off().on('change', function () {
-            const settingName = $(this)[0].id.substr(5),
-                val = this.value.trim();
-            if ((val !== this.value) || (_settings[settingName] !== val)) {
-                if (val !== this.value)
-                    this.value = val;
-                _settings[settingName] = val;
-                if (isChecked($(`input[id="_cbperCommentList_${settingName}_useDefault"]`)) && ($(`input[id="_numperCommentList_${settingName}"]`) !== val))
-                    $(`input[id="_textperCommentList_${settingName}"]`).val(val);
-                Object.values(_settings.perCommentListSettings).forEach((arr) => {
-                    if (arr[`${settingName}_useDefault`]) {
-                        if (arr[settingName] !== val)
-                            arr[settingName] = val;
-                    }
-                });
-                saveSettingsToStorage();
-                if (settingName === 'customSsId') {
-                    if (val && (val.length > 0)) {
-                        const $customSsIdLink = $('<a>', {
-                            class: 'URCE-Controls URCE-spreadsheetLink', id: 'urce-customSpreadsheet-link', title: I18n.t('urce.prefs.CustomSpreadsheetLinkTitle'), href: `https://docs.google.com/spreadsheets/d/${val}/edit`
-                        }).text(I18n.t('urce.prefs.CustomSpreadsheetLink')).on('click', function (e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            window.open(this.href, '_blank');
-                        });
-                        if ($('#urceCustomSpreadsheetLinkDiv').length === 0) {
-                            $('#urceSpreadsheetLinks').append(
-                                $('<div>', { class: 'URCE-spreadsheetLink', id: 'urceCustomSpreadsheetLinkDiv' }).append($customSsIdLink)
-                            );
-                        }
-                        else {
-                            $('#urceCustomSpreadsheetLinkDiv').empty().append($customSsIdLink);
-                        }
-                    }
-                    else if ($('#urceCustomSpreadsheetLinkDiv').length > 0) {
-                        $('#urceCustomSpreadsheetLinkDiv').remove();
-                    }
-                }
-                if ((settingName !== 'tagEmail') && (settingName !== 'customSsId') && (settingName !== 'customTagline'))
-                    handleUrLayer('settingsToggle', undefined, getMapUrsObjArr());
-                else if ((settingName === 'tagEmail') || (settingName === 'customTagline') || ((settingName === 'customSsId') && (_currentCommentList === 1001)))
-                    changeCommentList(_settings.commentList, false, true);
-            }
-        });
+        contentDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+            class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t(`urce.prefs.DescriptionCommentsFollowing${((_settings.invertFilters) ? 'Inverted' : '')}`)}:`
+        }));
+        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-textFirst', urceprefs: 'filtering' });
+        contentDivDiv.appendChild(buildTextFirstDoubleCbSetting('hideFollowing', 'hideNotFollowing', I18n.t('urce.common.Following'), 'filtering'));
+        contentDivDiv.appendChild(buildTextFirstDoubleCbSetting('hideWithDescription', 'hideWithoutDescription', I18n.t('objects.venue.fields.description'), 'filtering'));
+        contentDivDiv.appendChild(buildTextFirstDoubleCbSetting('hideWithCommentsFromMe', 'hideWithoutCommentsFromMe', I18n.t('urce.prefs.HideCommentsFromMe'), 'filtering'));
+        contentDivDiv.appendChild(buildTextFirstDoubleCbSetting('hideFirstCommentByMe', 'hideFirstCommentNotByMe', I18n.t('urce.prefs.HideFirstCommentByMe'), 'filtering'));
+        contentDivDiv.appendChild(buildTextFirstDoubleCbSetting('hideLastCommentByMe', 'hideLastCommentNotByMe', I18n.t('urce.prefs.HideLastCommentByMe'), 'filtering'));
+        contentDivDiv.appendChild(buildTextFirstDoubleCbSetting('hideLastCommentByReporter', 'hideLastCommentNotByReporter', I18n.t('urce.prefs.HideLastCommentByReporter'), 'filtering'));
+        contentDiv.appendChild(contentDivDiv);
+        contentDiv.appendChild(buildCbandNumSetting('hideByCommentCountLessThan', 'hideByCommentCountLessThanNumber', 'filtering', '0', '9999', '1', I18n.t('urce.tabs.Comments')));
+        contentDiv.appendChild(buildCbandNumSetting('hideByCommentCountMoreThan', 'hideByCommentCountMoreThanNumber', 'filtering', '0', '9999', '1', I18n.t('urce.tabs.Comments')));
+        contentDiv.appendChild(
+            buildCbandNumSetting('hideByAgeOfFirstCommentLessThan', 'hideByAgeOfFirstCommentLessThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''))
+        );
+        contentDiv.appendChild(
+            buildCbandNumSetting('hideByAgeOfFirstCommentMoreThan', 'hideByAgeOfFirstCommentMoreThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''))
+        );
+        contentDiv.appendChild(
+            buildCbandNumSetting('hideByAgeOfLastCommentLessThan', 'hideByAgeOfLastCommentLessThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''))
+        );
+        contentDiv.appendChild(
+            buildCbandNumSetting('hideByAgeOfLastCommentMoreThan', 'hideByAgeOfLastCommentMoreThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''))
+        );
+        contentDiv.appendChild(buildCbandTextSetting('hideByKeywordIncluding', 'hideByKeywordIncludingKeyword', 'filtering', undefined));
+        contentDiv.appendChild(buildCbandTextSetting('hideByKeywordNotIncluding', 'hideByKeywordNotIncludingKeyword', 'filtering', undefined));
+        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { style: 'padding-left:15px;font-style:italic;' });
+        contentDivDiv.appendChild(buildStandardCbSetting('hideByKeywordCaseInsensitive', 'filtering'));
+        contentDiv.appendChild(contentDivDiv);
+        contentDiv.appendChild(buildCbandTextSetting('hideWithCommentBy', 'hideWithCommentByUsers', 'filtering', undefined));
+        contentDiv.appendChild(buildCbandTextSetting('hideWithoutCommentBy', 'hideWithoutCommentByUsers', 'filtering', undefined));
+        docFrags.appendChild(fieldsetElem);
+        document.getElementById('panel-urce-settings').appendChild(docFrags);
         /**
          * Disable settings for compatibility
          * Enable Auto Refresh: Disabled 2023.03.29
@@ -4987,51 +5544,82 @@
          *      wiping and reloading the model data. For now, this setting is disabled and the functionality has been replaced
          *      with the already working handleOverflow function (if the user has it enabled).
          */
-        $('#_cbenableAutoRefresh, label[for="_cbenableAutoRefresh"')
-            .attr('disabled', true)
-            .addClass('urceDisabled')
-            .attr('title', `${I18n.t('urce.prefs.DisabledUnusedSettingTitle')}\r\n\r\n${I18n.t('urce.prefs.EnableAutoRefreshTitle')}`);
+        document.querySelectorAll('#_cbenableAutoRefresh, label[for="_cbenableAutoRefresh"').forEach((el) => {
+            el.disabled = true;
+            el.classList.add('urceDisabled');
+            el.setAttribute('title', `${I18n.t('urce.prefs.DisabledUnusedSettingTitle')}\r\n\r\n${I18n.t('urce.prefs.EnableAutoRefreshTitle')}`);
+        });
     }
 
     async function initGui(firstCall = true) {
+        if (_initError)
+            return Promise.resolve();
         logDebug('Initializing GUI.');
         injectCss();
-        if ($('#urceDiv').length === 0) {
-            $('body').append('<div id="urceDiv">'
-                + '<span class="urceDivCloseButton">X</span>'
-                + '<div class="urceDivContent"></div>'
-                + `<span class="urceDivDisablePopups">${I18n.t('urce.prefs.DisableUrMarkerPopup')}</span>`
-                + '</div>');
+        if (!document.getElementById('urceDiv')) {
+            const disableUrMarkerPopups = () => {
+                    hidePopup({ doubleClick: true });
+                    document.getElementById('_cbdisableUrMarkerPopup').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                },
+                divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceDiv' }, [{ mouseleave: hidePopup }, { mouseenter: checkPopupTimeouts }, { dblclick: dispatchPopupDoubleClick }]);
+            divElemRoot.appendChild(setElemAttrs(_elems.span.cloneNode(false), { class: 'urceDivCloseButton', textContent: 'X' }, [{ click: hidePopup }]));
+            divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { class: 'urceDivContent' }));
+            divElemRoot.appendChild(setElemAttrs(_elems.span.cloneNode(false), { class: 'urceDivDisablePopups', textContent: I18n.t('urce.prefs.DisableUrMarkerPopup') }, [{ click: disableUrMarkerPopups }]));
+            document.body.appendChild(divElemRoot);
         }
-        $('#urceDiv .urceDivCloseButton').off().on('click', { doubleClick: false }, hidePopup);
-        $('#urceDiv .urceDivDisablePopups').off().on('click', undefined, () => {
-            hidePopup(true);
-            $('#_cbdisableUrMarkerPopup').click();
-        });
         if (firstCall) {
-            const { tabLabel, tabPane } = W.userscripts.registerSidebarTab('URC-E');
-            tabLabel.innerHTML = `<img id="urceIcon" class="URCE-tabIcon" src="${GM_info.script.icon}">`
-                + `<span id="urceUrMarkerProcessingSpinner" class="fa fa-spinner URCE-spinner" title="${I18n.t('urce.mouseOver.URMarkerProcessingInactive')}"></span>`
-                + `<span id="urceUrFilteringToggleBtn" class="fa fa-filter URCE-urFilteringToggleBtn" style="color:${(_settings.enableUrceUrFiltering ? '#00bd00' : '#ccc')};" title="${I18n.t('urce.mouseOver.ToggleUrceURFiltering')}">`;
+            const docFrags = document.createDocumentFragment(),
+                { tabLabel, tabPane } = W.userscripts.registerSidebarTab('URC-E'),
+                ulElem = _elems.ul.cloneNode(false),
+                urceUrFilteringToggle = (evt) => {
+                    evt.stopPropagation();
+                    document.getElementById('_cbenableUrceUrFiltering').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                };
+            let divElemRoot,
+                liElem;
+            // Tab Label
+            docFrags.appendChild(setElemAttrs(_elems.img.cloneNode(false), { id: 'urceIcon', class: 'URCE-tabIcon', src: GM_info.script.icon }));
+            docFrags.appendChild(
+                setElemAttrs(_elems.span.cloneNode(false), { id: 'urceUrMarkerProcessingSpinner', class: 'fa fa-spinner URCE-spinner', title: I18n.t('urce.mouseOver.URMarkerProcessingInactive') })
+            );
+            docFrags.appendChild(
+                setElemAttrs(_elems.span.cloneNode(false), {
+                    id: 'urceUrFilteringToggleBtn', class: 'fa fa-filter URCE-urFilteringToggleBtn', style: `color:${(_settings.enableUrceUrFiltering ? '#00bd00' : '#ccc')};`, title: I18n.t('urce.mouseOver.ToggleUrceURFiltering')
+                }, [{ click: urceUrFilteringToggle }])
+            );
+            tabLabel.appendChild(docFrags);
             tabLabel.title = 'URC-E';
-            tabPane.innerHTML = `<span class="URCE-spanTitle">${_SCRIPT_SHORT_NAME}</span><span class="URCE-spanVersion">${_SCRIPT_VERSION}</span>`
-                + '<div class="URCE-navTabs"><ul class="nav nav-tabs">'
-                + `     <li class="active"><a data-toggle="tab" href="#panel-urce-comments" aria-expanded="true">${I18n.t('urce.tabs.Comments')}</a></li>`
-                + `     <li><a data-toggle="tab" href="#panel-urce-settings" aria-expanded="true">${I18n.t('urce.tabs.Settings')}</a></li>`
-                + `     <li><a data-toggle="tab" href="#panel-urce-tools" aria-expanded="true">${I18n.t('urce.tabs.Tools')}</a></li>`
-                + '</ul></div>'
-                + '<div class="tab-content URCE-divTabs" style="--height-offset:0px;">'
-                + '     <div class="tab-pane active" id="panel-urce-comments"></div>'
-                + '     <div class="tab-pane" id="panel-urce-settings"></div>'
-                + '     <div class="tab-pane" id="panel-urce-tools"></div>'
-                + '</div></span>';
+            // Tab Pane
+            docFrags.appendChild(setElemAttrs(_elems.span.cloneNode(false), { class: 'URCE-spanTitle', textContent: _SCRIPT_SHORT_NAME }));
+            docFrags.appendChild(setElemAttrs(_elems.span.cloneNode(false), { class: 'URCE-spanVersion', textContent: _SCRIPT_VERSION }));
+            liElem = setElemAttrs(_elems.li.cloneNode(false), { class: 'active' });
+            liElem.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+                'data-toggle': 'tab', href: '#panel-urce-comments', 'aria-expanded': true, textContent: I18n.t('urce.tabs.Comments')
+            }));
+            setElemAttrs(ulElem, { class: 'nav nav-tabs' });
+            ulElem.appendChild(liElem);
+            liElem = _elems.li.cloneNode(false);
+            liElem.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+                'data-toggle': 'tab', href: '#panel-urce-settings', 'aria-expanded': true, textContent: I18n.t('urce.tabs.Settings')
+            }));
+            ulElem.appendChild(liElem);
+            liElem = _elems.li.cloneNode(false);
+            liElem.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+                'data-toggle': 'tab', href: '#panel-urce-tools', 'aria-expanded': true, textContent: I18n.t('urce.tabs.Tools')
+            }));
+            ulElem.appendChild(liElem);
+            divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-navTabs' });
+            divElemRoot.appendChild(ulElem);
+            docFrags.appendChild(divElemRoot);
+            divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'tab-content URCE-divTabs', style: '--height-offset:0px;' });
+            divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { id: 'panel-urce-comments', class: 'tab-pane active' }));
+            divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { id: 'panel-urce-settings', class: 'tab-pane' }));
+            divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { id: 'panel-urce-tools', class: 'tab-pane' }));
+            docFrags.appendChild(divElemRoot);
+            tabPane.appendChild(docFrags);
             Object.assign(tabPane.parentElement.style, { width: 'auto', padding: '0 15px' });
             tabPane.id = 'sidepanel-urc-e';
             await W.userscripts.waitForElementConnected(tabPane);
-            $('span#urceUrFilteringToggleBtn').on('click', (evt) => {
-                evt.stopPropagation();
-                $('#_cbenableUrceUrFiltering').click();
-            });
             showScriptInfoAlert();
         }
         initSettingsTab();
@@ -5043,166 +5631,212 @@
     function initCommentLists() {
         return new Promise((resolve, reject) => {
             logDebug('Initializing available comment lists.');
-            let errorText;
-            $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${_URCE_SPREADSHEET_ID}/values/CommentLists!A3:G?key=${_URCE_API_KEY}`, (data) => {
-                if (data?.values.length > 0) {
-                    let ssFieldNames;
-                    const EXPECTED_FIELD_NAMES = ['idx', 'name', 'status', 'type', 'oldVarName', 'Prefix', 'listOwner'],
-                        checkFieldNames = (fldName) => ssFieldNames.indexOf(fldName) > -1;
-                    for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
-                        if (entryIdx === 0) {
-                            if (_SCRIPT_VERSION < data.values[entryIdx][0]) {
-                                errorText = `updateRequired|${data.values[entryIdx][0]}`;
-                                break;
-                            }
-                        }
-                        else if (entryIdx === 1) {
-                            ssFieldNames = data.values[entryIdx].map((fldName) => fldName.trim());
-                            if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length)
-                                errorText = `Expected ${EXPECTED_FIELD_NAMES.length} columns in comment lists data. Spreadsheet returned ${ssFieldNames.length}.`;
-                            else if (!EXPECTED_FIELD_NAMES.every((fldName) => checkFieldNames(fldName)))
-                                errorText = `Script expected to see the following column names in the comment definition spreadsheet:\n${EXPECTED_FIELD_NAMES.join(', ')}\nHowever, the spreadsheet returned these:\n${ssFieldNames.join(', ')}`;
-                            if (errorText)
-                                break;
-                        }
-                        else {
-                            const output = Object.create({});
-                            for (let valIdx = 0; valIdx < data.values[entryIdx].length; valIdx++) {
-                                if (ssFieldNames[valIdx] === 'idx')
-                                    output[ssFieldNames[valIdx]] = parseInt(data.values[entryIdx][valIdx]);
-                                else if (ssFieldNames[valIdx] === 'Prefix')
-                                    output.gSheetRange = `${data.values[entryIdx][valIdx]}_Output_(do_not_edit)!A1:A`;
-                                else
-                                    output[ssFieldNames[valIdx]] = data.values[entryIdx][valIdx];
-                            }
-                            _commentLists.push(output);
-                        }
-                    }
-                    if (!errorText)
-                        _commentLists.sort(dynamicSort('name'));
+            const postProcess = function (errorText) {
+                if (errorText && _STATIC_ONLY_USERS.includes(W.loginManager.user.userName)) {
+                    _commentLists.push({
+                        idx: 1, name: 'Custom', status: 'enabled', type: 'static', oldVarName: 'Custom', listOwner: 'Custom', gSheetRange: ''
+                    });
+                    _commentLists.push({
+                        idx: 3, name: 'USA - SER', status: 'enabled', type: 'static', oldVarName: 'USA_Southeast', listOwner: 'itzwolf', gSheetRange: ''
+                    });
+                    resolve();
+                }
+                else if (errorText) {
+                    reject(new Error(errorText));
                 }
                 else {
-                    errorText = errorText || 'No lists available.';
+                    resolve();
                 }
-            })
-                .fail((response) => {
-                    errorText = `Spreadsheet call failed. Code: ${response.status} - Text: ${response.responseText}`;
-                })
-                .always(() => {
-                    if (errorText)
-                        logWarning(errorText);
-                    if (errorText && (_STATIC_ONLY_USERS.indexOf(W.loginManager.user.userName) > -1)) {
-                        _commentLists.push({
-                            idx: 1, name: 'Custom', status: 'enabled', type: 'static', oldVarName: 'Custom', listOwner: 'Custom', gSheetRange: ''
-                        });
-                        _commentLists.push({
-                            idx: 3, name: 'USA - SER', status: 'enabled', type: 'static', oldVarName: 'USA_Southeast', listOwner: 'itzwolf', gSheetRange: ''
-                        });
-                        resolve();
-                    }
-                    else if (errorText) {
-                        reject(new Error(errorText));
+            };
+            GM_xmlhttpRequest({
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${_URCE_SPREADSHEET_ID}/values/CommentLists!A3:G?key=${_URCE_API_KEY}`,
+                headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
+                method: 'GET',
+                onload(res) {
+                    let errorText;
+                    if (res.status < 400) {
+                        const data = JSON.parse(res.responseText);
+                        if (data.values?.length > 0) {
+                            let ssFieldNames;
+                            const EXPECTED_FIELD_NAMES = ['idx', 'name', 'status', 'type', 'oldVarName', 'Prefix', 'listOwner'],
+                                checkFieldNames = (fldName) => ssFieldNames.includes(fldName);
+                            for (let entryIdx = 0, { length } = data.values; entryIdx < length; entryIdx++) {
+                                if (entryIdx === 0) {
+                                    if (_SCRIPT_VERSION < data.values[entryIdx][0]) {
+                                        errorText = `updateRequired|${data.values[entryIdx][0]}`;
+                                        break;
+                                    }
+                                    if (data.values[entryIdx][0] < _MIN_VERSION_COMMENTLISTS) {
+                                        errorText = `spreadsheetUpdateRequired|${_MIN_VERSION_COMMENTLISTS}`;
+                                        break;
+                                    }
+                                }
+                                else if (entryIdx === 1) {
+                                    ssFieldNames = data.values[entryIdx].map((fldName) => fldName.trim());
+                                    if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length)
+                                        errorText = `Expected ${EXPECTED_FIELD_NAMES.length} columns in comment lists data. Spreadsheet returned ${ssFieldNames.length}.`;
+                                    else if (!EXPECTED_FIELD_NAMES.every((fldName) => checkFieldNames(fldName)))
+                                        errorText = `Script expected to see the following column names in the comment definition spreadsheet:\n${EXPECTED_FIELD_NAMES.join(', ')}\nHowever, the spreadsheet returned these:\n${ssFieldNames.join(', ')}`;
+                                    if (errorText)
+                                        break;
+                                }
+                                else {
+                                    const output = Object.create({});
+                                    for (let valIdx = 0, len = data.values[entryIdx].length; valIdx < len; valIdx++) {
+                                        if (ssFieldNames[valIdx] === 'idx')
+                                            output[ssFieldNames[valIdx]] = parseInt(data.values[entryIdx][valIdx]);
+                                        else if (ssFieldNames[valIdx] === 'Prefix')
+                                            output.gSheetRange = `${data.values[entryIdx][valIdx]}_Output_(do_not_edit)!A1:A`;
+                                        else
+                                            output[ssFieldNames[valIdx]] = data.values[entryIdx][valIdx];
+                                    }
+                                    _commentLists.push(output);
+                                }
+                            }
+                            if (!errorText)
+                                _commentLists.sort(dynamicSort('name'));
+                        }
+                        else {
+                            errorText = errorText || 'No lists available.';
+                        }
                     }
                     else {
-                        resolve();
+                        errorText = errorText || res;
                     }
-                });
+                    postProcess(errorText);
+                },
+                onerror(res) {
+                    postProcess(`xmlhttpRequest error: ${JSON.stringify(res)}`);
+                }
+            });
         });
     }
 
     function initAutoSwitchArrays() {
         return new Promise((resolve, reject) => {
             logDebug('Initializing auto switch setup.');
-            let errorText;
-            $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${_URCE_SPREADSHEET_ID}/values/CommentLists_AutoSwitch!A3:ZZ?majorDimension=COLUMNS&key=${_URCE_API_KEY}`, (data) => {
-                if (data?.values.length > 0) {
-                    for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
-                        if ((entryIdx === 0) && (_SCRIPT_VERSION < data.values[entryIdx][0])) {
-                            errorText = `updateRequired|${data.values[entryIdx][0]}`;
-                            break;
-                        }
-                        if (data.values[entryIdx].length > 3) {
-                            const commentListNum = parseInt(data.values[entryIdx][2]);
-                            for (let idx = 3; idx < data.values[entryIdx].length; idx++) {
-                                const values = data.values[entryIdx][idx].split('.');
-                                if ((values[0] === 'state') && !_autoSwitch[values[1]])
-                                    _autoSwitch[values[1]] = {};
-                                if (values[0] === 'state')
-                                    _autoSwitch[values[1]][values[2]] = commentListNum;
-                                if ((values[0] === 'country') && !_autoSwitch[values[1]])
-                                    _autoSwitch[values[1]] = { ALL: commentListNum };
+            const postProcess = function (errorText) {
+                if (!errorText || (errorText && _STATIC_ONLY_USERS.includes(W.loginManager.user.userName)))
+                    resolve();
+                else
+                    reject(new Error(errorText));
+            };
+            GM_xmlhttpRequest({
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${_URCE_SPREADSHEET_ID}/values/CommentLists_AutoSwitch!A3:ZZ?majorDimension=COLUMNS&key=${_URCE_API_KEY}`,
+                headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
+                method: 'GET',
+                onload(res) {
+                    let errorText;
+                    if (res.status < 400) {
+                        const data = JSON.parse(res.responseText);
+                        if (data.values?.length > 0) {
+                            for (let entryIdx = 0, { length } = data.values; entryIdx < length; entryIdx++) {
+                                if (entryIdx === 0) {
+                                    if (_SCRIPT_VERSION < data.values[entryIdx][0]) {
+                                        errorText = `updateRequired|${data.values[entryIdx][0]}`;
+                                        break;
+                                    }
+                                    if (data.values[entryIdx][0] < _MIN_VERSION_AUTOSWITCH) {
+                                        errorText = `spreadsheetUpdateRequired|${_MIN_VERSION_AUTOSWITCH}`;
+                                        break;
+                                    }
+                                }
+                                if (data.values[entryIdx].length > 3) {
+                                    const commentListNum = parseInt(data.values[entryIdx][2]);
+                                    for (let idx = 3, len = data.values[entryIdx].length; idx < len; idx++) {
+                                        const values = data.values[entryIdx][idx].split('.');
+                                        if ((values[0] === 'state') && !_autoSwitch[values[1]])
+                                            _autoSwitch[values[1]] = {};
+                                        if (values[0] === 'state')
+                                            _autoSwitch[values[1]][values[2]] = commentListNum;
+                                        if ((values[0] === 'country') && !_autoSwitch[values[1]])
+                                            _autoSwitch[values[1]] = { ALL: commentListNum };
+                                    }
+                                }
                             }
                         }
+                        else {
+                            errorText = errorText || 'No autoswitch data available';
+                        }
                     }
+                    else {
+                        errorText = errorText || res;
+                    }
+                    postProcess(errorText);
+                },
+                onerror(res) {
+                    postProcess(`xmlhttpRequest error: ${JSON.stringify(res)}`);
                 }
-                else {
-                    errorText = errorText || 'No autoswitch data available';
-                }
-            })
-                .fail((response) => {
-                    errorText = `Spreadsheet call failed. Code: ${response.status} - Text: ${response.responseText}`;
-                })
-                .always(() => {
-                    if (errorText)
-                        logWarning(errorText);
-                    if (!errorText || (errorText && (_STATIC_ONLY_USERS.indexOf(W.loginManager.user.userName) > -1)))
-                        resolve();
-                    else
-                        reject(new Error(errorText));
-                });
+            });
         });
     }
 
     function initRestrictions() {
         return new Promise((resolve, reject) => {
             logDebug('Initializing restrictions.');
-            let errorText;
-            $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${_URCE_SPREADSHEET_ID}/values/Restrictions!A3:ZZ?majorDimension=COLUMNS&key=${_URCE_API_KEY}`, (data) => {
-                if (data?.values.length > 0) {
-                    for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
-                        if ((entryIdx === 0) && (_SCRIPT_VERSION < data.values[entryIdx][0])) {
-                            errorText = `updateRequired|${data.values[entryIdx][0]}`;
-                            break;
-                        }
-                        if (data.values[entryIdx].length > 1) {
-                            const restriction = data.values[entryIdx][1];
-                            for (let idx = 2; idx < data.values[entryIdx].length; idx++) {
-                                const values = data.values[entryIdx][idx].split('.');
-                                if (!_restrictions[values[1]])
-                                    _restrictions[values[1]] = {};
-                                if (values[0] === 'state') {
-                                    if (!_restrictions[values[1]][values[2]])
-                                        _restrictions[values[1]][values[2]] = {};
-                                    _restrictions[values[1]][values[2]][restriction] = ((restriction !== 'reminderDays') && (restriction !== 'closeDays'))
-                                        ? (values[3] === 'true')
-                                        : parseInt(values[3]);
+            const postProcess = function (errorText) {
+                if (!errorText || (errorText && _STATIC_ONLY_USERS.includes(W.loginManager.user.userName)))
+                    resolve();
+                else
+                    reject(new Error(errorText));
+            };
+            GM_xmlhttpRequest({
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${_URCE_SPREADSHEET_ID}/values/Restrictions!A3:ZZ?majorDimension=COLUMNS&key=${_URCE_API_KEY}`,
+                headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
+                method: 'GET',
+                onload(res) {
+                    let errorText;
+                    if (res.status < 400) {
+                        const data = JSON.parse(res.responseText);
+                        if (data.values?.length > 0) {
+                            for (let entryIdx = 0, { length } = data.values; entryIdx < length; entryIdx++) {
+                                if (entryIdx === 0) {
+                                    if (_SCRIPT_VERSION < data.values[entryIdx][0]) {
+                                        errorText = `updateRequired|${data.values[entryIdx][0]}`;
+                                        break;
+                                    }
+                                    if (data.values[entryIdx][0] < _MIN_VERSION_RESTRICTIONS) {
+                                        errorText = `spreadsheetUpdateRequired|${_MIN_VERSION_RESTRICTIONS}`;
+                                        break;
+                                    }
                                 }
-                                if (values[0] === 'country') {
-                                    if (!_restrictions[values[1]][values[2]])
-                                        _restrictions[values[1]][values[2]] = {};
-                                    _restrictions[values[1]][values[2]][restriction] = ((restriction !== 'reminderDays') && (restriction !== 'closeDays'))
-                                        ? (values[3] === 'true')
-                                        : parseInt(values[3]);
+                                if (data.values[entryIdx].length > 1) {
+                                    const restriction = data.values[entryIdx][1];
+                                    for (let idx = 2, len = data.values[entryIdx].length; idx < len; idx++) {
+                                        const values = data.values[entryIdx][idx].split('.');
+                                        if (!_restrictions[values[1]])
+                                            _restrictions[values[1]] = {};
+                                        if (values[0] === 'state') {
+                                            if (!_restrictions[values[1]][values[2]])
+                                                _restrictions[values[1]][values[2]] = {};
+                                            _restrictions[values[1]][values[2]][restriction] = ((restriction !== 'reminderDays') && (restriction !== 'closeDays'))
+                                                ? (values[3] === 'true')
+                                                : parseInt(values[3]);
+                                        }
+                                        if (values[0] === 'country') {
+                                            if (!_restrictions[values[1]][values[2]])
+                                                _restrictions[values[1]][values[2]] = {};
+                                            _restrictions[values[1]][values[2]][restriction] = ((restriction !== 'reminderDays') && (restriction !== 'closeDays'))
+                                                ? (values[3] === 'true')
+                                                : parseInt(values[3]);
+                                        }
+                                    }
                                 }
                             }
                         }
+                        else {
+                            errorText = errorText || 'No restrictions data available';
+                        }
                     }
+                    else {
+                        errorText = errorText || res;
+                    }
+                    postProcess(errorText);
+                },
+                onerror(res) {
+                    postProcess(`xmlhttpRequest error: ${JSON.stringify(res)}`);
                 }
-                else {
-                    errorText = errorText || 'No restrictions data available';
-                }
-            })
-                .fail((response) => {
-                    errorText = `Spreadsheet call failed. Code: ${response.status} - Text: ${response.responseText}`;
-                })
-                .always(() => {
-                    if (errorText)
-                        logWarning(errorText);
-                    if (!errorText || (errorText && (_STATIC_ONLY_USERS.indexOf(W.loginManager.user.userName) > -1)))
-                        resolve();
-                    else
-                        reject(new Error(errorText));
-                });
+            });
         });
     }
 
@@ -5233,8 +5867,8 @@
     function initCheckForUrPanel(urId, tries) {
         checkTimeout({ timeout: 'initUrIdInUrl' });
         if (tries < 150) {
-            if ($('#panel-container').children().length === 0) {
-                if ($(`.map-problem.user-generated[data-id="${urId}"]`).length > 0)
+            if (document.getElementById('panel-container')?.children.length === 0) {
+                if (document.querySelectorAll(`.map-problem.user-generated[data-id="${urId}"]`)?.length > 0)
                     openUrPanel(urId, true);
                 else
                     _timeouts.initUrIdInUrl = window.setTimeout(initCheckForUrPanel, 100, urId, ++tries);
@@ -5283,59 +5917,75 @@
         setInterval(checkUrceVersion, 60 * 60 * 1000);
         _wmeUserId = W.loginManager.user.id;
         await loadSettingsFromStorage(false, false);
-        const urIdInUrl = parseInt(window.location.search.split('mapUpdateRequest=')[1]);
-        Promise.all([loadTranslations(), initCommentLists(), initAutoSwitchArrays(), initRestrictions()]).catch((error) => {
+        const urIdInUrl = parseInt(window.location.search.split('mapUpdateRequest=')[1]),
+            afterInitGui = () => {
+                if (_initError)
+                    return;
+                const afterBuildCommentList = () => {
+                        window.addEventListener('beforeunload', saveSettingsToStorage, false);
+                        log(`Fully initialized in ${Math.round(performance.now() - _LOAD_BEGIN_TIME)} ms.`);
+                        if (!urIdInUrl || !(urIdInUrl > 0)) {
+                            initBackgroundTasks('enable', 'init').then(() => {
+                                if (W.model.mapUpdateRequests.getObjectArray().length > _markerCountOnInit)
+                                    handleUrLayer('init_end', undefined, getMapUrsObjArr());
+                                _markerCountOnInit = -1;
+                                maskBoxes(undefined, true, 'init', (urIdInUrl > 0));
+                            });
+                        }
+                        else if (document.getElementById('panel-container')?.children.length === 0) {
+                            logDebug(`urId ${urIdInUrl} found in URL, but the UR panel has not shown up yet. Waiting up to 15 seconds.`);
+                            _initUrIdInUrlObserver = new MutationObserver((mutations) => {
+                                mutations.forEach((mutation) => {
+                                    if ((mutation.type === 'attributes')
+                                        && mutation.target.parentNode.matches('#panel-container')
+                                        && mutation.target.classList.contains('show')
+                                        && !mutation.oldValue.includes('show')
+                                    )
+                                        initFinish(urIdInUrl, false);
+                                });
+                            });
+                            _initUrIdInUrlObserver.observe(document.getElementById('panel-container'), {
+                                childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true
+                            });
+                            _initUrIdInUrlObserver.isObserving = true;
+                            _timeouts.initUrIdInUrl = window.setTimeout(initCheckForUrPanel, 100, urIdInUrl, 1);
+                        }
+                        else {
+                            initFinish(urIdInUrl, false);
+                        }
+                        doSpinner('init', false);
+                    },
+                    afterCheckRestrictions = () => {
+                        buildCommentList(undefined, 'init', false)
+                            .catch((error) => { handleError(error); })
+                            .finally(afterBuildCommentList);
+                    };
+                doSpinner('init', true);
+                maskBoxes(`${I18n.t('urce.prompts.WaitingOnInit')}<br><br>${I18n.t('urce.common.PleaseWait')}.`, false, 'init', (urIdInUrl > 0));
+                checkRestrictions([{ type: 'init' }]).then(afterCheckRestrictions);
+            };
+        Promise.all([loadTranslations(), initCommentLists(), initAutoSwitchArrays(), initRestrictions()]).catch(async (error) => {
+            const areTranslationsReady = () => new Promise((resolve) => {
+                (function retry(tries) {
+                    checkTimeout({ timeout: 'areTranslationsReady' });
+                    if (tries > 100)
+                        resolve();
+                    else if (!I18n.translations[I18n.currentLocale()].urce)
+                        _timeouts.areTranslationsReady = window.setTimeout(retry, 100, ++tries);
+                    else
+                        resolve();
+                }(1));
+            });
+            _initError = true;
             error.staticList = false;
             error.phase = 'init';
             error.maskUrPanel = (urIdInUrl > 0);
             error.commentList = false;
+            await areTranslationsReady();
             handleError(error);
-        }).then(() => {
-            initGui().then(() => {
-                doSpinner('init', true);
-                maskBoxes(`${I18n.t('urce.prompts.WaitingOnInit')}<br><br>${I18n.t('urce.common.PleaseWait')}.`, false, 'init', (urIdInUrl > 0));
-                checkRestrictions([{ type: 'init' }]).then(() => {
-                    buildCommentList(undefined, 'init', false).catch((error) => {
-                        handleError(error);
-                    })
-                        .finally(() => {
-                            window.addEventListener('beforeunload', () => { saveSettingsToStorage(); }, false);
-                            log(`Fully initialized in ${Math.round(performance.now() - _LOAD_BEGIN_TIME)} ms.`);
-                            if (!urIdInUrl || !(urIdInUrl > 0)) {
-                                initBackgroundTasks('enable', 'init').then(() => {
-                                    if (W.model.mapUpdateRequests.getObjectArray().length > _markerCountOnInit)
-                                        handleUrLayer('init_end', undefined, getMapUrsObjArr());
-                                    _markerCountOnInit = -1;
-                                    maskBoxes(undefined, true, 'init', (urIdInUrl > 0));
-                                });
-                            }
-                            else if ($('#panel-container').children().length === 0) {
-                                logDebug(`urId ${urIdInUrl} found in URL, but the UR panel has not shown up yet. Waiting up to 15 seconds.`);
-                                _initUrIdInUrlObserver = new MutationObserver((mutations) => {
-                                    mutations.forEach((mutation) => {
-                                        if ((mutation.type === 'attributes')
-                                            && $(mutation.target.parentNode).is('#panel-container')
-                                            && (mutation.target.className.indexOf('show') > -1)
-                                            && (mutation.oldValue.indexOf('show') === -1)
-                                        )
-                                            initFinish(urIdInUrl, false);
-                                    });
-                                });
-                                _initUrIdInUrlObserver.observe(document.getElementById('panel-container'), {
-                                    childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true, subtree: true
-                                });
-                                _initUrIdInUrlObserver.isObserving = true;
-                                _timeouts.initUrIdInUrl = window.setTimeout(initCheckForUrPanel, 100, urIdInUrl, 1);
-                            }
-                            else {
-                                initFinish(urIdInUrl, false);
-                            }
-                            unsafeWindow._mapUpdateRequests = _mapUpdateRequests;
-                            doSpinner('init', false);
-                        });
-                });
-            });
-        });
+        })
+            .then(initGui)
+            .then(afterInitGui);
     }
 
     function onWmeReady(tries = 1) {
@@ -5381,7 +6031,12 @@
     function loadTranslations() {
         return new Promise((resolve, reject) => {
             logDebug('Loading translations.');
-            let errorText;
+            const postProcess = function (errorText) {
+                if (errorText && !_STATIC_ONLY_USERS.includes(W.loginManager.user.userName))
+                    reject(new Error(errorText));
+                else
+                    resolve();
+            };
             /* FIX FOR WME MISSING DAY NAMES 2021.07.13 - snhroc */
             if (!I18n.translations[I18n.locale].date.day_names) {
                 I18n.translations[I18n.locale].date.day_names = [];
@@ -5391,590 +6046,579 @@
                 });
             }
             /* END FIX */
-            $.getJSON(`https://sheets.googleapis.com/v4/spreadsheets/${_URCE_SPREADSHEET_ID}/values/Script_Translations!A3:AA?key=${_URCE_API_KEY}`, (data) => {
-                const translationLocales = [];
-                let translations = {};
-                if (data?.values.length > 0) {
-                    for (let entryIdx = 0; entryIdx < data.values.length; entryIdx++) {
-                        if (entryIdx === 0) {
-                            if (_SCRIPT_VERSION < data.values[entryIdx][0]) {
-                                errorText = `updateRequired|${data.values[entryIdx][0]}`;
-                                break;
-                            }
-                        }
-                        else if (entryIdx === 1) {
-                            for (let idx = 1; idx < data.values[entryIdx].length; idx++) {
-                                translationLocales.push(data.values[entryIdx][idx].trim());
-                                translations[data.values[entryIdx][idx].trim()] = {};
+            GM_xmlhttpRequest({
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${_URCE_SPREADSHEET_ID}/values/Script_Translations!A3:AA?key=${_URCE_API_KEY}`,
+                headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
+                method: 'GET',
+                onload(res) {
+                    let errorText;
+                    if (res.status < 400) {
+                        const data = JSON.parse(res.responseText),
+                            translationLocales = [];
+                        let translations = {};
+                        if (data.values?.length > 0) {
+                            for (let entryIdx = 0, { length } = data.values; entryIdx < length; entryIdx++) {
+                                if (entryIdx === 0) {
+                                    if (_SCRIPT_VERSION < data.values[entryIdx][0]) {
+                                        errorText = `updateRequired|${data.values[entryIdx][0]}`;
+                                        break;
+                                    }
+                                    if (data.values[entryIdx][0] < _MIN_VERSION_TRANSLATIONS) {
+                                        errorText = `spreadsheetUpdateRequired|${_MIN_VERSION_TRANSLATIONS}`;
+                                        break;
+                                    }
+                                }
+                                else if (entryIdx === 1) {
+                                    for (let idx = 1, len = data.values[entryIdx].length; idx < len; idx++) {
+                                        translationLocales.push(data.values[entryIdx][idx].trim());
+                                        translations[data.values[entryIdx][idx].trim()] = {};
+                                    }
+                                }
+                                else {
+                                    let translationDefinition = [];
+                                    for (let valIdx = 0, len = data.values[entryIdx].length; valIdx < len; valIdx++) {
+                                        if (valIdx === 0) {
+                                            translationDefinition = data.values[entryIdx][valIdx].split('.');
+                                        }
+                                        else {
+                                            const translationLocale = translationLocales[(valIdx - 1)],
+                                                translationDef0 = translationDefinition[0],
+                                                translationDef1 = translationDefinition[1];
+                                            if (typeof translations[translationLocale][translationDef0] === 'undefined')
+                                                translations[translationLocale][translationDef0] = {};
+                                            translations[translationLocale][translationDef0][translationDef1] = data.values[entryIdx][valIdx]
+                                                .replace('$SCRIPT_AUTHOR$', _SCRIPT_AUTHOR).replace(/\\[r|n]+/gm, '\n');
+                                        }
+                                    }
+                                }
                             }
                         }
                         else {
-                            let translationDefinition = [];
-                            for (let valIdx = 0; valIdx < data.values[entryIdx].length; valIdx++) {
-                                if (valIdx === 0) {
-                                    translationDefinition = data.values[entryIdx][valIdx].split('.');
-                                }
-                                else {
-                                    const translationLocale = translationLocales[(valIdx - 1)],
-                                        translationDef0 = translationDefinition[0],
-                                        translationDef1 = translationDefinition[1];
-                                    if (typeof translations[translationLocale][translationDef0] === 'undefined')
-                                        translations[translationLocale][translationDef0] = {};
-                                    translations[translationLocale][translationDef0][translationDef1] = data.values[entryIdx][valIdx]
-                                        .replace('$SCRIPT_AUTHOR$', _SCRIPT_AUTHOR).replace(/\\[r|n]+/gm, '\n');
+                            errorText = errorText || 'No translations available.';
+                        }
+                        translations = (!errorText && (data?.values.length > 0)) ? translations : {
+                            en: {
+                                commentsTab: {
+                                    ZoomOutLink1: 'Zoom out 12 & close UR',
+                                    ZoomOutLink1Title: 'Zooms all the way out and closes the UR panel.',
+                                    ZoomOutLink2: 'Zoom out 14 & close UR',
+                                    ZoomOutLink2Title: 'Zooms out to level 14 and closes the UR panel.',
+                                    ZoomOutLink3: 'Zoom out 15 & close UR',
+                                    ZoomOutLink3Title: 'Zooms out to level 15 and closes the UR panel.'
+                                },
+                                common: {
+                                    All: 'All',
+                                    AutoSwitched: 'auto switched',
+                                    Backup: 'Backup',
+                                    ClosedBy: 'Closed by',
+                                    CollapseAll: 'Collapse all',
+                                    CommentList: 'Comment List',
+                                    CurrentCommentListTitle: 'You can change the currently loaded comment list using this drop down.\nChanging this drop down will not be saved as a setting and '
+                                                + 'will not change your default list (located on the settings tab).\nThis is only to allow you to quickly switch between lists.',
+                                    Custom: 'Custom',
+                                    Description: 'Description',
+                                    Disabled: 'Disabled',
+                                    DoubleClickTitle: 'Double click here to send this comment',
+                                    Enabled: 'Enabled',
+                                    ErrorGeneric: 'An error has occurred within URC-E. Please contact a WazeDev team member.',
+                                    ErrorHeader: 'URC-E Error',
+                                    ExpandAll: 'Expand all',
+                                    Failed: 'Failed',
+                                    Finish: 'Finish',
+                                    Following: 'Following',
+                                    LessThan: 'Less than',
+                                    Link: 'Link',
+                                    List: 'List',
+                                    ListOwner: 'List owner',
+                                    Loading: 'Loading',
+                                    MoreThan: 'More than',
+                                    NeedsChecked: 'Needs checked',
+                                    No: 'No',
+                                    None: 'None',
+                                    NotApplicable: 'Not applicable',
+                                    NotFollowing: 'Not following',
+                                    PleaseWait: 'Please wait',
+                                    Reset: 'Reset',
+                                    Restore: 'Restore',
+                                    Static: 'Static',
+                                    Style: 'Style',
+                                    Success: 'Success',
+                                    Total: 'Total',
+                                    Type: 'Type',
+                                    With: 'With',
+                                    Without: 'Without',
+                                    Yes: 'Yes'
+                                },
+                                mouseOver: {
+                                    CenterInCurrentTab: 'Center in current tab',
+                                    FirstComment: 'First comment',
+                                    LastComment: 'Last comment',
+                                    MarkedAs: 'Marked as',
+                                    NoDescription: 'No description',
+                                    NoneByMe: 'none by me',
+                                    OpenInNewLivemapTab: 'Open in new Livemap tab',
+                                    OpenInNewTab: 'Open in new tab',
+                                    ReporterHasCommented: 'Reporter has commented',
+                                    ToggleUrceURFiltering: 'Toggle URC-E UR filtering.',
+                                    URMarkerProcessingActive: 'URC-E is currently processing UR markers... Please wait.',
+                                    URMarkerProcessingInactive: 'URC-E is not currently processing any UR markers.',
+                                    ViaLivemap: 'via Livemap'
+                                },
+                                prefs: {
+                                    DisabledUnusedSettingTitle: 'This setting is currently disabled and unused due to WME compatibility issues.',
+                                    DefaultList: 'Default list',
+                                    DefaultListTitle: 'Select the custom list you would like to use. CommentTeam is the default. If you would like your comment list built into this script or have '
+                                                + 'suggestions on the CommentTeam list, please contact a WazeDev team member.',
+                                    CustomSsId: 'Custom Google Spreadsheet ID',
+                                    CustomSsIdTitle: 'Enter the Google Spreadsheet ID for the Custom comment list you would like to load when you select \'Custom G Sheet\' comment list.',
+                                    CommentListStyleTitle: 'Select the style you would like the URC-E panel to be displayed in. This only affects the look of the tab, no functionality is changed.',
+                                    SpreadsheetLink: 'URC-E Master Spreadsheet',
+                                    SpreadsheetLinkTitle: 'Click here to view the URC-E master spreadsheet.',
+                                    CustomSpreadsheetLink: 'Custom Google Spreadsheet',
+                                    CustomSpreadsheetLinkTitle: 'Click here to view your custom google spreadsheet.',
+                                    StyleDefault: 'Default',
+                                    StyleUrStyle: 'UR Style',
+                                    TagEmail: 'Tag email',
+                                    TagEmailTitle: 'Some comment lists have specific comments that use a replacement tag.\nThe replacement tag is used to specify an email address to send correspondence '
+                                                + 'to.\nIf you are setup to use one of these email addresses, please specify it here. If not, leave it blank.',
+                                    CustomTagline: 'Custom tagline',
+                                    CustomTaglineTitle: 'Some comments use a custom tagline variable.\nSpecify the text, if any, you would like to have put in place of this custom tagline variable in the comment.',
+                                    AutoSwitchCommentList: 'Automatically switch comment lists',
+                                    AutoSwitchCommentListTitle: 'Automatically switch to the comment list designated for the area the UR is in, if there is a list associated with the area.\nOpening a UR '
+                                                + 'in an area that does not have a list associated will use the \'Comment List\' you have selected above.',
+                                    PerCommentListSettings: 'Per comment list settings',
+                                    SettingsFor: 'Settings for',
+                                    UseDefault: 'Use \'URC-E Master Settings\' setting',
+                                    UrcePrefs: 'URC-E Master Settings',
+                                    AutoCenterOnUr: 'Auto center on UR',
+                                    AutoCenterOnUrTitle: 'Auto center the map to the selected UR at the current map zoom level.',
+                                    AutoClickOpenSolvedNi: 'Auto click open, solved or not identified',
+                                    AutoClickOpenSolvedNiTitle: 'Suppress the message about recent pending questions to the reporter and then, depending on the choice set for that comment, automatically '
+                                                + 'select Open, Solved or Not Identified.',
+                                    AutoCloseUrPanel: 'Auto close UR panel',
+                                    AutoCloseUrPanelTitle: 'Automatically close the UR panel after you click send on a comment.',
+                                    AutoSaveAfterSolvedOrNiComment: 'Auto save after solved or NI',
+                                    AutoSaveAfterSolvedOrNiCommentTitle: 'This will automatically click the save button after you close the UR panel in with you set the UR status to Solved or Not Identified.',
+                                    AutoSendReminders: 'Auto send reminders',
+                                    AutoSendRemindersTitle: 'Automatically send the reminder comment to the URs in the map window (as you pan around) you were the last to comment on and it has reached the '
+                                                + 'days specified in \'Reminder Days\'. Restricted to editor rank 4+.',
+                                    AutoSendRemindersWarning: 'WARNING',
+                                    AutoSendRemindersWarningTitle: 'AUTOMATICALLY SEND REMINDERS at the reminder days setting.\nThis only happens when they are visible on your screen.\n\nNOTE: When using '
+                                                + 'this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to '
+                                                + 'all open URs\nafter \'Reminder days\'.',
+                                    AutoSendRemindersExceptTagged: 'Except tagged',
+                                    AutoSendRemindersExceptTaggedTitle: 'Enabling this setting will prevent the \'Auto send reminders\' setting (if enabled as well) from automatically sending a reminder '
+                                                + 'comment to a tagged UR.',
+                                    AutoSetNewUrComment: 'Auto set new UR comment (w/o description)',
+                                    AutoSetNewUrCommentTitle: 'Automatically set the default UR comment for the UR type on new (do not already have comments) URs that do not have a description.',
+                                    AutoSetNewUrCommentSlur: 'Auto set new UR comment (SLURs)',
+                                    AutoSetNewUrCommentSlurTitle: 'Automatically set the default UR comment for new (do not already have comments) SLURs.',
+                                    AutoSetNewUrCommentWithDescription: 'Auto set new UR comment (with description)',
+                                    AutoSetNewUrCommentWithDescriptionTitle: 'Automatically set the default UR comment for the UR type on new (do not already have comments) URs that have a description.',
+                                    AutoSetReminderUrComment: 'Auto set reminder UR comment',
+                                    AutoSetReminderUrCommentTitle: 'Automatically set the UR reminder comment for URs that are older than the \'Reminder days\' setting and have only one comment.',
+                                    AutoSwitchToUrCommentsTab: 'Auto switch to the URC-E tab',
+                                    AutoSwitchToUrCommentsTabTitle: 'Automatically switch to the URComments-Enhanced tab when opening a UR. When the UR panel is closed you will be switched back to your previous '
+                                                + 'tab.',
+                                    AutoZoomInOnNewUr: 'Auto zoom in on new UR',
+                                    AutoZoomInOnNewUrTitle: 'Automatically zoom in when opening new (no comments) URs.',
+                                    AutoZoomOutAfterClosePanel: 'Auto zoom out after close panel',
+                                    AutoZoomOutAfterClosePanelTitle: 'Automatically zoom the map back to the previous zoom after closing the UR panel.',
+                                    AutoZoomOutAfterComment: 'Auto zoom out after comment',
+                                    AutoZoomOutAfterCommentTitle: 'Automatically zoom the map back to the previous zoom after clicking send on a UR comment.',
+                                    DisableDoneNextButtons: 'Disable done / next buttons',
+                                    DisableDoneNextButtonsTitle: 'Disable the done / next buttons at the bottom of the UR panel.',
+                                    ReplaceNextWithDoneButton: 'Replace Next UR button with Done button',
+                                    ReplaceNextWithDoneButtonTitle: 'Replace the Next Update Request button with a Done button.',
+                                    DoubleClickLinkNiComments: 'Double click link - NI comments',
+                                    DoubleClickLinkNiCommentsTitle: 'Add an image (extra link) to the \'not identified\' comments. When double clicked it will automatically set and send the UR comment of the '
+                                                    + 'one you double clicked, and then launch all of the other options that are enabled.',
+                                    DoubleClickLinkOpenComments: 'Double click link - Open comments',
+                                    DoubleClickLinkOpenCommentsTitle: 'Add an image (extra link) to the \'open\' comments. When double clicked it will automatically set and send the UR comment of the one you '
+                                                    + 'double clicked, and then launch all of the other options that are enabled.',
+                                    DoubleClickLinkSolvedComments: 'Double click link - Solved comments',
+                                    DoubleClickLinkSolvedCommentsTitle: 'Add an image (extra link) to the \'solved\' comments. When double clicked it will automatically set and send the UR comment of the one '
+                                                    + 'you double clicked, and then launch all of the other options that are enabled.',
+                                    HideZoomOutLinks: 'Hide zoom out links',
+                                    HideZoomOutLinksTitle: 'Hide the zoom out links on the comments tab.',
+                                    UnfollowUrAfterSend: 'Unfollow UR after send',
+                                    UnfollowUrAfterSendTitle: 'Unfollow the UR after sending a comment.',
+                                    EnableUrOverflowHandling: 'Enable UR overflow handling',
+                                    EnableUrOverflowHandlingTitle: 'If this setting is enabled and there are more than 499 URs on the screen, URC-E will attempt to gather more URs and add them to the map, '
+                                                    + 'if they do not already exist.\nWME does not display more than 500 URs on a single screen on its own.',
+                                    EnableAutoRefresh: 'Enable auto refresh on zoom / pan',
+                                    EnableAutoRefreshTitle: 'Reloads the map data when zooming or panning to show URs that may have been missed due to WME\'s 500 UR limit.  Will only reload if the zoom '
+                                                    + 'level is between 15 and 22, there are not pending edits, and there are more than 499 URs loaded.',
+                                    ExpandMoreInfo: 'Auto expand more info section',
+                                    ExpandMoreInfoTitle: 'Automatically expand the more info section of the UR Panel.',
+                                    ExpandShortcuts: 'Auto expand shortcuts section',
+                                    ExpandShortcutsTitle: 'Automatically expand the shortcuts section of the UR Panel.',
+                                    AutoScrollComments: 'Auto scroll comments in UR panel',
+                                    AutoScrollCommentsTitle: 'Automatically scroll the comments in the UR panel to the bottom if enabled, or top if disabled.',
+                                    ReverseCommentSort: 'Sort Comments in reverse order',
+                                    ReverseCommentSortTitle: 'Sort comments in the UR Panel in the reverse order.',
+                                    UrMarkerPrefs: 'UR Marker Settings',
+                                    EnableUrPillCounts: 'Enable UR pill counts',
+                                    EnableUrPillCountsTitle: 'Enable or disable the pill with UR counts on the map marker.',
+                                    DisableUrMarkerPopup: 'Disable UR marker popups',
+                                    DisableUrMarkerPopupTitle: 'Do not show the UR popup tooltip when you mouse over a UR marker.',
+                                    UrMarkerPopupDelay: 'UR marker popup delay',
+                                    UrMarkerPopupDelayTitle: 'The number of milliseconds (* 100) to delay before the UR marker tooltip will be displayed.',
+                                    UrMarkerPopupTimeout: 'UR marker popup timeout',
+                                    UrMarkerPopupTimeoutTitle: 'Specify the number of seconds to leave the UR marker tooltip displayed, while hovering over the marker.\nLeaving the marker, unless to the '
+                                                    + 'tooltip itself, will cause the tooltip to close.\nEntering the tooltip will cancel the timer and leaving the tooltip will close the tooltip.\nDouble '
+                                                    + 'click to quickly close.',
+                                    DoNotShowTagNameOnPill: 'Don\'t show tag name on pill',
+                                    DoNotShowTagNameOnPillTitle: 'Do not show the tag name on the pill where there is a tag. Example: [NOTE]',
+                                    ReplaceTagNameWithEditorName: 'Replace tag name with editor name',
+                                    ReplaceTagNameWithEditorNameTitle: 'When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds '
+                                                    + 'when commenting), replace the tag type with the editors name.',
+                                    UnstackMarkers: 'Unstack markers',
+                                    UnstackMarkersTitle: 'Attempt to unstack markers by offsetting them. Similar to how URO+ unstacks markers.',
+                                    UnstackSensitivity: 'Unstack sensitivity',
+                                    UnstackSensitivityTitle: 'Specify the sensitivity for which markers are considered stacked.\nDefault: 15',
+                                    UnstackDisableAboveZoom: 'Unstack disable when zoom level <',
+                                    UnstackDisableAboveZoomTitle: 'When you zoom out wider than the specified zoom level, marker unstacking will be disabled.\nDefault: 15',
+                                    UseCustomMarkersFor: 'Use Custom Markers for',
+                                    BogTitle: 'Replace default UR marker with custom marker for the URs with \'[BOG]\' (boots on ground) / \'[BOTG]\' (boots on the ground) in the description or comments.',
+                                    ClosureTitle: 'Replace default UR marker with custom marker for the URs with \'[CLOSURE]\' in the description or comments.',
+                                    ConstructionTitle: 'Replace default UR marker with custom marker for the URs with \'[CONSTRUCTION]\' in the description or comments.',
+                                    DifficultTitle: 'Replace default UR marker with custom marker for the URs with \'[DIFFICULT]\' in the description or comments.',
+                                    EventTitle: 'Replace default UR marker with custom marker for the URs with \'[EVENT]\' in the description or comments.',
+                                    NoteTitle: 'Replace default UR marker with custom marker for the URs with \'[NOTE]\' in the description or comments.',
+                                    RoadworksTitle: 'Replace default UR marker with custom marker for the URs with \'[ROADWORKS]\' in the description or comments. Used in the UK.',
+                                    WslmTitle: 'Waze Speed Limit Marker',
+                                    NativeSpeedLimits: 'Native speed limits',
+                                    NativeSpeedLimitsTitle: 'Replace default UR marker with custom marker for the URs with \'speed limit\' type.',
+                                    CustomTitle: 'Replace default UR marker with custom marker for the URs with the text in the box to the right in the description or comments.',
+                                    UrFilteringPrefs: 'UR Filtering Settings',
+                                    EnableUrceUrFiltering: 'Enable URC-E UR filtering',
+                                    EnableUrceUrFilteringTitle: 'Enable or disable URComments-Enhanced built-in UR filtering.',
+                                    InvertFilters: 'Invert filters',
+                                    InvertFiltersTitle: 'This will invert the filters you select / do not select.\nExample: If a filter were to match a selected / enabled setting, it would normally '
+                                                + 'be hidden.\nBut, if you enable \'invert filters\', the marker would be shown and all others that do not match will be hidden.',
+                                    HideOutsideEditableArea: 'Hide outside editable area',
+                                    HideOutsideEditableAreaTitle: 'Hide URs outside your editable area.',
+                                    DoNotFilterTaggedUrs: 'Do not filter tagged URs',
+                                    DoNotFilterTaggedUrsTitle: 'Do not filter URs that are tagged with a [] tag. Example: [NOTE]',
+                                    DoNotHideSelectedUr: 'Do not hide selected UR',
+                                    DoNotHideSelectedUrTitle: 'Do not hide a UR if it is currently being selected.',
+                                    DisableFilteringAboveZoomLevel: 'Disable filtering when zoom level <',
+                                    DisableFilteringAboveZoomLevelTitle: 'Disable UR filtering when zoomed out wider than the specified zoom level. Set to \'12\' to enable all filtering.',
+                                    DisableFilteringBelowZoomLevel: 'Disable filtering when zoom level >',
+                                    DisableFilteringBelowZoomLevelTitle: 'Disable UR filtering when zoomed in tighter than the specified zoom level. Set to \'22\' to enable all filtering.',
+                                    LifeCycleStatus: 'Hide by lifecycle status',
+                                    LifeCycleStatusInverted: 'Show by lifecycle status',
+                                    HideWaiting: 'Waiting',
+                                    HideWaitingTitle: 'Hide/show URs that do not currently need work.',
+                                    HideUrsCloseNeeded: 'Close needed',
+                                    HideUrsCloseNeededTitle: 'Hide/show URs that need closing.',
+                                    HideUrsReminderNeeded: 'Reminders needed',
+                                    HideUrsReminderNeededTitle: 'Hide/show URs where reminders are needed.',
+                                    HideByStatus: 'Hide by status',
+                                    HideByStatusInverted: 'Show by status',
+                                    HideByStatusOpenTitle: 'Hide/show all open URs.',
+                                    HideByStatusClosedTitle: 'Hide/show all closed (solved and not identified) URs.',
+                                    HideByStatusNotIdentifiedTitle: 'Hide/show all closed as not identified URs.',
+                                    HideByStatusSolvedTitle: 'Hide/show all closed as solved URs.',
+                                    HideByStatusClosedByTitle: 'Hide/show closed URs that were closed by any of the specified users.\nInput username(s) in text box. Separate multiple entries with a comma.',
+                                    HideByType: 'Hide by type',
+                                    HideByTypeInverted: 'Show by type',
+                                    HideByTypeBlockedRoadTitle: 'Hide/show all blocked road URs.',
+                                    HideByTypeGeneralErrorTitle: 'Hide/show all general error URs.',
+                                    HideByTypeIncorrectAddressTitle: 'Hide/show all incorrect address URs.',
+                                    HideByTypeIncorrectJunctionTitle: 'Hide/show all incorrect junction URs.',
+                                    HideByTypeIncorrectRouteTitle: 'Hide/show all incorrect route URs.',
+                                    HideByTypeIncorrectStreetPrefixOrSuffixTitle: 'Hide/show all incorrect street prefix or suffix URs.',
+                                    HideByTypeIncorrectTurnTitle: 'Hide/show all incorrect turn URs.',
+                                    HideByTypeMissingBridgeOverpassTitle: 'Hide/show all missing bridge overpass URs.',
+                                    HideByTypeMissingExitTitle: 'Hide/show all missing exit URs.',
+                                    HideByTypeMissingLandmarkTitle: 'Hide/show all missing landmark URs.',
+                                    HideByTypeMissingOrInvalidSpeedLimitTitle: 'Hide/show all missing or invalid speed limit URs.',
+                                    HideByTypeMissingRoadTitle: 'Hide/show all missing road URs.',
+                                    HideByTypeMissingRoundaboutTitle: 'Hide/show all missing roundabout URs.',
+                                    HideByTypeMissingStreetNameTitle: 'Hide/show all missing street name URs.',
+                                    HideByTypeTurnNotAllowedTitle: 'Hide/show all turn not allowed URs.',
+                                    HideByTypeUndefinedTitle: 'Hide/show all undefined URs.',
+                                    HideByTypeWrongDrivingDirectionTitle: 'Hide/show all wrong driving direction URs.',
+                                    HideByTagged: 'Hide by tagged',
+                                    HideByTaggedInverted: 'Show by tagged',
+                                    HideByTaggedBogTitle: 'Hide/show all URs with [BOG] (boots on ground) / [BOTG] (boots on the ground) in description or comments.',
+                                    HideByTaggedClosureTitle: 'Hide/show all URs with [CLOSURE] in description or comments.',
+                                    HideByTaggedConstructionTitle: 'Hide/show all URs with [CONSTRUCTION] in description or comments.',
+                                    HideByTaggedDifficultTitle: 'Hide/show all URs with [DIFFICULT] in description or comments.',
+                                    HideByTaggedEventTitle: 'Hide/show all URs with [EVENT] in description or comments.',
+                                    HideByTaggedNoteTitle: 'Hide/show all URs with [NOTE] in description or comments.',
+                                    HideByTaggedRoadworksTitle: 'Hide/show all URs with [ROADWORKS] in description or comments. Used in the UK.',
+                                    HideByTaggedWslmTitle: 'Hide/show all URs with [WSLM] in description or comments.',
+                                    HideByAgeOfSubmission: 'Hide by age of submission',
+                                    HideByAgeOfSubmissionInverted: 'Show by age of submission',
+                                    HideByAgeOfSubmissionLessThanTitle: 'Hide/show URs that were originally created less than specified number of days ago.',
+                                    HideByAgeOfSubmissionMoreThanTitle: 'Hide/show URs that were originally created more than specified number of days ago.',
+                                    DescriptionCommentsFollowing: 'Hide by description, comment, following',
+                                    DescriptionCommentsFollowingInverted: 'Show by description, comment, following',
+                                    HideFollowingTitle: 'Hide/show URs you are following.',
+                                    HideNotFollowingTitle: 'Hide/show URs you are not following.',
+                                    HideWithDescriptionTitle: 'Hide/show URs that have a description.',
+                                    HideWithoutDescriptionTitle: 'Hide/show URs that do not have a description.',
+                                    HideCommentsFromMe: 'Comments from me',
+                                    HideWithCommentsFromMeTitle: 'Hide/show URs you have commented on.',
+                                    HideWithoutCommentsFromMeTitle: 'Hide/show URs you have not commented on.',
+                                    HideFirstCommentByMe: 'First comment by me',
+                                    HideFirstCommentByMeTitle: 'Hide/show URs where you were the first person to comment.',
+                                    HideFirstCommentNotByMeTitle: 'Hide/show URs where someone else was the first person to comment.',
+                                    HideLastCommentByMe: 'Last comment by me',
+                                    HideLastCommentByMeTitle: 'Hide/show URs where you are the last person to comment.',
+                                    HideLastCommentNotByMeTitle: 'Hide/show URs where someone else is the last person to comment.',
+                                    HideLastCommentByReporter: 'Last comment by reporter',
+                                    HideLastCommentByReporterTitle: 'Hide/show URs where the reporter is the last person to comment.',
+                                    HideLastCommentNotByReporterTitle: 'Hide/show URs where the reporter is not the last person to comment.',
+                                    HideByCommentCountLessThanTitle: 'Hide/show URs that contain less comments than the number specified.',
+                                    HideByCommentCountMoreThanTitle: 'Hide/show URs that contain more comments than the number specified.',
+                                    HideByAgeOfFirstCommentLessThan: 'First comment less than',
+                                    HideByAgeOfFirstCommentLessThanTitle: 'Hide/show URs where the first comment is less than the days specified ago.',
+                                    HideByAgeOfFirstCommentMoreThan: 'First comment more than',
+                                    HideByAgeOfFirstCommentMoreThanTitle: 'Hide/show URs where the first comment is more than the days specified ago.',
+                                    HideByAgeOfLastCommentLessThan: 'Last comment less than',
+                                    HideByAgeOfLastCommentLessThanTitle: 'Hide/show URs where the last comment is less than the days specified ago.',
+                                    HideByAgeOfLastCommentMoreThan: 'Last comment more than',
+                                    HideByAgeOfLastCommentMoreThanTitle: 'Hide/show URs where the last comment is more than the days specified ago.',
+                                    HideByKeywordIncluding: 'Including keyword',
+                                    HideByKeywordIncludingTitle: 'Hide/show URs that include the custom word / text specified. Regex compatible.',
+                                    HideByKeywordNotIncluding: 'Not including keyword',
+                                    HideByKeywordNotIncludingTitle: 'Hide/show URs that do not include the custom word / text specified. Regex compatible.',
+                                    HideByKeywordCaseInsensitive: 'Case-insensitive keyword matches',
+                                    HideByKeywordCaseInsensitiveTitle: 'If enabled, searching for the above including or not including keywords will be done using case insensitive searching.',
+                                    HideWithCommentBy: 'With comment by',
+                                    HideWithCommentByTitle: 'Hide/show URs that have been commented on by the specified user(s).\nUse a comma (,) to separate usernames.',
+                                    HideWithoutCommentBy: 'Without comment by',
+                                    HideWithoutCommentByTitle: 'Hide/show URs that have not been commented on by the specified user(s).\nUse a comma (,) to separate usernames.',
+                                    ReminderDays: 'Reminder days',
+                                    ReminderDaysTitle: 'Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment.\nThis is the number of days since the first '
+                                                + 'comment.\nSet to 0 if you do not use reminders.',
+                                    CloseDays: 'Close days',
+                                    CloseDaysTitle: 'Number of days to use when calculating UR filtering.\nThis is the number of days since the last comment.\nExample: If you close 4 days after the last '
+                                                + 'comment, set to 4.\nAnything less than this time will be considered \'waiting\' as long as there is at least one comment already.',
+                                    EnableAppendMode: 'Enable append comment mode',
+                                    EnableAppendModeTitle: 'Enabling append comment mode will allow you to append a comment to the existing text in the new-comment box.\nThe comment is appended with a blank '
+                                                + 'line between the existing text and the new text.\nThe status of the UR is set to the status of the new comment you clicked to append.\nIf the comment would end '
+                                                + 'up being longer than 2000 characters, append mode will give a warning and not alter the text in the comment box, but the status would have been changed.'
+                                },
+                                tabs: {
+                                    Comments: 'Comments',
+                                    Settings: 'Settings',
+                                    Tools: 'Tools'
+                                },
+                                tags: {
+                                    Bog: '[BOG] / [BOTG]',
+                                    Closure: '[CLOSURE]',
+                                    Construction: '[CONSTRUCTION]',
+                                    Difficult: '[DIFFICULT]',
+                                    Event: '[EVENT]',
+                                    Note: '[NOTE]',
+                                    Roadworks: '[ROADWORKS]',
+                                    Wslm: '[WSLM]'
+                                },
+                                tools: {
+                                    BackupSettingsTitle: 'Download a backup copy of your URC-E settings in JSON format.\nThis backup can be used to restore your settings to another computer, or in the event '
+                                                + 'you lose your settings.\n\nNote: Please do not modify the JSON file in any way. The format is crucial to proper restoral of settings.',
+                                    CreateStep1: 'Open the template spreadsheet: $TEMPLATE_LINK$',
+                                    CreateStep2: 'Click <i>File</i> then <i>Make a copy</i>.',
+                                    CreateStep3: 'Give your file a name and specify the folder you want to save it in.',
+                                    CreateStep4: 'Click <i>Make a copy</i>.',
+                                    CreateStep5: 'Your sheet will open in a new tab. Look at the URL to get the <i>Spreadsheet ID</i>.<br>It is between <i>https://docs.google.com/spreadsheets/d/</i> and <i>/edit#...</i>.\n<br><b>Example:</b> <i>1JVtw4xwjKmPX_H1Xo1uwyYwxguM-oSi0LotD4lEwmK4</i> $SPREADSHEET_STEP$',
+                                    CreateStep6: 'Click <i>Share</i> at the top right.',
+                                    CreateStep7: 'Under <i>General access</i>, click the down arrow next to <i>Restricted</i>.',
+                                    CreateStep8: 'Select <i>Anyone with the link</i>.',
+                                    CreateStep9: 'Ensure <i>Viewer</i> is listed as to right and <i>Anyone on the internet with the link can view</i> below.',
+                                    CreateStep10: 'Click <i>Done</i>.',
+                                    ConvertStep1: 'Download your converted default UR type responses: $DOWNLOAD_DEFAULTS_LINK$',
+                                    ConvertStep2: 'Download your converted comment list: $DOWNLOAD_COMMENTS_LINK$',
+                                    ConvertStep3: 'In your custom Google Sheet, select the <b>CustomComments</b> tab, then click cell <b>B5</b>.',
+                                    ConvertStep4: 'Click <i>File</i> then <i>Import</i>.',
+                                    ConvertStep5: 'Click <i>Upload</i> at the top.',
+                                    ConvertStep6: 'Either click <i>Browse</i> and select your <i>default UR type responses</i> file that was downloaded in step $DOWNLOAD_DEFAULTS_STEP$ '
+                                                + '(<b>default_responses_DATETIME.csv</b>),<br>or drag and drop your <i>default UR type responses</i> file to the box.',
+                                    ConvertStep7: 'For <i>Import location</i> select <b>Replace data at selected cell</b>.',
+                                    ConvertStep8: 'For <i>Separator type</i> select <i>Custom</i> and put <b>|</b> in the box.',
+                                    ConvertStep9: 'Click <i>Import data</i>.',
+                                    ConvertStep10: 'Click cell <b>A25</b>.',
+                                    ConvertStep11: 'Click <i>File</i> then <i>Import</i>.',
+                                    ConvertStep12: 'Click <i>Upload</i> at the top.',
+                                    ConvertStep13: 'Either click <i>Browse</i> and select your <i>comment list</i> file that was downloaded in step $DOWNLOAD_COMMENTS_STEP$ '
+                                                + '(<b>comment_list_DATETIME.csv</b>),<br>or drag and drop your <i>comment list</i> file to the box.',
+                                    ConvertStep14: 'For <i>Import location</i> select <b>Replace data at selected cell</b>.',
+                                    ConvertStep15: 'For <i>Separator type</i> select <i>Custom</i> and put <b>|</b> in the box.',
+                                    ConvertStep16: 'Click <i>Import data</i>.',
+                                    FinalStep1: 'Put your <b>Spreadsheet ID</b> (step $SPREADSHEET_STEP$) in the Custom <i>Google Spreadsheet ID</i> settings box in URC-E settings.',
+                                    FinalStep2: 'You can now use the <i>Custom G Sheet</i> comment list.',
+                                    ConvertCreateConvertProcess: 'Convert Process',
+                                    ConvertCreateCreateProcess: 'Create Process',
+                                    ConvertCreateSteps: 'Steps',
+                                    ConvertCurrentCustom: 'Convert current custom',
+                                    ConvertCurrentCustomTitle: 'Convert your current custom comment list addon to URC-E style Google Sheet for easy maintenance, sharing, etc.',
+                                    CreateNewCustom: 'Create new custom',
+                                    CreateNewCustomTitle: 'Create your own URC-E custom comment list Google sheet for easy maintenance, sharing, etc.',
+                                    CustomGoogleSpreadsheet: 'Custom Google Spreadsheet',
+                                    IntersectionOf: 'the intersection of $SEG1NAME$ and $SEG2NAME$',
+                                    IntersectionOfWithCity: 'the intersection of $SEG1NAME$ and $SEG2NAME$ in $SEGCITY$',
+                                    ResetSettingsTitle: 'Reset all URC-E settings back to their default values.\n\nNote: Almost all settings default to disabled.',
+                                    RestoreSettingsFileError: 'Invalid URC-E settings JSON file.',
+                                    RestoreSettingsSelectFileTitle: 'Select the JSON file created by the URC-E \'Backup\' settings button.',
+                                    RestoreSettingsTitle: 'Restore a backup copy of your URC-E settings from the JSON backup file created with the backup settings button.\n\nNote: Please do not modify the '
+                                                + 'JSON file in any way. The format is crucial to proper restoral of settings.',
+                                    SegmentWithCity: '$SEG1NAME$ in $SEGCITY$',
+                                    UnknownRoadName: 'unnamed road',
+                                    UnknownVenueName: 'unnamed venue'
+                                },
+                                urPanel: {
+                                    CurrentDate: 'Current date',
+                                    DriveDate: 'Drive date',
+                                    InsertCurrentDateCasualTitle: 'Shortcut - Current date (casual): Click this icon to insert the current date into the new comment box at the cursor position (full month '
+                                                + 'name, 2-digit day in locale format).',
+                                    InsertCurrentDateTitle: 'Shortcut - Current date: Click this icon to insert the current date into the new comment box at the cursor position (2-digit month, 2-digit day, '
+                                                + '4-digit year in locale format).',
+                                    InsertCurrentDayOfWeekTitle: 'Shortcut - Current day of week: Click this icon to insert the current day of the week into the new comment box at the cursor position (full '
+                                                + 'day of week name in locale language).',
+                                    InsertCurrentTimeCasualTitle: 'Shortcut - Current time of day (casual): Click this icon to insert the current time of day into the new comment box at the cursor position '
+                                                + '(in locale language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
+                                    InsertCurrentTimeTitle: 'Shortcut - Current time of day: Click this icon to insert the current time of day into the new comment box at the cursor position (2-digit hour, '
+                                                + '2-digit minute in locale format).',
+                                    InsertCustomTaglineTitle: 'Shortcut - Custom tagline: Click this icon to insert your custom tagline into the new comment box at the cursor position.',
+                                    InsertDateTimeCasualModeTitle: 'Shortcut - Drive day and time (fully casual): Click this icon to insert the drive date into the new comment box at the cursor position.\n\n'
+                                                + '0 days: this morning, this afternoon, this evening, tonight\n'
+                                                + '1 days: yesterday morning, yesterday afternoon, yesterrday evening, last night\n'
+                                                + '2-6 days: Day_of_Week morning/afternoon/evening/night\n'
+                                                + '7-13 days: last Day_of_Week morning/afternoon/evening/night\n'
+                                                + '14-20 days: Day_of_Week before last\n'
+                                                + '21-27 days: three weeks ago\n'
+                                                + '28-60 days: a few weeks ago\n'
+                                                + '61-120 days: a couple months back\n'
+                                                + '121+ days: a while ago',
+                                    InsertDateCasualTitle: 'Shortcut - Drive date (casual): Click this icon to insert the drive date into the new comment box at the cursor position (full month name, 2-digit '
+                                                + 'day in locale format).',
+                                    InsertDateTitle: 'Shortcut - Drive date: Click this icon to insert the drive date into the new comment box at the cursor position (2-digit month, 2-digit day, 4-digit '
+                                                + 'year in locale format).',
+                                    InsertDayOfWeekTitle: 'Shortcut - Drive day of week: Click this icon to insert the drive date day of the week into the new comment box at the cursor position (full day of '
+                                                + 'week name in locale language).',
+                                    InsertDescriptionTitle: 'Shortcut - Description: Click this icon to insert the UR description into the new comment box at the cursor position.',
+                                    InsertPlaceAddressTitle: 'Shortcut - Place address: Click this icon to either replace \'$PLACE_ADDRESS$\' with the address of the currently selected place, or it will '
+                                                + 'insert the address of the currently selected place into the comment box at the current cursor position.',
+                                    InsertPlaceNameTitle: 'Shortcut - Place name: Click this icon to either replace \'$PLACE_NAME$\' with the name of the currently selected place, or it will insert the name '
+                                                + 'of the currently selected place into the comment box at the current cursor position.',
+                                    InsertSelSegsTitle: 'Shortcut - Segment name(s): Click this icon to either replace \'$SELSEGS$\' (or \'$SELSEGS\') with the name of the currently selected segment(s), or\nit '
+                                                + 'will insert the name of the currently selected segment(s) into the comment box at the cursor position.',
+                                    InsertSelSegsWithCityTitle: 'Shortcut - Segment name(s) with city: Click this icon to either replace \'$SELSEGS_WITH_CITY$\' (or \'$SELSEGS$\' or \'$SELSEGS\') with the '
+                                                + 'name and city of the currently selected segment(s), or \nit will insert the name and city of the currently selected segment(s) into the comment box at the '
+                                                + 'cursor position.',
+                                    InsertTimeCasualTitle: 'Shortcut - Drive time of day (casual): Click this icon to insert the drive date time of day into the new comment box at the cursor position (in '
+                                                + 'locale language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
+                                    InsertTimeTitle: 'Shortcut - Drive time of day: Click this icon to insert the drive date time of day into the new comment box at the cursor position (2-digit hour, '
+                                                + '2-digit minute in locale format).',
+                                    InsertUrPermalinkTitle: 'Shortcut - Insert permalink to this UR. URL will include your locale, your \'env\', the latitude and longitude of this UR, zoom level of 17, '
+                                                + 'mapUpdateRequest of this UR ID number, and s=20489175039 (which ensures the UR layer is turned on).',
+                                    InsertUrTypeTitle: 'Shortcut - UR Type: Click this icon to insert the UR type into the new comment box at the cursor position.',
+                                    InsertWazeUsernameTitle: 'Shortcut - Waze username: Click this icon to insert your Waze username into the new comment box at the cursor position.',
+                                    Shortcuts: 'Shortcuts'
+                                },
+                                urStatus: {
+                                    Closed: 'Closed',
+                                    NotIdentified: 'Not identified'
+                                },
+                                urTypes: {
+                                    Undefined: 'Undefined'
+                                },
+                                prompts: {
+                                    CommentInsertTimedOut: 'URC-E timed out waiting for the comment text box to become available.',
+                                    CommentTooLong: 'Appending another comment to the current text will cause the comment to be longer than 2000 characters, which is too long. URC-E did not append the '
+                                                + 'selected comment and left the new-comment box with the same text it had.',
+                                    ConversionLoadAddonFirst: 'In order to convert a custom comments addon script to the new URC-E style Google Sheet, you must first ensure your custom comments addon is '
+                                                + 'enabled in TamperMonkey and selected in URC-E\'s Comment List settings box.',
+                                    CustomGSheetLoadError: 'An error has occurred loading your URC-E custom comment Google sheet.<br><br>Please make sure you have done the following:\n<ul><li>Set the correct '
+                                                + '<b><i>Custom Google Spreadsheet ID</i></b> (should be the ID of the copy created in the previous step) set on the settings tab.\n<li>Ensured your spreadsheet '
+                                                + 'is shared to everyone with a link can view.\n</ul>If all these have been done and you are still having issues, please contact a WazeDev team member.',
+                                    NoCommentBox: 'URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.',
+                                    PlaceAddressFound: 'The selected comment contains \'$PLACE_ADDRESS$\'.\n\nIn order to replace this text with the place address, please\nselect a place and click the place '
+                                                + 'address shortcut button in the UR panel.',
+                                    PlaceAddressInsertError: 'In order to use the <i class="fa fa-map-marker" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
+                                    PlaceNameFound: 'The selected comment contains \'$PLACE_NAME$\'.\n\nIn order to replace this text with the place name, please\nselect a place and click the place name '
+                                                + 'shortcut button in the UR panel.',
+                                    PlaceNameInsertError: 'In order to use the <i class="fa fa-home" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
+                                    ReminderMessageAuto: 'Automatically sent reminder message to UR(s)',
+                                    ResetSettings: 'Reset Settings',
+                                    ResetSettingsComplete: 'Settings reset complete',
+                                    ResetSettingsConfirmation: 'Are you sure you want to reset URC-E settings back to their default values?',
+                                    RestoreSettings: 'Restore Settings',
+                                    RestoreSettingsComplete: 'Settings restore complete',
+                                    RestoreSettingsConfirmation: 'Would you like to proceed with restoring your URC-E settings?',
+                                    RestoreSettingsInvalidSettings: 'Invalid settings removed from JSON file',
+                                    RestoreSettingsNumOfSettings: 'Number of settings to restore',
+                                    RestoreSettingsRetainedSettings: 'Retained current settings',
+                                    RestrictionsEnforced: 'Restrictions enforced!',
+                                    RestrictionsEnforcedTitle: 'The following restrictions have been enforced',
+                                    SelSegsFound: 'The selected comment contains \'$SELSEGS$\'.\n\nIn order to replace this text with the road name(s), please\nselect one or two segments and click the road '
+                                                + 'button in the\nUR panel.',
+                                    SelSegsInsertError: 'In order to use the <i class="fa fa-road" aria-hidden="true"></i> button in the UR Panel, you must first select one or two segments.',
+                                    SetCustomSsIdFirst: 'Before you can select <b><i>Custom G Sheet</i></b> as your comment list, you must first set the <b><i>Custom Google Spreadsheet ID</i></b> setting on '
+                                                + 'the URC-E settings tab.',
+                                    SpreadsheetUpdateRequired: 'You are using an older version of the URC-E spreadsheet, which has caused an error. Please update your spreadsheet to at least version',
+                                    SwitchingCommentLists: 'Switching comment lists',
+                                    TimedOutWaitingStatic: 'Timed out waiting for the static list to become available. Is it enabled?',
+                                    UpdateRequired: 'You are using an older version of URC-E, which has caused an error. Please update to at least version',
+                                    UrOverflowErrorWithoutOverflowEnabled: 'WME will not load more than 500 URs per screen. Some URs may be missing. You can try to enable overflow handling, or zoom in and refresh.',
+                                    VarFound: 'The selected comment contains variables: $VARSFOUND$.\n\nUntil these are replaced, the send button is disabled.',
+                                    WaitingOnInit: 'Waiting for URC-E to fully initialize',
+                                    WaitingToGetUrId: 'Waiting to get urId'
+                                },
+                                time: {
+                                    ACoupleMonthsAgo: 'a couple months ago',
+                                    AFewWeeksAgo: 'a few weeks ago',
+                                    Afternoon: 'afternoon',
+                                    AWhileBack: 'a while ago',
+                                    Evening: 'evening',
+                                    Morning: 'morning',
+                                    LastNight: 'last night',
+                                    LastWeekTOD: 'last $DAY_NAME$ $CASUAL_TOD$',
+                                    Night: 'night',
+                                    ThisCasualTOD: 'this $THIS_CASUAL_TOD$',
+                                    ThisWeekTOD: '$DAY_NAME$ $CASUAL_TOD$',
+                                    Tonight: 'tonight',
+                                    TwoWeeksAgo: '$DAY_NAME$ before last',
+                                    ThreeWeeksAgo: 'three weeks ago',
+                                    YesterdayCasualTOD: 'yesterday $YESTERDAY_CASUAL_TOD$'
                                 }
                             }
-                        }
-                    }
-                }
-                else {
-                    errorText = errorText || 'No translations available.';
-                }
-                translations = (!errorText && (data?.values.length > 0)) ? translations : {
-                    en: {
-                        commentsTab: {
-                            ZoomOutLink1: 'Zoom out 12 & close UR',
-                            ZoomOutLink1Title: 'Zooms all the way out and closes the UR panel.',
-                            ZoomOutLink2: 'Zoom out 14 & close UR',
-                            ZoomOutLink2Title: 'Zooms out to level 14 and closes the UR panel.',
-                            ZoomOutLink3: 'Zoom out 15 & close UR',
-                            ZoomOutLink3Title: 'Zooms out to level 15 and closes the UR panel.'
-                        },
-                        common: {
-                            All: 'All',
-                            AutoSwitched: 'auto switched',
-                            Backup: 'Backup',
-                            ClosedBy: 'Closed by',
-                            CollapseAll: 'Collapse all',
-                            CommentList: 'Comment List',
-                            CurrentCommentListTitle: 'You can change the currently loaded comment list using this drop down.\nChanging this drop down will not be saved as a setting and '
-                                        + 'will not change your default list (located on the settings tab).\nThis is only to allow you to quickly switch between lists.',
-                            Custom: 'Custom',
-                            Description: 'Description',
-                            Disabled: 'Disabled',
-                            DoubleClickTitle: 'Double click here to send this comment',
-                            Enabled: 'Enabled',
-                            ErrorGeneric: 'An error has occurred within URC-E. Please contact a WazeDev team member.',
-                            ErrorHeader: 'URC-E Error',
-                            ExpandAll: 'Expand all',
-                            Failed: 'Failed',
-                            Finish: 'Finish',
-                            Following: 'Following',
-                            LessThan: 'Less than',
-                            Link: 'Link',
-                            List: 'List',
-                            ListOwner: 'List owner',
-                            Loading: 'Loading',
-                            MoreThan: 'More than',
-                            NeedsChecked: 'Needs checked',
-                            No: 'No',
-                            None: 'None',
-                            NotApplicable: 'Not applicable',
-                            NotFollowing: 'Not following',
-                            PleaseWait: 'Please wait',
-                            Reset: 'Reset',
-                            Restore: 'Restore',
-                            Static: 'Static',
-                            Style: 'Style',
-                            Success: 'Success',
-                            Total: 'Total',
-                            Type: 'Type',
-                            With: 'With',
-                            Without: 'Without',
-                            Yes: 'Yes'
-                        },
-                        mouseOver: {
-                            CenterInCurrentTab: 'Center in current tab',
-                            FirstComment: 'First comment',
-                            LastComment: 'Last comment',
-                            MarkedAs: 'Marked as',
-                            NoDescription: 'No description',
-                            NoneByMe: 'none by me',
-                            OpenInNewLivemapTab: 'Open in new Livemap tab',
-                            OpenInNewTab: 'Open in new tab',
-                            ReporterHasCommented: 'Reporter has commented',
-                            ToggleUrceURFiltering: 'Toggle URC-E UR filtering.',
-                            URMarkerProcessingActive: 'URC-E is currently processing UR markers... Please wait.',
-                            URMarkerProcessingInactive: 'URC-E is not currently processing any UR markers.',
-                            ViaLivemap: 'via Livemap'
-                        },
-                        prefs: {
-                            DisabledUnusedSettingTitle: 'This setting is currently disabled and unused due to WME compatibility issues.',
-                            DefaultList: 'Default list',
-                            DefaultListTitle: 'Select the custom list you would like to use. CommentTeam is the default. If you would like your comment list built into this script or have '
-                                        + 'suggestions on the CommentTeam list, please contact a WazeDev team member.',
-                            CustomSsId: 'Custom Google Spreadsheet ID',
-                            CustomSsIdTitle: 'Enter the Google Spreadsheet ID for the Custom comment list you would like to load when you select \'Custom G Sheet\' comment list.',
-                            CommentListStyleTitle: 'Select the style you would like the URC-E panel to be displayed in. This only affects the look of the tab, no functionality is changed.',
-                            SpreadsheetLink: 'URC-E Master Spreadsheet',
-                            SpreadsheetLinkTitle: 'Click here to view the URC-E master spreadsheet.',
-                            CustomSpreadsheetLink: 'Custom Google Spreadsheet',
-                            CustomSpreadsheetLinkTitle: 'Click here to view your custom google spreadsheet.',
-                            StyleDefault: 'Default',
-                            StyleUrStyle: 'UR Style',
-                            TagEmail: 'Tag email',
-                            TagEmailTitle: 'Some comment lists have specific comments that use a replacement tag.\nThe replacement tag is used to specify an email address to send correspondence '
-                                        + 'to.\nIf you are setup to use one of these email addresses, please specify it here. If not, leave it blank.',
-                            CustomTagline: 'Custom tagline',
-                            CustomTaglineTitle: 'Some comments use a custom tagline variable.\nSpecify the text, if any, you would like to have put in place of this custom tagline variable in the comment.',
-                            AutoSwitchCommentList: 'Automatically switch comment lists',
-                            AutoSwitchCommentListTitle: 'Automatically switch to the comment list designated for the area the UR is in, if there is a list associated with the area.\nOpening a UR '
-                                        + 'in an area that does not have a list associated will use the \'Comment List\' you have selected above.',
-                            PerCommentListSettings: 'Per comment list settings',
-                            SettingsFor: 'Settings for',
-                            UseDefault: 'Use \'URC-E Master Settings\' setting',
-                            UrcePrefs: 'URC-E Master Settings',
-                            AutoCenterOnUr: 'Auto center on UR',
-                            AutoCenterOnUrTitle: 'Auto center the map to the selected UR at the current map zoom level.',
-                            AutoClickOpenSolvedNi: 'Auto click open, solved or not identified',
-                            AutoClickOpenSolvedNiTitle: 'Suppress the message about recent pending questions to the reporter and then, depending on the choice set for that comment, automatically '
-                                        + 'select Open, Solved or Not Identified.',
-                            AutoCloseUrPanel: 'Auto close UR panel',
-                            AutoCloseUrPanelTitle: 'Automatically close the UR panel after you click send on a comment.',
-                            AutoSaveAfterSolvedOrNiComment: 'Auto save after solved or NI',
-                            AutoSaveAfterSolvedOrNiCommentTitle: 'This will automatically click the save button after you close the UR panel in with you set the UR status to Solved or Not Identified.',
-                            AutoSendReminders: 'Auto send reminders',
-                            AutoSendRemindersTitle: 'Automatically send the reminder comment to the URs in the map window (as you pan around) you were the last to comment on and it has reached the '
-                                        + 'days specified in \'Reminder Days\'. Restricted to editor rank 4+.',
-                            AutoSendRemindersWarning: 'WARNING',
-                            AutoSendRemindersWarningTitle: 'AUTOMATICALLY SEND REMINDERS at the reminder days setting.\nThis only happens when they are visible on your screen.\n\nNOTE: When using '
-                                        + 'this feature you should not leave URs open unless you asked a question\nthat needs a response from the reporter, as this script will send reminders to '
-                                        + 'all open URs\nafter \'Reminder days\'.',
-                            AutoSendRemindersExceptTagged: 'Except tagged',
-                            AutoSendRemindersExceptTaggedTitle: 'Enabling this setting will prevent the \'Auto send reminders\' setting (if enabled as well) from automatically sending a reminder '
-                                        + 'comment to a tagged UR.',
-                            AutoSetNewUrComment: 'Auto set new UR comment (w/o description)',
-                            AutoSetNewUrCommentTitle: 'Automatically set the default UR comment for the UR type on new (do not already have comments) URs that do not have a description.',
-                            AutoSetNewUrCommentSlur: 'Auto set new UR comment (SLURs)',
-                            AutoSetNewUrCommentSlurTitle: 'Automatically set the default UR comment for new (do not already have comments) SLURs.',
-                            AutoSetNewUrCommentWithDescription: 'Auto set new UR comment (with description)',
-                            AutoSetNewUrCommentWithDescriptionTitle: 'Automatically set the default UR comment for the UR type on new (do not already have comments) URs that have a description.',
-                            AutoSetReminderUrComment: 'Auto set reminder UR comment',
-                            AutoSetReminderUrCommentTitle: 'Automatically set the UR reminder comment for URs that are older than the \'Reminder days\' setting and have only one comment.',
-                            AutoSwitchToUrCommentsTab: 'Auto switch to the URC-E tab',
-                            AutoSwitchToUrCommentsTabTitle: 'Automatically switch to the URComments-Enhanced tab when opening a UR. When the UR panel is closed you will be switched back to your previous tab.',
-                            AutoZoomInOnNewUr: 'Auto zoom in on new UR',
-                            AutoZoomInOnNewUrTitle: 'Automatically zoom in when opening new (no comments) URs.',
-                            AutoZoomOutAfterClosePanel: 'Auto zoom out after close panel',
-                            AutoZoomOutAfterClosePanelTitle: 'Automatically zoom the map back to the previous zoom after closing the UR panel.',
-                            AutoZoomOutAfterComment: 'Auto zoom out after comment',
-                            AutoZoomOutAfterCommentTitle: 'Automatically zoom the map back to the previous zoom after clicking send on a UR comment.',
-                            DisableDoneNextButtons: 'Disable done / next buttons',
-                            DisableDoneNextButtonsTitle: 'Disable the done / next buttons at the bottom of the UR panel.',
-                            ReplaceNextWithDoneButton: 'Replace Next UR button with Done button',
-                            ReplaceNextWithDoneButtonTitle: 'Replace the Next Update Request button with a Done button.',
-                            DoubleClickLinkNiComments: 'Double click link - NI comments',
-                            DoubleClickLinkNiCommentsTitle: 'Add an image (extra link) to the \'not identified\' comments. When double clicked it will automatically set and send the UR comment of the '
-                                            + 'one you double clicked, and then launch all of the other options that are enabled.',
-                            DoubleClickLinkOpenComments: 'Double click link - Open comments',
-                            DoubleClickLinkOpenCommentsTitle: 'Add an image (extra link) to the \'open\' comments. When double clicked it will automatically set and send the UR comment of the one you '
-                                            + 'double clicked, and then launch all of the other options that are enabled.',
-                            DoubleClickLinkSolvedComments: 'Double click link - Solved comments',
-                            DoubleClickLinkSolvedCommentsTitle: 'Add an image (extra link) to the \'solved\' comments. When double clicked it will automatically set and send the UR comment of the one '
-                                            + 'you double clicked, and then launch all of the other options that are enabled.',
-                            HideZoomOutLinks: 'Hide zoom out links',
-                            HideZoomOutLinksTitle: 'Hide the zoom out links on the comments tab.',
-                            UnfollowUrAfterSend: 'Unfollow UR after send',
-                            UnfollowUrAfterSendTitle: 'Unfollow the UR after sending a comment.',
-                            EnableUrOverflowHandling: 'Enable UR overflow handling',
-                            EnableUrOverflowHandlingTitle: 'If this setting is enabled and there are more than 499 URs on the screen, URC-E will attempt to gather more URs and add them to the map, '
-                                            + 'if they do not already exist.\nWME does not display more than 500 URs on a single screen on its own.',
-                            EnableAutoRefresh: 'Enable auto refresh on zoom / pan',
-                            EnableAutoRefreshTitle: 'Reloads the map data when zooming or panning to show URs that may have been missed due to WME\'s 500 UR limit.  Will only reload if the zoom '
-                                            + 'level is between 15 and 22, there are not pending edits, and there are more than 499 URs loaded.',
-                            ExpandMoreInfo: 'Auto expand more info section',
-                            ExpandMoreInfoTitle: 'Automatically expand the more info section of the UR Panel.',
-                            ExpandShortcuts: 'Auto expand shortcuts section',
-                            ExpandShortcutsTitle: 'Automatically expand the shortcuts section of the UR Panel.',
-                            AutoScrollComments: 'Auto scroll comments in UR panel',
-                            AutoScrollCommentsTitle: 'Automatically scroll the comments in the UR panel to the bottom if enabled, or top if disabled.',
-                            ReverseCommentSort: 'Sort Comments in reverse order',
-                            ReverseCommentSortTitle: 'Sort comments in the UR Panel in the reverse order.',
-                            UrMarkerPrefs: 'UR Marker Settings',
-                            EnableUrPillCounts: 'Enable UR pill counts',
-                            EnableUrPillCountsTitle: 'Enable or disable the pill with UR counts on the map marker.',
-                            DisableUrMarkerPopup: 'Disable UR marker popups',
-                            DisableUrMarkerPopupTitle: 'Do not show the UR popup tooltip when you mouse over a UR marker.',
-                            UrMarkerPopupDelay: 'UR marker popup delay',
-                            UrMarkerPopupDelayTitle: 'The number of milliseconds (* 100) to delay before the UR marker tooltip will be displayed.',
-                            UrMarkerPopupTimeout: 'UR marker popup timeout',
-                            UrMarkerPopupTimeoutTitle: 'Specify the number of seconds to leave the UR marker tooltip displayed, while hovering over the marker.\nLeaving the marker, unless to the '
-                                            + 'tooltip itself, will cause the tooltip to close.\nEntering the tooltip will cancel the timer and leaving the tooltip will close the tooltip.\nDouble '
-                                            + 'click to quickly close.',
-                            DoNotShowTagNameOnPill: 'Don\'t show tag name on pill',
-                            DoNotShowTagNameOnPillTitle: 'Do not show the tag name on the pill where there is a tag. Example: [NOTE]',
-                            ReplaceTagNameWithEditorName: 'Replace tag name with editor name',
-                            ReplaceTagNameWithEditorNameTitle: 'When a UR has the logged in editors name in the description or any of the comments of the UR (not the name Waze automatically adds '
-                                            + 'when commenting), replace the tag type with the editors name.',
-                            UnstackMarkers: 'Unstack markers',
-                            UnstackMarkersTitle: 'Attempt to unstack markers by offsetting them. Similar to how URO+ unstacks markers.',
-                            UnstackSensitivity: 'Unstack sensitivity',
-                            UnstackSensitivityTitle: 'Specify the sensitivity for which markers are considered stacked.\nDefault: 15',
-                            UnstackDisableAboveZoom: 'Unstack disable when zoom level <',
-                            UnstackDisableAboveZoomTitle: 'When you zoom out wider than the specified zoom level, marker unstacking will be disabled.\nDefault: 15',
-                            UseCustomMarkersFor: 'Use Custom Markers for',
-                            BogTitle: 'Replace default UR marker with custom marker for the URs with \'[BOG]\' (boots on ground) / \'[BOTG]\' (boots on the ground) in the description or comments.',
-                            ClosureTitle: 'Replace default UR marker with custom marker for the URs with \'[CLOSURE]\' in the description or comments.',
-                            ConstructionTitle: 'Replace default UR marker with custom marker for the URs with \'[CONSTRUCTION]\' in the description or comments.',
-                            DifficultTitle: 'Replace default UR marker with custom marker for the URs with \'[DIFFICULT]\' in the description or comments.',
-                            EventTitle: 'Replace default UR marker with custom marker for the URs with \'[EVENT]\' in the description or comments.',
-                            NoteTitle: 'Replace default UR marker with custom marker for the URs with \'[NOTE]\' in the description or comments.',
-                            RoadworksTitle: 'Replace default UR marker with custom marker for the URs with \'[ROADWORKS]\' in the description or comments. Used in the UK.',
-                            WslmTitle: 'Waze Speed Limit Marker',
-                            NativeSpeedLimits: 'Native speed limits',
-                            NativeSpeedLimitsTitle: 'Replace default UR marker with custom marker for the URs with \'speed limit\' type.',
-                            CustomTitle: 'Replace default UR marker with custom marker for the URs with the text in the box to the right in the description or comments.',
-                            UrFilteringPrefs: 'UR Filtering Settings',
-                            EnableUrceUrFiltering: 'Enable URC-E UR filtering',
-                            EnableUrceUrFilteringTitle: 'Enable or disable URComments-Enhanced built-in UR filtering.',
-                            InvertFilters: 'Invert filters',
-                            InvertFiltersTitle: 'This will invert the filters you select / do not select.\nExample: If a filter were to match a selected / enabled setting, it would normally '
-                                        + 'be hidden.\nBut, if you enable \'invert filters\', the marker would be shown and all others that do not match will be hidden.',
-                            HideOutsideEditableArea: 'Hide outside editable area',
-                            HideOutsideEditableAreaTitle: 'Hide URs outside your editable area.',
-                            DoNotFilterTaggedUrs: 'Do not filter tagged URs',
-                            DoNotFilterTaggedUrsTitle: 'Do not filter URs that are tagged with a [] tag. Example: [NOTE]',
-                            DoNotHideSelectedUr: 'Do not hide selected UR',
-                            DoNotHideSelectedUrTitle: 'Do not hide a UR if it is currently being selected.',
-                            DisableFilteringAboveZoomLevel: 'Disable filtering when zoom level <',
-                            DisableFilteringAboveZoomLevelTitle: 'Disable UR filtering when zoomed out wider than the specified zoom level. Set to \'12\' to enable all filtering.',
-                            DisableFilteringBelowZoomLevel: 'Disable filtering when zoom level >',
-                            DisableFilteringBelowZoomLevelTitle: 'Disable UR filtering when zoomed in tighter than the specified zoom level. Set to \'22\' to enable all filtering.',
-                            LifeCycleStatus: 'Hide by lifecycle status',
-                            LifeCycleStatusInverted: 'Show by lifecycle status',
-                            HideWaiting: 'Waiting',
-                            HideWaitingTitle: 'Hide/show URs that do not currently need work.',
-                            HideUrsCloseNeeded: 'Close needed',
-                            HideUrsCloseNeededTitle: 'Hide/show URs that need closing.',
-                            HideUrsReminderNeeded: 'Reminders needed',
-                            HideUrsReminderNeededTitle: 'Hide/show URs where reminders are needed.',
-                            HideByStatus: 'Hide by status',
-                            HideByStatusInverted: 'Show by status',
-                            HideByStatusOpenTitle: 'Hide/show all open URs.',
-                            HideByStatusClosedTitle: 'Hide/show all closed (solved and not identified) URs.',
-                            HideByStatusNotIdentifiedTitle: 'Hide/show all closed as not identified URs.',
-                            HideByStatusSolvedTitle: 'Hide/show all closed as solved URs.',
-                            HideByStatusClosedByTitle: 'Hide/show closed URs that were closed by any of the specified users.\nInput username(s) in text box. Separate multiple entries with a comma.',
-                            HideByType: 'Hide by type',
-                            HideByTypeInverted: 'Show by type',
-                            HideByTypeBlockedRoadTitle: 'Hide/show all blocked road URs.',
-                            HideByTypeGeneralErrorTitle: 'Hide/show all general error URs.',
-                            HideByTypeIncorrectAddressTitle: 'Hide/show all incorrect address URs.',
-                            HideByTypeIncorrectJunctionTitle: 'Hide/show all incorrect junction URs.',
-                            HideByTypeIncorrectRouteTitle: 'Hide/show all incorrect route URs.',
-                            HideByTypeIncorrectStreetPrefixOrSuffixTitle: 'Hide/show all incorrect street prefix or suffix URs.',
-                            HideByTypeIncorrectTurnTitle: 'Hide/show all incorrect turn URs.',
-                            HideByTypeMissingBridgeOverpassTitle: 'Hide/show all missing bridge overpass URs.',
-                            HideByTypeMissingExitTitle: 'Hide/show all missing exit URs.',
-                            HideByTypeMissingLandmarkTitle: 'Hide/show all missing landmark URs.',
-                            HideByTypeMissingOrInvalidSpeedLimitTitle: 'Hide/show all missing or invalid speed limit URs.',
-                            HideByTypeMissingRoadTitle: 'Hide/show all missing road URs.',
-                            HideByTypeMissingRoundaboutTitle: 'Hide/show all missing roundabout URs.',
-                            HideByTypeMissingStreetNameTitle: 'Hide/show all missing street name URs.',
-                            HideByTypeTurnNotAllowedTitle: 'Hide/show all turn not allowed URs.',
-                            HideByTypeUndefinedTitle: 'Hide/show all undefined URs.',
-                            HideByTypeWrongDrivingDirectionTitle: 'Hide/show all wrong driving direction URs.',
-                            HideByTagged: 'Hide by tagged',
-                            HideByTaggedInverted: 'Show by tagged',
-                            HideByTaggedBogTitle: 'Hide/show all URs with [BOG] (boots on ground) / [BOTG] (boots on the ground) in description or comments.',
-                            HideByTaggedClosureTitle: 'Hide/show all URs with [CLOSURE] in description or comments.',
-                            HideByTaggedConstructionTitle: 'Hide/show all URs with [CONSTRUCTION] in description or comments.',
-                            HideByTaggedDifficultTitle: 'Hide/show all URs with [DIFFICULT] in description or comments.',
-                            HideByTaggedEventTitle: 'Hide/show all URs with [EVENT] in description or comments.',
-                            HideByTaggedNoteTitle: 'Hide/show all URs with [NOTE] in description or comments.',
-                            HideByTaggedRoadworksTitle: 'Hide/show all URs with [ROADWORKS] in description or comments. Used in the UK.',
-                            HideByTaggedWslmTitle: 'Hide/show all URs with [WSLM] in description or comments.',
-                            HideByAgeOfSubmission: 'Hide by age of submission',
-                            HideByAgeOfSubmissionInverted: 'Show by age of submission',
-                            HideByAgeOfSubmissionLessThanTitle: 'Hide/show URs that were originally created less than specified number of days ago.',
-                            HideByAgeOfSubmissionMoreThanTitle: 'Hide/show URs that were originally created more than specified number of days ago.',
-                            DescriptionCommentsFollowing: 'Hide by description, comment, following',
-                            DescriptionCommentsFollowingInverted: 'Show by description, comment, following',
-                            HideFollowingTitle: 'Hide/show URs you are following.',
-                            HideNotFollowingTitle: 'Hide/show URs you are not following.',
-                            HideWithDescriptionTitle: 'Hide/show URs that have a description.',
-                            HideWithoutDescriptionTitle: 'Hide/show URs that do not have a description.',
-                            HideCommentsFromMe: 'Comments from me',
-                            HideWithCommentsFromMeTitle: 'Hide/show URs you have commented on.',
-                            HideWithoutCommentsFromMeTitle: 'Hide/show URs you have not commented on.',
-                            HideFirstCommentByMe: 'First comment by me',
-                            HideFirstCommentByMeTitle: 'Hide/show URs where you were the first person to comment.',
-                            HideFirstCommentNotByMeTitle: 'Hide/show URs where someone else was the first person to comment.',
-                            HideLastCommentByMe: 'Last comment by me',
-                            HideLastCommentByMeTitle: 'Hide/show URs where you are the last person to comment.',
-                            HideLastCommentNotByMeTitle: 'Hide/show URs where someone else is the last person to comment.',
-                            HideLastCommentByReporter: 'Last comment by reporter',
-                            HideLastCommentByReporterTitle: 'Hide/show URs where the reporter is the last person to comment.',
-                            HideLastCommentNotByReporterTitle: 'Hide/show URs where the reporter is not the last person to comment.',
-                            HideByCommentCountLessThanTitle: 'Hide/show URs that contain less comments than the number specified.',
-                            HideByCommentCountMoreThanTitle: 'Hide/show URs that contain more comments than the number specified.',
-                            HideByAgeOfFirstCommentLessThan: 'First comment less than',
-                            HideByAgeOfFirstCommentLessThanTitle: 'Hide/show URs where the first comment is less than the days specified ago.',
-                            HideByAgeOfFirstCommentMoreThan: 'First comment more than',
-                            HideByAgeOfFirstCommentMoreThanTitle: 'Hide/show URs where the first comment is more than the days specified ago.',
-                            HideByAgeOfLastCommentLessThan: 'Last comment less than',
-                            HideByAgeOfLastCommentLessThanTitle: 'Hide/show URs where the last comment is less than the days specified ago.',
-                            HideByAgeOfLastCommentMoreThan: 'Last comment more than',
-                            HideByAgeOfLastCommentMoreThanTitle: 'Hide/show URs where the last comment is more than the days specified ago.',
-                            HideByKeywordIncluding: 'Including keyword',
-                            HideByKeywordIncludingTitle: 'Hide/show URs that include the custom word / text specified. Regex compatible.',
-                            HideByKeywordNotIncluding: 'Not including keyword',
-                            HideByKeywordNotIncludingTitle: 'Hide/show URs that do not include the custom word / text specified. Regex compatible.',
-                            HideByKeywordCaseInsensitive: 'Case-insensitive keyword matches',
-                            HideByKeywordCaseInsensitiveTitle: 'If enabled, searching for the above including or not including keywords will be done using case insensitive searching.',
-                            HideWithCommentBy: 'With comment by',
-                            HideWithCommentByTitle: 'Hide/show URs that have been commented on by the specified user(s).\nUse a comma (,) to separate usernames.',
-                            HideWithoutCommentBy: 'Without comment by',
-                            HideWithoutCommentByTitle: 'Hide/show URs that have not been commented on by the specified user(s).\nUse a comma (,) to separate usernames.',
-                            ReminderDays: 'Reminder days',
-                            ReminderDaysTitle: 'Number of days to use when calculating UR filtering and when setting and/or sending the reminder comment.\nThis is the number of days since the first '
-                                        + 'comment.\nSet to 0 if you do not use reminders.',
-                            CloseDays: 'Close days',
-                            CloseDaysTitle: 'Number of days to use when calculating UR filtering.\nThis is the number of days since the last comment.\nExample: If you close 4 days after the last '
-                                        + 'comment, set to 4.\nAnything less than this time will be considered \'waiting\' as long as there is at least one comment already.',
-                            EnableAppendMode: 'Enable append comment mode',
-                            EnableAppendModeTitle: 'Enabling append comment mode will allow you to append a comment to the existing text in the new-comment box.\nThe comment is appended with a blank '
-                                        + 'line between the existing text and the new text.\nThe status of the UR is set to the status of the new comment you clicked to append.\nIf the comment would end '
-                                        + 'up being longer than 2000 characters, append mode will give a warning and not alter the text in the comment box, but the status would have been changed.'
-                        },
-                        tabs: {
-                            Comments: 'Comments',
-                            Settings: 'Settings',
-                            Tools: 'Tools'
-                        },
-                        tags: {
-                            Bog: '[BOG] / [BOTG]',
-                            Closure: '[CLOSURE]',
-                            Construction: '[CONSTRUCTION]',
-                            Difficult: '[DIFFICULT]',
-                            Event: '[EVENT]',
-                            Note: '[NOTE]',
-                            Roadworks: '[ROADWORKS]',
-                            Wslm: '[WSLM]'
-                        },
-                        tools: {
-                            BackupSettingsTitle: 'Download a backup copy of your URC-E settings in JSON format.\nThis backup can be used to restore your settings to another computer, or in the event '
-                                        + 'you lose your settings.\n\nNote: Please do not modify the JSON file in any way. The format is crucial to proper restoral of settings.',
-                            CreateStep1: 'Open the template spreadsheet: $TEMPLATE_LINK$',
-                            CreateStep2: 'Click <i>File</i> then <i>Make a copy</i>.',
-                            CreateStep3: 'Give your file a name and specify the folder you want to save it in.',
-                            CreateStep4: 'Click <i>Make a copy</i>.',
-                            CreateStep5: 'Your sheet will open in a new tab. Look at the URL to get the <i>Spreadsheet ID</i>.<br>It is between <i>https://docs.google.com/spreadsheets/d/</i> and <i>/edit#...</i>.\n<br><b>Example:</b> <i>1JVtw4xwjKmPX_H1Xo1uwyYwxguM-oSi0LotD4lEwmK4</i> $SPREADSHEET_STEP$',
-                            CreateStep6: 'Click <i>Share</i> at the top right.',
-                            CreateStep7: 'Under <i>General access</i>, click the down arrow next to <i>Restricted</i>.',
-                            CreateStep8: 'Select <i>Anyone with the link</i>.',
-                            CreateStep9: 'Ensure <i>Viewer</i> is listed as to right and <i>Anyone on the internet with the link can view</i> below.',
-                            CreateStep10: 'Click <i>Done</i>.',
-                            ConvertStep1: 'Download your converted default UR type responses: $DOWNLOAD_DEFAULTS_LINK$',
-                            ConvertStep2: 'Download your converted comment list: $DOWNLOAD_COMMENTS_LINK$',
-                            ConvertStep3: 'In your custom Google Sheet, select the <b>CustomComments</b> tab, then click cell <b>B5</b>.',
-                            ConvertStep4: 'Click <i>File</i> then <i>Import</i>.',
-                            ConvertStep5: 'Click <i>Upload</i> at the top.',
-                            ConvertStep6: 'Either click <i>Browse</i> and select your <i>default UR type responses</i> file that was downloaded in step $DOWNLOAD_DEFAULTS_STEP$ '
-                                        + '(<b>default_responses_DATETIME.csv</b>),<br>or drag and drop your <i>default UR type responses</i> file to the box.',
-                            ConvertStep7: 'For <i>Import location</i> select <b>Replace data at selected cell</b>.',
-                            ConvertStep8: 'For <i>Separator type</i> select <i>Custom</i> and put <b>|</b> in the box.',
-                            ConvertStep9: 'Click <i>Import data</i>.',
-                            ConvertStep10: 'Click cell <b>A25</b>.',
-                            ConvertStep11: 'Click <i>File</i> then <i>Import</i>.',
-                            ConvertStep12: 'Click <i>Upload</i> at the top.',
-                            ConvertStep13: 'Either click <i>Browse</i> and select your <i>comment list</i> file that was downloaded in step $DOWNLOAD_COMMENTS_STEP$ '
-                                        + '(<b>comment_list_DATETIME.csv</b>),<br>or drag and drop your <i>comment list</i> file to the box.',
-                            ConvertStep14: 'For <i>Import location</i> select <b>Replace data at selected cell</b>.',
-                            ConvertStep15: 'For <i>Separator type</i> select <i>Custom</i> and put <b>|</b> in the box.',
-                            ConvertStep16: 'Click <i>Import data</i>.',
-                            FinalStep1: 'Put your <b>Spreadsheet ID</b> (step $SPREADSHEET_STEP$) in the Custom <i>Google Spreadsheet ID</i> settings box in URC-E settings.',
-                            FinalStep2: 'You can now use the <i>Custom G Sheet</i> comment list.',
-                            ConvertCreateConvertProcess: 'Convert Process',
-                            ConvertCreateCreateProcess: 'Create Process',
-                            ConvertCreateSteps: 'Steps',
-                            ConvertCurrentCustom: 'Convert current custom',
-                            ConvertCurrentCustomTitle: 'Convert your current custom comment list addon to URC-E style Google Sheet for easy maintenance, sharing, etc.',
-                            CreateNewCustom: 'Create new custom',
-                            CreateNewCustomTitle: 'Create your own URC-E custom comment list Google sheet for easy maintenance, sharing, etc.',
-                            CustomGoogleSpreadsheet: 'Custom Google Spreadsheet',
-                            IntersectionOf: 'the intersection of $SEG1NAME$ and $SEG2NAME$',
-                            IntersectionOfWithCity: 'the intersection of $SEG1NAME$ and $SEG2NAME$ in $SEGCITY$',
-                            ResetSettingsTitle: 'Reset all URC-E settings back to their default values.\n\nNote: Almost all settings default to disabled.',
-                            RestoreSettingsFileError: 'Invalid URC-E settings JSON file.',
-                            RestoreSettingsSelectFileTitle: 'Select the JSON file created by the URC-E \'Backup\' settings button.',
-                            RestoreSettingsTitle: 'Restore a backup copy of your URC-E settings from the JSON backup file created with the backup settings button.\n\nNote: Please do not modify the '
-                                        + 'JSON file in any way. The format is crucial to proper restoral of settings.',
-                            SegmentWithCity: '$SEG1NAME$ in $SEGCITY$',
-                            UnknownRoadName: 'unnamed road',
-                            UnknownVenueName: 'unnamed venue'
-                        },
-                        urPanel: {
-                            CurrentDate: 'Current date',
-                            DriveDate: 'Drive date',
-                            InsertCurrentDateCasualTitle: 'Shortcut - Current date (casual): Click this icon to insert the current date into the new comment box at the cursor position (full month '
-                                        + 'name, 2-digit day in locale format).',
-                            InsertCurrentDateTitle: 'Shortcut - Current date: Click this icon to insert the current date into the new comment box at the cursor position (2-digit month, 2-digit day, '
-                                        + '4-digit year in locale format).',
-                            InsertCurrentDayOfWeekTitle: 'Shortcut - Current day of week: Click this icon to insert the current day of the week into the new comment box at the cursor position (full '
-                                        + 'day of week name in locale language).',
-                            InsertCurrentTimeCasualTitle: 'Shortcut - Current time of day (casual): Click this icon to insert the current time of day into the new comment box at the cursor position '
-                                        + '(in locale language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
-                            InsertCurrentTimeTitle: 'Shortcut - Current time of day: Click this icon to insert the current time of day into the new comment box at the cursor position (2-digit hour, '
-                                        + '2-digit minute in locale format).',
-                            InsertCustomTaglineTitle: 'Shortcut - Custom tagline: Click this icon to insert your custom tagline into the new comment box at the cursor position.',
-                            InsertDateTimeCasualModeTitle: 'Shortcut - Drive day and time (fully casual): Click this icon to insert the drive date into the new comment box at the cursor position.\n\n'
-                                        + '0 days: this morning, this afternoon, this evening, tonight\n'
-                                        + '1 days: yesterday morning, yesterday afternoon, yesterrday evening, last night\n'
-                                        + '2-6 days: Day_of_Week morning/afternoon/evening/night\n'
-                                        + '7-13 days: last Day_of_Week morning/afternoon/evening/night\n'
-                                        + '14-20 days: Day_of_Week before last\n'
-                                        + '21-27 days: three weeks ago\n'
-                                        + '28-60 days: a few weeks ago\n'
-                                        + '61-120 days: a couple months back\n'
-                                        + '121+ days: a while ago',
-                            InsertDateCasualTitle: 'Shortcut - Drive date (casual): Click this icon to insert the drive date into the new comment box at the cursor position (full month name, 2-digit '
-                                        + 'day in locale format).',
-                            InsertDateTitle: 'Shortcut - Drive date: Click this icon to insert the drive date into the new comment box at the cursor position (2-digit month, 2-digit day, 4-digit '
-                                        + 'year in locale format).',
-                            InsertDayOfWeekTitle: 'Shortcut - Drive day of week: Click this icon to insert the drive date day of the week into the new comment box at the cursor position (full day of '
-                                        + 'week name in locale language).',
-                            InsertDescriptionTitle: 'Shortcut - Description: Click this icon to insert the UR description into the new comment box at the cursor position.',
-                            InsertPlaceAddressTitle: 'Shortcut - Place address: Click this icon to either replace \'$PLACE_ADDRESS$\' with the address of the currently selected place, or it will '
-                                        + 'insert the address of the currently selected place into the comment box at the current cursor position.',
-                            InsertPlaceNameTitle: 'Shortcut - Place name: Click this icon to either replace \'$PLACE_NAME$\' with the name of the currently selected place, or it will insert the name '
-                                        + 'of the currently selected place into the comment box at the current cursor position.',
-                            InsertSelSegsTitle: 'Shortcut - Segment name(s): Click this icon to either replace \'$SELSEGS$\' (or \'$SELSEGS\') with the name of the currently selected segment(s), or\nit '
-                                        + 'will insert the name of the currently selected segment(s) into the comment box at the cursor position.',
-                            InsertSelSegsWithCityTitle: 'Shortcut - Segment name(s) with city: Click this icon to either replace \'$SELSEGS_WITH_CITY$\' (or \'$SELSEGS$\' or \'$SELSEGS\') with the '
-                                        + 'name and city of the currently selected segment(s), or \nit will insert the name and city of the currently selected segment(s) into the comment box at the '
-                                        + 'cursor position.',
-                            InsertTimeCasualTitle: 'Shortcut - Drive time of day (casual): Click this icon to insert the drive date time of day into the new comment box at the cursor position (in '
-                                        + 'locale language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
-                            InsertTimeTitle: 'Shortcut - Drive time of day: Click this icon to insert the drive date time of day into the new comment box at the cursor position (2-digit hour, '
-                                        + '2-digit minute in locale format).',
-                            InsertUrPermalinkTitle: 'Shortcut - Insert permalink to this UR. URL will include your locale, your \'env\', the latitude and longitude of this UR, zoom level of 17, '
-                                        + 'mapUpdateRequest of this UR ID number, and s=20489175039 (which ensures the UR layer is turned on).',
-                            InsertUrTypeTitle: 'Shortcut - UR Type: Click this icon to insert the UR type into the new comment box at the cursor position.',
-                            InsertWazeUsernameTitle: 'Shortcut - Waze username: Click this icon to insert your Waze username into the new comment box at the cursor position.',
-                            Shortcuts: 'Shortcuts'
-                        },
-                        urStatus: {
-                            Closed: 'Closed',
-                            NotIdentified: 'Not identified'
-                        },
-                        urTypes: {
-                            Undefined: 'Undefined'
-                        },
-                        prompts: {
-                            CommentInsertTimedOut: 'URC-E timed out waiting for the comment text box to become available.',
-                            CommentTooLong: 'Appending another comment to the current text will cause the comment to be longer than 2000 characters, which is too long. URC-E did not append the '
-                                        + 'selected comment and left the new-comment box with the same text it had.',
-                            ConversionLoadAddonFirst: 'In order to convert a custom comments addon script to the new URC-E style Google Sheet, you must first ensure your custom comments addon is '
-                                        + 'enabled in TamperMonkey and selected in URC-E\'s Comment List settings box.',
-                            CustomGSheetLoadError: 'An error has occurred loading your URC-E custom comment Google sheet.<br><br>Please make sure you have done the following:\n<ul><li>Set the correct <b><i>Custom '
-                                        + 'Google Spreadsheet ID</i></b> (should be the ID of the copy created in the previous step) set on the settings tab.\n<li>Ensured your spreadsheet is shared '
-                                        + 'to everyone with a link can view.\n</ul>If all these have been done and you are still having issues, please contact a WazeDev team member.',
-                            NoCommentBox: 'URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.',
-                            PlaceAddressFound: 'The selected comment contains \'$PLACE_ADDRESS$\'.\n\nIn order to replace this text with the place address, please\nselect a place and click the place '
-                                        + 'address shortcut button in the UR panel.',
-                            PlaceAddressInsertError: 'In order to use the <i class="fa fa-map-marker" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
-                            PlaceNameFound: 'The selected comment contains \'$PLACE_NAME$\'.\n\nIn order to replace this text with the place name, please\nselect a place and click the place name '
-                                        + 'shortcut button in the UR panel.',
-                            PlaceNameInsertError: 'In order to use the <i class="fa fa-home" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
-                            ReminderMessageAuto: 'Automatically sent reminder message to UR(s)',
-                            ResetSettings: 'Reset Settings',
-                            ResetSettingsComplete: 'Settings reset complete',
-                            ResetSettingsConfirmation: 'Are you sure you want to reset URC-E settings back to their default values?',
-                            RestoreSettings: 'Restore Settings',
-                            RestoreSettingsComplete: 'Settings restore complete',
-                            RestoreSettingsConfirmation: 'Would you like to proceed with restoring your URC-E settings?',
-                            RestoreSettingsInvalidSettings: 'Invalid settings removed from JSON file',
-                            RestoreSettingsNumOfSettings: 'Number of settings to restore',
-                            RestoreSettingsRetainedSettings: 'Retained current settings',
-                            RestrictionsEnforced: 'Restrictions enforced!',
-                            RestrictionsEnforcedTitle: 'The following restrictions have been enforced',
-                            SelSegsFound: 'The selected comment contains \'$SELSEGS$\'.\n\nIn order to replace this text with the road name(s), please\nselect one or two segments and click the road '
-                                        + 'button in the\nUR panel.',
-                            SelSegsInsertError: 'In order to use the <i class="fa fa-road" aria-hidden="true"></i> button in the UR Panel, you must first select one or two segments.',
-                            SetCustomSsIdFirst: 'Before you can select <b><i>Custom G Sheet</i></b> as your comment list, you must first set the <b><i>Custom Google Spreadsheet ID</i></b> setting on '
-                                        + 'the URC-E settings tab.',
-                            SwitchingCommentLists: 'Switching comment lists',
-                            TimedOutWaitingStatic: 'Timed out waiting for the static list to become available. Is it enabled?',
-                            UpdateRequired: 'You are using an older version of URC-E, which has caused an error. Please update to at least version',
-                            UrOverflowErrorWithoutOverflowEnabled: 'WME will not load more than 500 URs per screen. Some URs may be missing. You can try to enable overflow handling, or zoom in and refresh.',
-                            VarFound: 'The selected comment contains variables: $VARSFOUND$.\n\nUntil these are replaced, the send button is disabled.',
-                            WaitingOnInit: 'Waiting for URC-E to fully initialize',
-                            WaitingToGetUrId: 'Waiting to get urId'
-                        },
-                        time: {
-                            ACoupleMonthsAgo: 'a couple months ago',
-                            AFewWeeksAgo: 'a few weeks ago',
-                            Afternoon: 'afternoon',
-                            AWhileBack: 'a while ago',
-                            Evening: 'evening',
-                            Morning: 'morning',
-                            LastNight: 'last night',
-                            LastWeekTOD: 'last $DAY_NAME$ $CASUAL_TOD$',
-                            Night: 'night',
-                            ThisCasualTOD: 'this $THIS_CASUAL_TOD$',
-                            ThisWeekTOD: '$DAY_NAME$ $CASUAL_TOD$',
-                            Tonight: 'tonight',
-                            TwoWeeksAgo: '$DAY_NAME$ before last',
-                            ThreeWeeksAgo: 'three weeks ago',
-                            YesterdayCasualTOD: 'yesterday $YESTERDAY_CASUAL_TOD$'
-                        }
-                    }
-                };
-                translations['en-US'] = { ...translations.en };
-                const locale = I18n.currentLocale();
-                if (translations[locale]) {
-                    Object.keys(translations[locale]).forEach((obj1) => {
-                        if (typeof translations[locale][obj1] === 'object') {
-                            Object.keys(translations[locale][obj1]).forEach((obj2) => {
-                                if (translations[locale][obj1][obj2].length === 0)
-                                    delete (translations[locale][obj1][obj2]);
+                        };
+                        translations['en-US'] = { ...translations.en };
+                        const locale = I18n.currentLocale();
+                        if (translations[locale]) {
+                            Object.keys(translations[locale]).forEach((obj1) => {
+                                if (typeof translations[locale][obj1] === 'object') {
+                                    Object.keys(translations[locale][obj1]).forEach((obj2) => {
+                                        if (translations[locale][obj1][obj2].length === 0)
+                                            delete (translations[locale][obj1][obj2]);
+                                    });
+                                }
+                                else if ((typeof translations[locale][obj1] === 'string') && (translations[locale][obj1].length === 0)) {
+                                    delete (translations[locale][obj1]);
+                                }
                             });
                         }
-                        else if ((typeof translations[locale][obj1] === 'string') && (translations[locale][obj1].length === 0)) {
-                            delete (translations[locale][obj1]);
-                        }
-                    });
+                        I18n.translations[locale].urce = $extend(true, {}, translations.en, translations[locale]);
+                        if (!Object.keys(translations).includes(locale))
+                            _needTranslation = true;
+                    }
+                    else {
+                        errorText = errorText || res;
+                    }
+                    postProcess(errorText);
+                },
+                onerror(res) {
+                    postProcess(`xmlhttpRequest error: ${JSON.stringify(res)}`);
                 }
-                I18n.translations[locale].urce = $.extend(true, {}, translations.en, translations[locale]);
-                if (Object.keys(translations).indexOf(locale) === -1)
-                    _needTranslation = true;
-                if (errorText)
-                    logWarning(errorText);
-            })
-                .fail((response) => {
-                    errorText = `Spreadsheet call failed. Code: ${response.status} - Text: ${response.responseText}`;
-                })
-                .always(() => {
-                    if (errorText && (_STATIC_ONLY_USERS.indexOf(W.loginManager.user.userName) === -1))
-                        reject(new Error(errorText));
-                    else
-                        resolve();
-                });
+            });
         });
     }
-
-    // jQuery function to set cursor position in input
-    $.fn.selectRange = function (start, end) {
-        if (end === undefined)
-            end = start;
-        return this.each(function () {
-            if ('selectionStart' in this) {
-                this.selectionStart = start;
-                this.selectionEnd = end;
-            }
-            else if (this.setSelectionRange) {
-                this.setSelectionRange(start, end);
-            }
-            else if (this.createTextRange) {
-                const range = this.createTextRange();
-                range.collapse(true);
-                range.moveEnd('character', end);
-                range.moveStart('character', start);
-                range.select();
-            }
-        });
-    };
 
     // Modified version of uroClickify() -- Thank you!!
     function clickify(desc, suffix) {
@@ -5983,15 +6627,15 @@
             return '';
         desc = desc.replace(/<\/?[^>]+(>|$)/g, '');
         if (desc !== 'null') {
-            if (desc.indexOf('http') > -1) {
+            if (desc.includes('http')) {
                 const links = desc.split('http');
                 desc = '';
-                for (let i = 0; i < links.length; i++) {
+                for (let i = 0, { length } = links; i < length; i++) {
                     if (links[i][2] === '/') {
                         links[i] = `http${links[i]}`;
                         let linkEndPos = links[i].length + 1;
-                        for (let j = 0; j < terminators.length; j++) {
-                            if (links[i].indexOf(terminators[j]) !== -1)
+                        for (let j = 0, len = terminators.length; j < len; j++) {
+                            if (links[i].includes(terminators[j]))
                                 linkEndPos = Math.min(linkEndPos, links[i].indexOf(terminators[j]));
                         }
                         let descPostLink = '';
