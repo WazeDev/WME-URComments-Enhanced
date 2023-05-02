@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.05.01.01
+// @version     2023.05.02.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -63,7 +63,6 @@
         _restoreTabPosition,
         _wmeUserId = null,
         _initUrIdInUrlObserver,
-        _lastVersionChecked = '0',
         _needUrId = false,
         _mapUpdateRequests = {},
         _initError = false,
@@ -76,27 +75,26 @@
         _IS_ALPHA_VERSION = _SCRIPT_SHORT_NAME.includes('Ω'),
         _IS_BETA_VERSION = _SCRIPT_SHORT_NAME.includes('β'),
         _SCRIPT_AUTHOR = GM_info.script.author,
-        _PROD_URL = 'https://greasyfork.org/scripts/375430-wme-urcomments-enhanced/code/WME-URComments-Enhanced.user.js',
-        _PROD_META_URL = 'https://greasyfork.org/scripts/375430-wme-urcomments-enhanced/code/WME-URComments-Enhanced.meta.js',
+        _PROD_DL_URL = 'https://greasyfork.org/scripts/375430-wme-urcomments-enhanced/code/WME-URComments-Enhanced.user.js',
         _FORUM_URL = 'https://www.waze.com/forum/viewtopic.php?f=819&t=275608',
         _SETTINGS_STORE_NAME = 'WME_URC-E',
-        _BETA_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
-        _BETA_META_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXViV1YwWVM1cWN3PT0=',
+        _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
         _SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Further prepwork for possible future spreadsheet changes.',
-            '<b>CHANGE:</b> A lot. Reverted to 100% vanilla JavaScript, removing reliance on jQuery.'
+            '<b>CHANGE:</b> A lot. Reverted to 100% vanilla JavaScript, removing reliance on jQuery.',
+            '<b>CHANGE:</b> Switch to WazeWrap update checking.'
         ],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
-        _MIN_VERSION_COMMENTS = '2019.08.16.01',
-        _MIN_VERSION_RESTRICTIONS = '2019.03.08.01',
+        _MIN_VERSION_COMMENTS = '2019.03.01.01',
+        _MIN_VERSION_RESTRICTIONS = '2018.03.08.01',
         _MIN_VERSION_TRANSLATIONS = '2019.08.16.01',
         _DEBUG = _SCRIPT_SHORT_NAME.includes('β') || _SCRIPT_SHORT_NAME.includes('Ω') || false,
         _LOAD_BEGIN_TIME = performance.now(),
         _STATIC_ONLY_USERS = ['itzwolf'],
-        _URCE_API_KEY = 'AIzaSyA2xOeUfopDqhB8r8esEa2A-G0X64UMr1c',
-        _URCE_SPREADSHEET_ID = '1aVKBOwjYmO88x96fIHtIQgAwMaCV_NfklvPqf0J0pzQ',
+        _URCE_API_KEY = 'UVVsNllWTjVRVEo0VDJWVlptOXdSSEZvUWpoeU9HVnpSV0V5UVMxSE1GZzJORlZOY2pGag==',
+        _URCE_SPREADSHEET_ID = 'TVdGV1MwSlBkMnBaYlU4NE9IZzVObVpKU0hSSlVXZEJkMDFoUTFaZlRtWnJiSFpRY1dZd1NqQndlbEU9',
         _autoSwitch = {},
         _commentLists = [],
         _currentArea = { country: undefined, state: undefined },
@@ -184,7 +182,7 @@
             if (_selUr.handling) {
                 const dataStateMutations = mutations.filter((mutation) => mutation.attributeName === 'data-state');
                 if (dataStateMutations.length > 0) {
-                    const newDataState = dataStateMutations[0].target.attributes['data-state'].nodeValue.replace('-', '');
+                    const newDataState = dataStateMutations[0].target.attributes['data-state'].nodeValue.replaceAll('-', '');
                     if ((newDataState === 'open') || (newDataState === 'solved') || (newDataState === 'notidentified'))
                         _selUr.newStatus = newDataState;
                     else
@@ -213,21 +211,26 @@
                 handleUpdateRequestContainer();
         }),
         _urMarkerObserver = new MutationObserver((mutations) => {
-            mutations.filter((mutation) => (mutation.addedNodes.length > 0)).forEach((newMarker) => {
-                if (!newMarker.addedNodes[0].dataset.urceHasListeners) {
+            mutations.filter((mutation) => (mutation.addedNodes.length > 0) && !mutation.addedNodes[0].id.includes('-text')).forEach((newMarker) => {
+                const urceCounter = newMarker.addedNodes[0].id.includes('urceCounters');
+                if (!urceCounter && !newMarker.addedNodes[0].dataset.urceHasListeners) {
                     newMarker.addedNodes[0].addEventListener('mouseover', markerMouseOver);
                     newMarker.addedNodes[0].addEventListener('mouseout', markerMouseOut);
                     newMarker.addedNodes[0].addEventListener('click', markerClick);
+                    newMarker.addedNodes[0].dataset.urceHasListeners = true;
+                }
+                if (urceCounter && !newMarker.addedNodes[0].dataset.urceHasListeners) {
+                    newMarker.addedNodes[0].addEventListener('click', pillClick);
                     newMarker.addedNodes[0].dataset.urceHasListeners = true;
                 }
             });
             if (_needUrId) {
                 const urId = mutations.filter(
                     (mutation) => ((mutation.attributeName === 'class') && !mutation.oldValue.includes('marker-selected') && mutation.target.classList.contains('marker-selected'))
-                )[0]?.target.attributes['data-id'].value;
+                )[0]?.target.attributes['data-id']?.value;
                 if (urId > 0) {
                     _needUrId = false;
-                    _selUr.urId = parseInt(urId);
+                    _selUr.urId = +urId;
                     logDebug(`Selected UR from marker mutation: ${_selUr.urId}`);
                     maskBoxes(undefined, true, 'needUrId', true);
                     handleUpdateRequestContainer();
@@ -513,9 +516,9 @@
                 else if ((typeof restoreSettings[prop] !== 'object')
                     && !isNaN(restoreSettings[prop])
                     && (restoreSettings[prop].length > 0)
-                    && (restoreSettings[prop] !== parseInt(restoreSettings[prop]))
+                    && (restoreSettings[prop] !== +restoreSettings[prop])
                 ) {
-                    restoreSettings[prop] = parseInt(restoreSettings[prop]);
+                    restoreSettings[prop] = +restoreSettings[prop];
                 }
             });
             Object.keys(_settings).forEach((prop) => {
@@ -599,7 +602,7 @@
                 ulElem.appendChild(setElemAttrs(_elems.li.cloneNode(false), { textContent: 'Nothing major.' }));
             }
             divElemRoot.appendChild(ulElem);
-            WazeWrap.Interface.ShowScriptUpdate(_SCRIPT_SHORT_NAME, _SCRIPT_VERSION, divElemRoot.innerHTML, (_IS_BETA_VERSION ? dec(_BETA_URL) : _PROD_URL).replace(/code\/.*\.js/, ''), _FORUM_URL);
+            WazeWrap.Interface.ShowScriptUpdate(_SCRIPT_SHORT_NAME, _SCRIPT_VERSION, divElemRoot.innerHTML, (_IS_BETA_VERSION ? dec(_BETA_DL_URL) : _PROD_DL_URL).replace(/code\/.*\.js/, ''), _FORUM_URL);
         }
     }
 
@@ -642,7 +645,7 @@
         let offset = (top + (scrollY || pageYOffset || scrollTop)) || 0;
         offset += userscriptsApiDocsLinkNode.offsetHeight;
         offset += wzMapOlFooter.offsetHeight;
-        if (offset !== parseInt(getComputedStyle(urceNode).getPropertyValue('--height-offset'))) {
+        if (offset !== +getComputedStyle(urceNode).getPropertyValue('--height-offset')) {
             logDebug(`Changing --height-offset to: ${offset}`);
             urceNode.style.setProperty('--height-offset', `${offset}px`);
         }
@@ -661,7 +664,7 @@
         }
     }
 
-    function dismissAlertBoxInPanel(event, idx) {
+    function dismissAlertBoxInPanel(evt, idx) {
         idx = idx || this?.attributes?.index?.value || -1;
         if ((idx > 0) && document.getElementById(`urceAlertPanelBox-${idx}`))
             document.getElementById(`urceAlertPanelBox-${idx}`).remove();
@@ -730,7 +733,8 @@
         }
         if (spinnerStop)
             doSpinner(spinnerName, false);
-        if (reopenUrPanel && (parseInt(document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value) > 0))
+        const urId = document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value;
+        if (reopenUrPanel && (+urId > 0))
             openUrPanel(0, reopenUrPanel);
     }
 
@@ -769,9 +773,9 @@
         }
     }
 
-    function checkRestrictions(event) {
+    function checkRestrictions(evt) {
         return new Promise((resolve) => {
-            (function retry(tries, toIndex, evt) {
+            (function retry(tries, toIndex, event) {
                 checkTimeout({ timeout: 'checkRestrictions', toIndex });
                 // 2023.04.05.01: W.model.getTopCountry() and W.model.getTopState() return null when zoom level < 12.
                 if (W.map.getZoom() < 12) {
@@ -783,7 +787,7 @@
                     if (remove) {
                         document.querySelectorAll('[id|="restrictionsEnforcedWarning"').forEach((el) => { el.style.display = 'none'; });
                     }
-                    else if (((evt?.[0]?.type === 'init') || (evt?.[0]?.type === 'modeChange'))
+                    else if (((event?.[0]?.type === 'init') || (event?.[0]?.type === 'modeChange'))
                         || (!document.getElementById('restrictionsEnforcedWarning'))
                     ) {
                         _restrictionsEnforcedTitle = content;
@@ -798,21 +802,21 @@
                 let moved = false,
                     state,
                     country;
-                if ((tries === 1) && (evt?.[0]?.type !== 'init') && (evt?.[0]?.type !== 'modeChange')) {
-                    _timeouts.checkRestrictions[toIndex] = window.setTimeout(retry, 500, ++tries, toIndex, evt);
+                if ((tries === 1) && (event?.[0]?.type !== 'init') && (event?.[0]?.type !== 'modeChange')) {
+                    _timeouts.checkRestrictions[toIndex] = window.setTimeout(retry, 500, ++tries, toIndex, event);
                 }
                 else if (tries < 301) {
-                    if ((evt?.[0]?.type === 'state') && (evt?.[0]?.name === W.model.getTopState().name)) {
-                        country = (evt[0].countryID !== 0) ? W.model.countries.getObjectById(evt[0].countryID).abbr : W.model.getTopCountry().abbr;
-                        state = evt[0].name;
+                    if ((event?.[0]?.type === 'state') && (event?.[0]?.name === W.model.getTopState().name)) {
+                        country = (event[0].countryID !== 0) ? W.model.countries.getObjectById(event[0].countryID).abbr : W.model.getTopCountry().abbr;
+                        state = event[0].name;
                     }
-                    else if ((evt?.[0]?.type === 'country') && (evt?.[0]?.abbr === W.model.getTopCountry().abbr)) {
-                        country = evt[0].abbr;
+                    else if ((event?.[0]?.type === 'country') && (event?.[0]?.abbr === W.model.getTopCountry().abbr)) {
+                        country = event[0].abbr;
                         state = false;
                     }
                     if (!country && !W.model.getTopCountry()) {
                         logDebug(`Waiting on Waze model for countries to populate. Try ${tries} of 300.`);
-                        _timeouts.checkRestrictions[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex, evt);
+                        _timeouts.checkRestrictions[toIndex] = window.setTimeout(retry, 100, ++tries, toIndex, event);
                     }
                     else {
                         checkTimeout({ timeout: 'checkRestrictions', toIndex });
@@ -827,7 +831,7 @@
                             moved = true;
                         }
                         if (moved) {
-                            logDebug((((evt?.[0]?.type === 'init') || (evt?.[0]?.type === 'modeChange')) ? 'Setting up restrictions.' : 'Checking restrictions.'));
+                            logDebug((((event?.[0]?.type === 'init') || (event?.[0]?.type === 'modeChange')) ? 'Setting up restrictions.' : 'Checking restrictions.'));
                             _restrictionsEnforce = {};
                             let restrictionsAlertBannerTitle = `${I18n.t('urce.prompts.RestrictionsEnforced')}\n\n${I18n.t('urce.prompts.RestrictionsEnforcedTitle')}:\n`;
                             if (_restrictions[country]) {
@@ -876,7 +880,7 @@
                     resolve(logError('Unable to check for restrictions'));
                 }
                 doSpinner('checkRestrictions', false);
-            }(1, getRandomId(), event));
+            }(1, getRandomId(), evt));
         });
     }
 
@@ -946,7 +950,7 @@
                 }));
                 const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'date urce' });
                 divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
-                    textContent: `(${parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[_selUr.urId].comments[(_mapUpdateRequests[_selUr.urId].urceData.commentCount - 1)].createdOn))})`
+                    textContent: `(${parseDaysAgo(daysAgo(W.model.updateRequestSessions.objects[_selUr.urId].comments[(_mapUpdateRequests[_selUr.urId].urceData.commentCount - 1)].createdOn))})`
                 }));
                 domElem.firstChild.appendChild(divElemRoot);
             }
@@ -1019,10 +1023,11 @@
     async function handleUpdateRequestContainer() {
         if (!_commentListLoaded)
             return;
-        if ((parseInt(document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value) > 0)
-            && (!(_selUr.urId > 0) || (_selUr.urId !== parseInt(document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value)))
+        const selectedUrId = document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value;
+        if ((+selectedUrId > 0)
+            && (!(_selUr.urId > 0) || (_selUr.urId !== +selectedUrId))
         ) {
-            _selUr.urId = parseInt(document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value);
+            _selUr.urId = +selectedUrId;
             logDebug(`Selected UR from handleURContainer: ${_selUr.urId}`);
         }
         else if (!(_selUr.urId > 0)) {
@@ -1110,7 +1115,7 @@
                                 + '.wz-list-item, .wz-list-item.with-subtitle { --wz-list-item-vertical-padding: 0px !important; margin: 2px 0px !important; }'
                         }));
                         currComment.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
-                            class: 'date urce', textContent: `(${parseDaysAgo(uroDateToDays(W.model.updateRequestSessions.objects[_selUr.urId].comments[idx].createdOn))})`
+                            class: 'date urce', textContent: `(${parseDaysAgo(daysAgo(W.model.updateRequestSessions.objects[_selUr.urId].comments[idx].createdOn))})`
                         }));
                     }
                 }
@@ -1325,7 +1330,7 @@
             else if (this.value.inclues('$PLACE_NAME$'))
                 title = I18n.t('urce.prompts.PlaceNameFound');
             else
-                title = I18n.t('urce.prompts.VarFound').replace('$VARSFOUND$', varsFound.join(', '));
+                title = I18n.t('urce.prompts.VarFound').replaceAll('$VARSFOUND$', varsFound.join(', '));
             document.querySelector('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').disabled = true;
             document.querySelector('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button').setAttribute('title', title);
         }
@@ -1524,7 +1529,7 @@
                     else {
                         output = '$SEG1NAME$';
                     }
-                    output = output.replace('$SEGCITY$', cityName).replace('$SEG1NAME$', street1Name).replace('$SEG2NAME$', street2Name);
+                    output = output.replaceAll('$SEGCITY$', cityName).replaceAll('$SEG1NAME$', street1Name).replaceAll('$SEG2NAME$', street2Name);
                     text = text.replace(/\$SELSEGS(\$|_WITH_CITY\$)?/gm, output);
                 }
                 else {
@@ -1538,32 +1543,32 @@
         if (replaceVars && (urId > -1)) {
             if (/(\$(CURRENTDATE_DAY_OF_WEEK|CURRENTDATE_DATE|CURRENTDATE_DATE_CASUAL|CURRENTDATE_TIME|CURRENTDATE_TIME_CASUAL)\$)/gm.test(text)) {
                 if (text.includes('$CURRENTDATE_DAY_OF_WEEK$'))
-                    text = text.replace('$CURRENTDATE_DAY_OF_WEEK$', new Date().toLocaleDateString(I18n.currentLocale(), { weekday: 'long' }));
+                    text = text.replaceAll('$CURRENTDATE_DAY_OF_WEEK$', new Date().toLocaleDateString(I18n.currentLocale(), { weekday: 'long' }));
                 if (text.includes('$CURRENTDATE_DATE$'))
-                    text = text.replace('$CURRENTDATE_DATE$', new Date().toLocaleDateString(I18n.currentLocale(), { month: '2-digit', day: '2-digit', year: 'numeric' }));
+                    text = text.replaceAll('$CURRENTDATE_DATE$', new Date().toLocaleDateString(I18n.currentLocale(), { month: '2-digit', day: '2-digit', year: 'numeric' }));
                 if (text.includes('$CURRENTDATE_DATE_CASUAL$'))
-                    text = text.replace('$CURRENTDATE_DATE_CASUAL$', new Date().toLocaleDateString(I18n.currentLocale(), { month: 'long', day: '2-digit' }));
+                    text = text.replaceAll('$CURRENTDATE_DATE_CASUAL$', new Date().toLocaleDateString(I18n.currentLocale(), { month: 'long', day: '2-digit' }));
                 if (text.includes('$CURRENTDATE_TIME$'))
-                    text = text.replace('$CURRENTDATE_TIME$', new Date().toLocaleDateString(I18n.currentLocale(), { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }));
+                    text = text.replaceAll('$CURRENTDATE_TIME$', new Date().toLocaleDateString(I18n.currentLocale(), { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }));
                 if (text.includes('$CURRENTDATE_TIME_CASUAL$'))
-                    text = text.replace('$CURRENTDATE_TIME_CASUAL$', convertTimeOfDayToCasual(new Date().getHours()));
+                    text = text.replaceAll('$CURRENTDATE_TIME_CASUAL$', convertTimeOfDayToCasual(new Date().getHours()));
             }
             if (/(\$(DRIVEDATE_DAY_OF_WEEK|DRIVEDATE_DATE|DRIVEDATE_DATE_CASUAL|DRIVEDATE_DAYS_AGO|DRIVEDATE_TIME|DRIVEDATE_TIME_CASUAL|DRIVEDATE_TIME_CASUALMODE)\$)/gm.test(text)) {
                 if (W.model.mapUpdateRequests.objects[urId]) {
                     if (text.includes('$DRIVEDATE_DAY_OF_WEEK$')) {
                         if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1) {
-                            text = text.replace(
+                            text = text.replaceAll(
                                 '$DRIVEDATE_DAY_OF_WEEK$',
                                 new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).toLocaleDateString(I18n.currentLocale(), { weekday: 'long' })
                             );
                         }
                         else {
-                            text = text.replace('$DRIVEDATE_DAY_OF_WEEK$', '');
+                            text = text.replaceAll('$DRIVEDATE_DAY_OF_WEEK$', '');
                         }
                     }
                     if (text.includes('$DRIVEDATE_DATE$')) {
                         if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1) {
-                            text = text.replace(
+                            text = text.replaceAll(
                                 '$DRIVEDATE_DATE$',
                                 new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).toLocaleDateString(
                                     I18n.currentLocale(),
@@ -1572,29 +1577,29 @@
                             );
                         }
                         else {
-                            text = text.replace('$DRIVEDATE_DATE$', '');
+                            text = text.replaceAll('$DRIVEDATE_DATE$', '');
                         }
                     }
                     if (text.includes('$DRIVEDATE_DATE_CASUAL$')) {
                         if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1) {
-                            text = text.replace(
+                            text = text.replaceAll(
                                 '$DRIVEDATE_DATE_CASUAL$',
                                 new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).toLocaleDateString(I18n.currentLocale(), { month: 'long', day: '2-digit' })
                             );
                         }
                         else {
-                            text = text.replace('$DRIVEDATE_DATE_CASUAL$', '');
+                            text = text.replaceAll('$DRIVEDATE_DATE_CASUAL$', '');
                         }
                     }
                     if (text.includes('$DRIVEDATE_DAYS_AGO$')) {
                         if (_mapUpdateRequests[urId]?.urceData?.driveDaysOld > -1)
-                            text = text.replace('$DRIVEDATE_DAYS_AGO$', parseDaysAgo(_mapUpdateRequests[urId].urceData.driveDaysOld));
+                            text = text.replaceAll('$DRIVEDATE_DAYS_AGO$', parseDaysAgo(_mapUpdateRequests[urId].urceData.driveDaysOld));
                         else
-                            text = text.replace('$DRIVEDATE_DAYS_AGO$', '');
+                            text = text.replaceAll('$DRIVEDATE_DAYS_AGO$', '');
                     }
                     if (text.includes('$DRIVEDATE_TIME$')) {
                         if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1) {
-                            text = text.replace(
+                            text = text.replaceAll(
                                 '$DRIVEDATE_TIME$',
                                 new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).toLocaleTimeString(
                                     I18n.currentLocale(),
@@ -1603,14 +1608,14 @@
                             );
                         }
                         else {
-                            text = text.replace('$DRIVEDATE_TIME$', '');
+                            text = text.replaceAll('$DRIVEDATE_TIME$', '');
                         }
                     }
                     if (text.includes('$DRIVEDATE_TIME_CASUAL$')) {
                         if (W.model.mapUpdateRequests.objects[urId]?.attributes.driveDate > -1)
-                            text = text.replace('$DRIVEDATE_TIME_CASUAL$', convertTimeOfDayToCasual(new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).getHours()));
+                            text = text.replaceAll('$DRIVEDATE_TIME_CASUAL$', convertTimeOfDayToCasual(new Date(W.model.mapUpdateRequests.objects[urId].attributes.driveDate).getHours()));
                         else
-                            text = text.replace('$DRIVEDATE_TIME_CASUAL$', '');
+                            text = text.replaceAll('$DRIVEDATE_TIME_CASUAL$', '');
                     }
                     if (text.includes('$DRIVEDATE_TIME_CASUALMODE$')) {
                         if (_mapUpdateRequests[urId]?.urceData) {
@@ -1626,31 +1631,31 @@
                                 else if ((driveHour > -1) && (driveHour < 4))
                                     casualText = I18n.t('urce.time.LastNight');
                                 else
-                                    casualText = I18n.t('urce.time.ThisCasualTOD').replace('$THIS_CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                                    casualText = I18n.t('urce.time.ThisCasualTOD').replaceAll('$THIS_CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
                             }
                             else if (driveDaysAgo === 1) {
                                 if ((driveHour > 20) && (driveHour < 25))
                                     casualText = I18n.t('urce.time.LastNight');
                                 else if ((driveHour > -1) && (driveHour < 4))
-                                    casualText = I18n.t('urce.time.ThisWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                                    casualText = I18n.t('urce.time.ThisWeekTOD').replaceAll('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
                                 else
-                                    casualText = I18n.t('urce.time.YesterdayCasualTOD').replace('$YESTERDAY_CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
-                                casualText = casualText.replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek]);
+                                    casualText = I18n.t('urce.time.YesterdayCasualTOD').replaceAll('$YESTERDAY_CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                                casualText = casualText.replaceAll('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek]);
                             }
                             else if ((driveDaysAgo > 1) && (driveDaysAgo < 21)) {
                                 if ((driveDaysAgo > 1) && (driveDaysAgo < 7)) {
                                     if ((driveDaysAgo === 6) && (driveHour > -1) && (driveHour < 4))
-                                        casualText = I18n.t('urce.time.LastWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                                        casualText = I18n.t('urce.time.LastWeekTOD').replaceAll('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
                                     else
-                                        casualText = I18n.t('urce.time.ThisWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                                        casualText = I18n.t('urce.time.ThisWeekTOD').replaceAll('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
                                 }
                                 else if ((driveDaysAgo > 6) && (driveDaysAgo < 14)) {
-                                    casualText = I18n.t('urce.time.LastWeekTOD').replace('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
+                                    casualText = I18n.t('urce.time.LastWeekTOD').replaceAll('$CASUAL_TOD$', convertTimeOfDayToCasual(driveHour));
                                 }
                                 else if ((driveDaysAgo > 13) && (driveDaysAgo < 21)) {
                                     casualText = I18n.t('urce.time.TwoWeeksAgo');
                                 }
-                                casualText = casualText.replace('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek]);
+                                casualText = casualText.replaceAll('$DAY_NAME$', I18n.translations[I18n.currentLocale()].date.day_names[dayOfWeek]);
                             }
                             else if ((driveDaysAgo > 20) && (driveDaysAgo < 28)) {
                                 casualText = I18n.t('urce.time.ThreeWeeksAgo');
@@ -1667,10 +1672,10 @@
                             else {
                                 casualText = '';
                             }
-                            text = text.replace('$DRIVEDATE_TIME_CASUALMODE$', casualText);
+                            text = text.replaceAll('$DRIVEDATE_TIME_CASUALMODE$', casualText);
                         }
                         else {
-                            text = text.replace('$DRIVEDATE_TIME_CASUALMODE$', '');
+                            text = text.replaceAll('$DRIVEDATE_TIME_CASUALMODE$', '');
                         }
                     }
                 }
@@ -1683,35 +1688,35 @@
             }
             if (text.includes('$CUSTOMTAGLINE$')) {
                 if (_settings.perCommentListSettings[_currentCommentList].customTagline.length > 0)
-                    text = text.replace('$CUSTOMTAGLINE$', formatText(_settings.perCommentListSettings[_currentCommentList].customTagline, true, shortcutClicked, urId));
+                    text = text.replaceAll('$CUSTOMTAGLINE$', formatText(_settings.perCommentListSettings[_currentCommentList].customTagline, true, shortcutClicked, urId));
                 else
-                    text = text.replace('$CUSTOMTAGLINE$', '');
+                    text = text.replaceAll('$CUSTOMTAGLINE$', '');
             }
             if (text.includes('$URTYPE$'))
-                text = text.replace('$URTYPE$', W.model.mapUpdateRequests.objects[urId].attributes.typeText);
+                text = text.replaceAll('$URTYPE$', W.model.mapUpdateRequests.objects[urId].attributes.typeText);
             if (text.includes('$PERMALINK$')) {
                 if (W.model.mapUpdateRequests.objects[urId]) {
                     const lonLat = WazeWrap.Geometry.ConvertTo4326(W.model.mapUpdateRequests.objects[urId].attributes.geometry.x, W.model.mapUpdateRequests.objects[urId].attributes.geometry.y),
                         urlParams = new URLSearchParams(window.location.search);
                     const urPermalink = `https://${document.location.hostname.replace(/beta/i, 'www')}${document.location.pathname}?${(urlParams.get('env') ? `env=${urlParams.get('env')}&` : '')}lon=${lonLat.lon.toFixed(5)}&lat=${lonLat.lat.toFixed(5)}&s=20489175039&zoomLevel=17&mapUpdateRequest=${urId}`;
-                    text = text.replace('$PERMALINK$', urPermalink);
+                    text = text.replaceAll('$PERMALINK$', urPermalink);
                 }
                 else {
-                    text = text.replace('$PERMALINK$', '');
+                    text = text.replaceAll('$PERMALINK$', '');
                 }
             }
         }
         if (replaceVars && text.includes('$CLOSED_NOR_EMAIL_TAG$')) {
             if ((_settings.perCommentListSettings[_currentCommentList].tagEmail.length > 0) && (W.loginManager.user.userName.length > 0))
-                text = text.replace('$CLOSED_NOR_EMAIL_TAG$', `Since this report is closed, please send further correspondence to ${_settings.perCommentListSettings[_currentCommentList].tagEmail} and include ${W.loginManager.user.userName} in the subject line.`);
+                text = text.replaceAll('$CLOSED_NOR_EMAIL_TAG$', `Since this report is closed, please send further correspondence to ${_settings.perCommentListSettings[_currentCommentList].tagEmail} and include ${W.loginManager.user.userName} in the subject line.`);
             else
-                text = text.replace('$CLOSED_NOR_EMAIL_TAG$', '');
+                text = text.replaceAll('$CLOSED_NOR_EMAIL_TAG$', '');
         }
         if (replaceVars && text.includes('$TAG_EMAIL$')) {
             if (_settings.perCommentListSettings[_currentCommentList].tagEmail.length > 0)
-                text = text.replace('$TAG_EMAIL$', _settings.perCommentListSettings[_currentCommentList].tagEmail);
+                text = text.replaceAll('$TAG_EMAIL$', _settings.perCommentListSettings[_currentCommentList].tagEmail);
             else
-                text = text.replace('$TAG_EMAIL$', '');
+                text = text.replaceAll('$TAG_EMAIL$', '');
         }
         if (replaceVars && text.includes('$USERNAME')) {
             if (W.loginManager.user.userName)
@@ -1723,9 +1728,9 @@
             const placeObj = W.selectionManager.getSelectedDataModelObjects()[0];
             if (placeObj?.type === 'venue') {
                 if (placeObj.attributes.residential === true)
-                    text = text.replace('$PLACE_NAME$', I18n.t('objects.venue.fields.residential'));
+                    text = text.replaceAll('$PLACE_NAME$', I18n.t('objects.venue.fields.residential'));
                 else
-                    text = text.replace('$PLACE_NAME$', ((placeObj.attributes.name.length > 0) ? placeObj.attributes.name : I18n.t('urce.tools.UnknownVenueName')));
+                    text = text.replaceAll('$PLACE_NAME$', ((placeObj.attributes.name.length > 0) ? placeObj.attributes.name : I18n.t('urce.tools.UnknownVenueName')));
             }
             else {
                 WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.PlaceNameInsertError'));
@@ -1752,7 +1757,7 @@
                     }
                 }
                 if (placeAddress !== '')
-                    text = text.replace('$PLACE_ADDRESS$', placeAddress);
+                    text = text.replaceAll('$PLACE_ADDRESS$', placeAddress);
                 else
                     WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.PlaceAddressInsertError'));
             }
@@ -2071,7 +2076,7 @@
     }
 
     function parsePxString(pxString) {
-        return parseInt(pxString.split('px')[0]);
+        return +pxString.split('px')[0];
     }
 
     function parseDaysAgo(days) {
@@ -2080,6 +2085,16 @@
         if (days === 1)
             return I18n.t('date.yesterday');
         return I18n.t('common.time.ago', { time: I18n.t('common.time.days', { days }) });
+    }
+
+    function daysAgo(timeInMs) {
+        const today = new Date(),
+            referenceDate = new Date(timeInMs),
+            msInDay = 24 * 60 * 60 * 1000;
+        referenceDate.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+        const numDaysAgo = Math.round((+today - +referenceDate) / msInDay);
+        return numDaysAgo;
     }
 
     function isIdAlreadyUnstacked(urId) {
@@ -2094,9 +2109,9 @@
 
     class StackListObj {
         constructor(urId, x, y) {
-            this.urId = parseInt(urId);
-            this.x = parseInt(x);
-            this.y = parseInt(y);
+            this.urId = +urId;
+            this.x = +x;
+            this.y = +y;
         }
     }
 
@@ -2144,7 +2159,7 @@
     }
 
     function checkMarkerStacking(urId, unstackedX, unstackedY) {
-        urId = parseInt(urId);
+        urId = +urId;
         if (!_settings.unstackMarkers || (isIdAlreadyUnstacked(urId) === true))
             return;
         doSpinner('checkMarkerStacking', true);
@@ -2174,12 +2189,12 @@
                     if (!(markerMapCollection[marker].marker.icon.imageDiv.classList.contains('recently-closed') && (W.map.updateRequestLayer.showHidden === false))
                         && ((markerMapCollection[marker].marker.icon.imageDiv.style.display !== 'none') || (markerMapCollection[marker].marker.icon.imageDiv.style.visibility !== 'hidden'))
                     ) {
-                        if (parseInt(marker) !== urId) {
+                        if (+marker !== urId) {
                             const xDiff = unstackedX - parsePxString(markerMapCollection[marker].marker.icon.imageDiv.style.left),
                                 yDiff = unstackedY - parsePxString(markerMapCollection[marker].marker.icon.imageDiv.style.top),
                                 distSquared = ((xDiff * xDiff) + (yDiff * yDiff));
                             if (distSquared < (_settings.unstackSensitivity * _settings.unstackSensitivity))
-                                stackList.push(parseInt(marker));
+                                stackList.push(+marker);
                         }
                     }
                 }
@@ -2213,7 +2228,7 @@
                 if (!((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
                     Object.keys(markerMapCollection).forEach((marker) => {
                         if (markerMapCollection.hasOwnProperty(marker)) {
-                            if (!isIdAlreadyUnstacked(parseInt(marker)))
+                            if (!isIdAlreadyUnstacked(+marker))
                                 markerMapCollection[marker].marker.icon.imageDiv.style.display = 'none';
                         }
                     });
@@ -2233,7 +2248,7 @@
         let popupX,
             popupY;
         if (this.className.includes('user-generated')) {
-            const markerId = parseInt(this.attributes['data-id']?.value);
+            const markerId = this.attributes?.['data-id']?.value ? +this.attributes['data-id'].value : -1;
             if ((markerId > 0) && ((_mousedOverMarkerId !== markerId) || (getComputedStyle(document.getElementById('urceDiv')).visibility === 'hidden'))) {
                 _mousedOverMarkerId = markerId;
                 const targetTab = `_urceTab_${Math.round(Math.random() * 1000000)}`,
@@ -2274,10 +2289,14 @@
                     docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
                         style: 'font-weight:bold;', textContent: `${I18n.t('problems.panel.titles.map_update_request')} (${markerId}): ${I18n.t(`update_requests.types.${W.model.mapUpdateRequests.objects[markerId].attributes.type}`)}`
                     }));
-                    if (!W.model.mapUpdateRequests.objects[markerId].attributes.description)
+                    if (!W.model.mapUpdateRequests.objects[markerId].attributes.description) {
                         divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { style: 'font-style:italic;', textContent: I18n.t('urce.mouseOver.NoDescription') });
-                    else
-                        divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { textContent: clickify(W.model.mapUpdateRequests.objects[markerId].attributes.description.replace(/((?:.{80}).*?)\s/gm, '$1\n'), '') });
+                    }
+                    else {
+                        divElemRoot = setElemAttrs(_elems.div.cloneNode(false), {
+                            textContent: W.model.mapUpdateRequests.objects[markerId].attributes.description
+                        });
+                    }
                     docFrags.appendChild(divElemRoot);
                     if (_mapUpdateRequests[markerId].urceData.driveDaysOld > -1) {
                         divElemRoot = setElemAttrs(_elems.div.cloneNode(false), {
@@ -2387,29 +2406,36 @@
         }
     }
 
-    function markerMouseOut(event) {
-        const newUrId = (parseInt(event?.relatedTarget?.attributes?.['data-id']) > -1) ? parseInt(event.relatedTarget.attributes['data-id']) : false;
-        if (((newUrId > 0) && isIdAlreadyUnstacked(newUrId))
-            || ((event?.relatedTarget?.id === 'urceDiv') || event?.relatedTarget?.id?.includes('urceCounts') || event?.relatedTarget?.parentNode?.id?.includes('urce'))
+    function markerMouseOut(evt) {
+        const newUrId = evt.relatedTarget?.attributes?.['data-id']?.value;
+        if (((+newUrId > 0) && isIdAlreadyUnstacked(+newUrId))
+            || ((evt.relatedTarget?.id === 'urceDiv') || evt?.relatedTarget?.id?.includes('urceCounts') || evt?.relatedTarget?.parentNode?.id?.includes('urce'))
         )
             return;
-        if (!newUrId)
+        if (!+newUrId)
             _mousedOverMarkerId = null;
         hidePopup();
         restackMarkers();
     }
 
-    function markerClick(event) {
-        if (!_selUr.handling && _commentListLoaded && (!(_selUr.urId > 0) || (_selUr.urId !== parseInt(event.target.attributes['data-id'].value)))) {
+    function markerClick(evt) {
+        const evtUrId = evt.target.attributes?.['data-id']?.value;
+        if (!_selUr.handling && _commentListLoaded && (!(_selUr.urId > 0) || (_selUr.urId !== +evtUrId))) {
             _selUr = {
                 doubleClick: false,
                 handling: false,
                 newStatus: undefined,
-                urId: parseInt(event.target.attributes['data-id'].value),
+                urId: +evtUrId,
                 urOpen: false
             };
             logDebug(`Clicked UR marker for urId: ${_selUr.urId}`);
         }
+    }
+
+    function pillClick() {
+        const urId = this.id ? this.id.substring(13) : -1;
+        if (+urId > 0)
+            openUrPanel(+urId, false);
     }
 
     function checkPopupTimeouts() {
@@ -2428,12 +2454,12 @@
             urceDivContent = urceDiv.querySelector('.urceDivContent');
         urceDivContent.replaceChildren(popupObj.docFrags);
         Object.assign(urceDiv.style, { height: 'auto', width: 'auto' });
-        let rw = parseInt(urceDiv.clientWidth);
+        let rw = +urceDiv.clientWidth;
         if (rw > (window.innerWidth * 0.45)) {
             rw = (window.innerWidth * 0.45);
             urceDiv.style.width = `${rw}px`;
         }
-        const rh = parseInt(urceDiv.clientHeight);
+        const rh = +urceDiv.clientHeight;
         if ((popupObj.popupX + rw) > window.innerWidth)
             popupObj.popupX -= (rw + 20);
         if ((popupObj.popupY + rh) > window.innerHeight)
@@ -2447,18 +2473,18 @@
             _timeouts.popup = window.setTimeout(hidePopup, (_settings.urMarkerPopupTimeout * 1000));
     }
 
-    function hidePopup(event) {
-        const newUrId = (parseInt(event?.relatedTarget?.attributes?.['data-id']) > -1) ? parseInt(event.relatedTarget.attributes['data-id']) : false;
+    function hidePopup(evt) {
+        const newUrId = evt?.relatedTarget?.attributes?.['data-id']?.value || -1;
         checkTimeout({ timeout: 'popup' });
         if (getComputedStyle(document.getElementById('urceDiv')).visibility !== 'hidden')
             document.getElementById('urceDiv').style.visibility = 'hidden';
-        if (((newUrId > 0) && isIdAlreadyUnstacked(newUrId))
-            || ((event?.relatedTarget?.id === 'urceDiv') || event?.relatedTarget?.id?.includes('urceCounts') || event?.relatedTarget?.parentNode?.id?.includes('urce'))
+        if (((+newUrId > 0) && isIdAlreadyUnstacked(+newUrId))
+            || ((evt?.relatedTarget?.id === 'urceDiv') || evt?.relatedTarget?.id?.includes('urceCounts') || evt?.relatedTarget?.parentNode?.id?.includes('urce'))
         ) {
-            if (!event?.doubleClick)
+            if (!evt?.doubleClick)
                 return;
         }
-        if (!newUrId && (event?.type === 'mouseleave') && ((event?.target?.id === 'urceDiv') || (event?.target?.offsetParent?.id === 'urceDiv')))
+        if (!+newUrId && (evt?.type === 'mouseleave') && ((evt?.target?.id === 'urceDiv') || (evt?.target?.offsetParent?.id === 'urceDiv')))
             _mousedOverMarkerId = null;
         if (!_mousedOverMarkerId)
             restackMarkers();
@@ -2490,7 +2516,7 @@
         if (this?.classList?.contains('focus'))
             urId = _selUr.urId;
         if (this?.attributes?.['data-id']?.value)
-            urId = parseInt(this.attributes['data-id'].value);
+            urId = +this.attributes['data-id'].value;
         if (urId < 0)
             return;
         if (this?.id === '_urceRecenterSession')
@@ -2714,12 +2740,6 @@
             const marker = document.querySelector(`.map-problem.user-generated[data-id="${mUrObj.attributes.id}"]`),
                 mUrObjUrceData = _mapUpdateRequests[mUrObj.attributes.id];
             if (marker && mUrObjUrceData?.urceData) {
-                if (!marker.dataset.urceHasListeners) {
-                    marker.addEventListener('mouseover', markerMouseOver);
-                    marker.addEventListener('mouseout', markerMouseOut);
-                    marker.addEventListener('click', markerClick);
-                    marker.dataset.urceHasListeners = true;
-                }
                 if (filter
                     && _settings.enableUrceUrFiltering
                     && (mUrObjUrceData.urceData.hideUr || (_settings.hideOutsideEditableArea && !mUrObj.canEdit()))
@@ -2730,6 +2750,12 @@
                     marker.style.display = 'none';
                 }
                 else {
+                    if (!marker.dataset.urceHasListeners) {
+                        marker.addEventListener('mouseover', markerMouseOver);
+                        marker.addEventListener('mouseout', markerMouseOut);
+                        marker.addEventListener('click', markerClick);
+                        marker.dataset.urceHasListeners = true;
+                    }
                     if (marker.style.display === 'none') {
                         markerChanges.markers.unhidden.push(mUrObj.attributes.id);
                         marker.style.display = '';
@@ -2779,7 +2805,10 @@
                             else {
                                 markerChanges.pills.added.push(mUrObj.attributes.id);
                             }
-                            const divContainer = setElemAttrs(_elems.div.cloneNode(false), { id: `urceCounters-${mUrObj.attributes.id}`, 'data-id': mUrObj.attributes.id, style: 'clear:both; margin-bottom:10px;' });
+                            const divContainer = setElemAttrs(_elems.div.cloneNode(false), {
+                                id: `urceCounters-${mUrObj.attributes.id}`, 'data-id': mUrObj.attributes.id, style: 'clear:both; margin-bottom:10px;'
+                            }, [{ click: pillClick }]);
+                            divContainer.dataset.urceHasListeners = true;
                             divContainer.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
                                 id: `urceCounters-${mUrObj.attributes.id}-text`,
                                 'data-id': mUrObj.attributes.id,
@@ -2861,7 +2890,7 @@
             checkCommentedUsers = (userIdsToCheck, userIds) => {
                 let retVal = false;
                 userIdsToCheck.forEach((userId) => {
-                    if (userIds.includes(parseInt(userId)))
+                    if (userIds.includes(+userId))
                         retVal = true;
                 });
                 return retVal;
@@ -2902,7 +2931,7 @@
                         commentUserIds: [],
                         containsSquareBrackets: false,
                         customType: -1,
-                        driveDaysOld: (chunk[idx].attributes.driveDate) ? uroDateToDays(chunk[idx].attributes.driveDate) : -1,
+                        driveDaysOld: (chunk[idx].attributes.driveDate) ? daysAgo(chunk[idx].attributes.driveDate) : -1,
                         firstCommentBy: -2,
                         firstCommentDaysOld: -1,
                         fullText: '',
@@ -2918,15 +2947,15 @@
                         needsClosed: false,
                         needsReminder: false,
                         reporterHasCommented: false,
-                        resolveDaysAgo: (chunk[idx].attributes.resolvedOn) ? uroDateToDays(chunk[idx].attributes.resolvedOn) : undefined,
+                        resolveDaysAgo: (chunk[idx].attributes.resolvedOn) ? daysAgo(chunk[idx].attributes.resolvedOn) : undefined,
                         tagType: -1,
                         waiting: false
                     };
                     if (urceData.commentCount > 0) {
-                        urceData.firstCommentDaysOld = uroDateToDays(urSessionsObj.comments[0].createdOn);
-                        urceData.firstCommentBy = parseInt(urSessionsObj.comments[0].userID);
-                        urceData.lastCommentDaysOld = uroDateToDays(urSessionsObj.comments[(urceData.commentCount - 1)].createdOn);
-                        urceData.lastCommentBy = parseInt(urSessionsObj.comments[(urceData.commentCount - 1)].userID);
+                        urceData.firstCommentDaysOld = daysAgo(urSessionsObj.comments[0].createdOn);
+                        urceData.firstCommentBy = +urSessionsObj.comments[0].userID;
+                        urceData.lastCommentDaysOld = daysAgo(urSessionsObj.comments[(urceData.commentCount - 1)].createdOn);
+                        urceData.lastCommentBy = +urSessionsObj.comments[(urceData.commentCount - 1)].userID;
                         urceData.fullText += (chunk[idx].attributes.description) ? `${chunk[idx].attributes.description} ` : '';
                         for (let commentIdx = 0, { commentCount } = urceData; commentIdx < commentCount; commentIdx++) {
                             urceData.fullText += `${urSessionsObj.comments[commentIdx].text} `;
@@ -2947,7 +2976,7 @@
                                     && (_wmeUserId === urceData.lastCommentBy)
                                     && urceData.inMapExtent
                                     && !urceData.containsSquareBrackets
-                                    && ((W.loginManager.user.rank > 2) || ((parseInt(W.loginManager.user.rank) === 2) && W.loginManager.user.isAreaManager))
+                                    && ((W.loginManager.user.rank > 2) || ((+W.loginManager.user.rank === 2) && W.loginManager.user.isAreaManager))
                                     && !_mapUpdateRequests[chunk[idx].attributes.id]?.urceData?.autoSentReminder
                                 )
                                     autoSendReminder = true;
@@ -3059,7 +3088,8 @@
                                         waiting: true
                                     });
                                 }
-                                if (parseInt(document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value) === _selUr.urId)
+                                const selectedMarkerUrId = document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value;
+                                if (+selectedMarkerUrId === _selUr.urId)
                                     reopenPanel = true;
                                 updateMarkersArr.push(chunk[idx]);
                             }
@@ -3406,12 +3436,12 @@
             handleUrLayer('zoomEnd', filter, getMapUrsObjArr());
     }
 
-    async function invokeModeChange(event) {
-        if (event?.changed?.mode === 1)
+    async function invokeModeChange(evt) {
+        if (evt?.changed?.mode === 1)
             await initBackgroundTasks('disable', 'invokeModeChange');
-        else if (event?.changed?.mode === 0)
+        else if (evt?.changed?.mode === 0)
             await initBackgroundTasks('enable', 'invokeModeChange');
-        if ((event?.changed?.mode === 0) || (event?.changed?.isImperial === true) || (event?.changed?.isImperial === false)) {
+        if ((evt?.changed?.mode === 0) || (evt?.changed?.isImperial === true) || (evt?.changed?.isImperial === false)) {
             await changeCommentList(_currentCommentList, false, true);
             await checkRestrictions([{ type: 'modeChange' }]);
             handleUrLayer('modeChange', undefined, getMapUrsObjArr());
@@ -3497,7 +3527,7 @@
                     debugMsg = 'Refreshing comment list';
                 else
                     debugMsg = 'Switching comment lists';
-                if (parseInt(_currentCommentList) > -1)
+                if (+_currentCommentList > -1)
                     debugMsg += ` from ${getCommentListInfo(_currentCommentList).name}`;
                 logDebug(`${debugMsg} to ${getCommentListInfo(commentListIdx).name}.`);
                 if (!autoSwitch && !refresh)
@@ -3603,7 +3633,13 @@
             if (I18n.t(`urce.tools.${createSteps[i]}`).includes('$SPREADSHEET_STEP$'))
                 spreadsheetStep = i + 1;
             const liElem = _elems.li.cloneNode(false);
-            liElem.appendChild(setElemAttrs(_elems.p.cloneNode(false), { innerHTML: trustedHTML(I18n.t(`urce.tools.${createSteps[i]}`).replace('$TEMPLATE_LINK$', `<a id="_openTemplate" href="https://bit.ly/urc-e_cc-template" target="_blank">${I18n.t('urce.common.Link')}</a>`).replace('$SPREADSHEET_STEP$', '')) }));
+            liElem.appendChild(setElemAttrs(_elems.p.cloneNode(false), {
+                innerHTML: trustedHTML(
+                    I18n.t(`urce.tools.${createSteps[i]}`)
+                        .replaceAll('$TEMPLATE_LINK$', `<a id="_openTemplate" href="https://bit.ly/urc-e_cc-template" target="_blank">${I18n.t('urce.common.Link')}</a>`)
+                        .replaceAll('$SPREADSHEET_STEP$', '')
+                )
+            }));
             olElem.appendChild(liElem);
         }
         if (convert) {
@@ -3617,10 +3653,10 @@
                 liElem.appendChild(
                     setElemAttrs(_elems.p.cloneNode(false), {
                         innerHTML: trustedHTML(I18n.t(`urce.tools.${convertSteps[i]}`)
-                            .replace('$DOWNLOAD_DEFAULTS_LINK$', `<a id="_downloadDefaults">${I18n.t('urce.common.Link')}</a>`)
-                            .replace('$DOWNLOAD_COMMENTS_LINK$', `<a id="_downloadComments">${I18n.t('urce.common.Link')}</a>`)
-                            .replace('$DOWNLOAD_DEFAULTS_STEP$', downloadDefaultsStep)
-                            .replace('$DOWNLOAD_COMMENTS_STEP$', downloadCommentsStep))
+                            .replaceAll('$DOWNLOAD_DEFAULTS_LINK$', `<a id="_downloadDefaults">${I18n.t('urce.common.Link')}</a>`)
+                            .replaceAll('$DOWNLOAD_COMMENTS_LINK$', `<a id="_downloadComments">${I18n.t('urce.common.Link')}</a>`)
+                            .replaceAll('$DOWNLOAD_DEFAULTS_STEP$', downloadDefaultsStep)
+                            .replaceAll('$DOWNLOAD_COMMENTS_STEP$', downloadCommentsStep))
                     })
                 );
                 if ((downloadDefaultsStep > 0) && (i === (downloadDefaultsStep - createSteps.length - 1)))
@@ -3632,7 +3668,7 @@
         }
         for (let i = 0, { length } = finalSteps; i < length; i++) {
             const liElem = _elems.li.cloneNode(false);
-            liElem.appendChild(setElemAttrs(_elems.p.cloneNode(false), { innerHTML: trustedHTML(I18n.t(`urce.tools.${finalSteps[i]}`).replace('$SPREADSHEET_STEP$', spreadsheetStep)) }));
+            liElem.appendChild(setElemAttrs(_elems.p.cloneNode(false), { innerHTML: trustedHTML(I18n.t(`urce.tools.${finalSteps[i]}`).replaceAll('$SPREADSHEET_STEP$', spreadsheetStep)) }));
             olElem.appendChild(liElem);
         }
         divElemDiv.appendChild(olElem);
@@ -3666,8 +3702,8 @@
             checkForStaticListArray(oldVarName).then(() => {
                 try {
                     const oldUrcArr = (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window)[`Urcomments${oldVarName}Array2`],
-                        defaultReminderIdx = parseInt((typeof unsafeWindow !== 'undefined' ? unsafeWindow : window)[`Urcomments${oldVarName}ReminderPosistion`]),
-                        closedNiIdx = parseInt((typeof unsafeWindow !== 'undefined' ? unsafeWindow : window)[`Urcomments${oldVarName}CloseNotIdentifiedPosistion`]),
+                        defaultReminderIdx = +(typeof unsafeWindow !== 'undefined' ? unsafeWindow : window)[`Urcomments${oldVarName}ReminderPosistion`],
+                        closedNiIdx = +(typeof unsafeWindow !== 'undefined' ? unsafeWindow : window)[`Urcomments${oldVarName}CloseNotIdentifiedPosistion`],
                         data = [];
                     let entryIdx;
                     logDebug(`Converting static comment list to URC-E format for comment list: ${oldVarName}`);
@@ -3737,10 +3773,10 @@
                         saveSettingsToStorage();
                     },
                     cidSingleClick = function () {
-                        handleClickedComment(parseInt(this.id.replace('urce-cid-', '')), false);
+                        handleClickedComment(+this.id.substring(9), false);
                     },
                     cidDoubleClick = function () {
-                        handleClickedComment(parseInt(this.id.replace('urce-img-cid-', '')), true);
+                        handleClickedComment(+this.id.substring(13), true);
                     };
                 let groupDivId,
                     commentId = 0,
@@ -3911,7 +3947,7 @@
             const commentListInfo = getCommentListInfo(commentListIdx);
             logDebug(`Beginning comment list async for comment list: ${commentListInfo.name}`);
             GM_xmlhttpRequest({
-                url: `https://sheets.googleapis.com/v4/spreadsheets/${((commentListIdx === 1001) ? _settings.customSsId : _URCE_SPREADSHEET_ID)}/values/${commentListInfo.gSheetRange}?key=${_URCE_API_KEY}`,
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${((commentListIdx === 1001) ? _settings.customSsId : dec(_URCE_SPREADSHEET_ID))}/values/${commentListInfo.gSheetRange}?key=${dec(_URCE_API_KEY)}`,
                 headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
                 method: 'GET',
                 onload(res) {
@@ -3944,12 +3980,12 @@
             const docFrags = document.createDocumentFragment(),
                 commentListInfo = getCommentListInfo(commentListIdx),
                 selectionChange = function () {
-                    if ((parseInt(this.value) === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
+                    if ((+this.value === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
                         this.value = _currentCommentList;
                         WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
                     }
                     else {
-                        changeCommentList(parseInt(this.value), false, true);
+                        changeCommentList(+this.value, false, true);
                     }
                 },
                 appendModeToggle = function () {
@@ -4136,9 +4172,9 @@
                     }
                 }
                 if (this.type === 'number') {
-                    const val = Math.min(9999, Math.max(0, Math.abs((parseInt(this.value) || 0))));
+                    const val = Math.min(9999, Math.max(0, Math.abs((+this.value || 0))));
                     if ((val !== this.value) || (_settings.perCommentListSettings[_currentCommentList][settingName] !== val)) {
-                        if (val !== parseInt(this.value))
+                        if (val !== +this.value)
                             this.value = val;
                         _settings.perCommentListSettings[_currentCommentList][settingName] = val;
                         saveSettingsToStorage();
@@ -4150,7 +4186,7 @@
                         if (this !== this.parentElement.children[i])
                             toggleDisabled(this.parentElement.children[i]);
                     }
-                    const parentSettingName = settingName.replace('_useDefault', '');
+                    const parentSettingName = settingName.substring(0, (settingName.length - 11));
                     if (_settings.perCommentListSettings[_currentCommentList][parentSettingName] !== _settings[parentSettingName]) {
                         _settings.perCommentListSettings[_currentCommentList][parentSettingName] = _settings[parentSettingName];
                         const parentSettingElem = document.querySelector(`input[id$="${parentSettingName}"]:not([urceprefs="perCommentList"])`);
@@ -4260,7 +4296,7 @@
                         style: 'display:inline;',
                         class: `URCE-label${((perCListSettings[`${settingId}_useDefault`]) ? ' urceDisabled' : '')}`,
                         urceprefs: 'perCommentList',
-                        textContent: I18n.t('common.time.days', { days: 0 }).replace('0 ', '')
+                        textContent: I18n.t('common.time.days', { days: 0 }).replaceAll('0 ', '')
                     }));
                 }
                 divElemDiv.appendChild(divElemDivInput);
@@ -4287,33 +4323,46 @@
 
     function handleError(err) {
         let errorText,
-            textContent;
+            errorHTML,
+            reason,
+            version;
         if (err.message?.includes('|') > -1) {
-            const [reason, message] = err.message.split('|');
-            if ((reason === 'updateRequired') || (reason === 'spreadsheetUpdateRequired'))
-                errorText = `${I18n.t(`urce.prompts.${reason.charAt(0).toUpperCase()}${reason.slice(1)}`)}: ${message}`;
-            textContent = errorText;
+            [reason, version] = err.message.split('|');
+            if ((reason === 'updateRequired') || (reason === 'spreadsheetUpdateRequired')) {
+                const scriptLinkHTML = `<a href="${(_IS_BETA_VERSION ? dec(_BETA_DL_URL) : _PROD_DL_URL)}" target = "_blank">${(_IS_BETA_VERSION ? dec(_BETA_DL_URL) : _PROD_DL_URL)}</a>`,
+                    scriptLinkText = _IS_BETA_VERSION ? dec(_BETA_DL_URL) : _PROD_DL_URL,
+                    ssUpdateInstructionsLinkHTML = '<a href="https://bit.ly/urc-e_ss-update-instructions" target = "_blank">https://bit.ly/urc-e_ss-update-instructions</a>',
+                    ssUpdateInstructionsLinkText = 'https://bit.ly/urc-e_ss-update-instructions';
+                errorText = I18n.t(`urce.prompts.${reason.charAt(0).toUpperCase()}${reason.slice(1)}`)
+                    .replaceAll('$VERSION$', version)
+                    .replaceAll('$LINK$', (reason === 'updateRequired') ? scriptLinkText : ssUpdateInstructionsLinkText)
+                    .replaceAll('<br>', '\n');
+                errorHTML = I18n.t(`urce.prompts.${reason.charAt(0).toUpperCase()}${reason.slice(1)}`)
+                    .replaceAll('$VERSION$', version)
+                    .replaceAll('$LINK$', (reason === 'updateRequired') ? scriptLinkHTML : ssUpdateInstructionsLinkHTML);
+            }
         }
         else {
             errorText = err.message;
-            textContent = (err.commentList === 1001) ? I18n.t('urce.prompts.CustomGSheetLoadError') : I18n.t('urce.common.ErrorGeneric');
+            errorHTML = (err.commentList === 1001) ? I18n.t('urce.prompts.CustomGSheetLoadError') : I18n.t('urce.common.ErrorGeneric');
         }
         logError(errorText);
         _commentListLoaded = false;
         if (err.phase === 'changeList') {
             if (err.staticList) {
-                textContent += `\n\n${I18n.t('urce.common.Type')}: ${I18n.t('urce.common.Static')}`;
+                errorHTML += `<br><br>${I18n.t('urce.common.Type')}: ${I18n.t('urce.common.Static')}`;
             }
             else if (err.commentList) {
                 const commentListInfo = getCommentListInfo(err.commentList);
-                textContent += `\n\n${I18n.t('urce.common.CommentList')}: ${commentListInfo.name}`
-                    + `\n${I18n.t('urce.common.ListOwner')}: ${commentListInfo.listOwner}`;
+                errorHTML += `<br><br>${I18n.t('urce.common.CommentList')}: ${commentListInfo.name}`
+                    + `<br>${I18n.t('urce.common.ListOwner')}: ${commentListInfo.listOwner}`;
             }
         }
-        const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divLoading', textContent });
+        const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divLoading', innerHTML: trustedHTML(errorHTML) });
         document.getElementById('_commentList')?.replaceChildren(divElemRoot);
         WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, divElemRoot.outerHTML);
         maskBoxes(undefined, true, err.phase, err.maskUrPanel);
+        return { errorHTML };
     }
 
     async function initBackgroundTasks(status, phase) {
@@ -4390,8 +4439,17 @@
             const markerMapCollection = { ...W.map.updateRequestLayer.featureMarkers };
             if (markerMapCollection) {
                 Object.keys(markerMapCollection).forEach((marker) => {
-                    if (markerMapCollection.hasOwnProperty(marker))
-                        markerMapCollection[marker].marker.icon.$div.off({ mouseover: markerMouseOver, mouseout: markerMouseOut, click: markerClick }).data('urce_hasListeners', false);
+                    if (markerMapCollection.hasOwnProperty(marker)) {
+                        const iconDiv = markerMapCollection[marker].marker.icon.div;
+                        iconDiv.removeEventListener('mouseover', markerMouseOver);
+                        iconDiv.removeEventListener('mouseout', markerMouseOut);
+                        iconDiv.removeEventListener('click', markerClick);
+                        iconDiv.dataset.urceHasListeners = false;
+                        if (iconDiv.firstChild) {
+                            iconDiv.firstChild.removeEventListener('click', pillClick);
+                            iconDiv.firstChild.dataset.urceHasListeners = false;
+                        }
+                    }
                 });
             }
             logDebug('Unregistering map.events event hook.');
@@ -4571,7 +4629,7 @@
             zoomOutLinkClicked = function () {
                 if (document.querySelector('#panel-container .mapUpdateRequest .top-section .close-panel'))
                     autoCloseUrPanel();
-                W.map.getOLMap().zoomTo(parseInt(this.getAttribute('zoomTo')));
+                W.map.getOLMap().zoomTo(+this.getAttribute('zoomTo'));
             };
         const imgDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceIcon', class: 'URCE-divIcon' }),
             contentHeaderDiv = setElemAttrs(_elems.div.cloneNode(false), { id: '_divZoomOutLinks', class: 'URCE-divCCLinks', style: _settings.hideZoomOutLinks ? 'display:none;' : '' });
@@ -4758,12 +4816,12 @@
                 this.nextSibling.classList.toggle('collapse');
             },
             commentListSelectionChange = function () {
-                if ((parseInt(this.value) === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
+                if ((+this.value === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
                     this.value = _currentCommentList;
                     WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.SetCustomSsIdFirst'));
                 }
                 else {
-                    changeCommentList(parseInt(this.value), false, false);
+                    changeCommentList(+this.value, false, false);
                 }
             },
             commentListStyleSelectionChange = function () {
@@ -4942,9 +5000,9 @@
                 const settingName = this.id.substring(4),
                     maxVal = ['disableFilteringAboveZoomLevel', 'disableFilteringBelowZoomLevel', 'unstackDisableAboveZoom'].includes(settingName) ? 22 : 9999,
                     minVal = ['disableFilteringAboveZoomLevel', 'disableFilteringBelowZoomLevel', 'unstackDisableAboveZoom'].includes(settingName) ? 12 : 0,
-                    val = Math.min(maxVal, Math.max(minVal, parseInt(Math.abs(parseInt(this.value) || minVal))));
-                if ((val !== parseInt(this.value)) || (_settings[settingName] !== val)) {
-                    if (val !== parseInt(this.value))
+                    val = Math.min(maxVal, Math.max(minVal, +Math.abs(+this.value || minVal)));
+                if ((val !== +this.value) || (_settings[settingName] !== val)) {
+                    if (val !== +this.value)
                         this.value = val;
                     _settings[settingName] = val;
                     if (document.getElementById(`_cbperCommentList_${settingName}_useDefault`).checked && (`_numperCommentList_${settingName}` !== val))
@@ -5397,8 +5455,8 @@
             'reverseCommentSort'].forEach((setting) => { contentDiv.appendChild(buildStandardCbSetting(setting, 'urce')); });
         contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-controls URCE-textFirst' });
         contentDivDiv.appendChild(buildTextFirstTextSetting('tagEmail', 'commentList'));
-        contentDivDiv.appendChild(buildTextFirstNumSetting('reminderDays', 'urce', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', '')));
-        contentDivDiv.appendChild(buildTextFirstNumSetting('closeDays', 'urce', '1', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', '')));
+        contentDivDiv.appendChild(buildTextFirstNumSetting('reminderDays', 'urce', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replaceAll('0 ', '')));
+        contentDivDiv.appendChild(buildTextFirstNumSetting('closeDays', 'urce', '1', '9999', '1', I18n.t('common.time.days', { days: 0 }).replaceAll('0 ', '')));
         contentDivDivDiv = setElemAttrs(_elems.div.cloneNode(false), {
             class: 'URCE-label', urceprefs: 'commentList', title: I18n.t('urce.prefs.CustomTaglineTitle'), textContent: `${I18n.t('urce.prefs.CustomTagline')}: `
         });
@@ -5419,7 +5477,7 @@
         contentDiv.appendChild(buildStandardCbSetting('disableUrMarkerPopup', 'marker-nodisable'));
         contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-textFirst', urceprefs: 'marker-nodisable' });
         contentDivDiv.appendChild(buildTextFirstNumSetting('urMarkerPopupDelay', 'marker-nodisable', '1', '99', '1', ' * 100ms'));
-        contentDivDiv.appendChild(buildTextFirstNumSetting('urMarkerPopupTimeout', 'marker-nodisable', '1', '99', '1', I18n.t('datetime.distance_in_words.x_seconds.other', { count: 30 }).replace('30', '')));
+        contentDivDiv.appendChild(buildTextFirstNumSetting('urMarkerPopupTimeout', 'marker-nodisable', '1', '99', '1', I18n.t('datetime.distance_in_words.x_seconds.other', { count: 30 }).replaceAll('30', '')));
         contentDiv.appendChild(contentDivDiv);
         ['doNotShowTagNameOnPill', 'replaceTagNameWithEditorName'].forEach((setting) => { contentDiv.appendChild(buildStandardCbSetting(setting, 'marker')); });
         contentDiv.appendChild(buildStandardCbSetting('unstackMarkers', 'marker-nodisable'));
@@ -5496,10 +5554,10 @@
             class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t(`urce.prefs.HideByAgeOfSubmission${((_settings.invertFilters) ? 'Inverted' : '')}`)}:`
         }));
         contentDiv.appendChild(
-            buildCbandNumSetting('hideByAgeOfSubmissionLessThan', 'hideByAgeOfSubmissionLessThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''))
+            buildCbandNumSetting('hideByAgeOfSubmissionLessThan', 'hideByAgeOfSubmissionLessThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replaceAll('0 ', ''))
         );
         contentDiv.appendChild(
-            buildCbandNumSetting('hideByAgeOfSubmissionMoreThan', 'hideByAgeOfSubmissionMoreThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''))
+            buildCbandNumSetting('hideByAgeOfSubmissionMoreThan', 'hideByAgeOfSubmissionMoreThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replaceAll('0 ', ''))
         );
         // -- Hide by description, comments, following
         contentDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
@@ -5516,16 +5574,16 @@
         contentDiv.appendChild(buildCbandNumSetting('hideByCommentCountLessThan', 'hideByCommentCountLessThanNumber', 'filtering', '0', '9999', '1', I18n.t('urce.tabs.Comments')));
         contentDiv.appendChild(buildCbandNumSetting('hideByCommentCountMoreThan', 'hideByCommentCountMoreThanNumber', 'filtering', '0', '9999', '1', I18n.t('urce.tabs.Comments')));
         contentDiv.appendChild(
-            buildCbandNumSetting('hideByAgeOfFirstCommentLessThan', 'hideByAgeOfFirstCommentLessThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''))
+            buildCbandNumSetting('hideByAgeOfFirstCommentLessThan', 'hideByAgeOfFirstCommentLessThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replaceAll('0 ', ''))
         );
         contentDiv.appendChild(
-            buildCbandNumSetting('hideByAgeOfFirstCommentMoreThan', 'hideByAgeOfFirstCommentMoreThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''))
+            buildCbandNumSetting('hideByAgeOfFirstCommentMoreThan', 'hideByAgeOfFirstCommentMoreThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replaceAll('0 ', ''))
         );
         contentDiv.appendChild(
-            buildCbandNumSetting('hideByAgeOfLastCommentLessThan', 'hideByAgeOfLastCommentLessThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''))
+            buildCbandNumSetting('hideByAgeOfLastCommentLessThan', 'hideByAgeOfLastCommentLessThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replaceAll('0 ', ''))
         );
         contentDiv.appendChild(
-            buildCbandNumSetting('hideByAgeOfLastCommentMoreThan', 'hideByAgeOfLastCommentMoreThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replace('0 ', ''))
+            buildCbandNumSetting('hideByAgeOfLastCommentMoreThan', 'hideByAgeOfLastCommentMoreThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replaceAll('0 ', ''))
         );
         contentDiv.appendChild(buildCbandTextSetting('hideByKeywordIncluding', 'hideByKeywordIncludingKeyword', 'filtering', undefined));
         contentDiv.appendChild(buildCbandTextSetting('hideByKeywordNotIncluding', 'hideByKeywordNotIncludingKeyword', 'filtering', undefined));
@@ -5551,8 +5609,8 @@
         });
     }
 
-    async function initGui(firstCall = true) {
-        if (_initError)
+    async function initGui(firstCall = true, structureOnly = false) {
+        if (_initError && !structureOnly)
             return Promise.resolve();
         logDebug('Initializing GUI.');
         injectCss();
@@ -5622,9 +5680,11 @@
             await W.userscripts.waitForElementConnected(tabPane);
             showScriptInfoAlert();
         }
-        initSettingsTab();
-        initCommentsTab();
-        initToolsTab();
+        if (!structureOnly) {
+            initSettingsTab();
+            initCommentsTab();
+            initToolsTab();
+        }
         return Promise.resolve();
     }
 
@@ -5649,7 +5709,7 @@
                 }
             };
             GM_xmlhttpRequest({
-                url: `https://sheets.googleapis.com/v4/spreadsheets/${_URCE_SPREADSHEET_ID}/values/CommentLists!A3:G?key=${_URCE_API_KEY}`,
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${dec(_URCE_SPREADSHEET_ID)}/values/CommentLists!A3:G?key=${dec(_URCE_API_KEY)}`,
                 headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
                 method: 'GET',
                 onload(res) {
@@ -5684,7 +5744,7 @@
                                     const output = Object.create({});
                                     for (let valIdx = 0, len = data.values[entryIdx].length; valIdx < len; valIdx++) {
                                         if (ssFieldNames[valIdx] === 'idx')
-                                            output[ssFieldNames[valIdx]] = parseInt(data.values[entryIdx][valIdx]);
+                                            output[ssFieldNames[valIdx]] = +data.values[entryIdx][valIdx];
                                         else if (ssFieldNames[valIdx] === 'Prefix')
                                             output.gSheetRange = `${data.values[entryIdx][valIdx]}_Output_(do_not_edit)!A1:A`;
                                         else
@@ -5722,7 +5782,7 @@
                     reject(new Error(errorText));
             };
             GM_xmlhttpRequest({
-                url: `https://sheets.googleapis.com/v4/spreadsheets/${_URCE_SPREADSHEET_ID}/values/CommentLists_AutoSwitch!A3:ZZ?majorDimension=COLUMNS&key=${_URCE_API_KEY}`,
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${dec(_URCE_SPREADSHEET_ID)}/values/CommentLists_AutoSwitch!A3:ZZ?majorDimension=COLUMNS&key=${dec(_URCE_API_KEY)}`,
                 headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
                 method: 'GET',
                 onload(res) {
@@ -5742,7 +5802,7 @@
                                     }
                                 }
                                 if (data.values[entryIdx].length > 3) {
-                                    const commentListNum = parseInt(data.values[entryIdx][2]);
+                                    const commentListNum = +data.values[entryIdx][2];
                                     for (let idx = 3, len = data.values[entryIdx].length; idx < len; idx++) {
                                         const values = data.values[entryIdx][idx].split('.');
                                         if ((values[0] === 'state') && !_autoSwitch[values[1]])
@@ -5781,7 +5841,7 @@
                     reject(new Error(errorText));
             };
             GM_xmlhttpRequest({
-                url: `https://sheets.googleapis.com/v4/spreadsheets/${_URCE_SPREADSHEET_ID}/values/Restrictions!A3:ZZ?majorDimension=COLUMNS&key=${_URCE_API_KEY}`,
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${dec(_URCE_SPREADSHEET_ID)}/values/Restrictions!A3:ZZ?majorDimension=COLUMNS&key=${dec(_URCE_API_KEY)}`,
                 headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
                 method: 'GET',
                 onload(res) {
@@ -5811,14 +5871,14 @@
                                                 _restrictions[values[1]][values[2]] = {};
                                             _restrictions[values[1]][values[2]][restriction] = ((restriction !== 'reminderDays') && (restriction !== 'closeDays'))
                                                 ? (values[3] === 'true')
-                                                : parseInt(values[3]);
+                                                : +values[3];
                                         }
                                         if (values[0] === 'country') {
                                             if (!_restrictions[values[1]][values[2]])
                                                 _restrictions[values[1]][values[2]] = {};
                                             _restrictions[values[1]][values[2]][restriction] = ((restriction !== 'reminderDays') && (restriction !== 'closeDays'))
                                                 ? (values[3] === 'true')
-                                                : parseInt(values[3]);
+                                                : +values[3];
                                         }
                                     }
                                 }
@@ -5883,30 +5943,12 @@
     function checkUrceVersion() {
         if (_IS_ALPHA_VERSION)
             return;
+        let updateMonitor;
         try {
-            const metaUrl = _IS_BETA_VERSION ? dec(_BETA_META_URL) : _PROD_META_URL;
-            GM_xmlhttpRequest({
-                url: metaUrl,
-                onload(res) {
-                    const latestVersion = res.responseText.match(/@version\s+(.*)/)[1];
-                    if ((latestVersion > _SCRIPT_VERSION) && (latestVersion > (_lastVersionChecked || '0'))) {
-                        _lastVersionChecked = latestVersion;
-                        WazeWrap.Alerts.info(
-                            _SCRIPT_LONG_NAME,
-                            `<a href="${(_IS_BETA_VERSION ? dec(_BETA_URL) : _PROD_URL)}" target = "_blank">Version ${latestVersion}</a> is available.<br>Update now to get the latest features and fixes.`,
-                            true,
-                            false
-                        );
-                    }
-                },
-                onerror(res) {
-                    // Silently fail with an error message in the console.
-                    logError('Upgrade version check:', res);
-                }
-            });
+            updateMonitor = new WazeWrap.Alerts.ScriptUpdateMonitor(_SCRIPT_LONG_NAME, _SCRIPT_VERSION, (_IS_BETA_VERSION ? dec(_BETA_DL_URL) : _PROD_DL_URL), GM_xmlhttpRequest);
+            updateMonitor.start();
         }
         catch (err) {
-            // Silently fail with an error message in the console.
             logError('Upgrade version check:', err);
         }
     }
@@ -5914,10 +5956,13 @@
     async function onWazeWrapReady() {
         log('Initializing.');
         checkUrceVersion();
-        setInterval(checkUrceVersion, 60 * 60 * 1000);
         _wmeUserId = W.loginManager.user.id;
         await loadSettingsFromStorage(false, false);
-        const urIdInUrl = parseInt(window.location.search.split('mapUpdateRequest=')[1]),
+        const urIdInUrl = +window.location.search.split('mapUpdateRequest=')[1],
+            afterInitGuiError = (innerHTML) => {
+                const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divLoading', innerHTML });
+                document.getElementById('panel-urce-comments')?.replaceChildren(divElemRoot);
+            },
             afterInitGui = () => {
                 if (_initError)
                     return;
@@ -5982,7 +6027,9 @@
             error.maskUrPanel = (urIdInUrl > 0);
             error.commentList = false;
             await areTranslationsReady();
-            handleError(error);
+            const { errorHTML } = handleError(error);
+            await initGui(true, true);
+            afterInitGuiError(trustedHTML(errorHTML));
         })
             .then(initGui)
             .then(afterInitGui);
@@ -6047,7 +6094,7 @@
             }
             /* END FIX */
             GM_xmlhttpRequest({
-                url: `https://sheets.googleapis.com/v4/spreadsheets/${_URCE_SPREADSHEET_ID}/values/Script_Translations!A3:AA?key=${_URCE_API_KEY}`,
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${dec(_URCE_SPREADSHEET_ID)}/values/Script_Translations!A3:AA?key=${dec(_URCE_API_KEY)}`,
                 headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
                 method: 'GET',
                 onload(res) {
@@ -6087,7 +6134,7 @@
                                             if (typeof translations[translationLocale][translationDef0] === 'undefined')
                                                 translations[translationLocale][translationDef0] = {};
                                             translations[translationLocale][translationDef0][translationDef1] = data.values[entryIdx][valIdx]
-                                                .replace('$SCRIPT_AUTHOR$', _SCRIPT_AUTHOR).replace(/\\[r|n]+/gm, '\n');
+                                                .replaceAll('$SCRIPT_AUTHOR$', _SCRIPT_AUTHOR).replace(/\\[r|n]+/gm, '\n');
                                         }
                                     }
                                 }
@@ -6561,10 +6608,11 @@
                                     SelSegsInsertError: 'In order to use the <i class="fa fa-road" aria-hidden="true"></i> button in the UR Panel, you must first select one or two segments.',
                                     SetCustomSsIdFirst: 'Before you can select <b><i>Custom G Sheet</i></b> as your comment list, you must first set the <b><i>Custom Google Spreadsheet ID</i></b> setting on '
                                                 + 'the URC-E settings tab.',
-                                    SpreadsheetUpdateRequired: 'You are using an older version of the URC-E spreadsheet, which has caused an error. Please update your spreadsheet to at least version',
+                                    SpreadsheetUpdateRequired: 'You are using an older version of the URC-E spreadsheet, which has caused an error. Please update your spreadsheet to at least version: $VERSION$'
+                                                + '<br><br> See instructions available in this forum post:<br>$LINK$',
                                     SwitchingCommentLists: 'Switching comment lists',
                                     TimedOutWaitingStatic: 'Timed out waiting for the static list to become available. Is it enabled?',
-                                    UpdateRequired: 'You are using an older version of URC-E, which has caused an error. Please update to at least version',
+                                    UpdateRequired: 'You are using an older version of URC-E, which has caused an error. Please update to at least version: $VERSION$ <br><br>GreasyFork Link:<br>$LINK$',
                                     UrOverflowErrorWithoutOverflowEnabled: 'WME will not load more than 500 URs per screen. Some URs may be missing. You can try to enable overflow handling, or zoom in and refresh.',
                                     VarFound: 'The selected comment contains variables: $VARSFOUND$.\n\nUntil these are replaced, the send button is disabled.',
                                     WaitingOnInit: 'Waiting for URC-E to fully initialize',
@@ -6618,66 +6666,6 @@
                 }
             });
         });
-    }
-
-    // Modified version of uroClickify() -- Thank you!!
-    function clickify(desc, suffix) {
-        const terminators = [' ', ',', ')', ']', '\r', '\n'];
-        if ((desc === null) || (desc === undefined) || (desc === ''))
-            return '';
-        desc = desc.replace(/<\/?[^>]+(>|$)/g, '');
-        if (desc !== 'null') {
-            if (desc.includes('http')) {
-                const links = desc.split('http');
-                desc = '';
-                for (let i = 0, { length } = links; i < length; i++) {
-                    if (links[i][2] === '/') {
-                        links[i] = `http${links[i]}`;
-                        let linkEndPos = links[i].length + 1;
-                        for (let j = 0, len = terminators.length; j < len; j++) {
-                            if (links[i].includes(terminators[j]))
-                                linkEndPos = Math.min(linkEndPos, links[i].indexOf(terminators[j]));
-                        }
-                        let descPostLink = '';
-                        if (linkEndPos < links[i].length) {
-                            descPostLink = links[i].slice(linkEndPos);
-                            links[i] = links[i].slice(0, linkEndPos);
-                        }
-                        desc += `<a target="_wazeUR" href="${links[i]}">${links[i]}</a>${descPostLink}`;
-                    }
-                    else {
-                        desc += links[i];
-                    }
-                }
-            }
-            desc = desc.replace(/\n/g, '<br>');
-            return desc + suffix;
-        }
-        return '';
-    }
-
-    // Date to Days, courtesy of URO+. Thank you!
-    function uroDateToDays(dateToConvert) {
-        const dateNow = new Date(),
-            elapsedSinceEpoch = dateNow.getTime(),
-            elapsedSinceEvent = elapsedSinceEpoch - dateToConvert;
-        dateNow.setHours(0);
-        dateNow.setMinutes(0);
-        dateNow.setSeconds(0);
-        dateNow.setMilliseconds(0);
-        const elapsedSinceMidnight = elapsedSinceEpoch - dateNow.getTime();
-        dateNow.setHours(24);
-        const pendingUntilMidnight = elapsedSinceEpoch - dateNow.getTime();
-        if ((elapsedSinceEvent < elapsedSinceMidnight) && (elapsedSinceEvent > pendingUntilMidnight)) {
-            // event occurred today...
-            return 0;
-        }
-        if (elapsedSinceEvent < 0) {
-            // event occurrs at some point in the future after midnight today, so return a minimum value of -1...
-            return (-1 - Math.floor((pendingUntilMidnight - elapsedSinceEvent) / 86400000));
-        }
-        // event occurred at some point prior to midnight this morning, so return a minimum value of 1...
-        return (1 + Math.floor((elapsedSinceEvent - elapsedSinceMidnight) / 86400000));
     }
 }
 )();
