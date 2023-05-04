@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.05.02.01
+// @version     2023.05.04.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -81,9 +81,9 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['<b>NEW:</b> Further prepwork for possible future spreadsheet changes.',
-            '<b>CHANGE:</b> A lot. Reverted to 100% vanilla JavaScript, removing reliance on jQuery.',
-            '<b>CHANGE:</b> Switch to WazeWrap update checking.'
+        _SCRIPT_VERSION_CHANGES = ['NEW: Further prepwork for possible future spreadsheet changes.',
+            'CHANGE: A lot. Reverted to 100% vanilla JavaScript, removing reliance on jQuery.',
+            'CHANGE: Switch to WazeWrap update checking.'
         ],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
@@ -319,7 +319,8 @@
         return _policyUntrustedHTML.createHTML(htmlStr);
     }
 
-    function setElemAttrs(el, attrs, eventListener = []) {
+    function createElem(type = '', attrs = {}, eventListener = []) {
+        const el = _elems[type]?.cloneNode(false) || _elems.div.cloneNode(false);
         Object.keys(attrs).forEach((attr) => {
             if ((attr === 'disabled') || (attr === 'checked') || (attr === 'selected') || (attr === 'textContent') || (attr === 'innerHTML'))
                 el[attr] = attrs[attr];
@@ -332,6 +333,10 @@
             });
         }
         return el;
+    }
+
+    function createTextNode(str = '') {
+        return document.createTextNode(str);
     }
 
     function dec(s = '') {
@@ -527,21 +532,46 @@
                     retainedSettings.push(prop);
                 }
             });
-            let outputText = `<b>${I18n.t('urce.prompts.RestoreSettingsNumOfSettings')}:</b> ${Object.keys(restoreSettings).length - retainedSettings.length}`
-                + `<br><b>${I18n.t('urce.prompts.RestoreSettingsRetainedSettings')}:</b> `;
-            if (retainedSettings.length > 0)
-                outputText += `${retainedSettings.join(', ')} <i>(<b>${I18n.t('urce.common.Total')}:</b> ${retainedSettings.length})</i>`;
-            else
-                outputText += `<i>${I18n.t('urce.common.None')}</i>`;
-            outputText += `<br><b>${I18n.t('urce.prompts.RestoreSettingsInvalidSettings')}:</b> `;
-            if (invalidRestoreSettings.length > 0)
-                outputText += `${invalidRestoreSettings.join(', ')} <i>(<b>${I18n.t('urce.common.Total')}:</b> ${invalidRestoreSettings.length})</i>`;
-            else
-                outputText += `<i>${I18n.t('urce.common.None')}</i>`;
-            outputText += `<br><br><b>${I18n.t('urce.prompts.RestoreSettingsConfirmation')}</b>`;
+            const divElem = createElem('div');
+            let divElemDiv = createElem('div', { style: 'font-weight:bold;', textContent: `${I18n.t('urce.prompts.RestoreSettingsNumOfSettings')}: ` });
+            divElemDiv.appendChild(createElem('div', {
+                style: 'display:inline-block;font-weight:normal', textContent: Object.keys(restoreSettings).length - retainedSettings.length
+            }));
+            divElem.appendChild(divElemDiv);
+            divElemDiv = createElem('div', { style: 'font-weight:bold;', textContent: `${I18n.t('urce.prompts.RestoreSettingsRetainedSettings')}: ` });
+            if (retainedSettings.length > 0) {
+                const divElemDivDiv = createElem('div', { style: 'font-weight:normal;display:inline-block;', textContent: retainedSettings.join(', ') }),
+                    iElem = createElem('i');
+                iElem.appendChild(createElem('div', { style: 'display:inline-block;padding-left:4px;', textContent: '(' }));
+                iElem.appendChild(createElem('div', { style: 'display:inline-block;font-weight:bold;', textContent: `${I18n.t('urce.common.Total')}: ` }));
+                iElem.appendChild(createElem('div', { style: 'display:inline-block;padding-left:4px;', textContent: `${retainedSettings.length})` }));
+                divElemDivDiv.appendChild(iElem);
+                divElemDiv.appendChild(divElemDivDiv);
+            }
+            else {
+                divElemDiv.appendChild(createElem('i', { style: 'display:inline-block;font-weight:normal;font-style:italic;', textContent: I18n.t('urce.common.None') }));
+            }
+            divElem.appendChild(divElemDiv);
+            divElemDiv = createElem('div', { style: 'font-weight:bold;', textContent: `${I18n.t('urce.prompts.RestoreSettingsInvalidSettings')}: ` });
+            if (invalidRestoreSettings.length > 0) {
+                const divElemDivDiv = createElem('div', { style: 'font-weight:normal;display:inline-block;', textContent: invalidRestoreSettings.join(', ') }),
+                    iElem = createElem('i');
+                iElem.appendChild(createElem('div', { style: 'display:inline-block;padding-left:4px;', textContent: '(' }));
+                iElem.appendChild(createElem('div', { style: 'display:inline-block;font-weight:bold;', textContent: `${I18n.t('urce.common.Total')}: ` }));
+                iElem.appendChild(createElem('div', { style: 'display:inline-block;padding-left:4px;', textContent: `${invalidRestoreSettings.length})` }));
+                divElemDivDiv.appendChild(iElem);
+                divElemDiv.appendChild(divElemDivDiv);
+            }
+            else {
+                divElemDiv.appendChild(createElem('i', { style: 'display:inline-block;font-weight:normal;font-style:italic;', textContent: I18n.t('urce.common.None') }));
+            }
+            divElem.appendChild(divElemDiv);
+            divElem.appendChild(createElem('br'));
+            divElem.appendChild(createElem('br'));
+            divElem.appendChild(createElem('div', { style: 'font-weight:bold;', textContent: I18n.t('urce.prompts.RestoreSettingsConfirmation') }));
             WazeWrap.Alerts.confirm(
                 _SCRIPT_SHORT_NAME,
-                formatText(outputText, true, false, -1),
+                divElem.innerHTML,
                 () => { loadSettingsFromStorage(restoreSettings, true); },
                 () => { },
                 I18n.t('urce.common.Yes'),
@@ -591,15 +621,15 @@
 
     function showScriptInfoAlert() {
         if (_ALERT_UPDATE && (_SCRIPT_VERSION !== _settings.lastVersion)) {
-            const divElemRoot = _elems.div.cloneNode(false);
-            divElemRoot.appendChild(setElemAttrs(_elems.p.cloneNode(false), { textContent: 'What\'s New:' }));
-            const ulElem = _elems.ul.cloneNode(false);
+            const divElemRoot = createElem('div');
+            divElemRoot.appendChild(createElem('p', { textContent: 'What\'s New:' }));
+            const ulElem = createElem('ul');
             if (_SCRIPT_VERSION_CHANGES.length > 0) {
                 for (let idx = 0, { length } = _SCRIPT_VERSION_CHANGES; idx < length; idx++)
-                    ulElem.appendChild(setElemAttrs(_elems.li.cloneNode(false), { innerHTML: trustedHTML(_SCRIPT_VERSION_CHANGES[idx]) }));
+                    ulElem.appendChild(createElem('li', { innerHTML: trustedHTML(_SCRIPT_VERSION_CHANGES[idx]) }));
             }
             else {
-                ulElem.appendChild(setElemAttrs(_elems.li.cloneNode(false), { textContent: 'Nothing major.' }));
+                ulElem.appendChild(createElem('li', { textContent: 'Nothing major.' }));
             }
             divElemRoot.appendChild(ulElem);
             WazeWrap.Interface.ShowScriptUpdate(_SCRIPT_SHORT_NAME, _SCRIPT_VERSION, divElemRoot.innerHTML, (_IS_BETA_VERSION ? dec(_BETA_DL_URL) : _PROD_DL_URL).replace(/code\/.*\.js/, ''), _FORUM_URL);
@@ -656,8 +686,8 @@
             document.getElementById('urce-disableWme').remove();
         }
         else if (!remove && !document.getElementById('urce-disableWme')) {
-            const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: 'urce-disableWme', class: 'URCE-disableWme-main' }),
-                messageDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'urce-disableWme-text', class: 'URCE-disableWme-text' });
+            const divElemRoot = createElem('div', { id: 'urce-disableWme', class: 'URCE-disableWme-main' }),
+                messageDiv = createElem('div', { id: 'urce-disableWme-text', class: 'URCE-disableWme-text' });
             messageDiv.appendChild(htmlElem);
             divElemRoot.appendChild(messageDiv);
             document.body.appendChild(divElemRoot);
@@ -670,14 +700,14 @@
             document.getElementById(`urceAlertPanelBox-${idx}`).remove();
     }
 
-    function alertBoxInPanel(message, panelBoxTitle, panelBoxDismiss, index) {
+    function alertBoxInPanel(docFrags, panelBoxTitle, panelBoxDismiss, index) {
         if (document.getElementById(`urceAlertPanelBox-${index}`))
             document.getElementById(`urceAlertPanelBox-${index}`).remove();
-        const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: `urceAlertPanelBox-${index}`, class: 'URCE-divWarningBox', title: panelBoxTitle || '' });
-        divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { innerHTML: trustedHTML(message) }));
+        const divElemRoot = createElem('div', { id: `urceAlertPanelBox-${index}`, class: 'URCE-divWarningBox', title: panelBoxTitle || '' });
+        divElemRoot.appendChild(docFrags);
         if (panelBoxDismiss) {
-            const divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { id: `urceAlertPanelBox-${index}-dismiss`, class: 'URCE-divDismiss', index }, [{ click: dismissAlertBoxInPanel }]);
-            divElemDiv.appendChild(setElemAttrs(_elems.i.cloneNode(false), { class: 'fa fa-close', 'aria-hidden': true }));
+            const divElemDiv = createElem('div', { id: `urceAlertPanelBox-${index}-dismiss`, class: 'URCE-divDismiss', index }, [{ click: dismissAlertBoxInPanel }]);
+            divElemDiv.appendChild(createElem('i', { class: 'fa fa-close', 'aria-hidden': true }));
             divElemRoot.insertBefore(divElemDiv, divElemRoot.firstChild);
         }
         const panelUrceComments = document.getElementById('panel-urce-comments');
@@ -788,7 +818,7 @@
                         document.querySelectorAll('[id|="restrictionsEnforcedWarning"').forEach((el) => { el.style.display = 'none'; });
                     }
                     else if (((event?.[0]?.type === 'init') || (event?.[0]?.type === 'modeChange'))
-                        || (!document.getElementById('restrictionsEnforcedWarning'))
+                        || (!document.getElementById('restrictionsEnforcedWarning').value)
                     ) {
                         _restrictionsEnforcedTitle = content;
                     }
@@ -944,12 +974,12 @@
             await updateUrceData(getMapUrsObjArr([_selUr.urId]));
             if (!domElem.querySelector('#urceDaysAgo')) {
                 domElem.querySelector('span.date').style.float = 'right';
-                domElem.shadowRoot.appendChild(setElemAttrs(_elems.style.cloneNode(false), {
+                domElem.shadowRoot.appendChild(createElem('style', {
                     textContent: '.key-with-image-wrapper, .key-wrapper { width: 100% } '
                         + '.wz-list-item, .wz-list-item.with-subtitle { --wz-list-item-vertical-padding: 0px !important; margin: 2px 0px !important; }'
                 }));
-                const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'date urce' });
-                divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                const divElemRoot = createElem('div', { class: 'date urce' });
+                divElemRoot.appendChild(createElem('div', {
                     textContent: `(${parseDaysAgo(daysAgo(W.model.updateRequestSessions.objects[_selUr.urId].comments[(_mapUpdateRequests[_selUr.urId].urceData.commentCount - 1)].createdOn))})`
                 }));
                 domElem.firstChild.appendChild(divElemRoot);
@@ -1032,7 +1062,11 @@
         }
         else if (!(_selUr.urId > 0)) {
             _needUrId = true;
-            maskBoxes(`${I18n.t('urce.prompts.WaitingToGetUrId')}<br><br>${I18n.t('urce.common.PleaseWait')}`, false, 'needUrId', true);
+            const docFrags = document.createDocumentFragment();
+            docFrags.appendChild(createElem('div', { textContent: I18n.t('urce.prompts.WaitingToGetUrId') }));
+            docFrags.appendChild(createElem('br'));
+            docFrags.appendChild(createElem('div', { textContent: I18n.t('urce.common.PleaseWait') }));
+            maskBoxes(docFrags, false, 'needUrId', true);
             return;
         }
         if (_settings.replaceNextWithDoneButton && W.map.panelRegion.currentView.options.showNext) {
@@ -1093,7 +1127,7 @@
         domElement = (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.description) ? await getDomElement('#panel-container .top-section .body .problem-data .description .content') : undefined;
         if (domElement?.children.length === 0) {
             const content = await getDomElement('#panel-container .top-section .body .problem-data .description .content'),
-                divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divDesc', textContent: content.textContent });
+                divElemRoot = createElem('div', { class: 'URCE-divDesc', textContent: content.textContent });
             if (content) {
                 content.textContent = '';
                 content.appendChild(divElemRoot);
@@ -1110,11 +1144,11 @@
                     const currComment = comments[idx];
                     if (currComment.getElementsByClassName('date urce').length === 0) {
                         currComment.querySelector('span.date').style.float = 'right';
-                        currComment.parentElement.shadowRoot.appendChild(setElemAttrs(_elems.style.cloneNode(false), {
+                        currComment.parentElement.shadowRoot.appendChild(createElem('style', {
                             textContent: '.key-with-image-wrapper, .key-wrapper { width: 100% } '
                                 + '.wz-list-item, .wz-list-item.with-subtitle { --wz-list-item-vertical-padding: 0px !important; margin: 2px 0px !important; }'
                         }));
-                        currComment.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                        currComment.appendChild(createElem('div', {
                             class: 'date urce', textContent: `(${parseDaysAgo(daysAgo(W.model.updateRequestSessions.objects[_selUr.urId].comments[idx].createdOn))})`
                         }));
                     }
@@ -1163,22 +1197,22 @@
                         document.getElementById('urceShortcutsExpandDiv').style.display = 'none';
                     saveSettingsToStorage();
                 },
-                createIElem = (id = '', classStr = '', style = '', title = '') => setElemAttrs(_elems.i.cloneNode(false), {
+                createIElem = (id = '', classStr = '', style = '', title = '') => createElem('i', {
                     id, class: classStr, 'aria-hidden': true, style, title
                 }, [{ click: handleClickedShortcut }]),
-                createSeparator = () => setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline-block;padding-left:8px;padding-right:8px;', textContent: '||' });
-            let divElemDiv = setElemAttrs(_elems.div.cloneNode(false), {
+                createSeparator = () => createElem('div', { style: 'display:inline-block;padding-left:8px;padding-right:8px;', textContent: '||' });
+            let divElemDiv = createElem('div', {
                 id: 'urceShortcutsExpand', style: 'padding-bottom:4px;font-size:13px;cursor:pointer;border-bottom:1px solid darkgray;', textContent: I18n.t('urce.urPanel.Shortcuts')
             }, [{ click: urceShortcutsExpand }]);
-            let divElemDivDiv = setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline;float:right;padding-right:8px;font-size:11px;' });
-            divElemDivDiv.appendChild(setElemAttrs(_elems.i.cloneNode(false), { class: `fa fa-fw ${(_settings.expandShortcuts ? 'fa-chevron-up' : 'fa-chevron-down')} URCE-chevron` }));
+            let divElemDivDiv = createElem('div', { style: 'display:inline;float:right;padding-right:8px;font-size:11px;' });
+            divElemDivDiv.appendChild(createElem('i', { class: `fa fa-fw ${(_settings.expandShortcuts ? 'fa-chevron-up' : 'fa-chevron-down')} URCE-chevron` }));
             divElemDiv.appendChild(divElemDivDiv);
-            const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceShortcuts', style: 'text-align:left;padding-bottom:8px;font-size:12px;width:100%;' });
+            const divElemRoot = createElem('div', { id: 'urceShortcuts', style: 'text-align:left;padding-bottom:8px;font-size:12px;width:100%;' });
             divElemRoot.appendChild(divElemDiv);
-            divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceShortcutsExpandDiv', style: `${_settings.expandShortcuts ? '' : 'display:none;'}border-bottom:1px solid darkgray;padding: 5px 0 5px 0;` });
-            divElemDivDiv = _elems.div.cloneNode(false);
+            divElemDiv = createElem('div', { id: 'urceShortcutsExpandDiv', style: `${_settings.expandShortcuts ? '' : 'display:none;'}border-bottom:1px solid darkgray;padding: 5px 0 5px 0;` });
+            divElemDivDiv = createElem('div');
             divElemDivDiv.appendChild(createIElem('urceShortcuts-selSegs', 'fa fa-road', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertSelSegsTitle')));
-            const spanElem = setElemAttrs(_elems.span.cloneNode(false), { class: 'fa-stack', style: 'width:1.8em;height:1.8em;line-height:1.8em;' });
+            const spanElem = createElem('span', { class: 'fa-stack', style: 'width:1.8em;height:1.8em;line-height:1.8em;' });
             spanElem.appendChild(createIElem('urceShortcuts-selSegsWithCity', 'fa fa-road', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')));
             spanElem.appendChild(createIElem('urceShortcuts-selSegsWithCity', 'fa fa-plus fa-stack-2x', 'font-size:xx-small;text-align:right;cursor:pointer;', I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')));
             divElemDivDiv.appendChild(spanElem);
@@ -1192,7 +1226,7 @@
             divElemDivDiv.appendChild(createIElem('urceShortcuts-customTagline', 'fa fa-tag', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCustomTaglineTitle')));
             divElemDivDiv.appendChild(createIElem('urceShortcuts-urPermalink', 'fa fa-link', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertUrPermalinkTitle')));
             divElemDiv.appendChild(divElemDivDiv);
-            divElemDivDiv = _elems.div.cloneNode(false);
+            divElemDivDiv = createElem('div');
             divElemDivDiv.appendChild(createIElem('urceShortcuts-driveTime', 'fa fa-clock-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertTimeTitle')));
             divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDayOfWeek', 'fa fa-sun-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDayOfWeekTitle')));
             divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDate', 'fa fa-calendar-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDateTitle')));
@@ -1200,16 +1234,16 @@
             divElemDivDiv.appendChild(createIElem('urceShortcuts-driveTimeCasual', 'fa fa-clock-o', 'cursor:pointer;', I18n.t('urce.urPanel.InsertTimeCasualTitle')));
             divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDateCasual', 'fa fa-calendar', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDateCasualTitle')));
             divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDateTimeCasualMode', 'fa fa-calendar-plus-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDateTimeCasualModeTitle')));
-            divElemDivDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline-block;padding-left:8px;', textContent: `- ${I18n.t('urce.urPanel.DriveDate')}` }));
+            divElemDivDiv.appendChild(createElem('div', { style: 'display:inline-block;padding-left:8px;', textContent: `- ${I18n.t('urce.urPanel.DriveDate')}` }));
             divElemDiv.appendChild(divElemDivDiv);
-            divElemDivDiv = _elems.div.cloneNode(false);
+            divElemDivDiv = createElem('div');
             divElemDivDiv.appendChild(createIElem('urceShortcuts-currentTime', 'fa fa-clock-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentTimeTitle')));
             divElemDivDiv.appendChild(createIElem('urceShortcuts-currentDayOfWeek', 'fa fa-sun-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentDayOfWeekTitle')));
             divElemDivDiv.appendChild(createIElem('urceShortcuts-currentDate', 'fa fa-calendar-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentDateTitle')));
             divElemDivDiv.appendChild(createSeparator());
             divElemDivDiv.appendChild(createIElem('urceShortcuts-currentTimeCasual', 'fa fa-clock-o', 'cursor:pointer;', I18n.t('urce.urPanel.InsertCurrentTimeCasualTitle')));
             divElemDivDiv.appendChild(createIElem('urceShortcuts-currentDateCasual', 'fa fa-calendar', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentDateCasualTitle')));
-            divElemDivDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline-block;padding-left:24px;', textContent: `- ${I18n.t('urce.urPanel.CurrentDate')}` }));
+            divElemDivDiv.appendChild(createElem('div', { style: 'display:inline-block;padding-left:24px;', textContent: `- ${I18n.t('urce.urPanel.CurrentDate')}` }));
             divElemDiv.appendChild(divElemDivDiv);
             divElemRoot.appendChild(divElemDiv);
             domElement = document.querySelector('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form');
@@ -1218,7 +1252,7 @@
         domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button');
         if (domElement)
             domElement.addEventListener('click', clickedSendToSendComment);
-        const shadowDOMstyle = setElemAttrs(_elems.style.cloneNode(false), {
+        const shadowDOMstyle = createElem('style', {
             textContent: '.wz-button.md { height: 30px !important; min-width: 60px !important; max-widt: 140px !important; padding: 0px 10px !important; overflow: hidden; }'
         });
         domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button');
@@ -1954,9 +1988,11 @@
                     throw new Error(`Failed to merge updateRequestSession for urId ${urId}`);
             }
             W.model.updateRequestSessions.objects[urId].addComment(comment);
+            W.model.mapUpdateRequests.objects[urId].attributes.autoSentReminder = true;
             return Promise.resolve({ error: false });
         }
         catch (error) {
+            delete (W.model.mapUpdateRequests.objects[urId].attributes.autoSentReminder);
             return Promise.resolve({ error: true, message: error });
         }
     }
@@ -2261,14 +2297,12 @@
                     if (!_mapUpdateRequests[markerId]?.urceData)
                         await updateUrceData(getMapUrsObjArr([markerId]));
                     let divElemRoot,
-                        innerHTML,
-                        lmLink,
                         urLink,
                         x,
                         y;
                     const docFrags = document.createDocumentFragment(),
                         popupDelay = (Date.now() > popupDelayTime) ? -1 : (popupDelayTime - Date.now()),
-                        ulElem = _elems.ul.cloneNode(false);
+                        ulElem = createElem('ul');
                     if (W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealX)
                         x = W.model.mapUpdateRequests.objects[markerId].attributes.geometry.urceRealX;
                     else if (W.model.mapUpdateRequests.objects[markerId].attributes.geometry.realX)
@@ -2286,20 +2320,20 @@
                     urLink = `${urLink.substring(0, urLink.indexOf('?zoom'))}?zoomLevel=17&lat=${urPos.lat}&lon=${urPos.lon}&mapUpdateRequest=${markerId}`;
                     popupX = unstackedX - parsePxString(W.map.segmentLayer.div.style.left) + popupXOffset + 10;
                     popupY = unstackedY - parsePxString(W.map.segmentLayer.div.style.top) + 10;
-                    docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                    docFrags.appendChild(createElem('div', {
                         style: 'font-weight:bold;', textContent: `${I18n.t('problems.panel.titles.map_update_request')} (${markerId}): ${I18n.t(`update_requests.types.${W.model.mapUpdateRequests.objects[markerId].attributes.type}`)}`
                     }));
                     if (!W.model.mapUpdateRequests.objects[markerId].attributes.description) {
-                        divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { style: 'font-style:italic;', textContent: I18n.t('urce.mouseOver.NoDescription') });
+                        divElemRoot = createElem('div', { style: 'font-style:italic;', textContent: I18n.t('urce.mouseOver.NoDescription') });
                     }
                     else {
-                        divElemRoot = setElemAttrs(_elems.div.cloneNode(false), {
+                        divElemRoot = createElem('div', {
                             textContent: W.model.mapUpdateRequests.objects[markerId].attributes.description
                         });
                     }
                     docFrags.appendChild(divElemRoot);
                     if (_mapUpdateRequests[markerId].urceData.driveDaysOld > -1) {
-                        divElemRoot = setElemAttrs(_elems.div.cloneNode(false), {
+                        divElemRoot = createElem('div', {
                             style: 'font-style:italic;', textContent: `${I18n.t('mte.edit.submitted')} ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.driveDaysOld)} `
                         });
                         if (W.model.mapUpdateRequests.objects[markerId].attributes.driveDate > -1) {
@@ -2314,79 +2348,91 @@
                         docFrags.appendChild(divElemRoot);
                     }
                     if ((W.model.mapUpdateRequests.objects[markerId].attributes.resolvedOn) && (_mapUpdateRequests[markerId].urceData.resolveDaysAgo > -1)) {
-                        docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                        docFrags.appendChild(createElem('div', {
                             style: 'font-style:italic;',
                             textContent: `${I18n.t('urce.urStatus.Closed')} ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.resolveDaysAgo)} `
                                 + `(${new Date(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedOn).toLocaleDateString('en-us')}`
                                 + ` ${new Date(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedOn).toLocaleTimeString('en-us')})`
                         }));
-                        innerHTML = `${I18n.t('urce.mouseOver.MarkedAs')} `;
+                        divElemRoot = createElem('div', { style: 'font-style:italic;' });
+                        divElemRoot.appendChild(createTextNode(`${I18n.t('urce.mouseOver.MarkedAs')} `));
                         if (W.model.mapUpdateRequests.objects[markerId].attributes.resolution === 0)
-                            innerHTML += I18n.t('venues.update_requests.panel.solved');
+                            divElemRoot.appendChild(createTextNode(I18n.t('venues.update_requests.panel.solved')));
                         else if (W.model.mapUpdateRequests.objects[markerId].attributes.resolution === 1)
-                            innerHTML += I18n.t('urce.urStatus.NotIdentified');
+                            divElemRoot.appendChild(createTextNode(I18n.t('urce.urStatus.NotIdentified')));
                         else
-                            innerHTML += I18n.t('segment.direction.0');
+                            divElemRoot.appendChild(createTextNode(I18n.t('segment.direction.0')));
                         if (W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy) {
-                            innerHTML += ` ${I18n.t('element_history.changed_by')} `
-                            + `<a href="${W.Config.user_profile.url}${getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).username}">`
-                            + `${getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).username}</a>`
-                            + ` (${getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).rank})`;
+                            divElemRoot.appendChild(createTextNode(` ${I18n.t('element_history.changed_by')} `));
+                            divElemRoot.appendChild(createElem('a', {
+                                href: W.Config.user_profile.url + getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).username,
+                                textContent: getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).username
+                            }));
+                            divElemRoot.appendChild(createTextNode(` (${getUsernameAndRank(W.model.mapUpdateRequests.objects[markerId].attributes.resolvedBy).rank})`));
                         }
-                        docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), { style: 'font-style:italic;', innerHTML: trustedHTML(innerHTML) }));
+                        docFrags.appendChild(divElemRoot);
                     }
-                    docFrags.appendChild(_elems.br.cloneNode(false));
-                    divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { textContent: `${_mapUpdateRequests[markerId].urceData.commentCount} ${I18n.t('urce.tabs.Comments')}` });
+                    docFrags.appendChild(createElem('br'));
+                    divElemRoot = createElem('div', { textContent: `${_mapUpdateRequests[markerId].urceData.commentCount} ${I18n.t('urce.tabs.Comments')}` });
                     if (!_mapUpdateRequests[markerId].urceData.commentsByMe && (_mapUpdateRequests[markerId].urceData.commentCount > 0))
                         divElemRoot.textContent += ` (${I18n.t('urce.mouseOver.NoneByMe')})`;
                     if ((_mapUpdateRequests[markerId].urceData.commentCount > 0) && (_mapUpdateRequests[markerId].urceData.lastCommentDaysOld > -1))
                         divElemRoot.textContent += `, ${I18n.t('element_history.actions.default.UPDATE')} ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.lastCommentDaysOld)}`;
                     docFrags.appendChild(divElemRoot);
                     if (_mapUpdateRequests[markerId].urceData.commentCount > 0) {
-                        innerHTML = `${I18n.t('urce.mouseOver.FirstComment')}: ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.firstCommentDaysOld)} ${I18n.t('element_history.changed_by')} `;
+                        divElemRoot = createElem('div');
+                        divElemRoot.appendChild(createTextNode(`${I18n.t('urce.mouseOver.FirstComment')}: ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.firstCommentDaysOld)} ${I18n.t('element_history.changed_by')} `));
                         if (_mapUpdateRequests[markerId].urceData.firstCommentBy === -1) {
-                            innerHTML += I18n.t('conversation.reporter');
+                            divElemRoot.appendChild(createTextNode(I18n.t('conversation.reporter')));
                         }
                         else {
-                            innerHTML += `<a href="${W.Config.user_profile.url}${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.firstCommentBy).username}">`
-                                + `${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.firstCommentBy).username}</a>`
-                                + ` (${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.firstCommentBy).rank})`;
+                            divElemRoot.appendChild(createElem('a', {
+                                href: W.Config.user_profile.url + getUsernameAndRank(_mapUpdateRequests[markerId].urceData.firstCommentBy).username,
+                                textContent: getUsernameAndRank(_mapUpdateRequests[markerId].urceData.firstCommentBy).username
+                            }));
+                            divElemRoot.appendChild(createTextNode(` (${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.firstCommentBy).rank})`));
                         }
-                        docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), { innerHTML: trustedHTML(innerHTML) }));
+                        docFrags.appendChild(divElemRoot);
                         if (_mapUpdateRequests[markerId].urceData.commentCount > 1) {
-                            innerHTML = `${I18n.t('urce.mouseOver.LastComment')}: ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.lastCommentDaysOld)} ${I18n.t('element_history.changed_by')} `;
+                            divElemRoot = createElem('div');
+                            divElemRoot.appendChild(createTextNode(`${I18n.t('urce.mouseOver.LastComment')}: ${parseDaysAgo(_mapUpdateRequests[markerId].urceData.lastCommentDaysOld)} ${I18n.t('element_history.changed_by')} `));
                             if (_mapUpdateRequests[markerId].urceData.lastCommentBy === -1) {
-                                innerHTML += I18n.t('conversation.reporter');
+                                divElemRoot.appendChild(createTextNode(I18n.t('conversation.reporter')));
                             }
                             else {
-                                innerHTML += `<a href="${W.Config.user_profile.url}${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.lastCommentBy).username}">`
-                                + `${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.lastCommentBy).username}</a>`
-                                + ` (${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.lastCommentBy).rank})`;
+                                divElemRoot.appendChild(createElem('a', {
+                                    href: W.Config.user_profile.url + getUsernameAndRank(_mapUpdateRequests[markerId].urceData.lastCommentBy).username,
+                                    textContent: getUsernameAndRank(_mapUpdateRequests[markerId].urceData.lastCommentBy).username
+                                }));
+                                divElemRoot.appendChild(createTextNode(` (${getUsernameAndRank(_mapUpdateRequests[markerId].urceData.lastCommentBy).rank})`));
                             }
-                            docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), { innerHTML: trustedHTML(innerHTML) }));
+                            docFrags.appendChild(divElemRoot);
                         }
-                        divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { textContent: `${I18n.t('urce.mouseOver.ReporterHasCommented')}: ` });
-                        divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                        divElemRoot = createElem('div', { textContent: `${I18n.t('urce.mouseOver.ReporterHasCommented')}: ` });
+                        divElemRoot.appendChild(createElem('div', {
                             style: 'font-style:italic;display:inline-block;', textContent: _mapUpdateRequests[markerId].urceData.reporterHasCommented ? I18n.t('urce.common.Yes') : I18n.t('urce.common.No')
                         }));
                         docFrags.appendChild(divElemRoot);
                     }
-                    docFrags.appendChild(_elems.hr.cloneNode(false));
-                    const liElem = setElemAttrs(_elems.li.cloneNode(false), {
-                        innerHTML: trustedHTML(`<a href="${urLink}" id="_urceOpenInNewTab" target="${targetTab}">${I18n.t('urce.mouseOver.OpenInNewTab')}</a> - `
-                            + `<a href="#" id="_urceRecenterSession" data-id="${markerId}">${I18n.t('urce.mouseOver.CenterInCurrentTab')}</a>`)
-                    });
-                    liElem.querySelector('#_urceOpenInNewTab').addEventListener('mouseup', saveSettingsToStorage);
-                    liElem.querySelector('#_urceRecenterSession').addEventListener('click', recenterOnUr);
+                    docFrags.appendChild(createElem('hr'));
+                    let liElem = createElem('li');
+                    liElem.appendChild(createElem('a', {
+                        id: '_urceOpenInNewTab', href: urLink, target: targetTab, textContent: I18n.t('urce.mouseOver.OpenInNewTab')
+                    }, [{ mouseup: saveSettingsToStorage }]));
+                    liElem.appendChild(createTextNode(' - '));
+                    liElem.appendChild(createElem('a', {
+                        id: '_urceRecenterSession', href: '#', 'data-id': markerId, textContent: I18n.t('urce.mouseOver.CenterInCurrentTab')
+                    }, [{ click: recenterOnUr }]));
                     ulElem.appendChild(liElem);
-                    if (document.getElementById('livemap-link'))
-                        lmLink = document.getElementById('livemap-link').href;
-                    else if (document.querySelector('.livemap-link'))
-                        lmLink = document.querySelector('.livemap-link').href;
+                    const lmLink = document.getElementById('livemap-link')?.href || document.querySelector('.livemap-link')?.href || undefined;
                     if (lmLink) {
-                        ulElem.appendChild(setElemAttrs(_elems.li.cloneNode(false), {
-                            innerHTML: trustedHTML(`<li><a href="${(lmLink.includes('?') ? lmLink.substring(0, lmLink.indexOf('?')) : lmLink)}?zoomLevel=17&lat=${urPos.lat}&lon=${urPos.lon}&layers=BTTTT" target="${targetTab}_lmTab">${I18n.t('urce.mouseOver.OpenInNewLivemapTab')}</a>`)
+                        liElem = createElem('li');
+                        liElem.appendChild(createElem('a', {
+                            href: `${(lmLink.includes('?') ? lmLink.substring(0, lmLink.indexOf('?')) : lmLink)}?zoomLevel=17&lat=${urPos.lat}&lon=${urPos.lon}&layers=BTTTT`,
+                            target: `${targetTab}_lmTab`,
+                            textContent: I18n.t('urce.mouseOver.OpenInNewLivemapTab')
                         }));
+                        ulElem.appendChild(liElem);
                     }
                     docFrags.appendChild(ulElem);
                     if (popupDelay < 0) {
@@ -2665,9 +2711,9 @@
             ]
         ];
         const docFrags = document.createDocumentFragment(),
-            spanElem = setElemAttrs(_elems.span.cloneNode(false), { id: `urceCustomMarker_${urId}`, style: 'position:absolute;pointer-events:none;top:-3px;left:-2px;' }),
+            spanElem = createElem('span', { id: `urceCustomMarker_${urId}`, style: 'position:absolute;pointer-events:none;top:-3px;left:-2px;' }),
             status = document.getElementById(`urceCustomMarker_${urId}`) ? 'updated' : 'added';
-        spanElem.appendChild(setElemAttrs(_elems.img.cloneNode(false), { src: uroAltMarkers[getCustomMarkerIdx(customType)][(!urOpen) ? 2 : 0] }));
+        spanElem.appendChild(createElem('img', { src: uroAltMarkers[getCustomMarkerIdx(customType)][(!urOpen) ? 2 : 0] }));
         docFrags.appendChild(spanElem);
         node.appendChild(docFrags);
         return status;
@@ -2805,11 +2851,11 @@
                             else {
                                 markerChanges.pills.added.push(mUrObj.attributes.id);
                             }
-                            const divContainer = setElemAttrs(_elems.div.cloneNode(false), {
+                            const divContainer = createElem('div', {
                                 id: `urceCounters-${mUrObj.attributes.id}`, 'data-id': mUrObj.attributes.id, style: 'clear:both; margin-bottom:10px;'
                             }, [{ click: pillClick }]);
                             divContainer.dataset.urceHasListeners = true;
-                            divContainer.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                            divContainer.appendChild(createElem('div', {
                                 id: `urceCounters-${mUrObj.attributes.id}-text`,
                                 'data-id': mUrObj.attributes.id,
                                 class: 'urceCountersPill urceCounts',
@@ -2977,7 +3023,7 @@
                                     && urceData.inMapExtent
                                     && !urceData.containsSquareBrackets
                                     && ((W.loginManager.user.rank > 2) || ((+W.loginManager.user.rank === 2) && W.loginManager.user.isAreaManager))
-                                    && !_mapUpdateRequests[chunk[idx].attributes.id]?.urceData?.autoSentReminder
+                                    && !chunk[idx].attributes.autoSentReminder
                                 )
                                     autoSendReminder = true;
                                 else
@@ -3079,7 +3125,6 @@
                                     if (_settings.unfollowAfterSend)
                                         unfollowUrAfterSend(chunk[idx].attributes.id);
                                     urceData = $extend({}, urceData, {
-                                        autoSentReminder: true,
                                         commentCount: urceData.commentCount + 1,
                                         commentsByMe: true,
                                         lastCommentDaysOld: 0,
@@ -3306,7 +3351,9 @@
             return;
         }
         if (!_settings.enableUrOverflowHandling && (W.model.mapUpdateRequests.getObjectArray().length > 499)) {
-            alertBoxInPanel(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled'), undefined, true, 9999);
+            const docFrags = document.createDocumentFragment();
+            docFrags.appendChild(createTextNode(I18n.t('urce.prompts.UrOverflowErrorWithoutOverflowEnabled')));
+            alertBoxInPanel(docFrags, undefined, true, 9999);
             return;
         }
         doSpinner('handleUrOverflow', true);
@@ -3448,7 +3495,7 @@
         }
     }
 
-    async function maskBoxes(message, unmask, phase, maskUrPanel) {
+    async function maskBoxes(docFrags, unmask, phase, maskUrPanel) {
         const zIndex = (phase === 'init') ? 19999 : 10000;
         if (unmask) {
             document.getElementById(`urceTabLightbox-${phase}`)?.remove();
@@ -3460,8 +3507,10 @@
             if (!document.getElementById(`urceTabLightbox-${phase}`)) {
                 const domElement = document.getElementById('sidepanel-urc-e');
                 domElement.style.position = 'relative';
-                const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: `urceTabLightbox-${phase}`, class: 'urceMaskLightbox', style: `z-index:${zIndex};` });
-                divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { class: 'urceMaskLightbox text', innerHTML: trustedHTML(message) }));
+                const divElemRootDiv = createElem('div', { class: 'urceMaskLightbox text' });
+                divElemRootDiv.appendChild(docFrags.cloneNode());
+                const divElemRoot = createElem('div', { id: `urceTabLightbox-${phase}`, class: 'urceMaskLightbox', style: `z-index:${zIndex};` });
+                divElemRoot.appendChild(divElemRootDiv);
                 domElement.insertBefore(divElemRoot, domElement.firstChild);
             }
             if (maskUrPanel && !document.getElementById(`urPanelLightbox-${phase}`)) {
@@ -3471,12 +3520,15 @@
                 }
                 else {
                     domElement.firstChild.style.position = 'relative';
-                    const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: `urPanelLightbox-${phase}`, class: 'urceMaskLightbox', style: `z-index:${zIndex};` });
-                    divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { class: 'urceMaskLightbox text', innerHTML: trustedHTML(message) }));
+                    const divElemRootDiv = createElem('div', { class: 'urceMaskLightbox text' });
+                    divElemRootDiv.appendChild(docFrags.cloneNode());
+                    const divElemRoot = createElem('div', { id: `urPanelLightbox-${phase}`, class: 'urceMaskLightbox', style: `z-index:${zIndex};` });
+                    divElemRoot.appendChild(divElemRootDiv);
                     domElement.firstChild.insertBefore(divElemRoot, domElement.firstChild.firstChild);
                 }
             }
         }
+        docFrags = undefined;
     }
 
     function autoScrollComments(commentCount = 0, retryInterval = 10, maxTries = 200) {
@@ -3536,6 +3588,7 @@
                     error.maskUrPanel = (_selUr.urId > 0);
                     error.phase = 'changeList';
                     error.staticList = (getCommentListInfo(commentListIdx).type === 'static');
+                    error.commentList = commentListIdx;
                     handleError(error);
                 })
                     .finally(() => {
@@ -3579,7 +3632,7 @@
                 defaultsArr[idx] = (_defaultComments[key].commentNum !== null) ? [_commentList[_defaultComments[key].commentNum].title] : [''];
             });
             defaultsArr = Object.values(defaultsArr);
-            const a = setElemAttrs(_elems.a.cloneNode(false), { href: URL.createObjectURL(new Blob([defaultsArr.join('\n')], { type: 'text/csv' })), download: `default_responses_${dateTs}.csv` });
+            const a = createElem('a', { href: URL.createObjectURL(new Blob([defaultsArr.join('\n')], { type: 'text/csv' })), download: `default_responses_${dateTs}.csv` });
             a.dispatchEvent(new MouseEvent('click', { bubbles: true }));
             a.remove();
         }
@@ -3598,7 +3651,7 @@
                     urstatus = '';
                 return [`"${entry.title.replace(/"/gmi, '\\"')}"|"${entry.comment.replace(/"/gmi, '\\"')}"|${urstatus}`];
             });
-            const a = setElemAttrs(_elems.a.cloneNode(false), { href: URL.createObjectURL(new Blob([commentsArr.join('\n')], { type: 'text/csv' })), download: `comment_list_${dateTs}.csv` });
+            const a = createElem('a', { href: URL.createObjectURL(new Blob([commentsArr.join('\n')], { type: 'text/csv' })), download: `comment_list_${dateTs}.csv` });
             a.dispatchEvent(new MouseEvent('click', { bubbles: true }));
             a.remove();
         }
@@ -3622,18 +3675,18 @@
         let spreadsheetStep,
             downloadDefaultsStep,
             downloadCommentsStep;
-        const divElemRoot = _elems.div.cloneNode(false);
-        divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+        const divElemRoot = createElem('div');
+        divElemRoot.appendChild(createElem('div', {
             class: 'URCE-disableWme-text-header', textContent: convert ? I18n.t('urce.tools.ConvertCreateConvertProcess') : I18n.t('urce.tools.ConvertCreateCreateProcess')
         }));
-        let divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-disableWme-text-body' });
-        divElemDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), { style: 'font-size:14px;font-weight:600;', textContent: I18n.t('urce.tools.ConvertCreateSteps') }));
-        const olElem = _elems.ol.cloneNode(false);
+        let divElemDiv = createElem('div', { class: 'URCE-disableWme-text-body' });
+        divElemDiv.appendChild(createElem('div', { style: 'font-size:14px;font-weight:600;', textContent: I18n.t('urce.tools.ConvertCreateSteps') }));
+        const olElem = createElem('ol');
         for (let i = 0, { length } = createSteps; i < length; i++) {
             if (I18n.t(`urce.tools.${createSteps[i]}`).includes('$SPREADSHEET_STEP$'))
                 spreadsheetStep = i + 1;
-            const liElem = _elems.li.cloneNode(false);
-            liElem.appendChild(setElemAttrs(_elems.p.cloneNode(false), {
+            const liElem = createElem('li');
+            liElem.appendChild(createElem('p', {
                 innerHTML: trustedHTML(
                     I18n.t(`urce.tools.${createSteps[i]}`)
                         .replaceAll('$TEMPLATE_LINK$', `<a id="_openTemplate" href="https://bit.ly/urc-e_cc-template" target="_blank">${I18n.t('urce.common.Link')}</a>`)
@@ -3649,9 +3702,9 @@
                     downloadDefaultsStep = createSteps.length + i + 1;
                 if (I18n.t(`urce.tools.${convertSteps[i]}`).includes('$DOWNLOAD_COMMENTS_LINK$'))
                     downloadCommentsStep = createSteps.length + i + 1;
-                const liElem = _elems.li.cloneNode(false);
+                const liElem = createElem('li');
                 liElem.appendChild(
-                    setElemAttrs(_elems.p.cloneNode(false), {
+                    createElem('p', {
                         innerHTML: trustedHTML(I18n.t(`urce.tools.${convertSteps[i]}`)
                             .replaceAll('$DOWNLOAD_DEFAULTS_LINK$', `<a id="_downloadDefaults">${I18n.t('urce.common.Link')}</a>`)
                             .replaceAll('$DOWNLOAD_COMMENTS_LINK$', `<a id="_downloadComments">${I18n.t('urce.common.Link')}</a>`)
@@ -3667,14 +3720,14 @@
             }
         }
         for (let i = 0, { length } = finalSteps; i < length; i++) {
-            const liElem = _elems.li.cloneNode(false);
-            liElem.appendChild(setElemAttrs(_elems.p.cloneNode(false), { innerHTML: trustedHTML(I18n.t(`urce.tools.${finalSteps[i]}`).replaceAll('$SPREADSHEET_STEP$', spreadsheetStep)) }));
+            const liElem = createElem('li');
+            liElem.appendChild(createElem('p', { innerHTML: trustedHTML(I18n.t(`urce.tools.${finalSteps[i]}`).replaceAll('$SPREADSHEET_STEP$', spreadsheetStep)) }));
             olElem.appendChild(liElem);
         }
         divElemDiv.appendChild(olElem);
         divElemRoot.appendChild(divElemDiv);
-        divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-disableWme-text-footer' });
-        divElemDiv.appendChild(setElemAttrs(_elems.button.cloneNode(false), {
+        divElemDiv = createElem('div', { class: 'URCE-disableWme-text-footer' });
+        divElemDiv.appendChild(createElem('button', {
             id: '_dismissSteps', urceprefs: 'tools', class: 'urceToolsButton', textContent: I18n.t('urce.common.Finish')
         }, [{ click: disableWme }]));
         divElemRoot.appendChild(divElemDiv);
@@ -3719,7 +3772,7 @@
                     }
                     for (let oldUrcArrIdx = 0, { length } = oldUrcArr; oldUrcArrIdx < length; oldUrcArrIdx += 3) {
                         if (/<br>/gi.test(oldUrcArr[oldUrcArrIdx]) || (oldUrcArr[oldUrcArrIdx + 2] === '')) {
-                            const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { textContent: untrustedHTML(oldUrcArr[oldUrcArrIdx].replace(/<br>/gi, '')) });
+                            const divElemRoot = createElem('div', { textContent: untrustedHTML(oldUrcArr[oldUrcArrIdx].replace(/<br>/gi, '')) });
                             oldUrcArr[oldUrcArrIdx + 2] = 'GROUP TITLE';
                             oldUrcArr[oldUrcArrIdx] = divElemRoot.innerText;
                         }
@@ -3898,27 +3951,27 @@
                 if (outputItems.length > 0) {
                     const urStyle = (_settings.commentListStyle === 'urStyle') ? ' urStyle' : '',
                         DOUBLE_CLICK_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGnRFWHRTb2Z0d2FyZQBQYWludC5ORVQgdjMuNS4xMDD0cqEAAAMnSURBVFhH7ZdNSFRRGIZH509ndGb8nZuCCSNE4CyGURmkTVCuBEmEiMSZBmaoRYsIgiDMhVFEFERBZITbEINQbFMtclGQtUgIalG0ioiMFkWlZc+53WN3rmfG64wSgS+8fOd8c8533u/83HPGsRZcLtedqqqqU0Z189De3q4ZxRyUlZVN+3y+EaNaENXV1VecTue8HZLYPO0v6B1jsZiG42soFErpDhPsCshkMgHM8npI7F/YP6ivr0+Wl5f/CAQCOSLsCkgmkyGMHtjtds8Q66Ig2Y5Jfx7+RV1dnS6CNT9kuBzUp5iZI0Y1L8wCEHzW4/Hs9Xq9MRJqEb7KysrHiPmM/w18JdvCXNTW1g4JEQTRRbS1tYkAOejt7Q12dnZqXV1d4VQq5RE+swAG+sKSfmImbkkB7LEo5QeNjY3DrP0x2RauBhkPof7ZwMCAHlygubm5o6KiYpyg76jKzsuIXULshFkA/Q9idUgBgmS+h/aXZN2gGul02i1sIpEgvm/M2DArHRlkP/5JUUbUE6uAmpqaEyTxgUE/Ch8JxPDfa2hoOM1yHJdtxTmfQpXYNDqZvplIJLKdHx3xeNxHgIcrjU0ks13slZuirBLQ2tq6MxwO72NfZYWPuPeJv4B9iX0u2zoIcpJMhiXpfJgfdPj9/huYnIElCwkg8ymEnzd4TfrzUI2mpqYO67SbaREwl81mi/kOCKsG6zSOWdVJ0iyAZVzo7u72MWPXqb+wS07DZawa1t1upVmAIIIno9HoNsqlo7+/f83ptAoQFFPKJluURNQE/vWDoxfG5AxopUqAgtNw/ZAC+PAMs74ZFfliapsugON0hqk8mo8csaeiXQGWJmADuCVgS8B/KoDv+r8V0NfX5zduqpLId0I8WIoDl9FbjDKwXXIXjGKLA52vYpSB7ZIHaAJbHDRN28HTaZGiMvha5B55NDs7S7EEcNmcwygHKESEfyeBOOXSMDg46OKVc5uiciAVxaxxUx6gvDFAhJOn0wiBv1FVDirJxn3Ns3s35Y0Hz+wWZmOUozXHe0D8xfrJgEvwPdf23WAwmO7p6fEazW3C4fgNPVAixOZacokAAAAASUVORK5CYII=';
-                    const divElemCommentList = _elems.div.cloneNode(false);
+                    const divElemCommentList = createElem('div');
                     outputItems.forEach((item) => {
-                        const legendElem = setElemAttrs(_elems.legend.cloneNode(false), { id: `${item.groupDivId}_legend`, class: `URCE-legend ${urStyle}` }, [{ click: legendClickToggle }]);
-                        legendElem.appendChild(setElemAttrs(_elems.i.cloneNode(false), { class: `fa fa-fw ${item.chevron} URCE=chevron` }));
-                        legendElem.appendChild(setElemAttrs(_elems.span.cloneNode(false), { class: 'URCE-span', title: item.title, textContent: item.name }));
-                        const fieldsetElem = setElemAttrs(_elems.fieldset.cloneNode(false), { id: item.groupDivId, class: `URCE-field ${urStyle}` });
+                        const legendElem = createElem('legend', { id: `${item.groupDivId}_legend`, class: `URCE-legend ${urStyle}` }, [{ click: legendClickToggle }]);
+                        legendElem.appendChild(createElem('i', { class: `fa fa-fw ${item.chevron} URCE=chevron` }));
+                        legendElem.appendChild(createElem('span', { class: 'URCE-span', title: item.title, textContent: item.name }));
+                        const fieldsetElem = createElem('fieldset', { id: item.groupDivId, class: `URCE-field ${urStyle}` });
                         fieldsetElem.appendChild(legendElem);
                         if (item.items.length > 0) {
-                            const divElemGroup = setElemAttrs(_elems.div.cloneNode(false), { id: `${item.groupDivId}_body_urce`, class: `${item.collapsed} URCE-group_body ${urStyle}` });
+                            const divElemGroup = createElem('div', { id: `${item.groupDivId}_body_urce`, class: `${item.collapsed} URCE-group_body ${urStyle}` });
                             for (let idx = 0, { length } = item.items; idx < length; idx++) {
                                 const curItem = item.items[idx],
-                                    divElemItemName = setElemAttrs(_elems.div.cloneNode(false), { style: 'width:225px;display:inline-flex;' });
-                                divElemItemName.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+                                    divElemItemName = createElem('div', { style: 'width:225px;display:inline-flex;' });
+                                divElemItemName.appendChild(createElem('a', {
                                     id: `urce-cid-${curItem.commentId}`, class: `URCE-Comments ${curItem.linkClass} URCE-Comments`, title: curItem.title.replace(/"/g, '\''), textContent: item.items[idx].name
                                 }, [{ click: cidSingleClick }]));
-                                const divElemItemParent = setElemAttrs(_elems.div.cloneNode(false), { class: `URCE-divComment hover expand ${curItem.linkClass}`, style: 'position:relative' });
+                                const divElemItemParent = createElem('div', { class: `URCE-divComment hover expand ${curItem.linkClass}`, style: 'position:relative' });
                                 divElemItemParent.appendChild(divElemItemName);
-                                const divElemDoubleClick = setElemAttrs(_elems.div.cloneNode(false), {
+                                const divElemDoubleClick = createElem('div', {
                                     id: curItem.divDoubleClickId, class: 'URCE-divDoubleClick', style: curItem.divDoubleClickStyle, title: curItem.divDoubleClickTitle.replace(/"/g, '\'')
                                 });
-                                divElemDoubleClick.appendChild(setElemAttrs(_elems.img.cloneNode(false), {
+                                divElemDoubleClick.appendChild(createElem('img', {
                                     id: `urce-img-cid-${item.items[idx].commentId}`, src: DOUBLE_CLICK_ICON, class: 'URCE-doubleClickIcon'
                                 }, [{ dblclick: cidDoubleClick }]));
                                 divElemItemParent.appendChild(divElemDoubleClick);
@@ -4011,39 +4064,44 @@
                 };
             Object.values(_defaultComments).forEach((a) => { a.commentNum = null; });
             logDebug(`Building comment list for: ${commentListInfo.name}`);
-            if (phase !== 'init')
-                maskBoxes(`${I18n.t('urce.prompts.SwitchingCommentLists')}<br><br>${I18n.t('urce.common.PleaseWait')}.`, false, phase, (_selUr.urId > 0));
-            const selectElem = setElemAttrs(_elems.select.cloneNode(false), { id: '_selcurrentCommentList', title: I18n.t('urce.common.CurrentCommentListTitle') }, [{ change: selectionChange }]);
+            if (phase !== 'init') {
+                const docFrags2 = document.createDocumentFragment();
+                docFrags2.appendChild(createElem('div', { textContent: I18n.t('urce.prompts.SwitchingCommentLists') }));
+                docFrags2.appendChild(createElem('br'));
+                docFrags2.appendChild(createElem('div', { textContent: I18n.t('urce.common.PleaseWait') }));
+                maskBoxes(docFrags2, false, phase, (_selUr.urId > 0));
+            }
+            const selectElem = createElem('select', { id: '_selcurrentCommentList', title: I18n.t('urce.common.CurrentCommentListTitle') }, [{ change: selectionChange }]);
             _commentLists.forEach((cList) => {
                 if (cList.status !== 'disabled') {
-                    selectElem.appendChild(setElemAttrs(_elems.option.cloneNode(false), {
+                    selectElem.appendChild(createElem('option', {
                         value: cList.idx, textContent: !autoSwitch ? cList.name : `${cList.name} (${I18n.t('urce.common.AutoSwitched')})`, selected: (cList.idx === commentListIdx)
                     }));
                 }
             });
-            let divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-commentListName', textContent: `${I18n.t('urce.common.CommentList')}: ` });
+            let divElemRoot = createElem('div', { class: 'URCE-commentListName', textContent: `${I18n.t('urce.common.CommentList')}: ` });
             divElemRoot.appendChild(selectElem);
-            const divElemRestrictionEnforcedParent = setElemAttrs(_elems.div.cloneNode(false), {
+            const divElemRestrictionEnforcedParent = createElem('div', {
                 id: 'restrictionsEnforcedWarning', style: `float:right;padding-top:8px;color:red;font-size:18px;${(_restrictionsEnforcedTitle ? '' : 'display:none;')}`
             });
-            divElemRestrictionEnforcedParent.appendChild(setElemAttrs(_elems.i.cloneNode(false), { class: 'fa fa-exclamation-triangle', 'aria-hidden': true, title: _restrictionsEnforcedTitle || '' }));
+            divElemRestrictionEnforcedParent.appendChild(createElem('i', { class: 'fa fa-exclamation-triangle', 'aria-hidden': true, title: _restrictionsEnforcedTitle || '' }));
             divElemRoot.appendChild(divElemRestrictionEnforcedParent);
             docFrags.appendChild(divElemRoot);
-            divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-commentListName URCE-controls URCE-divCC' });
-            divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+            divElemRoot = createElem('div', { class: 'URCE-commentListName URCE-controls URCE-divCC' });
+            divElemRoot.appendChild(createElem('input', {
                 type: 'checkbox', id: '_cbenableAppendMode', class: 'urceSettingsCheckbox2', title: I18n.t('urce.prefs.EnableAppendModeTitle'), checked: _settings.enableAppendMode
             }, [{ change: appendModeToggle }]));
-            divElemRoot.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+            divElemRoot.appendChild(createElem('label', {
                 for: '_cbenableAppendMode', title: I18n.t('urce.prefs.EnableAppendModeTitle'), class: 'URCE-label', textContent: I18n.t('urce.prefs.EnableAppendMode')
             }));
-            divElemRoot.appendChild(_elems.br.cloneNode(false));
+            divElemRoot.appendChild(createElem('br'));
             docFrags.appendChild(divElemRoot);
-            divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: 'URCE-expandCollapseAllComments', class: `URCE-expandCollapseAll${((_settings.commentListStyle === 'urStyle') ? ' urStyle' : '')}` });
-            divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+            divElemRoot = createElem('div', { id: 'URCE-expandCollapseAllComments', class: `URCE-expandCollapseAll${((_settings.commentListStyle === 'urStyle') ? ' urStyle' : '')}` });
+            divElemRoot.appendChild(createElem('div', {
                 id: 'URCE-expandAllComments', class: 'URCE-expandCollapseAllItem', textContent: I18n.t('urce.common.ExpandAll')
             }, [{ click: expandCollapseAll }]));
-            divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline;', textContent: ' : ' }));
-            divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+            divElemRoot.appendChild(createElem('div', { style: 'display:inline;', textContent: ' : ' }));
+            divElemRoot.appendChild(createElem('div', {
                 id: 'URCE-collapseAllComments', class: 'URCE-expandCollapseAllItem', textContent: I18n.t('urce.common.CollapseAll')
             }, [{ click: expandCollapseAll }]));
             docFrags.appendChild(divElemRoot);
@@ -4212,10 +4270,10 @@
             },
             createDivSettingCb = (settingId = '', warningSetting = false) => {
                 const title = I18n.t(`urce.prefs.${settingId.charAt(0).toUpperCase() + settingId.slice(1)}Title`),
-                    divElemDiv = setElemAttrs(_elems.div.cloneNode(false), {
+                    divElemDiv = createElem('div', {
                         style: `width:calc(100% - 18px);display:inline-block;${(settingId === 'autoSendRemindersExceptTagged') ? 'padding-left:15px;font-style:italic;' : ''}`
                     });
-                divElemDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                divElemDiv.appendChild(createElem('input', {
                     type: 'checkbox',
                     id: `_cbperCommentList_${settingId}`,
                     urceprefs: 'perCommentList',
@@ -4224,7 +4282,7 @@
                     checked: perCListSettings[settingId],
                     disabled: perCListSettings[`${settingId}_useDefault`]
                 }, [{ change: settingsChange }]));
-                divElemDiv.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                divElemDiv.appendChild(createElem('label', {
                     for: `_cbperCommentList_${settingId}`,
                     title,
                     urceprefs: 'perCommentList',
@@ -4232,18 +4290,18 @@
                     textContent: I18n.t(`urce.prefs.${settingId.charAt(0).toUpperCase() + settingId.slice(1)}`)
                 }));
                 if (warningSetting) {
-                    const divElemWarning = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divWarning URCE-divWarningPre', textContent: '(' });
-                    divElemWarning.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                    const divElemWarning = createElem('div', { class: 'URCE-divWarning URCE-divWarningPre', textContent: '(' });
+                    divElemWarning.appendChild(createElem('div', {
                         class: 'URCE-divWarning URCE-divWarningTitle',
                         title: I18n.t(`urce.prefs.${settingId.charAt(0).toUpperCase() + settingId.slice(1)}WarningTitle`),
                         textContent: I18n.t(`urce.prefs.${settingId.charAt(0).toUpperCase() + settingId.slice(1)}Warning`)
                     }));
-                    divElemWarning.appendChild(setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divWarning', textContent: ')' }));
+                    divElemWarning.appendChild(createElem('div', { class: 'URCE-divWarning', textContent: ')' }));
                     divElemDiv.appendChild(divElemWarning);
                 }
-                const divElemRoot = _elems.div.cloneNode(false);
+                const divElemRoot = createElem('div');
                 divElemRoot.appendChild(divElemDiv);
-                divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                divElemRoot.appendChild(createElem('input', {
                     type: 'checkbox',
                     style: 'float:right;',
                     id: `_cbperCommentList_${settingId}_useDefault`,
@@ -4258,8 +4316,8 @@
                 const title = I18n.t(`urce.prefs.${settingId.charAt(0).toUpperCase() + settingId.slice(1)}Title`),
                     // eslint-disable-next-line no-nested-ternary
                     type = (settingId === 'tagEmail') ? 'text' : (settingId !== 'customTagline') ? 'number' : '',
-                    divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { style: 'width:calc(100% - 18px);display:inline-block;' });
-                divElemDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                    divElemDiv = createElem('div', { style: 'width:calc(100% - 18px);display:inline-block;' });
+                divElemDiv.appendChild(createElem('div', {
                     style: 'display:inline;',
                     title,
                     class: `URCE-label${((perCListSettings[`${settingId}_useDefault`]) ? ' urceDisabled' : '')}`,
@@ -4268,7 +4326,7 @@
                 }));
                 let divElemDivInput;
                 if (settingId === 'customTagline') {
-                    divElemDivInput = setElemAttrs(_elems.textarea.cloneNode(false), {
+                    divElemDivInput = createElem('textarea', {
                         id: '_textperCommentList_customTagline',
                         class: `URCE-textInput urceSettingsTextBox${((perCListSettings[`${settingId}_useDefault`]) ? ' urceDisabled' : '')}`,
                         urceprefs: 'perCommentList',
@@ -4280,7 +4338,7 @@
                 }
                 else {
                     const extraAttributes = (type === 'number') ? { min: 0, max: 9999, step: 1 } : {};
-                    divElemDivInput = setElemAttrs(_elems.input.cloneNode(false), {
+                    divElemDivInput = createElem('input', {
                         type,
                         id: `_${(type === 'text') ? type : 'num'}perCommentList_${settingId}`,
                         class: `URCE-${(type === 'text') ? 'textInput' : 'daysInput'} urceSettings${type.charAt(0).toUpperCase() + type.slice(1)}Box${((perCListSettings[`${settingId}_useDefault`]) ? ' urceDisabled' : '')}`,
@@ -4292,7 +4350,7 @@
                     }, [{ change: settingsChange }]);
                 }
                 if (type === 'number') {
-                    divElemDivInput.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                    divElemDivInput.appendChild(createElem('div', {
                         style: 'display:inline;',
                         class: `URCE-label${((perCListSettings[`${settingId}_useDefault`]) ? ' urceDisabled' : '')}`,
                         urceprefs: 'perCommentList',
@@ -4300,20 +4358,20 @@
                     }));
                 }
                 divElemDiv.appendChild(divElemDivInput);
-                const divElemRoot = _elems.div.cloneNode(false);
+                const divElemRoot = createElem('div');
                 divElemRoot.appendChild(divElemDiv);
-                divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                divElemRoot.appendChild(createElem('input', {
                     type: 'checkbox', style: 'float:right;', id: `_cbperCommentList_${settingId}_useDefault`, urceprefs: 'perCommentList', class: 'urceSettingsCheckbox', title: I18n.t('urce.prefs.UseDefault'), checked: perCListSettings[`${settingId}_useDefault`]
                 }, [{ change: settingsChange }]));
                 return divElemRoot;
             };
-        docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), { textContent: `${I18n.t('urce.prefs.SettingsFor')}: ${getCommentListInfo(commentListIdx).name}` }));
-        let divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-controls' });
+        docFrags.appendChild(createElem('div', { textContent: `${I18n.t('urce.prefs.SettingsFor')}: ${getCommentListInfo(commentListIdx).name}` }));
+        let divElemRoot = createElem('div', { class: 'URCE-controls' });
         ['autoSendReminders', 'autoSendRemindersExceptTagged', 'autoSetNewUrComment', 'autoSetNewUrCommentSlur', 'autoSetNewUrCommentWithDescription', 'autoSetReminderUrComment'].forEach((settingId) => {
             divElemRoot.appendChild(createDivSettingCb(settingId, (settingId === 'autoSendReminders')));
         });
         docFrags.appendChild(divElemRoot);
-        divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-controls URCE-textFirst' });
+        divElemRoot = createElem('div', { class: 'URCE-controls URCE-textFirst' });
         ['tagEmail', 'reminderDays', 'closeDays', 'customTagline'].forEach((settingId) => {
             divElemRoot.appendChild(createDivSettingInput(settingId));
         });
@@ -4322,47 +4380,46 @@
     }
 
     function handleError(err) {
-        let errorText,
-            errorHTML,
-            reason,
-            version;
+        const divElemRoot = createElem('div', { class: 'URCE-divLoading' });
         if (err.message?.includes('|') > -1) {
-            [reason, version] = err.message.split('|');
+            const [reason, version] = err.message.split('|');
             if ((reason === 'updateRequired') || (reason === 'spreadsheetUpdateRequired')) {
-                const scriptLinkHTML = `<a href="${(_IS_BETA_VERSION ? dec(_BETA_DL_URL) : _PROD_DL_URL)}" target = "_blank">${(_IS_BETA_VERSION ? dec(_BETA_DL_URL) : _PROD_DL_URL)}</a>`,
-                    scriptLinkText = _IS_BETA_VERSION ? dec(_BETA_DL_URL) : _PROD_DL_URL,
-                    ssUpdateInstructionsLinkHTML = '<a href="https://bit.ly/urc-e_ss-update-instructions" target = "_blank">https://bit.ly/urc-e_ss-update-instructions</a>',
-                    ssUpdateInstructionsLinkText = 'https://bit.ly/urc-e_ss-update-instructions';
-                errorText = I18n.t(`urce.prompts.${reason.charAt(0).toUpperCase()}${reason.slice(1)}`)
-                    .replaceAll('$VERSION$', version)
-                    .replaceAll('$LINK$', (reason === 'updateRequired') ? scriptLinkText : ssUpdateInstructionsLinkText)
-                    .replaceAll('<br>', '\n');
-                errorHTML = I18n.t(`urce.prompts.${reason.charAt(0).toUpperCase()}${reason.slice(1)}`)
-                    .replaceAll('$VERSION$', version)
-                    .replaceAll('$LINK$', (reason === 'updateRequired') ? scriptLinkHTML : ssUpdateInstructionsLinkHTML);
+                const scriptLink = createElem('a', {
+                        href: _IS_BETA_VERSION ? dec(_BETA_DL_URL) : _PROD_DL_URL, target: '_blank', textContent: _IS_BETA_VERSION ? dec(_BETA_DL_URL) : _PROD_DL_URL
+                    }),
+                    ssUpdateInstructionsLink = createElem('a', {
+                        href: 'https://bit.ly/urc-e_ss-update-instructions', target: '_blank', textContent: 'https://bit.ly/urc-e_ss-update-instructions'
+                    });
+                const [firstText, secondText] = I18n.t(`urce.prompts.${reason.charAt(0).toUpperCase()}${reason.slice(1)}`).split('$VERSION$');
+                divElemRoot.appendChild(createElem('div', { textContent: `${firstText.trim()} ${version}` }));
+                divElemRoot.appendChild(createElem('br'));
+                const divElemRootDiv = createElem('div');
+                divElemRootDiv.appendChild(createTextNode(`${secondText.trim().replace('$LINK$', '')} `));
+                divElemRootDiv.appendChild((reason === 'updateRequired') ? scriptLink : ssUpdateInstructionsLink);
+                divElemRoot.appendChild(divElemRootDiv);
             }
         }
         else {
-            errorText = err.message;
-            errorHTML = (err.commentList === 1001) ? I18n.t('urce.prompts.CustomGSheetLoadError') : I18n.t('urce.common.ErrorGeneric');
+            divElemRoot.appendChild(createElem('div', { textContent: (err.commentList === 1001) ? I18n.t('urce.prompts.CustomGSheetLoadError') : I18n.t('urce.common.ErrorGeneric') }));
         }
-        logError(errorText);
+        logError(divElemRoot.textContent);
         _commentListLoaded = false;
         if (err.phase === 'changeList') {
             if (err.staticList) {
-                errorHTML += `<br><br>${I18n.t('urce.common.Type')}: ${I18n.t('urce.common.Static')}`;
+                divElemRoot.appendChild(createElem('br'));
+                divElemRoot.appendChild(createElem('div', { textContent: `${I18n.t('urce.common.Type')}: ${I18n.t('urce.common.Static')}` }));
             }
             else if (err.commentList) {
                 const commentListInfo = getCommentListInfo(err.commentList);
-                errorHTML += `<br><br>${I18n.t('urce.common.CommentList')}: ${commentListInfo.name}`
-                    + `<br>${I18n.t('urce.common.ListOwner')}: ${commentListInfo.listOwner}`;
+                divElemRoot.appendChild(createElem('br'));
+                divElemRoot.appendChild(createElem('div', { textContent: `${I18n.t('urce.common.CommentList')}: ${commentListInfo.name}` }));
+                divElemRoot.appendChild(createElem('div', { textContent: `${I18n.t('urce.common.ListOwner')}: ${commentListInfo.listOwner}` }));
             }
         }
-        const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divLoading', innerHTML: trustedHTML(errorHTML) });
         document.getElementById('_commentList')?.replaceChildren(divElemRoot);
         WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, divElemRoot.outerHTML);
         maskBoxes(undefined, true, err.phase, err.maskUrPanel);
-        return { errorHTML };
+        return { divElemRoot };
     }
 
     async function initBackgroundTasks(status, phase) {
@@ -4467,7 +4524,7 @@
 
     function injectCss() {
         logDebug('Injecting CSS.');
-        document.head.appendChild(setElemAttrs(_elems.style.cloneNode(false), {
+        document.head.appendChild(createElem('style', {
             type: 'text/css',
             textContent: ''
                 // Comments tab
@@ -4625,34 +4682,49 @@
 
     function initCommentsTab() {
         logDebug('Initializing Comments tab.');
-        const docFrags = document.createDocumentFragment(),
-            zoomOutLinkClicked = function () {
-                if (document.querySelector('#panel-container .mapUpdateRequest .top-section .close-panel'))
-                    autoCloseUrPanel();
-                W.map.getOLMap().zoomTo(+this.getAttribute('zoomTo'));
-            };
-        const imgDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceIcon', class: 'URCE-divIcon' }),
-            contentHeaderDiv = setElemAttrs(_elems.div.cloneNode(false), { id: '_divZoomOutLinks', class: 'URCE-divCCLinks', style: _settings.hideZoomOutLinks ? 'display:none;' : '' });
-        imgDiv.replaceChildren(setElemAttrs(_elems.img.cloneNode(false), { src: GM_info.script.icon, class: 'URCE-icon' }));
+        const zoomOutLinkClicked = function () {
+            if (document.querySelector('#panel-container .mapUpdateRequest .top-section .close-panel'))
+                autoCloseUrPanel();
+            W.map.getOLMap().zoomTo(+this.getAttribute('zoomTo'));
+        };
+        const imgDiv = createElem('div', { id: 'urceIcon', class: 'URCE-divIcon' }),
+            contentHeaderDiv = createElem('div', { id: '_divZoomOutLinks', class: 'URCE-divCCLinks', style: _settings.hideZoomOutLinks ? 'display:none;' : '' });
+        imgDiv.replaceChildren(createElem('img', { src: GM_info.script.icon, class: 'URCE-icon' }));
         contentHeaderDiv.appendChild(imgDiv);
 
-        contentHeaderDiv.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+        contentHeaderDiv.appendChild(createElem('a', {
             id: 'zoomOutLink1', class: 'URCE-Comments', zoomTo: '12', title: I18n.t('urce.commentsTab.ZoomOutLink1Title'), textContent: I18n.t('urce.commentsTab.ZoomOutLink1')
         }, [{ click: zoomOutLinkClicked }]));
-        contentHeaderDiv.appendChild(_elems.br.cloneNode(false));
-        contentHeaderDiv.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+        contentHeaderDiv.appendChild(createElem('br'));
+        contentHeaderDiv.appendChild(createElem('a', {
             id: 'zoomOutLink2', class: 'URCE-Comments', zoomTo: '14', title: I18n.t('urce.commentsTab.ZoomOutLink2Title'), textContent: I18n.t('urce.commentsTab.ZoomOutLink2')
         }, [{ click: zoomOutLinkClicked }]));
-        contentHeaderDiv.appendChild(_elems.br.cloneNode(false));
-        contentHeaderDiv.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+        contentHeaderDiv.appendChild(createElem('br'));
+        contentHeaderDiv.appendChild(createElem('a', {
             id: 'zoomOutLink3', class: 'URCE-Comments', zoomTo: '15', title: I18n.t('urce.commentsTab.ZoomOutLink3Title'), textContent: I18n.t('urce.commentsTab.ZoomOutLink3')
         }, [{ click: zoomOutLinkClicked }]));
-        contentHeaderDiv.appendChild(_elems.br.cloneNode(false));
+        contentHeaderDiv.appendChild(createElem('br'));
+        let docFrags = document.createDocumentFragment();
         docFrags.appendChild(contentHeaderDiv);
-        docFrags.appendChild(setElemAttrs(_elems.div.cloneNode(false), { id: '_commentList', class: 'URCE-divCC' }));
+        docFrags.appendChild(createElem('div', { id: '_commentList', class: 'URCE-divCC' }));
         document.getElementById('panel-urce-comments').replaceChildren(docFrags);
-        if (_needTranslation)
-            alertBoxInPanel(`URC-E does not currently have a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>). Translations are setup on a Google Sheet, so they are simple to do.<br><br>If you would like to provide a translation for your WME Language Setting (<i>${I18n.currentLocale()}</i>), please contact ${_SCRIPT_AUTHOR} via forum PM or Discord, or click reply on the <a href="https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278" target="_blank">forum thread.</a>`, undefined, true, 9998);
+        if (_needTranslation) {
+            docFrags = document.createDocumentFragment();
+            let divElemRoot = createElem('div');
+            divElemRoot.appendChild(createTextNode('URC-E does not currently have a translation for your WME Language Setting ('));
+            divElemRoot.appendChild(createElem('div', { style: 'display:inline-block;font-style:italic;', textContent: I18n.currentLocale() }));
+            divElemRoot.appendChild(createTextNode('). Translations are setup on a Google Sheet, so they are simple to do.'));
+            docFrags.appendChild(divElemRoot);
+            docFrags.appendChild(createElem('br'));
+            divElemRoot = createElem('div');
+            divElemRoot.appendChild(createTextNode('If you would like to provide a translation for your WME Language Setting ('));
+            divElemRoot.appendChild(createElem('div', { style: 'display:inline-block;font-style:italic;', textContent: I18n.currentLocale() }));
+            divElemRoot.appendChild(createTextNode(`), please contact ${_SCRIPT_AUTHOR} via forum PM or Discord, or click reply on the `));
+            divElemRoot.appendChild(createElem('a', { href: 'https://www.waze.com/forum/viewtopic.php?f=819&t=275608#p1920278', target: '_blank', textContent: 'forum thread' }));
+            divElemRoot.appendChild(createTextNode('.'));
+            docFrags.appendChild(divElemRoot);
+            alertBoxInPanel(docFrags, undefined, true, 9998);
+        }
     }
 
     function initToolsTab() {
@@ -4674,9 +4746,9 @@
             },
             backupSettingsClick = () => {
                 saveSettingsToStorage();
-                const a = _elems.a.cloneNode(false);
-                a.href = URL.createObjectURL(new Blob([JSON.stringify({ URCE: _settings })], { type: 'application/json' }));
-                a.download = `urce-settings-v${_SCRIPT_VERSION}.json`;
+                const a = createElem('a', {
+                    href: URL.createObjectURL(new Blob([JSON.stringify({ URCE: _settings })], { type: 'application/json' })), download: `urce-settings-v${_SCRIPT_VERSION}.json`
+                });
                 a.dispatchEvent(new MouseEvent('click', { bubbles: true }));
                 a.remove();
             },
@@ -4690,8 +4762,7 @@
                     document.getElementById('_filerestoreSettings').value = '';
                     document.getElementById('urceRestoreSettingsFile').style.display = 'none';
                     document.getElementById('urceRestoreSettingsFile').classList.remove('error');
-                    const urceRestoreSettingsFileErrorDiv = document.getElementById('urceRestoreSettingsFileError');
-                    urceRestoreSettingsFileErrorDiv.replaceChildren();
+                    document.getElementById('urceRestoreSettingsFileError').replaceChildren();
                 }
             },
             resetSettingsClick = () => {
@@ -4742,51 +4813,51 @@
                 saveSettingsToStorage();
             },
             buildFieldsetSection = (idTag, textContent, divAttrs = { class: 'URCE-controls URCE-divCC' }) => {
-                const legendElem = setElemAttrs(_elems.legend.cloneNode(false), { id: `urce-tools-legend-${idTag}`, class: `URCE-legend${urStyle}` }, [{ click: legendClickToggle }]);
-                legendElem.appendChild(setElemAttrs(_elems.i.cloneNode(false), { class: 'fa fa-fw fa-chevron-down URCE-chevron' }));
-                legendElem.appendChild(setElemAttrs(_elems.span.cloneNode(false), { class: 'URCE-span', textContent }));
-                const fieldsetElem = setElemAttrs(_elems.fieldset.cloneNode(false), { id: `urce-tools-fieldset-${idTag}`, class: `URCE-field${urStyle}` });
+                const legendElem = createElem('legend', { id: `urce-tools-legend-${idTag}`, class: `URCE-legend${urStyle}` }, [{ click: legendClickToggle }]);
+                legendElem.appendChild(createElem('i', { class: 'fa fa-fw fa-chevron-down URCE-chevron' }));
+                legendElem.appendChild(createElem('span', { class: 'URCE-span', textContent }));
+                const fieldsetElem = createElem('fieldset', { id: `urce-tools-fieldset-${idTag}`, class: `URCE-field${urStyle}` });
                 fieldsetElem.appendChild(legendElem);
-                const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), divAttrs);
+                const divElemRoot = createElem('div', divAttrs);
                 fieldsetElem.appendChild(divElemRoot);
                 return { fieldsetElem, contentDiv: divElemRoot };
             },
             convertCurrentCustomClick = () => createStaticToGoogleSheet(true),
             createNewCustomClick = () => createStaticToGoogleSheet(false);
-        const contentHeaderDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'expandCollapseAllTools', class: `URCE-expandCollapseAll${urStyle}` });
-        contentHeaderDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+        const contentHeaderDiv = createElem('div', { id: 'expandCollapseAllTools', class: `URCE-expandCollapseAll${urStyle}` });
+        contentHeaderDiv.appendChild(createElem('div', {
             id: 'URCE-expandAllTools', class: 'URCE-expandCollapseAllItem', textContent: I18n.t('urce.common.ExpandAll')
         }, [{ click: expandCollapseAll }]));
-        contentHeaderDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline;', textContent: ' : ' }));
-        contentHeaderDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+        contentHeaderDiv.appendChild(createElem('div', { style: 'display:inline;', textContent: ' : ' }));
+        contentHeaderDiv.appendChild(createElem('div', {
             id: 'URCE-collapseAllTools', class: 'URCE-expandCollapseAllItem', textContent: I18n.t('urce.common.CollapseAll')
         }, [{ click: expandCollapseAll }]));
         docFrags.appendChild(contentHeaderDiv);
         let { fieldsetElem, contentDiv } = buildFieldsetSection('settings', I18n.t('urce.tabs.Settings'));
-        contentDiv.appendChild(setElemAttrs(_elems.button.cloneNode(false), {
+        contentDiv.appendChild(createElem('button', {
             id: '_butbackupSettings', urceprefs: 'tools', class: 'urceToolsButton', title: I18n.t('urce.tools.BackupSettingsTitle'), textContent: I18n.t('urce.common.Backup')
         }, [{ click: backupSettingsClick }]));
-        contentDiv.appendChild(setElemAttrs(_elems.button.cloneNode(false), {
+        contentDiv.appendChild(createElem('button', {
             id: '_butrestoreSettings', urceprefs: 'tools', class: 'urceToolsButton', title: I18n.t('urce.tools.RestoreSettingsTitle'), textContent: I18n.t('urce.common.Restore')
         }, [{ click: restoreSettingsClick }]));
-        contentDiv.appendChild(setElemAttrs(_elems.button.cloneNode(false), {
+        contentDiv.appendChild(createElem('button', {
             id: '_butresetSettings', urceprefs: 'tools', class: 'urceToolsButton', title: I18n.t('urce.tools.ResetSettingsTitle'), textContent: I18n.t('urce.common.Reset')
         }, [{ click: resetSettingsClick }]));
 
-        const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceRestoreSettingsFile', style: 'display:none;' });
-        divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+        const divElemRoot = createElem('div', { id: 'urceRestoreSettingsFile', style: 'display:none;' });
+        divElemRoot.appendChild(createElem('input', {
             type: 'file', id: '_filerestoreSettings', urceprefs: 'tools', class: 'urceToolsButtonFile', title: I18n.t('urce.tools.RestoreSettingsSelectFileTitle')
         }, [{ change: inputFileChange }]));
-        divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+        divElemRoot.appendChild(createElem('div', {
             id: 'urceRestoreSettingsFileError', class: 'URCE-divRestoreFileError error', style: 'display:none;', textContent: `* ${I18n.t('urce.tools.RestoreSettingsFileError')}`
         }));
         contentDiv.appendChild(divElemRoot);
         docFrags.appendChild(fieldsetElem);
         ({ fieldsetElem, contentDiv } = buildFieldsetSection('customGoogleSpreadsheet', I18n.t('urce.tabs.Settings'), { id: 'urceGSheetCreateConvert', urceprefs: 'tools' }));
-        contentDiv.appendChild(setElemAttrs(_elems.button.cloneNode(false), {
+        contentDiv.appendChild(createElem('button', {
             id: '_butconvertCurrentCustom', urceprefs: 'tools', class: 'urceToolsButton', title: I18n.t('urce.tools.ConvertCurrentCustomTitle'), textContent: I18n.t('urce.tools.ConvertCurrentCustom')
         }, [{ click: convertCurrentCustomClick }]));
-        contentDiv.appendChild(setElemAttrs(_elems.button.cloneNode(false), {
+        contentDiv.appendChild(createElem('button', {
             id: '_butcreateNewCustom', urceprefs: 'tools', class: 'urceToolsButton', title: I18n.t('urce.tools.CreateNewCustomTitle'), textContent: I18n.t('urce.tools.CreateNewCustom')
         }, [{ click: createNewCustomClick }]));
         docFrags.appendChild(fieldsetElem);
@@ -4865,7 +4936,7 @@
                 if (settingName === 'disableDoneNextButtons')
                     otherSettingName = 'replaceNextWithDoneButton';
                 if (otherSettingName) {
-                    if (this.checked && document.getElementById(`_cb${otherSettingName}`).checked) {
+                    if (this.checked && document.getElementById(`_cb${otherSettingName}`)?.checked) {
                         _settings[otherSettingName] = false;
                         document.getElementById(`_cb${otherSettingName}`).checked = false;
                     }
@@ -4980,7 +5051,9 @@
                     }
                 }
                 _settings[settingName] = this.checked;
-                if (document.getElementById(`_cbperCommentList_${settingName}_useDefault`).checked && (document.getElementById(`_cbperCommentList_${settingName}`).checked !== this.checked))
+                if (document.getElementById(`_cbperCommentList_${settingName}_useDefault`)?.checked
+                    && (document.getElementById(`_cbperCommentList_${settingName}`)?.checked !== this.checked)
+                )
                     document.getElementById(`_cbperCommentList_${settingName}`).checked = this.checked;
                 Object.values(_settings.perCommentListSettings).forEach((arr) => {
                     if (arr[`${settingName}_useDefault`]) {
@@ -5005,7 +5078,9 @@
                     if (val !== +this.value)
                         this.value = val;
                     _settings[settingName] = val;
-                    if (document.getElementById(`_cbperCommentList_${settingName}_useDefault`).checked && (`_numperCommentList_${settingName}` !== val))
+                    if (document.getElementById(`_cbperCommentList_${settingName}_useDefault`)?.checked
+                        && (document.getElementById(`_numperCommentList_${settingName}`)?.value !== val)
+                    )
                         document.getElementById(`_numperCommentList_${settingName}`).value = val;
                     Object.values(_settings.perCommentListSettings).forEach((arr) => {
                         if (arr[`${settingName}_useDefault`]) {
@@ -5025,7 +5100,7 @@
                     if (val !== this.value)
                         this.value = val;
                     _settings[settingName] = val;
-                    if (document.getElementById(`_cbperCommentList_${settingName}_useDefault`).checked && (`_numperCommentList_${settingName}` !== val))
+                    if (document.getElementById(`_cbperCommentList_${settingName}_useDefault`)?.checked && (document.getElementById(`_numperCommentList_${settingName}`).value !== val))
                         document.getElementById(`_textperCommentList_${settingName}`).value = val;
                     Object.values(_settings.perCommentListSettings).forEach((arr) => {
                         if (arr[`${settingName}_useDefault`]) {
@@ -5041,7 +5116,7 @@
                                     e.stopPropagation();
                                     window.open(this.href, '_blank');
                                 },
-                                customSsIdLink = setElemAttrs(_elems.a.cloneNode(false), {
+                                customSsIdLink = createElem('a', {
                                     class: 'URCE-Controls URCE-spreadsheetLink',
                                     id: 'urce-customSpreadsheet-link',
                                     title: I18n.t('urce.prefs.CustomSpreadsheetLinkTitle'),
@@ -5049,7 +5124,7 @@
                                     textContent: I18n.t('urce.prefs.CustomSpreadsheetLink')
                                 }, [{ click: customSsIdLinkClick }]);
                             if (!document.getElementById('urceCustomSpreadsheetLinkDiv')) {
-                                const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceCustomSpreadsheetLinkDiv', class: 'URCE-spreadsheetLink' });
+                                const divElemRoot = createElem('div', { id: 'urceCustomSpreadsheetLinkDiv', class: 'URCE-spreadsheetLink' });
                                 divElemRoot.appendChild(customSsIdLink);
                                 document.getElementById('urceSpreadsheetLinks').appendChild(divElemRoot);
                             }
@@ -5069,12 +5144,12 @@
                 }
             },
             buildFieldsetSection = (idTag, textContent, divAttrs = { class: 'URCE-controls URCE-divCC' }) => {
-                const legendElem = setElemAttrs(_elems.legend.cloneNode(false), { id: `urce-prefs-legend-${idTag}`, class: `URCE-legend${urStyle}` }, [{ click: legendClickToggle }]);
-                legendElem.appendChild(setElemAttrs(_elems.i.cloneNode(false), { class: 'fa fa-fw fa-chevron-down URCE-chevron' }));
-                legendElem.appendChild(setElemAttrs(_elems.span.cloneNode(false), { class: 'URCE-span', textContent }));
-                const fieldsetElem = setElemAttrs(_elems.fieldset.cloneNode(false), { id: `urce-prefs-fieldset-${idTag}`, class: `URCE-field${urStyle}` });
+                const legendElem = createElem('legend', { id: `urce-prefs-legend-${idTag}`, class: `URCE-legend${urStyle}` }, [{ click: legendClickToggle }]);
+                legendElem.appendChild(createElem('i', { class: 'fa fa-fw fa-chevron-down URCE-chevron' }));
+                legendElem.appendChild(createElem('span', { class: 'URCE-span', textContent }));
+                const fieldsetElem = createElem('fieldset', { id: `urce-prefs-fieldset-${idTag}`, class: `URCE-field${urStyle}` });
                 fieldsetElem.appendChild(legendElem);
-                const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), divAttrs);
+                const divElemRoot = createElem('div', divAttrs);
                 fieldsetElem.appendChild(divElemRoot);
                 return { fieldsetElem, contentDiv: divElemRoot };
             },
@@ -5146,27 +5221,27 @@
                     disabled = true;
                     urceDisabled = ' urceDisabled';
                 }
-                const divElemRoot = _elems.div.cloneNode(false);
+                const divElemRoot = createElem('div');
                 divElemRoot.appendChild(
-                    setElemAttrs(_elems.input.cloneNode(false), {
+                    createElem('input', {
                         type: 'checkbox', id: `_cb${setting}`, urceprefs, class: `urceSettingsCheckbox${urceDisabled}`, title, disabled, checked: (_settings[setting] === true)
                     }, [{ change: urceSettingsCheckboxChange }])
                 );
-                divElemRoot.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                divElemRoot.appendChild(createElem('label', {
                     for: `_cb${setting}`, urceprefs, title, class: `URCE-label${urceDisabled}`, disabled, textContent: translationName
                 }));
                 if (setting === 'autoSendReminders') {
-                    const divElemWarning = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divWarning URCE-divWarningPre', textContent: '(' });
+                    const divElemWarning = createElem('div', { class: 'URCE-divWarning URCE-divWarningPre', textContent: '(' });
                     divElemWarning.appendChild(
-                        setElemAttrs(_elems.div.cloneNode(false), {
+                        createElem('div', {
                             class: 'URCE-divWarning URCE-divWarningTitle', title: I18n.t('urce.prefs.AutoSendRemindersWarningTitle'), textContent: I18n.t('urce.prefs.AutoSendRemindersWarning')
                         })
                     );
-                    divElemWarning.appendChild(setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divWarning', textContent: ')' }));
+                    divElemWarning.appendChild(createElem('div', { class: 'URCE-divWarning', textContent: ')' }));
                     divElemRoot.appendChild(divElemWarning);
-                    const divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { style: 'padding-left:15px; font-style:italic;' });
+                    const divElemDiv = createElem('div', { style: 'padding-left:15px; font-style:italic;' });
                     divElemDiv.appendChild(
-                        setElemAttrs(_elems.input.cloneNode(false), {
+                        createElem('input', {
                             type: 'checkbox',
                             id: '_cbautoSendRemindersExceptTagged',
                             urceprefs,
@@ -5176,7 +5251,7 @@
                         }, [{ change: urceSettingsCheckboxChange }])
                     );
                     divElemDiv.appendChild(
-                        setElemAttrs(_elems.label.cloneNode(false), {
+                        createElem('label', {
                             for: '_cbautoSendRemindersExceptTagged',
                             urceprefs,
                             title: I18n.t('urce.prefs.AutoSendRemindersExceptTaggedTitle'),
@@ -5187,8 +5262,8 @@
                     divElemRoot.appendChild(divElemDiv);
                 }
                 if ((setting === 'disableFilteringAboveZoom') || (setting === 'disableFilteringBelowZoom')) {
-                    const divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled });
-                    divElemDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    const divElemDiv = createElem('div', { class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled });
+                    divElemDiv.appendChild(createElem('input', {
                         type: 'number',
                         id: `_num${setting}Level`,
                         class: `URCE-daysInput urceSettingsNumberBox${urceDisabled}`,
@@ -5203,8 +5278,8 @@
                     divElemRoot.appendChild(divElemDiv);
                 }
                 if (setting === 'hideByStatusClosedBy') {
-                    const divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled });
-                    divElemDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    const divElemDiv = createElem('div', { class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled });
+                    divElemDiv.appendChild(createElem('input', {
                         type: 'text',
                         id: '_texthideByStatusClosedByUsers',
                         class: `urceSettingsTextBox${urceDisabled}`,
@@ -5225,11 +5300,11 @@
                     disabled = true;
                     urceDisabled = ' urceDisabled';
                 }
-                const divElemRoot = _elems.div.cloneNode(false);
-                divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                const divElemRoot = createElem('div');
+                divElemRoot.appendChild(createElem('input', {
                     type: 'checkbox', id: `_cb${setting}`, urceprefs, class: `urceSettingsCheckbox${urceDisabled}`, title, disabled, checked: (_settings[setting] === true)
                 }, [{ change: urceSettingsCheckboxChange }]));
-                divElemRoot.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                divElemRoot.appendChild(createElem('label', {
                     for: `_cb${setting}`, urceprefs, title, class: `URCE-label${urceDisabled}`, disabled, textContent: translationName
                 }));
                 return divElemRoot;
@@ -5242,10 +5317,10 @@
                     urceDisabled = ' urceDisabled';
                 }
                 const title = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`),
-                    divElemRoot = setElemAttrs(_elems.div.cloneNode(false), {
+                    divElemRoot = createElem('div', {
                         title, class: `URCE-label${urceDisabled}`, urceprefs, disabled, textContent: `${I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}`)}: `
                     });
-                divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                divElemRoot.appendChild(createElem('input', {
                     type: 'text', id: `_text${setting}`, class: `URCE-textInput urceSettingsTextBox${urceDisabled}`, urceprefs, value: _settings[setting], title, disabled
                 }, [{ change: urceSettingsTextBoxChange }]));
                 return divElemRoot;
@@ -5259,14 +5334,14 @@
                 }
                 const translationName = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}`),
                     title = formatText(I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`), false, false, -1),
-                    divElemRoot = setElemAttrs(_elems.div.cloneNode(false), {
+                    divElemRoot = createElem('div', {
                         title, class: `URCE-label${urceDisabled}`, urceprefs, disabled, textContent: `${translationName} `
                     });
-                divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                divElemRoot.appendChild(createElem('input', {
                     type: 'number', id: `_num${setting}`, class: `URCE-daysInput urceSettingsNumberBox${urceDisabled}`, urceprefs, value: _settings[setting], title, min, max, step, disabled
                 }, [{ change: urceSettingsNumberBoxChange }]));
                 if (postText) {
-                    divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                    divElemRoot.appendChild(createElem('div', {
                         title, class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled, textContent: postText
                     }));
                 }
@@ -5295,18 +5370,18 @@
                 }
                 const translationTitle1 = I18n.t(`urce.prefs.${setting1.charAt(0).toUpperCase()}${setting1.slice(1)}Title`),
                     translationTitle2 = I18n.t(`urce.prefs.${setting2.charAt(0).toUpperCase()}${setting2.slice(1)}Title`),
-                    divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline-flex;', textContent: `${textBefore}: ` }),
-                    divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline;' });
-                divElemDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    divElemRoot = createElem('div', { style: 'display:inline-flex;', textContent: `${textBefore}: ` }),
+                    divElemDiv = createElem('div', { style: 'display:inline;' });
+                divElemDiv.appendChild(createElem('input', {
                     type: 'checkbox', id: `_cb${setting1}`, urceprefs, class: `urceSettingsCheckbox${urceDisabled}`, title: translationTitle1, disabled, checked: (_settings[setting1] === true)
                 }, [{ change: urceSettingsCheckboxChange }]));
-                divElemDiv.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                divElemDiv.appendChild(createElem('label', {
                     for: `_cb${setting1}`, urceprefs, class: `URCE-label${urceDisabled}`, title: translationTitle1, disabled, textContent: translationName1
                 }));
-                divElemDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                divElemDiv.appendChild(createElem('input', {
                     type: 'checkbox', id: `_cb${setting2}`, urceprefs, class: `urceSettingsCheckbox${urceDisabled}`, title: translationTitle2, disabled, checked: (_settings[setting2] === true)
                 }, [{ change: urceSettingsCheckboxChange }]));
-                divElemDiv.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                divElemDiv.appendChild(createElem('label', {
                     for: `_cb${setting2}`, urceprefs, class: `URCE-label${urceDisabled}`, title: translationTitle2, disabled, textContent: translationName2
                 }));
                 divElemRoot.appendChild(divElemDiv);
@@ -5327,20 +5402,20 @@
                 else
                     translationName = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}`);
                 const title = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`),
-                    divElemRoot = _elems.div.cloneNode(false);
-                divElemRoot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    divElemRoot = createElem('div');
+                divElemRoot.appendChild(createElem('input', {
                     type: 'checkbox', id: `_cb${setting}`, urceprefs, class: `urceSettingsCheckbox${urceDisabled}`, title, disabled, checked: (_settings[setting] === true)
                 }, [{ change: urceSettingsCheckboxChange }]));
-                divElemRoot.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                divElemRoot.appendChild(createElem('label', {
                     for: `_cb${setting}`, urceprefs, class: `URCE-label${urceDisabled}`, title, disabled, textContent: `${translationName}: `
                 }));
-                const divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled });
-                divElemDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                const divElemDiv = createElem('div', { class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled });
+                divElemDiv.appendChild(createElem('input', {
                     type: 'number', id: `_num${numSetting}`, urceprefs, class: `URCE-daysInput urceSettingsNumberBox${urceDisabled}`, value: _settings[numSetting], title, min, max, step, disabled
                 }, [{ change: urceSettingsNumberBoxChange }]));
                 divElemRoot.appendChild(divElemDiv);
                 if (postText) {
-                    divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                    divElemRoot.appendChild(createElem('div', {
                         class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled, textContent: postText
                     }));
                 }
@@ -5355,49 +5430,49 @@
                 }
                 const translationName = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}`),
                     title = I18n.t(`urce.prefs.${setting.charAt(0).toUpperCase()}${setting.slice(1)}Title`),
-                    divElemRooot = setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline-flex;' });
-                divElemRooot.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                    divElemRooot = createElem('div', { style: 'display:inline-flex;' });
+                divElemRooot.appendChild(createElem('input', {
                     type: 'checkbox', id: `_cb${setting}`, urceprefs, class: `urceSettingsCheckbox${urceDisabled}`, title, disabled, checked: (_settings[setting] === true)
                 }, [{ change: urceSettingsCheckboxChange }]));
-                divElemRooot.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+                divElemRooot.appendChild(createElem('label', {
                     for: `_cb${setting}`, urceprefs, class: `URCE-label${urceDisabled}`, title, disabled, textContent: `${translationName}: `
                 }));
-                const divElemDiv = setElemAttrs(_elems.div.cloneNode(false), { class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled });
-                divElemDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+                const divElemDiv = createElem('div', { class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled });
+                divElemDiv.appendChild(createElem('input', {
                     type: 'text', id: `_text${textSetting}`, urceprefs, class: `URCE-textInput2 urceSettingsTextBox${urceDisabled}`, value: _settings[textSetting], title, disabled
                 }, [{ change: urceSettingsTextBoxChange }]));
                 divElemRooot.appendChild(divElemDiv);
                 if (postText) {
-                    divElemRooot.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+                    divElemRooot.appendChild(createElem('div', {
                         class: `URCE-divDaysInline${urceDisabled}`, urceprefs, disabled, textContent: postText
                     }));
                 }
                 return divElemRooot;
             };
-        const contentHeaderDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'expandCollapseAllSettings', class: `URCE-expandCollapseAll${urStyle}` });
-        contentHeaderDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+        const contentHeaderDiv = createElem('div', { id: 'expandCollapseAllSettings', class: `URCE-expandCollapseAll${urStyle}` });
+        contentHeaderDiv.appendChild(createElem('div', {
             id: 'URCE-expandAllSettings', class: 'URCE-expandCollapseAllItem', textContent: I18n.t('urce.common.ExpandAll')
         }, [{ click: expandCollapseAll }]));
-        contentHeaderDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), { style: 'display:inline;', textContent: ' : ' }));
-        contentHeaderDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+        contentHeaderDiv.appendChild(createElem('div', { style: 'display:inline;', textContent: ' : ' }));
+        contentHeaderDiv.appendChild(createElem('div', {
             id: 'URCE-collapseAllSettings', class: 'URCE-expandCollapseAllItem', textContent: I18n.t('urce.common.CollapseAll')
         }, [{ click: expandCollapseAll }]));
         docFrags.appendChild(contentHeaderDiv);
         // Comment List
         let { fieldsetElem, contentDiv } = buildFieldsetSection('commentList', I18n.t('urce.common.CommentList')),
-            contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { textContent: `${I18n.t('urce.prefs.DefaultList')}: ` }),
-            selectElem = setElemAttrs(_elems.select.cloneNode(false), { id: '_selCommentList', title: I18n.t('urce.prefs.DefaultListTitle'), urceprefs: 'commentList' }, [{ change: commentListSelectionChange }]);
+            contentDivDiv = createElem('div', { textContent: `${I18n.t('urce.prefs.DefaultList')}: ` }),
+            selectElem = createElem('select', { id: '_selCommentList', title: I18n.t('urce.prefs.DefaultListTitle'), urceprefs: 'commentList' }, [{ change: commentListSelectionChange }]);
         _commentLists.forEach((cList) => {
             if (cList.status !== 'disabled')
-                selectElem.appendChild(setElemAttrs(_elems.option.cloneNode(false), { value: cList.idx, textContent: cList.name, selected: (cList.idx === _settings.commentList) }));
+                selectElem.appendChild(createElem('option', { value: cList.idx, textContent: cList.name, selected: (cList.idx === _settings.commentList) }));
         });
         contentDivDiv.appendChild(selectElem);
-        let contentDivDivDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'restrictionsEnforcedWarning-Settings', style: `float:right;padding-right:4px;color:red;font-size:18px;${(_restrictionsEnforcedTitle ? '' : 'display:none;')}` });
-        contentDivDivDiv.appendChild(setElemAttrs(_elems.i.cloneNode(false), { class: 'fa fa-exclamation-triangle', 'aria-hidden': true, title: _restrictionsEnforcedTitle || '' }));
+        let contentDivDivDiv = createElem('div', { id: 'restrictionsEnforcedWarning-Settings', style: `float:right;padding-right:4px;color:red;font-size:18px;${(_restrictionsEnforcedTitle ? '' : 'display:none;')}` });
+        contentDivDivDiv.appendChild(createElem('i', { class: 'fa fa-exclamation-triangle', 'aria-hidden': true, title: _restrictionsEnforcedTitle || '' }));
         contentDivDiv.appendChild(contentDivDivDiv);
         contentDiv.appendChild(contentDivDiv);
-        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { textContent: `${I18n.t('urce.prefs.CustomSsId')}: ` });
-        contentDivDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+        contentDivDiv = createElem('div', { textContent: `${I18n.t('urce.prefs.CustomSsId')}: ` });
+        contentDivDiv.appendChild(createElem('input', {
             type: 'text',
             id: '_textcustomSsId',
             class: 'URCE-textInput urceSettingsTextBox',
@@ -5408,31 +5483,31 @@
         }, [{ change: urceSettingsTextBoxChange }]));
         contentDiv.appendChild(contentDivDiv);
 
-        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { textContent: `${I18n.t('urce.common.Style')}: ` });
-        selectElem = setElemAttrs(_elems.select.cloneNode(false), {
+        contentDivDiv = createElem('div', { textContent: `${I18n.t('urce.common.Style')}: ` });
+        selectElem = createElem('select', {
             id: '_selCommentListStyle', title: I18n.t('urce.prefs.CommentListStyleTitle'), urceprefs: 'commentList'
         }, [{ change: commentListStyleSelectionChange }]);
-        selectElem.appendChild(setElemAttrs(_elems.option.cloneNode(false), { value: 'default', textContent: I18n.t('urce.prefs.StyleDefault'), selected: (_settings.commentListStyle === 'default') }));
-        selectElem.appendChild(setElemAttrs(_elems.option.cloneNode(false), { value: 'urStyle', textContent: I18n.t('urce.prefs.StyleUrStyle'), selected: (_settings.commentListStyle === 'urStyle') }));
+        selectElem.appendChild(createElem('option', { value: 'default', textContent: I18n.t('urce.prefs.StyleDefault'), selected: (_settings.commentListStyle === 'default') }));
+        selectElem.appendChild(createElem('option', { value: 'urStyle', textContent: I18n.t('urce.prefs.StyleUrStyle'), selected: (_settings.commentListStyle === 'urStyle') }));
         contentDivDiv.appendChild(selectElem);
         contentDiv.appendChild(contentDivDiv);
 
-        contentDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+        contentDiv.appendChild(createElem('input', {
             type: 'checkbox', id: '_cbautoSwitchCommentList', class: 'urceSettingsCheckbox', urceprefs: 'commentList', title: I18n.t('urce.prefs.AutoSwitchCommentListTitle'), checked: _settings.autoSwitchCommentList
         }, [{ change: urceSettingsCheckboxChange }]));
-        contentDiv.appendChild(setElemAttrs(_elems.label.cloneNode(false), {
+        contentDiv.appendChild(createElem('label', {
             for: '_cbautoSwitchCommentList', urceprefs: 'commentList', title: I18n.t('urce.prefs.AutoSwitchCommentListTitle'), class: 'URCE-label', textContent: I18n.t('urce.prefs.AutoSwitchCommentList')
         }));
 
-        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceSpreadsheetLinks' });
-        contentDivDivDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceSpreadsheetLinkDiv', class: 'URCE-spreadsheetLink' });
-        contentDivDivDiv.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+        contentDivDiv = createElem('div', { id: 'urceSpreadsheetLinks' });
+        contentDivDivDiv = createElem('div', { id: 'urceSpreadsheetLinkDiv', class: 'URCE-spreadsheetLink' });
+        contentDivDivDiv.appendChild(createElem('a', {
             id: 'urce-spreadsheet-link', class: 'URCE-Controls URCE-spreadsheetLink', title: I18n.t('urce.prefs.SpreadsheetLinkTitle'), href: 'http://bit.ly/urc-e_ss', textContent: 'URC-E Master Spreadsheet'
         }, [{ click: spreadsheetLinkClick }]));
         contentDivDiv.appendChild(contentDivDivDiv);
         if (_settings.customSsId?.length > 0) {
-            contentDivDivDiv = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceCustomSpreadsheetLinkDiv', class: 'URCE-spreadsheetLink' });
-            contentDivDivDiv.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+            contentDivDivDiv = createElem('div', { id: 'urceCustomSpreadsheetLinkDiv', class: 'URCE-spreadsheetLink' });
+            contentDivDivDiv.appendChild(createElem('a', {
                 id: 'urce-customSpreadsheet-link',
                 class: 'URCE-Controls URCE-spreadsheetLink',
                 title: I18n.t('urce.prefs.CustomSpreadsheetLinkTitle'),
@@ -5453,14 +5528,14 @@
             'disableDoneNextButtons', 'replaceNextWithDoneButton', 'doubleClickLinkNiComments', 'doubleClickLinkOpenComments', 'doubleClickLinkSolvedComments', 'hideZoomOutLinks',
             'unfollowUrAfterSend', 'enableUrOverflowHandling', 'enableAutoRefresh', 'expandMoreInfo', 'expandShortcuts', 'autoScrollComments',
             'reverseCommentSort'].forEach((setting) => { contentDiv.appendChild(buildStandardCbSetting(setting, 'urce')); });
-        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-controls URCE-textFirst' });
+        contentDivDiv = createElem('div', { class: 'URCE-controls URCE-textFirst' });
         contentDivDiv.appendChild(buildTextFirstTextSetting('tagEmail', 'commentList'));
         contentDivDiv.appendChild(buildTextFirstNumSetting('reminderDays', 'urce', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replaceAll('0 ', '')));
         contentDivDiv.appendChild(buildTextFirstNumSetting('closeDays', 'urce', '1', '9999', '1', I18n.t('common.time.days', { days: 0 }).replaceAll('0 ', '')));
-        contentDivDivDiv = setElemAttrs(_elems.div.cloneNode(false), {
+        contentDivDivDiv = createElem('div', {
             class: 'URCE-label', urceprefs: 'commentList', title: I18n.t('urce.prefs.CustomTaglineTitle'), textContent: `${I18n.t('urce.prefs.CustomTagline')}: `
         });
-        contentDivDivDiv.appendChild(setElemAttrs(_elems.textarea.cloneNode(false), {
+        contentDivDivDiv.appendChild(createElem('textarea', {
             id: '_textcustomTagline',
             class: 'URCE-textInput urceSettingsTextBox',
             style: 'width:230px;height:50px;resize:none;',
@@ -5475,19 +5550,19 @@
         ({ fieldsetElem, contentDiv } = buildFieldsetSection('ur-marker-prefs', I18n.t('urce.prefs.UrMarkerPrefs')));
         contentDiv.appendChild(buildStandardCbSetting('enableUrPillCounts', 'markerMaster'));
         contentDiv.appendChild(buildStandardCbSetting('disableUrMarkerPopup', 'marker-nodisable'));
-        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-textFirst', urceprefs: 'marker-nodisable' });
+        contentDivDiv = createElem('div', { class: 'URCE-textFirst', urceprefs: 'marker-nodisable' });
         contentDivDiv.appendChild(buildTextFirstNumSetting('urMarkerPopupDelay', 'marker-nodisable', '1', '99', '1', ' * 100ms'));
         contentDivDiv.appendChild(buildTextFirstNumSetting('urMarkerPopupTimeout', 'marker-nodisable', '1', '99', '1', I18n.t('datetime.distance_in_words.x_seconds.other', { count: 30 }).replaceAll('30', '')));
         contentDiv.appendChild(contentDivDiv);
         ['doNotShowTagNameOnPill', 'replaceTagNameWithEditorName'].forEach((setting) => { contentDiv.appendChild(buildStandardCbSetting(setting, 'marker')); });
         contentDiv.appendChild(buildStandardCbSetting('unstackMarkers', 'marker-nodisable'));
-        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-textFirst', urceprefs: 'marker-nodisable-stack' });
+        contentDivDiv = createElem('div', { class: 'URCE-textFirst', urceprefs: 'marker-nodisable-stack' });
         contentDivDiv.appendChild(buildTextFirstNumSetting('unstackSensitivity', 'marker-nodisable-unstack', '1', '99', '1', undefined));
         contentDivDiv.appendChild(buildTextFirstNumSetting('unstackDisableAboveZoom', 'marker-nodisable-unstack', '12', '22', '1', undefined));
         contentDiv.appendChild(contentDivDiv);
         // -- Custom markers
-        contentDivDiv = _elems.div.cloneNode(false);
-        contentDivDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t('urce.prefs.UseCustomMarkersFor')}:` }));
+        contentDivDiv = createElem('div');
+        contentDivDiv.appendChild(createElem('div', { class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t('urce.prefs.UseCustomMarkersFor')}:` }));
         ['Bog', 'Closures', 'Construction', 'Difficult', 'Events', 'Notes', 'Roadworks', 'Wslm', 'NativeSl', 'Custom'].forEach((setting) => {
             let translationName,
                 translationTitle;
@@ -5509,8 +5584,8 @@
             }
             contentDivDiv.appendChild(buildTagCbSetting(`customMarkers${setting}`, 'marker-nodisable', translationName, translationTitle));
         });
-        contentDivDivDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divDaysInline' });
-        contentDivDivDiv.appendChild(setElemAttrs(_elems.input.cloneNode(false), {
+        contentDivDivDiv = createElem('div', { class: 'URCE-divDaysInline' });
+        contentDivDivDiv.appendChild(createElem('input', {
             type: 'text', id: '_textcustomMarkersCustomText', class: 'urceSettingsTextBox', style: 'width:100px;height:20px;', value: _settings.customMarkersCustomText, title: I18n.t('urce.prefs.CustomTitle')
         }, [{ change: urceSettingsTextBoxChange }]));
         contentDivDiv.appendChild(contentDivDivDiv);
@@ -5523,19 +5598,19 @@
             contentDiv.appendChild(buildStandardCbSetting(setting, 'filtering'));
         });
         // -- Lifecycle
-        contentDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+        contentDiv.appendChild(createElem('div', {
             class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t(`urce.prefs.LifeCycleStatus${((_settings.invertFilters) ? 'Inverted' : '')}`)}:`
         }));
         ['hideWaiting', 'hideUrsCloseNeeded', 'hideUrsReminderNeeded'].forEach((setting) => { contentDiv.appendChild(buildStandardCbSetting(setting, 'filtering')); });
         // -- Hide by status
-        contentDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+        contentDiv.appendChild(createElem('div', {
             class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t(`urce.prefs.HideByStatus${((_settings.invertFilters) ? 'Inverted' : '')}`)}:`
         }));
         ['hideByStatusOpen', 'hideByStatusClosed', 'hideByStatusNotIdentified', 'hideByStatusSolved', 'hideByStatusClosedBy'].forEach((setting) => {
             contentDiv.appendChild(buildStandardCbSetting(setting, 'filtering'));
         });
         // -- Hide by type
-        contentDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+        contentDiv.appendChild(createElem('div', {
             class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t(`urce.prefs.HideByType${((_settings.invertFilters) ? 'Inverted' : '')}`)}:`
         }));
         ['hideByTypeBlockedRoad', 'hideByTypeGeneralError', 'hideByTypeIncorrectAddress', 'hideByTypeIncorrectJunction', 'hideByTypeIncorrectRoute', 'hideByTypeIncorrectStreetPrefixOrSuffix',
@@ -5543,14 +5618,14 @@
             'hideByTypeMissingRoundabout', 'hideByTypeMissingStreetName', 'hideByTypeTurnNotAllowed', 'hideByTypeUndefined', 'hideByTypeWrongDrivingDirection'
         ].forEach((setting) => { contentDiv.appendChild(buildStandardCbSetting(setting, 'filtering')); });
         // -- Hide by tagged
-        contentDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+        contentDiv.appendChild(createElem('div', {
             class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t(`urce.prefs.HideByTagged${((_settings.invertFilters) ? 'Inverted' : '')}`)}:`
         }));
         ['Bog', 'Closure', 'Construction', 'Difficult', 'Event', 'Note', 'Roadworks', 'Wslm'].forEach((setting) => {
             contentDiv.appendChild(buildTagCbSetting(`hideByTagged${setting}`, 'filtering', I18n.t(`urce.tags.${setting}`), I18n.t(`urce.prefs.HideByTagged${setting}Title`), true));
         });
         // -- Hide by age of submission
-        contentDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+        contentDiv.appendChild(createElem('div', {
             class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t(`urce.prefs.HideByAgeOfSubmission${((_settings.invertFilters) ? 'Inverted' : '')}`)}:`
         }));
         contentDiv.appendChild(
@@ -5560,10 +5635,10 @@
             buildCbandNumSetting('hideByAgeOfSubmissionMoreThan', 'hideByAgeOfSubmissionMoreThanDaysOld', 'filtering', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replaceAll('0 ', ''))
         );
         // -- Hide by description, comments, following
-        contentDiv.appendChild(setElemAttrs(_elems.div.cloneNode(false), {
+        contentDiv.appendChild(createElem('div', {
             class: 'URCE-subHeading', style: 'font-weight:600;', textContent: `${I18n.t(`urce.prefs.DescriptionCommentsFollowing${((_settings.invertFilters) ? 'Inverted' : '')}`)}:`
         }));
-        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-textFirst', urceprefs: 'filtering' });
+        contentDivDiv = createElem('div', { class: 'URCE-textFirst', urceprefs: 'filtering' });
         contentDivDiv.appendChild(buildTextFirstDoubleCbSetting('hideFollowing', 'hideNotFollowing', I18n.t('urce.common.Following'), 'filtering'));
         contentDivDiv.appendChild(buildTextFirstDoubleCbSetting('hideWithDescription', 'hideWithoutDescription', I18n.t('objects.venue.fields.description'), 'filtering'));
         contentDivDiv.appendChild(buildTextFirstDoubleCbSetting('hideWithCommentsFromMe', 'hideWithoutCommentsFromMe', I18n.t('urce.prefs.HideCommentsFromMe'), 'filtering'));
@@ -5587,7 +5662,7 @@
         );
         contentDiv.appendChild(buildCbandTextSetting('hideByKeywordIncluding', 'hideByKeywordIncludingKeyword', 'filtering', undefined));
         contentDiv.appendChild(buildCbandTextSetting('hideByKeywordNotIncluding', 'hideByKeywordNotIncludingKeyword', 'filtering', undefined));
-        contentDivDiv = setElemAttrs(_elems.div.cloneNode(false), { style: 'padding-left:15px;font-style:italic;' });
+        contentDivDiv = createElem('div', { style: 'padding-left:15px;font-style:italic;' });
         contentDivDiv.appendChild(buildStandardCbSetting('hideByKeywordCaseInsensitive', 'filtering'));
         contentDiv.appendChild(contentDivDiv);
         contentDiv.appendChild(buildCbandTextSetting('hideWithCommentBy', 'hideWithCommentByUsers', 'filtering', undefined));
@@ -5619,60 +5694,57 @@
                     hidePopup({ doubleClick: true });
                     document.getElementById('_cbdisableUrMarkerPopup').dispatchEvent(new MouseEvent('click', { bubbles: true }));
                 },
-                divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { id: 'urceDiv' }, [{ mouseleave: hidePopup }, { mouseenter: checkPopupTimeouts }, { dblclick: dispatchPopupDoubleClick }]);
-            divElemRoot.appendChild(setElemAttrs(_elems.span.cloneNode(false), { class: 'urceDivCloseButton', textContent: 'X' }, [{ click: hidePopup }]));
-            divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { class: 'urceDivContent' }));
-            divElemRoot.appendChild(setElemAttrs(_elems.span.cloneNode(false), { class: 'urceDivDisablePopups', textContent: I18n.t('urce.prefs.DisableUrMarkerPopup') }, [{ click: disableUrMarkerPopups }]));
+                divElemRoot = createElem('div', { id: 'urceDiv' }, [{ mouseleave: hidePopup }, { mouseenter: checkPopupTimeouts }, { dblclick: dispatchPopupDoubleClick }]);
+            divElemRoot.appendChild(createElem('span', { class: 'urceDivCloseButton', textContent: 'X' }, [{ click: hidePopup }]));
+            divElemRoot.appendChild(createElem('div', { class: 'urceDivContent' }));
+            divElemRoot.appendChild(createElem('span', { class: 'urceDivDisablePopups', textContent: I18n.t('urce.prefs.DisableUrMarkerPopup') }, [{ click: disableUrMarkerPopups }]));
             document.body.appendChild(divElemRoot);
         }
         if (firstCall) {
             const docFrags = document.createDocumentFragment(),
                 { tabLabel, tabPane } = W.userscripts.registerSidebarTab('URC-E'),
-                ulElem = _elems.ul.cloneNode(false),
                 urceUrFilteringToggle = (evt) => {
                     evt.stopPropagation();
                     document.getElementById('_cbenableUrceUrFiltering').dispatchEvent(new MouseEvent('click', { bubbles: true }));
                 };
-            let divElemRoot,
-                liElem;
             // Tab Label
-            docFrags.appendChild(setElemAttrs(_elems.img.cloneNode(false), { id: 'urceIcon', class: 'URCE-tabIcon', src: GM_info.script.icon }));
+            docFrags.appendChild(createElem('img', { id: 'urceIcon', class: 'URCE-tabIcon', src: GM_info.script.icon }));
             docFrags.appendChild(
-                setElemAttrs(_elems.span.cloneNode(false), { id: 'urceUrMarkerProcessingSpinner', class: 'fa fa-spinner URCE-spinner', title: I18n.t('urce.mouseOver.URMarkerProcessingInactive') })
+                createElem('span', { id: 'urceUrMarkerProcessingSpinner', class: 'fa fa-spinner URCE-spinner', title: I18n.t('urce.mouseOver.URMarkerProcessingInactive') })
             );
             docFrags.appendChild(
-                setElemAttrs(_elems.span.cloneNode(false), {
+                createElem('span', {
                     id: 'urceUrFilteringToggleBtn', class: 'fa fa-filter URCE-urFilteringToggleBtn', style: `color:${(_settings.enableUrceUrFiltering ? '#00bd00' : '#ccc')};`, title: I18n.t('urce.mouseOver.ToggleUrceURFiltering')
                 }, [{ click: urceUrFilteringToggle }])
             );
             tabLabel.appendChild(docFrags);
             tabLabel.title = 'URC-E';
             // Tab Pane
-            docFrags.appendChild(setElemAttrs(_elems.span.cloneNode(false), { class: 'URCE-spanTitle', textContent: _SCRIPT_SHORT_NAME }));
-            docFrags.appendChild(setElemAttrs(_elems.span.cloneNode(false), { class: 'URCE-spanVersion', textContent: _SCRIPT_VERSION }));
-            liElem = setElemAttrs(_elems.li.cloneNode(false), { class: 'active' });
-            liElem.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+            docFrags.appendChild(createElem('span', { class: 'URCE-spanTitle', textContent: _SCRIPT_SHORT_NAME }));
+            docFrags.appendChild(createElem('span', { class: 'URCE-spanVersion', textContent: _SCRIPT_VERSION }));
+            let liElem = createElem('li', { class: 'active' });
+            liElem.appendChild(createElem('a', {
                 'data-toggle': 'tab', href: '#panel-urce-comments', 'aria-expanded': true, textContent: I18n.t('urce.tabs.Comments')
             }));
-            setElemAttrs(ulElem, { class: 'nav nav-tabs' });
+            const ulElem = createElem('ul', { class: 'nav nav-tabs' });
             ulElem.appendChild(liElem);
-            liElem = _elems.li.cloneNode(false);
-            liElem.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+            liElem = createElem('li');
+            liElem.appendChild(createElem('a', {
                 'data-toggle': 'tab', href: '#panel-urce-settings', 'aria-expanded': true, textContent: I18n.t('urce.tabs.Settings')
             }));
             ulElem.appendChild(liElem);
-            liElem = _elems.li.cloneNode(false);
-            liElem.appendChild(setElemAttrs(_elems.a.cloneNode(false), {
+            liElem = createElem('li');
+            liElem.appendChild(createElem('a', {
                 'data-toggle': 'tab', href: '#panel-urce-tools', 'aria-expanded': true, textContent: I18n.t('urce.tabs.Tools')
             }));
             ulElem.appendChild(liElem);
-            divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-navTabs' });
+            let divElemRoot = createElem('div', { class: 'URCE-navTabs' });
             divElemRoot.appendChild(ulElem);
             docFrags.appendChild(divElemRoot);
-            divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'tab-content URCE-divTabs', style: '--height-offset:0px;' });
-            divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { id: 'panel-urce-comments', class: 'tab-pane active' }));
-            divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { id: 'panel-urce-settings', class: 'tab-pane' }));
-            divElemRoot.appendChild(setElemAttrs(_elems.div.cloneNode(false), { id: 'panel-urce-tools', class: 'tab-pane' }));
+            divElemRoot = createElem('div', { class: 'tab-content URCE-divTabs', style: '--height-offset:0px;' });
+            divElemRoot.appendChild(createElem('div', { id: 'panel-urce-comments', class: 'tab-pane active' }));
+            divElemRoot.appendChild(createElem('div', { id: 'panel-urce-settings', class: 'tab-pane' }));
+            divElemRoot.appendChild(createElem('div', { id: 'panel-urce-tools', class: 'tab-pane' }));
             docFrags.appendChild(divElemRoot);
             tabPane.appendChild(docFrags);
             Object.assign(tabPane.parentElement.style, { width: 'auto', padding: '0 15px' });
@@ -5959,10 +6031,7 @@
         _wmeUserId = W.loginManager.user.id;
         await loadSettingsFromStorage(false, false);
         const urIdInUrl = +window.location.search.split('mapUpdateRequest=')[1],
-            afterInitGuiError = (innerHTML) => {
-                const divElemRoot = setElemAttrs(_elems.div.cloneNode(false), { class: 'URCE-divLoading', innerHTML });
-                document.getElementById('panel-urce-comments')?.replaceChildren(divElemRoot);
-            },
+            afterInitGuiError = (divElem) => document.getElementById('panel-urce-comments')?.replaceChildren(divElem),
             afterInitGui = () => {
                 if (_initError)
                     return;
@@ -6006,7 +6075,11 @@
                             .finally(afterBuildCommentList);
                     };
                 doSpinner('init', true);
-                maskBoxes(`${I18n.t('urce.prompts.WaitingOnInit')}<br><br>${I18n.t('urce.common.PleaseWait')}.`, false, 'init', (urIdInUrl > 0));
+                const docFrags = document.createDocumentFragment();
+                docFrags.appendChild(createElem('div', { textContent: I18n.t('urce.prompts.WaitingOnInit') }));
+                docFrags.appendChild(createElem('br'));
+                docFrags.appendChild(createElem('div', { textContent: I18n.t('urce.common.PleaseWait') }));
+                maskBoxes(docFrags, false, 'init', (urIdInUrl > 0));
                 checkRestrictions([{ type: 'init' }]).then(afterCheckRestrictions);
             };
         Promise.all([loadTranslations(), initCommentLists(), initAutoSwitchArrays(), initRestrictions()]).catch(async (error) => {
@@ -6027,9 +6100,9 @@
             error.maskUrPanel = (urIdInUrl > 0);
             error.commentList = false;
             await areTranslationsReady();
-            const { errorHTML } = handleError(error);
+            const { divElemRoot } = handleError(error);
             await initGui(true, true);
-            afterInitGuiError(trustedHTML(errorHTML));
+            afterInitGuiError(divElemRoot);
         })
             .then(initGui)
             .then(afterInitGui);
@@ -6608,11 +6681,11 @@
                                     SelSegsInsertError: 'In order to use the <i class="fa fa-road" aria-hidden="true"></i> button in the UR Panel, you must first select one or two segments.',
                                     SetCustomSsIdFirst: 'Before you can select <b><i>Custom G Sheet</i></b> as your comment list, you must first set the <b><i>Custom Google Spreadsheet ID</i></b> setting on '
                                                 + 'the URC-E settings tab.',
-                                    SpreadsheetUpdateRequired: 'You are using an older version of the URC-E spreadsheet, which has caused an error. Please update your spreadsheet to at least version: $VERSION$'
-                                                + '<br><br> See instructions available in this forum post:<br>$LINK$',
+                                    SpreadsheetUpdateRequired: 'You are using an older version of the URC-E spreadsheet, which has caused an error. Please update your spreadsheet to at least version: $VERSION$ '
+                                                + 'See instructions available in this forum post: $LINK$',
                                     SwitchingCommentLists: 'Switching comment lists',
                                     TimedOutWaitingStatic: 'Timed out waiting for the static list to become available. Is it enabled?',
-                                    UpdateRequired: 'You are using an older version of URC-E, which has caused an error. Please update to at least version: $VERSION$ <br><br>GreasyFork Link:<br>$LINK$',
+                                    UpdateRequired: 'You are using an older version of URC-E, which has caused an error. Please update to at least version: $VERSION$ GreasyFork Link: $LINK$',
                                     UrOverflowErrorWithoutOverflowEnabled: 'WME will not load more than 500 URs per screen. Some URs may be missing. You can try to enable overflow handling, or zoom in and refresh.',
                                     VarFound: 'The selected comment contains variables: $VARSFOUND$.\n\nUntil these are replaced, the send button is disabled.',
                                     WaitingOnInit: 'Waiting for URC-E to fully initialize',
