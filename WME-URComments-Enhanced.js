@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.05.04.01
+// @version     2023.05.05.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -83,7 +83,8 @@
         _SCRIPT_VERSION = GM_info.script.version.toString(),
         _SCRIPT_VERSION_CHANGES = ['NEW: Further prepwork for possible future spreadsheet changes.',
             'CHANGE: A lot. Reverted to 100% vanilla JavaScript, removing reliance on jQuery.',
-            'CHANGE: Switch to WazeWrap update checking.'
+            'CHANGE: Switch to WazeWrap update checking.',
+            'CHANGE: Beta WME changes.'
         ],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
@@ -626,7 +627,7 @@
             const ulElem = createElem('ul');
             if (_SCRIPT_VERSION_CHANGES.length > 0) {
                 for (let idx = 0, { length } = _SCRIPT_VERSION_CHANGES; idx < length; idx++)
-                    ulElem.appendChild(createElem('li', { innerHTML: trustedHTML(_SCRIPT_VERSION_CHANGES[idx]) }));
+                    ulElem.appendChild(createElem('li', { innerHTML: _SCRIPT_VERSION_CHANGES[idx] }));
             }
             else {
                 ulElem.appendChild(createElem('li', { textContent: 'Nothing major.' }));
@@ -1172,7 +1173,7 @@
             if (domElement)
                 domElement.style.display = 'none';
         }
-        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .header .title .focus');
+        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .header .focus');
         if (domElement)
             domElement.addEventListener('click', recenterOnUr);
         domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
@@ -1480,8 +1481,11 @@
     }
 
     function autoZoomIn() {
-        if (W.map.getZoom() < 17)
-            W.map.getOLMap().moveTo(W.map.updateRequestLayer.featureMarkers[_selUr.urId].marker.lonlat, 17);
+        if (W.map.getZoom() < 17) {
+            const urGeo = W.model.mapUpdateRequests.objects[_selUr.urId].geometry,
+                lonlat = new OpenLayers.LonLat(urGeo.x, urGeo.y);
+            W.map.getOLMap().moveTo(lonlat, 17);
+        }
     }
 
     function autoZoomOut() {
@@ -2143,12 +2147,8 @@
         return false;
     }
 
-    class StackListObj {
-        constructor(urId, x, y) {
-            this.urId = +urId;
-            this.x = +x;
-            this.y = +y;
-        }
+    function stackListObj(urId, x, y) {
+        return { urId: +urId, x: +x, y: +y };
     }
 
     function restackMarkers() {
@@ -2159,8 +2159,13 @@
             || (_settings.disableFilteringBelowZoom && (W.map.getZoom() > _settings.disableFilteringBelowZoomLevel))
         )
             filter = false;
-        const markerMapCollection = { ...W.map.updateRequestLayer.featureMarkers };
-        const markerModelCollection = { ...W.model.mapUpdateRequests.objects };
+        // 2023.05.05.01: W.map.updateRequestLayer.featureMarkers is gone in beta WME. Also changed to W.map.getLayerByName
+        const markerMapCollection = W.map.getLayerByName('update_requests').markers
+                ? W.map.getLayerByName('update_requests').markers
+                    .map((marker) => ({ 'data-id': marker.element.attributes['data-id'].value, marker: { marker } }))
+                    .reduce((obj, val) => ({ ...obj, [val['data-id']]: val.marker }), {})
+                : { ...W.map.getLayerByName('update_requests').featureMarkers },
+            markerModelCollection = { ...W.model.mapUpdateRequests.objects };
         if (markerMapCollection) {
             Object.keys(markerMapCollection).forEach((marker) => {
                 if (markerMapCollection.hasOwnProperty(marker)) {
@@ -2178,15 +2183,19 @@
                             && (!((_selUr.urId === markerModelObj.attributes.id) && _settings.doNotHideSelectedUr))
                             && (!((markerModelObj.attributes.urceData.tagType !== -1) && _settings.doNotFilterTaggedUrs)))
                     ) {
-                        if (markerMapObj.marker.icon.imageDiv.style.display === 'none')
-                            markerMapObj.marker.icon.imageDiv.style.display = '';
+                        // 2023.05.05.01: With my rewrite for the markers object library, the icon.imageDiv is now element.
+                        const iconDiv = markerMapObj.marker.element || markerMapObj.marker.icon?.imageDiv;
+                        if (iconDiv.style.display === 'none')
+                            iconDiv.style.display = '';
                     }
                 }
             });
             for (let idx = 0, { length } = _markerStackArray; idx < length; idx++) {
                 if (markerMapCollection[_markerStackArray[idx].urId]) {
-                    markerMapCollection[_markerStackArray[idx].urId].marker.icon.imageDiv.style.left = `${_markerStackArray[idx].x}px`;
-                    markerMapCollection[_markerStackArray[idx].urId].marker.icon.imageDiv.style.top = `${_markerStackArray[idx].y}px`;
+                    // 2023.05.05.01: With my rewrite for the markers object library, the icon.imageDiv is now element.
+                    const iconDiv = markerMapCollection[_markerStackArray[idx].urId].marker.element || markerMapCollection[_markerStackArray[idx].urId].marker.icon?.imageDiv;
+                    iconDiv.style.left = `${_markerStackArray[idx].x}px`;
+                    iconDiv.style.top = `${_markerStackArray[idx].y}px`;
                 }
             }
             _markerStackArray = [];
@@ -2200,13 +2209,20 @@
             return;
         doSpinner('checkMarkerStacking', true);
         const stackList = [],
-            markerMapCollection = { ...W.map.updateRequestLayer.featureMarkers },
+            // 2023.05.05.01: W.map.updateRequestLayer.featureMarkers is gone in beta WME. Also changed to W.map.getLayerByName
+            markerMapCollection = W.map.getLayerByName('update_requests').markers
+                ? W.map.getLayerByName('update_requests').markers
+                    .map((marker) => ({ 'data-id': marker.element.attributes['data-id'].value, marker: { marker } }))
+                    .reduce((obj, val) => ({ ...obj, [val['data-id']]: val.marker }), {})
+                : { ...W.map.getLayerByName('update_requests').featureMarkers },
             markerModelCollection = { ...W.model.mapUpdateRequests.objects };
         let offset = 1000000000;
         stackList.push(urId);
         if (markerMapCollection) {
             Object.keys(markerMapCollection).forEach((marker) => {
                 if (markerMapCollection.hasOwnProperty(marker)) {
+                    // 2023.05.05.01: With my rewrite for the markers object library, the icon.imageDiv is now element.
+                    const iconDiv = markerMapCollection[marker].marker.element || markerMapCollection[marker].marker.icon?.imageDiv;
                     if (!markerModelCollection[marker].attributes.geometry.urceRealX) {
                         markerModelCollection[marker].attributes.geometry.urceRealX = (markerModelCollection[marker].attributes.geometry.realX)
                             ? markerModelCollection[marker].attributes.geometry.realX
@@ -2222,12 +2238,12 @@
                             : (markerModelCollection[marker].attributes.geometry.y + offset);
                         offset += 1000;
                     }
-                    if (!(markerMapCollection[marker].marker.icon.imageDiv.classList.contains('recently-closed') && (W.map.updateRequestLayer.showHidden === false))
-                        && ((markerMapCollection[marker].marker.icon.imageDiv.style.display !== 'none') || (markerMapCollection[marker].marker.icon.imageDiv.style.visibility !== 'hidden'))
+                    if (!(iconDiv.classList.contains('recently-closed') && (W.map.getLayerByName('update_requests').showHidden === false))
+                        && ((iconDiv.style.display !== 'none') || (iconDiv.style.visibility !== 'hidden'))
                     ) {
                         if (+marker !== urId) {
-                            const xDiff = unstackedX - parsePxString(markerMapCollection[marker].marker.icon.imageDiv.style.left),
-                                yDiff = unstackedY - parsePxString(markerMapCollection[marker].marker.icon.imageDiv.style.top),
+                            const xDiff = unstackedX - parsePxString(iconDiv.style.left),
+                                yDiff = unstackedY - parsePxString(iconDiv.style.top),
                                 distSquared = ((xDiff * xDiff) + (yDiff * yDiff));
                             if (distSquared < (_settings.unstackSensitivity * _settings.unstackSensitivity))
                                 stackList.push(+marker);
@@ -2248,15 +2264,17 @@
                 restackMarkers();
                 _unstackedMasterId = urId;
                 _markerStackArray = [];
-                _markerStackArray.push(new StackListObj(urId, unstackedX, unstackedY));
+                _markerStackArray.push(stackListObj(urId, unstackedX, unstackedY));
                 for (let idx = 0, { length } = stackList; idx < length; idx++) {
                     const thisUrId = stackList[idx],
-                        x = parsePxString(markerMapCollection[thisUrId].marker.icon.imageDiv.style.left),
-                        y = parsePxString(markerMapCollection[thisUrId].marker.icon.imageDiv.style.top);
-                    _markerStackArray.push(new StackListObj(thisUrId, x, y));
+                        // 2023.05.05.01: With my rewrite for the markers object library, the icon.imageDiv is now element.
+                        iconDiv = markerMapCollection[thisUrId].marker.element || markerMapCollection[thisUrId].marker.icon?.imageDiv,
+                        x = parsePxString(iconDiv.style.left),
+                        y = parsePxString(iconDiv.style.top);
+                    _markerStackArray.push(stackListObj(thisUrId, x, y));
                     if (!((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
-                        markerMapCollection[thisUrId].marker.icon.imageDiv.style.left = `${unstackedX}px`;
-                        markerMapCollection[thisUrId].marker.icon.imageDiv.style.top = `${unstackedY}px`;
+                        iconDiv.style.left = `${unstackedX}px`;
+                        iconDiv.style.top = `${unstackedY}px`;
                         unstackedX += 10;
                         unstackedY -= 30;
                     }
@@ -2264,8 +2282,11 @@
                 if (!((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
                     Object.keys(markerMapCollection).forEach((marker) => {
                         if (markerMapCollection.hasOwnProperty(marker)) {
-                            if (!isIdAlreadyUnstacked(+marker))
-                                markerMapCollection[marker].marker.icon.imageDiv.style.display = 'none';
+                            if (!isIdAlreadyUnstacked(+marker)) {
+                                // 2023.05.05.01: With my rewrite for the markers object library, the icon.imageDiv is now element.
+                                const iconDiv = markerMapCollection[marker].marker.element || markerMapCollection[marker].marker.icon?.imageDiv;
+                                iconDiv.style.display = 'none';
+                            }
                         }
                     });
                 }
@@ -2287,10 +2308,18 @@
             const markerId = this.attributes?.['data-id']?.value ? +this.attributes['data-id'].value : -1;
             if ((markerId > 0) && ((_mousedOverMarkerId !== markerId) || (getComputedStyle(document.getElementById('urceDiv')).visibility === 'hidden'))) {
                 _mousedOverMarkerId = markerId;
-                const targetTab = `_urceTab_${Math.round(Math.random() * 1000000)}`,
+                // 2023.05.05.01: W.map.updateRequestLayer.featureMarkers is gone in beta WME. Also changed to W.map.getLayerByName
+                const markerMapCollection = W.map.getLayerByName('update_requests').markers
+                        ? W.map.getLayerByName('update_requests').markers
+                            .map((marker) => ({ 'data-id': marker.element.attributes['data-id'].value, marker: { marker } }))
+                            .reduce((obj, val) => ({ ...obj, [val['data-id']]: val.marker }), {})
+                        : { ...W.map.getLayerByName('update_requests').featureMarkers },
+                    targetTab = `_urceTab_${Math.round(Math.random() * 1000000)}`,
                     popupXOffset = parsePxString(getComputedStyle(document.getElementById('sidebar')).width) + parsePxString(getComputedStyle(document.getElementById('drawer')).width),
-                    unstackedX = parsePxString(W.map.updateRequestLayer.featureMarkers[markerId].marker.icon.imageDiv.style.left),
-                    unstackedY = parsePxString(W.map.updateRequestLayer.featureMarkers[markerId].marker.icon.imageDiv.style.top);
+                    // 2023.05.05.01: With my rewrite for the markers object library, the icon.imageDiv is now element.
+                    iconDiv = markerMapCollection[markerId].marker.element || markerMapCollection[markerId].marker.icon?.imageDiv,
+                    unstackedX = parsePxString(iconDiv.style.left),
+                    unstackedY = parsePxString(iconDiv.style.top);
                 checkMarkerStacking(markerId, unstackedX, unstackedY);
                 if (!_settings.disableUrMarkerPopup) {
                     doSpinner('markerMouseDown', true);
@@ -2568,7 +2597,9 @@
         if (this?.id === '_urceRecenterSession')
             openUrPanel(urId, true);
         hidePopup();
-        W.map.setCenter(W.map.updateRequestLayer.featureMarkers[urId].marker.lonlat);
+        const urGeo = W.model.mapUpdateRequests.objects[urId].geometry,
+            lonlat = new OpenLayers.LonLat(urGeo.x, urGeo.y);
+        W.map.setCenter(lonlat);
     }
 
     function addCustomMarker(urId, urOpen, customType, node) {
@@ -4451,7 +4482,7 @@
                     _urPanelContainerObserver.isObserving = true;
                 }
                 if (!_urMarkerObserver.isObserving) {
-                    _urMarkerObserver.observe(W.map.updateRequestLayer.div, {
+                    _urMarkerObserver.observe(W.map.getLayerByName('update_requests').div, {
                         childList: true, attributes: true, attributeOldValue: true, characterData: false, characterDataOldValue: false, subtree: true
                     });
                     _urMarkerObserver.isObserving = true;
@@ -4493,11 +4524,17 @@
                 }
             }
             logDebug('Disabling event listeners for UR markers.');
-            const markerMapCollection = { ...W.map.updateRequestLayer.featureMarkers };
+            // 2023.05.05.01: W.map.updateRequestLayer.featureMarkers is gone in beta WME. Also changed to W.map.getLayerByName
+            const markerMapCollection = W.map.getLayerByName('update_requests').markers
+                ? W.map.getLayerByName('update_requests').markers
+                    .map((marker) => ({ 'data-id': marker.element.attributes['data-id'].value, marker: { marker } }))
+                    .reduce((obj, val) => ({ ...obj, [val['data-id']]: val.marker }), {})
+                : { ...W.map.getLayerByName('update_requests').featureMarkers };
             if (markerMapCollection) {
                 Object.keys(markerMapCollection).forEach((marker) => {
                     if (markerMapCollection.hasOwnProperty(marker)) {
-                        const iconDiv = markerMapCollection[marker].marker.icon.div;
+                        // 2023.05.05.01: With my rewrite for the markers object library, the icon.imageDiv is now element.
+                        const iconDiv = markerMapCollection[marker].marker.element || markerMapCollection[marker].marker.icon?.imageDiv;
                         iconDiv.removeEventListener('mouseover', markerMouseOver);
                         iconDiv.removeEventListener('mouseout', markerMouseOut);
                         iconDiv.removeEventListener('click', markerClick);
