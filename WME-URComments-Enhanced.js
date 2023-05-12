@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.05.05.01
+// @version     2023.05.12.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -82,9 +82,11 @@
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
         _SCRIPT_VERSION_CHANGES = ['NEW: Further prepwork for possible future spreadsheet changes.',
+            'NEW: $URID$ now available as a variable to use in our comments. Will insert the UR ID number of the selected UR.',
             'CHANGE: A lot. Reverted to 100% vanilla JavaScript, removing reliance on jQuery.',
             'CHANGE: Switch to WazeWrap update checking.',
-            'CHANGE: Beta WME changes.'
+            'CHANGE: Beta WME changes.',
+            'CHANGE: Switch to Waze icons instead of FontAwesome for continuity.'
         ],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
@@ -250,13 +252,14 @@
             }
         }, { root: document.documentElement }),
         _userInfoTabContentObserver = new MutationObserver((mutations) => {
+            const checkNodes = (node) => {
+                if (node.classList.contains('userscripts-api-docs-link-container') && !_userscriptsApiDocsLinkIntersectionObserver.isObserving) {
+                    _userscriptsApiDocsLinkIntersectionObserver.observing = true;
+                    _userscriptsApiDocsLinkIntersectionObserver.observe(node);
+                }
+            };
             mutations.forEach((mutation) => {
-                mutation.addedNodes.forEach((node) => {
-                    if (node.classList.contains('userscripts-api-docs-link-container') && !_userscriptsApiDocsLinkIntersectionObserver.isObserving) {
-                        _userscriptsApiDocsLinkIntersectionObserver.observing = true;
-                        _userscriptsApiDocsLinkIntersectionObserver.observe(node);
-                    }
-                });
+                mutation.addedNodes.forEach(checkNodes);
             });
         });
 
@@ -321,16 +324,21 @@
     }
 
     function createElem(type = '', attrs = {}, eventListener = []) {
-        const el = _elems[type]?.cloneNode(false) || _elems.div.cloneNode(false);
+        const el = _elems[type]?.cloneNode(false) || _elems.div.cloneNode(false),
+            applyEventListeners = function ([evt, cb]) {
+                return this.addEventListener(evt, cb);
+            };
         Object.keys(attrs).forEach((attr) => {
-            if ((attr === 'disabled') || (attr === 'checked') || (attr === 'selected') || (attr === 'textContent') || (attr === 'innerHTML'))
-                el[attr] = attrs[attr];
-            else
-                el.setAttribute(attr, attrs[attr]);
+            if ((attrs[attr] !== undefined) && (attrs[attr] !== 'undefined') && (attrs[attr] !== null) && (attrs[attr] !== 'null')) {
+                if ((attr === 'disabled') || (attr === 'checked') || (attr === 'selected') || (attr === 'textContent') || (attr === 'innerHTML'))
+                    el[attr] = attrs[attr];
+                else
+                    el.setAttribute(attr, attrs[attr]);
+            }
         });
         if (eventListener.length > 0) {
             eventListener.forEach((obj) => {
-                Object.entries(obj).map(([evt, cb]) => el.addEventListener(evt, cb));
+                Object.entries(obj).map(applyEventListeners.bind(el));
             });
         }
         return el;
@@ -708,7 +716,7 @@
         divElemRoot.appendChild(docFrags);
         if (panelBoxDismiss) {
             const divElemDiv = createElem('div', { id: `urceAlertPanelBox-${index}-dismiss`, class: 'URCE-divDismiss', index }, [{ click: dismissAlertBoxInPanel }]);
-            divElemDiv.appendChild(createElem('i', { class: 'fa fa-close', 'aria-hidden': true }));
+            divElemDiv.appendChild(createElem('i', { class: 'w-icon w-icon-x', style: 'font-weight:900;' }));
             divElemRoot.insertBefore(divElemDiv, divElemRoot.firstChild);
         }
         const panelUrceComments = document.getElementById('panel-urce-comments');
@@ -993,7 +1001,7 @@
                 autoScrollComments(numComments);
             }
             if (_settings.autoSaveAfterSolvedOrNiComment && ((_selUr.newStatus === 'solved') || (_selUr.newStatus === 'notidentified')))
-                document.querySelector('wz-button[id="save-button"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                document.querySelector('wz-button[id="save-button"]').click();
             else
                 handleUrLayer('sendComment', undefined, getMapUrsObjArr([_selUr.urId]));
         }
@@ -1034,7 +1042,7 @@
         if (_settings.autoZoomOutAfterClosePanel)
             autoZoomOut();
         if (_settings.autoSaveAfterSolvedOrNiComment && ((newStatus === 'solved') || (newStatus === 'notidentified'))) {
-            document.querySelector('wz-button[id="save-button"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            document.querySelector('wz-button[id="save-button"]').click();
         }
         else {
             if (_settings.autoSwitchToUrCommentsTab)
@@ -1125,18 +1133,17 @@
         }
         if (!domElement.textContent.endsWith(')'))
             domElement.textContent += ` (${parseDaysAgo(_mapUpdateRequests[_selUr.urId].urceData.driveDaysOld)})`;
-        domElement = (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.description) ? await getDomElement('#panel-container .top-section .body .problem-data .description .content') : undefined;
-        if (domElement?.children.length === 0) {
-            const content = await getDomElement('#panel-container .top-section .body .problem-data .description .content'),
-                divElemRoot = createElem('div', { class: 'URCE-divDesc', textContent: content.textContent });
-            if (content) {
-                content.textContent = '';
-                content.appendChild(divElemRoot);
+        if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.description) {
+            if ((await getDomElement('#panel-container .top-section .body .problem-data .description .content'))?.children.length === 0) {
+                const content = await getDomElement('#panel-container .top-section .body .problem-data .description .content');
+                if (content) {
+                    content.textContent = '';
+                    content.appendChild(createElem('div', { class: 'URCE-divDesc', textContent: content.textContent }));
+                }
             }
         }
         if (_mapUpdateRequests[_selUr.urId].urceData.commentCount > 0) {
-            domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title');
-            if (!domElement) {
+            if (!(await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .comment .comment-title'))) {
                 handleReadyError(false, false, '', false, 'isConversationLoaded: loadingConversation');
             }
             else {
@@ -1173,9 +1180,7 @@
             if (domElement)
                 domElement.style.display = 'none';
         }
-        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .header .focus');
-        if (domElement)
-            domElement.addEventListener('click', recenterOnUr);
+        (await getDomElement('#panel-container .mapUpdateRequest .top-section .header .focus'))?.addEventListener('click', recenterOnUr);
         domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
         if (!domElement) {
             handleReadyError(true, true, 'handleUpdateRequestContainer', false, '');
@@ -1186,12 +1191,12 @@
         if (!document.getElementById('urceShortcuts')) {
             const urceShortcutsExpand = function () {
                     const iElem = this.querySelector('i');
-                    if (iElem.classList.contains('fa-chevron-up'))
+                    if (iElem.classList.contains('w-icon-chevron-up'))
                         _settings.expandShortcuts = false;
                     else
                         _settings.expandShortcuts = true;
-                    iElem.classList.toggle('fa-chevron-down');
-                    iElem.classList.toggle('fa-chevron-up');
+                    iElem.classList.toggle('w-icon-chevron-down');
+                    iElem.classList.toggle('w-icon-chevron-up');
                     if (_settings.expandShortcuts)
                         document.getElementById('urceShortcutsExpandDiv').style.display = '';
                     else
@@ -1199,82 +1204,72 @@
                     saveSettingsToStorage();
                 },
                 createIElem = (id = '', classStr = '', style = '', title = '') => createElem('i', {
-                    id, class: classStr, 'aria-hidden': true, style, title
+                    id, class: classStr, style, title
                 }, [{ click: handleClickedShortcut }]),
-                createSeparator = () => createElem('div', { style: 'display:inline-block;padding-left:8px;padding-right:8px;', textContent: '||' });
+                createSeparator = (lPad = 4, rPad = 4) => createElem('div', { style: `display:inline-block;padding-left:${lPad}px;padding-right:${rPad}px;`, textContent: '||' });
             let divElemDiv = createElem('div', {
                 id: 'urceShortcutsExpand', style: 'padding-bottom:4px;font-size:13px;cursor:pointer;border-bottom:1px solid darkgray;', textContent: I18n.t('urce.urPanel.Shortcuts')
             }, [{ click: urceShortcutsExpand }]);
-            let divElemDivDiv = createElem('div', { style: 'display:inline;float:right;padding-right:8px;font-size:11px;' });
-            divElemDivDiv.appendChild(createElem('i', { class: `fa fa-fw ${(_settings.expandShortcuts ? 'fa-chevron-up' : 'fa-chevron-down')} URCE-chevron` }));
+            let divElemDivDiv = createElem('div', { style: 'display:inline;float:right;' });
+            divElemDivDiv.appendChild(createElem('i', { class: `w-icon ${(_settings.expandShortcuts ? 'w-icon-chevron-up' : 'w-icon-chevron-down')} URCE-chevron` }));
             divElemDiv.appendChild(divElemDivDiv);
             const divElemRoot = createElem('div', { id: 'urceShortcuts', style: 'text-align:left;padding-bottom:8px;font-size:12px;width:100%;' });
             divElemRoot.appendChild(divElemDiv);
             divElemDiv = createElem('div', { id: 'urceShortcutsExpandDiv', style: `${_settings.expandShortcuts ? '' : 'display:none;'}border-bottom:1px solid darkgray;padding: 5px 0 5px 0;` });
             divElemDivDiv = createElem('div');
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-selSegs', 'fa fa-road', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertSelSegsTitle')));
-            const spanElem = createElem('span', { class: 'fa-stack', style: 'width:1.8em;height:1.8em;line-height:1.8em;' });
-            spanElem.appendChild(createIElem('urceShortcuts-selSegsWithCity', 'fa fa-road', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')));
-            spanElem.appendChild(createIElem('urceShortcuts-selSegsWithCity', 'fa fa-plus fa-stack-2x', 'font-size:xx-small;text-align:right;cursor:pointer;', I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')));
-            divElemDivDiv.appendChild(spanElem);
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-selSegs', 'w-icon w-icon-road', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertSelSegsTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-selSegsWithCity', 'w-icon w-icon-road', 'cursor:pointer;', I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')));
+            divElemDivDiv.appendChild(createIElem(
+                'urceShortcuts-selSegsWithCity',
+                'w-icon w-icon-plus',
+                'cursor:pointer;float:left;margin:-6px 0 0 -5px;position:absolute;font-weight:600;',
+                I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')
+            ));
+            divElemDivDiv.appendChild(createSeparator(8, 4));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-placeName', 'w-icon w-icon-hotel', 'cursor:pointer;', I18n.t('urce.urPanel.InsertPlaceNameTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-placeAddress', 'w-icon w-icon-location', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertPlaceAddressTitle')));
             divElemDivDiv.appendChild(createSeparator());
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-placeName', 'fa fa-home', 'cursor:pointer;', I18n.t('urce.urPanel.InsertPlaceNameTitle')));
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-placeAddress', 'fa fa-map-marker', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertPlaceAddressTitle')));
-            divElemDivDiv.appendChild(createSeparator());
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-description', 'fa fa-paragraph', 'cursor:pointer;', I18n.t('urce.urPanel.InsertDescriptionTitle')));
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-wazeUsername', 'fa fa-user-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertWazeUsernameTitle')));
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-urType', 'fa fa-info-circle', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertUrTypeTitle')));
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-customTagline', 'fa fa-tag', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCustomTaglineTitle')));
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-urPermalink', 'fa fa-link', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertUrPermalinkTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-description', 'w-icon w-icon-doc', 'cursor:pointer;', I18n.t('urce.urPanel.InsertDescriptionTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-wazeUsername', 'w-icon w-icon-wazer', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertWazeUsernameTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-urType', 'w-icon w-icon-info', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertUrTypeTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-customTagline', 'w-icon w-icon-tag', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCustomTaglineTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-urPermalink', 'w-icon w-icon-link', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertUrPermalinkTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-urId', 'w-icon w-icon-node', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertUrIdTitle')));
             divElemDiv.appendChild(divElemDivDiv);
             divElemDivDiv = createElem('div');
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveTime', 'fa fa-clock-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertTimeTitle')));
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDayOfWeek', 'fa fa-sun-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDayOfWeekTitle')));
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDate', 'fa fa-calendar-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDateTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveTime', 'w-icon w-icon-clock', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertTimeTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDayOfWeek', 'w-icon w-icon-clock-fill', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDayOfWeekTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDate', 'w-icon w-icon-calendar', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDateTitle')));
             divElemDivDiv.appendChild(createSeparator());
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveTimeCasual', 'fa fa-clock-o', 'cursor:pointer;', I18n.t('urce.urPanel.InsertTimeCasualTitle')));
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDateCasual', 'fa fa-calendar', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDateCasualTitle')));
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDateTimeCasualMode', 'fa fa-calendar-plus-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDateTimeCasualModeTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveTimeCasual', 'w-icon w-icon-clock', 'cursor:pointer;', I18n.t('urce.urPanel.InsertTimeCasualTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDateCasual', 'w-icon w-icon-calendar', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDateCasualTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDateTimeCasualMode', 'w-icon w-icon-available-fill', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDateTimeCasualModeTitle')));
             divElemDivDiv.appendChild(createElem('div', { style: 'display:inline-block;padding-left:8px;', textContent: `- ${I18n.t('urce.urPanel.DriveDate')}` }));
             divElemDiv.appendChild(divElemDivDiv);
             divElemDivDiv = createElem('div');
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentTime', 'fa fa-clock-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentTimeTitle')));
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentDayOfWeek', 'fa fa-sun-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentDayOfWeekTitle')));
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentDate', 'fa fa-calendar-o', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentDateTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentTime', 'w-icon w-icon-clock', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentTimeTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentDayOfWeek', 'w-icon w-icon-clock-fill', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentDayOfWeekTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentDate', 'w-icon w-icon-calendar', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentDateTitle')));
             divElemDivDiv.appendChild(createSeparator());
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentTimeCasual', 'fa fa-clock-o', 'cursor:pointer;', I18n.t('urce.urPanel.InsertCurrentTimeCasualTitle')));
-            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentDateCasual', 'fa fa-calendar', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentDateCasualTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentTimeCasual', 'w-icon w-icon-clock', 'cursor:pointer;', I18n.t('urce.urPanel.InsertCurrentTimeCasualTitle')));
+            divElemDivDiv.appendChild(createIElem('urceShortcuts-currentDateCasual', 'w-icon w-icon-calendar', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentDateCasualTitle')));
             divElemDivDiv.appendChild(createElem('div', { style: 'display:inline-block;padding-left:24px;', textContent: `- ${I18n.t('urce.urPanel.CurrentDate')}` }));
             divElemDiv.appendChild(divElemDivDiv);
             divElemRoot.appendChild(divElemDiv);
             domElement = document.querySelector('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form');
             domElement.insertBefore(divElemRoot, domElement.firstChild);
         }
-        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button');
-        if (domElement)
-            domElement.addEventListener('click', clickedSendToSendComment);
-        const shadowDOMstyle = createElem('style', {
+        (await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button'))?.addEventListener('click', clickedSendToSendComment);
+        (await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button'))?.shadowRoot.appendChild(createElem('style', {
             textContent: '.wz-button.md { height: 30px !important; min-width: 60px !important; max-widt: 140px !important; padding: 0px 10px !important; overflow: hidden; }'
-        });
-        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button');
-        if (domElement)
-            domElement.shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
-        else
-            logWarning('Could not appendChild CSS to send-button shadow root due to timeout waiting for DOM element.');
-
-        shadowDOMstyle.textContent = '.wz-textarea textarea { font-size: 13px !important; line-height: 14px; padding: 6px !important; } '
-            + '.wz-textarea .length-text { font-size: 12px !important; padding: 2px 6px 0px 0px !important; }';
-        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .new-comment-text');
-        if (domElement)
-            domElement.shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
-        else
-            logWarning('Could not appendChild CSS to new-comment-text shadow root due to timeout waiting for DOM element.');
-        shadowDOMstyle.textContent = '.wz-checkbox { font-size: 12px !important; } .wz-checkbox .border { height: 15px !important; width: 15px !important; }';
-        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form wz-checkbox[name=follow]');
-        if (domElement)
-            domElement.shadowRoot.appendChild(shadowDOMstyle.cloneNode(true));
-        else
-            logWarning('Could not appendChild CSS to new-comment-follow shadow root due to timeout waiting for DOM element.');
+        }));
+        (await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .new-comment-text'))?.shadowRoot.appendChild(createElem('style', {
+            textContent: '.wz-textarea textarea { font-size: 13px !important; line-height: 14px; padding: 6px !important; } '
+                + '.wz-textarea .length-text { font-size: 12px !important; padding: 2px 6px 0px 0px !important; }'
+        }));
+        (await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form wz-checkbox[name=follow]'))?.shadowRoot.appendChild(createElem('style', {
+            textContent: '.wz-checkbox { font-size: 12px !important; } .wz-checkbox .border { height: 15px !important; width: 15px !important; }'
+        }));
         if (!_urDataStateObserver.isObserving) {
             _urDataStateObserver.observe(document.querySelector('#panel-container .mapUpdateRequest.panel.show .problem-edit'), {
                 childList: false, attributes: true, attributeOldValue: true, characterData: false, characterDataOldValue: false, subtree: false
@@ -1289,22 +1284,14 @@
         }
         if (!(await isPanelReady('loadingMoreInfo', 10, 200)).error) {
             domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info');
-            if (_settings.expandMoreInfo && W.map.panelRegion.currentView.model.attributes.moreInfoAvailable && domElement.classList.contains('collapsed')) {
-                domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info .title');
-                domElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            }
-            else if (!_settings.expandMoreInfo && !domElement.classList.contains('collapsed')) {
-                domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info .title');
-                domElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            }
+            if (_settings.expandMoreInfo && W.map.panelRegion.currentView.model.attributes.moreInfoAvailable && domElement.classList.contains('collapsed'))
+                (await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info .title'))?.click();
+            else if (!_settings.expandMoreInfo && !domElement.classList.contains('collapsed'))
+                (await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info .title'))?.click();
         }
-        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info .title');
-        domElement.addEventListener('click', expandMoreInfoCallback);
-        domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation');
-        if (domElement?.classList?.contains('collapsed')) {
-            domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .title');
-            domElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-        }
+        (await getDomElement('#panel-container .mapUpdateRequest .top-section .body .more-info .title'))?.addEventListener('click', expandMoreInfoCallback);
+        if ((await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation'))?.classList?.contains('collapsed'))
+            (await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .title'))?.click();
         domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section');
         if (domElement)
             domElement.scrollTop = domElement.scrollHeight;
@@ -1393,11 +1380,11 @@
     function autoSwitchToUrceTab() {
         _restoreDrawerTab = document.getElementById('drawer')?.querySelector('[selected="true"]')?.querySelector('.w-icon') || 'none-selected';
         if (!_restoreDrawerTab.classList?.contains('w-icon-script'))
-            document.querySelector('.w-icon-script').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            document.querySelector('.w-icon-script').click();
         _restoreTab = _restoreTab || document.querySelector('#user-tabs .nav-tabs .active > a');
         _restoreTabPosition = _restoreTabPosition || document.querySelector('#user-info .tab-content').scrollTop;
-        document.querySelector('img#urceIcon').closest('a[href^="#userscript"').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-        document.querySelector('a[href="#panel-urce-comments"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        document.querySelector('img#urceIcon').closest('a[href^="#userscript"').click();
+        document.querySelector('a[href="#panel-urce-comments"]').click();
         document.querySelector('#user-info .tab-content').scrollTop = 0;
         document.querySelector('#user-info .tab-content .URCE-divTabs').scrollTop = 0;
     }
@@ -1406,15 +1393,15 @@
         if (!document.querySelector('#panel-container .show')) {
             if (_restoreDrawerTab?.classList?.contains('w-icon-script')) {
                 if (_restoreTab) {
-                    _restoreTab.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    _restoreTab.click();
                     document.querySelector('#user-info .tab-content').scrollTop = _restoreTabPosition;
                 }
             }
             else if (_restoreDrawerTab && _restoreDrawerTab !== 'none-selected') {
-                _restoreDrawerTab.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                _restoreDrawerTab.click();
             }
             else if (_restoreDrawerTab === 'none-selected') {
-                document.querySelector('.w-icon-script').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                document.querySelector('.w-icon-script').click();
             }
             _restoreDrawerTab = undefined;
             _restoreTab = undefined;
@@ -1454,30 +1441,17 @@
     }
 
     async function autoClickSendButton() {
-        let domElement = await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button');
-        if (domElement)
-            domElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-        domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-        if (domElement)
-            domElement.removeEventListener('autoclicksendbutton', autoClickSendButton);
+        (await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button'))?.click();
+        (await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text'))?.removeEventListener('autoclicksendbutton', autoClickSendButton);
     }
 
     async function autoClickOpenSolvedNi(commentNum) {
-        if ((_commentList[commentNum].urstatus === 'notidentified') && (_selUr.newStatus !== 'notidentified')) {
-            const domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="not-identified"]');
-            if (domElement)
-                domElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-        }
-        else if ((_commentList[commentNum].urstatus === 'solved') && (_selUr.newStatus !== 'solved')) {
-            const domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="solved"]');
-            if (domElement)
-                domElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-        }
-        else if ((_commentList[commentNum].urstatus === 'open') && ((_selUr.newStatus === 'solved') || (_selUr.newStatus === 'notidentified'))) {
-            const domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="open"]');
-            if (domElement)
-                domElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-        }
+        if ((_commentList[commentNum].urstatus === 'notidentified') && (_selUr.newStatus !== 'notidentified'))
+            (await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="not-identified"]'))?.click();
+        else if ((_commentList[commentNum].urstatus === 'solved') && (_selUr.newStatus !== 'solved'))
+            (await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="solved"]'))?.click();
+        else if ((_commentList[commentNum].urstatus === 'open') && ((_selUr.newStatus === 'solved') || (_selUr.newStatus === 'notidentified')))
+            (await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="open"]'))?.click();
     }
 
     function autoZoomIn() {
@@ -1743,6 +1717,8 @@
                     text = text.replaceAll('$PERMALINK$', '');
                 }
             }
+            if (text.includes('$URID$'))
+                text = text.replaceAll('$URID$', urId);
         }
         if (replaceVars && text.includes('$CLOSED_NOR_EMAIL_TAG$')) {
             if ((_settings.perCommentListSettings[_currentCommentList].tagEmail.length > 0) && (W.loginManager.user.userName.length > 0))
@@ -1910,6 +1886,9 @@
         else if (shortcut === 'urPermalink') {
             replaceText = '$PERMALINK$';
         }
+        else if (shortcut === 'urId') {
+            replaceText = '$URID$';
+        }
         else {
             doSpinner('handleClickedShortcut', false);
             return;
@@ -1941,13 +1920,11 @@
             }
             else {
                 domElement.value = newVal;
-                domElement.selectionStart = cursorPos + outputText.length;
-            }
-            domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-            if (!domElement)
-                logWarning('Timed out waiting for DOM elements before dispatching input event after clicking a shortcut with selectRange.');
-            else
                 domElement.dispatchEvent(new Event('input'));
+                domElement.dispatchEvent(new KeyboardEvent('keyup'));
+                domElement.focus();
+                domElement.setSelectionRange(cursorPos + outputText.length, cursorPos + outputText.length);
+            }
         }
         else if (useCurrVal) {
             domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
@@ -1956,22 +1933,10 @@
             }
             else {
                 domElement.value = outputText;
-                domElement.selectionStart = cursorPos + outputText.length;
-            }
-            domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-            if (!domElement)
-                logWarning('Timed out waiting for DOM elements before dispatching input event after clicking a shortcut without selectRange.');
-            else
                 domElement.dispatchEvent(new Event('input'));
-        }
-        if ((outputText && !useCurrVal) || useCurrVal) {
-            domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-            if (!domElement) {
-                logWarning('Timed out waiting for DOM elements before triggering keyup and focus events after clicking a shortcut.');
-            }
-            else {
                 domElement.dispatchEvent(new KeyboardEvent('keyup'));
-                domElement.dispatchEvent(new Event('focus', { bubbles: true }));
+                domElement.focus();
+                domElement.setSelectionRange(cursorPos + outputText.length, cursorPos + outputText.length);
             }
         }
         doSpinner('handleClickedShortcut', false);
@@ -2052,50 +2017,22 @@
             logError(I18n.t('urce.prompts.CommentTooLong'));
         }
         else {
-            if (cursorPos) {
-                domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-                if (!domElement) {
-                    logError('Timed out waiting on text box to set value with selectRange.');
-                    handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
-                    return;
-                }
-                domElement.value = commentOutput;
-                domElement.selectionStart = newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls;
-                domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-                if (!domElement) {
-                    logError('Timed out waiting on text box shadow root to dispatch event with selectRange.');
-                    handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
-                    return;
-                }
-                domElement.dispatchEvent(new Event('input'));
+            domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            if (!domElement) {
+                logError('Timed out waiting on text box to set value with selectRange.');
+                handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
+                return;
             }
-            else {
-                domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-                if (!domElement) {
-                    logError('Timed out waiting on text box to set value without selectRange.');
-                    handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
-                    return;
-                }
-                domElement.value = commentOutput;
-                domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-                if (!domElement) {
-                    logError('Timed out waiting on text box shadow root to dispatch event without selectRange.');
-                    handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
-                    return;
-                }
-                domElement.dispatchEvent(new Event('input'));
-            }
+            domElement.value = commentOutput;
+            domElement.dispatchEvent(new Event('input'));
             if (doubleClick && !/\B\$\S*\$\B/gm.test(commentOutput) && !/(\$SELSEGS|\$USERNAME|\$URD)/gm.test(commentOutput)) {
-                domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-                if (domElement)
-                    domElement.dispatchEvent(new Event('autoclicksendbutton', { bubbles: true }));
+                domElement.dispatchEvent(new Event('autoclicksendbutton', { bubbles: true }));
             }
             else {
-                domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
-                if (domElement) {
-                    domElement.dispatchEvent(new KeyboardEvent('keyup'));
-                    domElement.dispatchEvent(new Event('focus', { bubbles: true }));
-                }
+                domElement.dispatchEvent(new KeyboardEvent('keyup'));
+                domElement.focus();
+                const selectionRange = newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls;
+                domElement.setSelectionRange(selectionRange, selectionRange);
             }
         }
         doSpinner('postUrComment', false);
@@ -3536,12 +3473,12 @@
         }
         else if (!unmask) {
             if (!document.getElementById(`urceTabLightbox-${phase}`)) {
-                const domElement = document.getElementById('sidepanel-urc-e');
-                domElement.style.position = 'relative';
                 const divElemRootDiv = createElem('div', { class: 'urceMaskLightbox text' });
                 divElemRootDiv.appendChild(docFrags.cloneNode());
                 const divElemRoot = createElem('div', { id: `urceTabLightbox-${phase}`, class: 'urceMaskLightbox', style: `z-index:${zIndex};` });
                 divElemRoot.appendChild(divElemRootDiv);
+                const domElement = document.getElementById('sidepanel-urc-e');
+                domElement.style.position = 'relative';
                 domElement.insertBefore(divElemRoot, domElement.firstChild);
             }
             if (maskUrPanel && !document.getElementById(`urPanelLightbox-${phase}`)) {
@@ -3664,7 +3601,7 @@
             });
             defaultsArr = Object.values(defaultsArr);
             const a = createElem('a', { href: URL.createObjectURL(new Blob([defaultsArr.join('\n')], { type: 'text/csv' })), download: `default_responses_${dateTs}.csv` });
-            a.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            a.click();
             a.remove();
         }
         else if (section === 'comments') {
@@ -3683,7 +3620,7 @@
                 return [`"${entry.title.replace(/"/gmi, '\\"')}"|"${entry.comment.replace(/"/gmi, '\\"')}"|${urstatus}`];
             });
             const a = createElem('a', { href: URL.createObjectURL(new Blob([commentsArr.join('\n')], { type: 'text/csv' })), download: `comment_list_${dateTs}.csv` });
-            a.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            a.click();
             a.remove();
         }
     }
@@ -3839,7 +3776,7 @@
                     outputItems = [],
                     rowObj = {},
                     findObjIndex = (array, fldName, value) => array.map((a) => a[fldName]).indexOf(value),
-                    checkFieldNames = (fldName) => ssFieldNames.includes(fldName),
+                    checkFieldNames = function (fldName) { return this.includes(fldName); },
                     createRowObj = (entry, i) => {
                         i = i || 0;
                         if (ssFieldNames[i].trim().toLowerCase() === 'comment')
@@ -3851,8 +3788,8 @@
                         i++;
                     },
                     legendClickToggle = function () {
-                        this.firstChild.classList.toggle('fa-chevron-down');
-                        this.firstChild.classList.toggle('fa-chevron-right');
+                        this.firstChild.classList.toggle('w-icon-chevron-up');
+                        this.firstChild.classList.toggle('w-icon-chevron-down');
                         this.nextSibling.classList.toggle('collapse');
                         saveSettingsToStorage();
                     },
@@ -3880,7 +3817,7 @@
                         ssFieldNames = data[entryIdx][0].split('|').map((fldName) => fldName.trim());
                         if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length)
                             return reject(new Error(`Expected ${EXPECTED_FIELD_NAMES.length} columns in comment definition data. Spreadsheet returned ${ssFieldNames.length}.`));
-                        if (!EXPECTED_FIELD_NAMES.every((fldName) => checkFieldNames(fldName)))
+                        if (!EXPECTED_FIELD_NAMES.every(checkFieldNames.bind(ssFieldNames)))
                             return reject(new Error(`Script expected to see the following column names in the comment definition spreadsheet:\n${EXPECTED_FIELD_NAMES.join(', ')}\nHowever, the spreadsheet returned these:\n${ssFieldNames.join(', ')}`));
                     }
                     else if (data[entryIdx][0]) {
@@ -3919,7 +3856,7 @@
                                     )
                                         ? 'collapse'
                                         : '',
-                                    chevron = (collapsed === 'collapse') ? 'fa-chevron-right' : 'fa-chevron-down';
+                                    chevron = (collapsed === 'collapse') ? 'w-icon-chevron-down' : 'w-icon-chevron-up';
                                 outputItems.push({
                                     chevron,
                                     collapsed,
@@ -3985,7 +3922,7 @@
                     const divElemCommentList = createElem('div');
                     outputItems.forEach((item) => {
                         const legendElem = createElem('legend', { id: `${item.groupDivId}_legend`, class: `URCE-legend ${urStyle}` }, [{ click: legendClickToggle }]);
-                        legendElem.appendChild(createElem('i', { class: `fa fa-fw ${item.chevron} URCE=chevron` }));
+                        legendElem.appendChild(createElem('i', { class: `w-icon ${item.chevron} URCE-chevron` }));
                         legendElem.appendChild(createElem('span', { class: 'URCE-span', title: item.title, textContent: item.name }));
                         const fieldsetElem = createElem('fieldset', { id: item.groupDivId, class: `URCE-field ${urStyle}` });
                         fieldsetElem.appendChild(legendElem);
@@ -4085,11 +4022,11 @@
                     for (let idx = 0, { length } = legends; idx < length; idx++) {
                         if (this.id === 'URCE-expandAllComments') {
                             if (legends[idx].nextElementSibling.classList.contains('collapse'))
-                                legends[idx].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                                legends[idx].click();
                         }
                         else if (this.id === 'URCE-collapseAllComments') {
                             if (!legends[idx].nextElementSibling.classList.contains('collapse'))
-                                legends[idx].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                                legends[idx].click();
                         }
                     }
                 };
@@ -4113,9 +4050,9 @@
             let divElemRoot = createElem('div', { class: 'URCE-commentListName', textContent: `${I18n.t('urce.common.CommentList')}: ` });
             divElemRoot.appendChild(selectElem);
             const divElemRestrictionEnforcedParent = createElem('div', {
-                id: 'restrictionsEnforcedWarning', style: `float:right;padding-top:8px;color:red;font-size:18px;${(_restrictionsEnforcedTitle ? '' : 'display:none;')}`
+                id: 'restrictionsEnforcedWarning', style: `float:right;padding-top:6px;color:red;font-size:22px;${(_restrictionsEnforcedTitle ? '' : 'display:none;')}`
             });
-            divElemRestrictionEnforcedParent.appendChild(createElem('i', { class: 'fa fa-exclamation-triangle', 'aria-hidden': true, title: _restrictionsEnforcedTitle || '' }));
+            divElemRestrictionEnforcedParent.appendChild(createElem('i', { class: 'w-icon w-icon-alert-danger', title: _restrictionsEnforcedTitle || '' }));
             divElemRoot.appendChild(divElemRestrictionEnforcedParent);
             docFrags.appendChild(divElemRoot);
             divElemRoot = createElem('div', { class: 'URCE-commentListName URCE-controls URCE-divCC' });
@@ -4647,13 +4584,14 @@
                 + '}'
                 + '.urceToolsButton.active, .urceToolsButtonFile:hover, .urceToolsButton:hover { background-color:gray !important; }'
                 + '#sidepanel-urc-e .URCE-divDismiss {'
-                + '     display:inline-block; float:right; width:20px; height:20px; margin-top:-12px; border-radius:50%; border:1px solid black; background-color:white; text-align:center; cursor:pointer;'
+                + '     display:inline-block; float:right; width:20px; height:20px; margin-top:-12px; border-radius:50%; border:1px solid black; background-color:white; text-align:center; '
+                + '     cursor:pointer; font-size:18px;'
                 + '}'
                 + '#sidepanel-urc-e .URCE-divWarningBox { background-color:indianred; border:1px solid silver; margin:6px 0 6px 0; font-size:12px; border-radius:4px; padding:5px; font-weight:600; }'
-                + '#sidepanel-urc-e .URCE-expandCollapseAll { font-size:10px; margin-bottom:-10px; text-align:right; }'
+                + '#sidepanel-urc-e .URCE-expandCollapseAll { font-size:9px; margin-bottom:-10px; text-align:right; }'
                 + '#sidepanel-urc-e .URCE-expandCollapseAll.urStyle { margin-bottom:unset !important; }'
                 + '#sidepanel-urc-e .URCE-expandCollapseAllItem { display:inline; cursor:pointer; }'
-                + '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:12px; margin-right:4px; }'
+                + '#sidepanel-urc-e .URCE-chevron { cursor:pointer; font-size:22px; margin-right:3px; float:left; }'
                 + '#sidepanel-urc-e .URCE-field { border:1px solid silver; padding:5px; border-radius:4px; -webkit-padding-before:0; }'
                 + '#sidepanel-urc-e .URCE-field.urStyle { border:unset !important; padding:unset !important; border-radius:unset !important; }'
                 + '#sidepanel-urc-e .URCE-legend { margin-bottom:0px; border-bottom-style:none; width:auto; }'
@@ -4673,9 +4611,9 @@
                 + '#panel-urce-settings { padding: 0px !important; width:100% !important; }'
                 + '#panel-urce-tools { padding: 0px !important; width:100% !important; }'
                 // Main Tabs
-                + '.URCE-tabIcon { margin-bottom:3px; width:18px; }'
-                + '.URCE-urFilteringToggleBtn { margin-left:4px; cursor:pointer; font-size:13px; }'
-                + '.URCE-spinner { margin-left:2px; color:lightgray; }'
+                + '.URCE-tabIcon { margin-bottom:3px; width:20px; }'
+                + '.URCE-urFilteringToggleBtn { margin-left:4px; cursor:pointer; font-size:18px; margin-top:2px; float:right; }'
+                + '.URCE-spinner { margin-left:2px; line-height:2; font-size:12px; color:lightgray; }'
                 // urceDiv
                 + '#urceDiv { position:absolute; visibility:hidden; top:0; left:0; z-index:15000; background-color:aliceBlue; border-width:3px; border-style:solid; border-radius:10px;'
                 + '     box-shadow:5px 5px 10px silver;'
@@ -4687,6 +4625,7 @@
                 + '#urceDiv .urceDivContent { padding:5px 15px 0px 5px; }'
                 + '#urceDiv .urceDivDisablePopups { float:right; cursor:pointer; margin-top:-12px; margin-right:10px; font-size:10px; text-decoration:underline; }'
                 // UR panel Manipulation
+                + '#urceShortcuts i.URCE-chevron { font-weight:900; }'
                 + '#panel-container .mapUpdateRequest.panel { width:380px; max-height:87vh; }'
                 + '#panel-container .mapUpdateRequest.panel>* { max-height:87vh; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment-list { padding: 0px 6px; margin-bottom: 6px; max-height: 26vh; }'
@@ -4773,11 +4712,11 @@
                 for (let idx = 0, { length } = legends; idx < length; idx++) {
                     if (this.id === 'URCE-expandAllTools') {
                         if (legends[idx].nextElementSibling.classList.contains('collapse'))
-                            legends[idx].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                            legends[idx].click();
                     }
                     else if (this.id === 'URCE-collapseAllTools') {
                         if (!legends[idx].nextElementSibling.classList.contains('collapse'))
-                            legends[idx].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                            legends[idx].click();
                     }
                 }
             },
@@ -4786,7 +4725,7 @@
                 const a = createElem('a', {
                     href: URL.createObjectURL(new Blob([JSON.stringify({ URCE: _settings })], { type: 'application/json' })), download: `urce-settings-v${_SCRIPT_VERSION}.json`
                 });
-                a.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                a.click();
                 a.remove();
             },
             restoreSettingsClick = function () {
@@ -4844,14 +4783,14 @@
                 }
             },
             legendClickToggle = function () {
-                this.firstChild.classList.toggle('fa-chevron-down');
-                this.firstChild.classList.toggle('fa-chevron-right');
+                this.firstChild.classList.toggle('w-icon-chevron-up');
+                this.firstChild.classList.toggle('w-icon-chevron-down');
                 this.nextSibling.classList.toggle('collapse');
                 saveSettingsToStorage();
             },
             buildFieldsetSection = (idTag, textContent, divAttrs = { class: 'URCE-controls URCE-divCC' }) => {
                 const legendElem = createElem('legend', { id: `urce-tools-legend-${idTag}`, class: `URCE-legend${urStyle}` }, [{ click: legendClickToggle }]);
-                legendElem.appendChild(createElem('i', { class: 'fa fa-fw fa-chevron-down URCE-chevron' }));
+                legendElem.appendChild(createElem('i', { class: 'w-icon w-icon-chevron-up URCE-chevron' }));
                 legendElem.appendChild(createElem('span', { class: 'URCE-span', textContent }));
                 const fieldsetElem = createElem('fieldset', { id: `urce-tools-fieldset-${idTag}`, class: `URCE-field${urStyle}` });
                 fieldsetElem.appendChild(legendElem);
@@ -4910,17 +4849,17 @@
                 for (let idx = 0, { length } = legends; idx < length; idx++) {
                     if (this.id === 'URCE-expandAllSettings') {
                         if (legends[idx].nextElementSibling.classList.contains('collapse'))
-                            legends[idx].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                            legends[idx].click();
                     }
                     else if (this.id === 'URCE-collapseAllSettings') {
                         if (!legends[idx].nextElementSibling.classList.contains('collapse'))
-                            legends[idx].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                            legends[idx].click();
                     }
                 }
             },
             legendClickToggle = function () {
-                this.firstChild.classList.toggle('fa-chevron-down');
-                this.firstChild.classList.toggle('fa-chevron-right');
+                this.firstChild.classList.toggle('w-icon-chevron-up');
+                this.firstChild.classList.toggle('w-icon-chevron-down');
                 this.nextSibling.classList.toggle('collapse');
             },
             commentListSelectionChange = function () {
@@ -5080,7 +5019,7 @@
                         document.getElementById('urceUrFilteringToggleBtn').style.color = '#ccc';
                     }
                     else {
-                        document.querySelectorAll('[urceprefs=marker]').forEach((el) => {
+                        document.querySelectorAll('[urceprefs=filtering]').forEach((el) => {
                             el.disabled = false;
                             el.classList.remove('urceDisabled');
                         });
@@ -5182,7 +5121,7 @@
             },
             buildFieldsetSection = (idTag, textContent, divAttrs = { class: 'URCE-controls URCE-divCC' }) => {
                 const legendElem = createElem('legend', { id: `urce-prefs-legend-${idTag}`, class: `URCE-legend${urStyle}` }, [{ click: legendClickToggle }]);
-                legendElem.appendChild(createElem('i', { class: 'fa fa-fw fa-chevron-down URCE-chevron' }));
+                legendElem.appendChild(createElem('i', { class: 'w-icon w-icon-chevron-up URCE-chevron' }));
                 legendElem.appendChild(createElem('span', { class: 'URCE-span', textContent }));
                 const fieldsetElem = createElem('fieldset', { id: `urce-prefs-fieldset-${idTag}`, class: `URCE-field${urStyle}` });
                 fieldsetElem.appendChild(legendElem);
@@ -5504,8 +5443,8 @@
                 selectElem.appendChild(createElem('option', { value: cList.idx, textContent: cList.name, selected: (cList.idx === _settings.commentList) }));
         });
         contentDivDiv.appendChild(selectElem);
-        let contentDivDivDiv = createElem('div', { id: 'restrictionsEnforcedWarning-Settings', style: `float:right;padding-right:4px;color:red;font-size:18px;${(_restrictionsEnforcedTitle ? '' : 'display:none;')}` });
-        contentDivDivDiv.appendChild(createElem('i', { class: 'fa fa-exclamation-triangle', 'aria-hidden': true, title: _restrictionsEnforcedTitle || '' }));
+        let contentDivDivDiv = createElem('div', { id: 'restrictionsEnforcedWarning-Settings', style: `float:right;padding-right:4px;color:red;font-size:20px;${(_restrictionsEnforcedTitle ? '' : 'display:none;')}` });
+        contentDivDivDiv.appendChild(createElem('i', { class: 'w-icon w-icon-alert-danger', 'aria-hidden': true, title: _restrictionsEnforcedTitle || '' }));
         contentDivDiv.appendChild(contentDivDivDiv);
         contentDiv.appendChild(contentDivDiv);
         contentDivDiv = createElem('div', { textContent: `${I18n.t('urce.prefs.CustomSsId')}: ` });
@@ -5729,7 +5668,7 @@
         if (!document.getElementById('urceDiv')) {
             const disableUrMarkerPopups = () => {
                     hidePopup({ doubleClick: true });
-                    document.getElementById('_cbdisableUrMarkerPopup').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    document.getElementById('_cbdisableUrMarkerPopup').click();
                 },
                 divElemRoot = createElem('div', { id: 'urceDiv' }, [{ mouseleave: hidePopup }, { mouseenter: checkPopupTimeouts }, { dblclick: dispatchPopupDoubleClick }]);
             divElemRoot.appendChild(createElem('span', { class: 'urceDivCloseButton', textContent: 'X' }, [{ click: hidePopup }]));
@@ -5742,7 +5681,7 @@
                 { tabLabel, tabPane } = W.userscripts.registerSidebarTab('URC-E'),
                 urceUrFilteringToggle = (evt) => {
                     evt.stopPropagation();
-                    document.getElementById('_cbenableUrceUrFiltering').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    document.getElementById('_cbenableUrceUrFiltering').click();
                 };
             // Tab Label
             docFrags.appendChild(createElem('img', { id: 'urceIcon', class: 'URCE-tabIcon', src: GM_info.script.icon }));
@@ -5751,11 +5690,13 @@
             );
             docFrags.appendChild(
                 createElem('span', {
-                    id: 'urceUrFilteringToggleBtn', class: 'fa fa-filter URCE-urFilteringToggleBtn', style: `color:${(_settings.enableUrceUrFiltering ? '#00bd00' : '#ccc')};`, title: I18n.t('urce.mouseOver.ToggleUrceURFiltering')
+                    id: 'urceUrFilteringToggleBtn', class: 'w-icon w-icon-filter URCE-urFilteringToggleBtn', style: `color:${(_settings.enableUrceUrFiltering ? '#00bd00' : '#ccc')};`, title: I18n.t('urce.mouseOver.ToggleUrceURFiltering')
                 }, [{ click: urceUrFilteringToggle }])
             );
             tabLabel.appendChild(docFrags);
             tabLabel.title = 'URC-E';
+            tabLabel.style.display = 'flex';
+            tabLabel.style.justifyContent = 'center';
             // Tab Pane
             docFrags.appendChild(createElem('span', { class: 'URCE-spanTitle', textContent: _SCRIPT_SHORT_NAME }));
             docFrags.appendChild(createElem('span', { class: 'URCE-spanVersion', textContent: _SCRIPT_VERSION }));
@@ -5828,7 +5769,7 @@
                         if (data.values?.length > 0) {
                             let ssFieldNames;
                             const EXPECTED_FIELD_NAMES = ['idx', 'name', 'status', 'type', 'oldVarName', 'Prefix', 'listOwner'],
-                                checkFieldNames = (fldName) => ssFieldNames.includes(fldName);
+                                checkFieldNames = function (fldName) { return this.includes(fldName); };
                             for (let entryIdx = 0, { length } = data.values; entryIdx < length; entryIdx++) {
                                 if (entryIdx === 0) {
                                     if (_SCRIPT_VERSION < data.values[entryIdx][0]) {
@@ -5844,7 +5785,7 @@
                                     ssFieldNames = data.values[entryIdx].map((fldName) => fldName.trim());
                                     if (ssFieldNames.length !== EXPECTED_FIELD_NAMES.length)
                                         errorText = `Expected ${EXPECTED_FIELD_NAMES.length} columns in comment lists data. Spreadsheet returned ${ssFieldNames.length}.`;
-                                    else if (!EXPECTED_FIELD_NAMES.every((fldName) => checkFieldNames(fldName)))
+                                    else if (!EXPECTED_FIELD_NAMES.every(checkFieldNames.bind(ssFieldNames)))
                                         errorText = `Script expected to see the following column names in the comment definition spreadsheet:\n${EXPECTED_FIELD_NAMES.join(', ')}\nHowever, the spreadsheet returned these:\n${ssFieldNames.join(', ')}`;
                                     if (errorText)
                                         break;
@@ -6672,6 +6613,7 @@
                                                 + 'locale language).\n\n04:00am-11:59am: morning\n12:00pm-05:59pm: afternoon\n06:00pm-08:59pm: evening\n09:00pm-03:59am: night',
                                     InsertTimeTitle: 'Shortcut - Drive time of day: Click this icon to insert the drive date time of day into the new comment box at the cursor position (2-digit hour, '
                                                 + '2-digit minute in locale format).',
+                                    InsertUrIdTitle: 'Shortcut - Insert UR ID number.',
                                     InsertUrPermalinkTitle: 'Shortcut - Insert permalink to this UR. URL will include your locale, your \'env\', the latitude and longitude of this UR, zoom level of 17, '
                                                 + 'mapUpdateRequest of this UR ID number, and s=20489175039 (which ensures the UR layer is turned on).',
                                     InsertUrTypeTitle: 'Shortcut - UR Type: Click this icon to insert the UR type into the new comment box at the cursor position.',
@@ -6697,10 +6639,10 @@
                                     NoCommentBox: 'URC-E: Unable to find the comment box! In order for this script to work, you need to have a UR open.',
                                     PlaceAddressFound: 'The selected comment contains \'$PLACE_ADDRESS$\'.\n\nIn order to replace this text with the place address, please\nselect a place and click the place '
                                                 + 'address shortcut button in the UR panel.',
-                                    PlaceAddressInsertError: 'In order to use the <i class="fa fa-map-marker" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
+                                    PlaceAddressInsertError: 'In order to use the <i class="w-icon w-icon-location" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
                                     PlaceNameFound: 'The selected comment contains \'$PLACE_NAME$\'.\n\nIn order to replace this text with the place name, please\nselect a place and click the place name '
                                                 + 'shortcut button in the UR panel.',
-                                    PlaceNameInsertError: 'In order to use the <i class="fa fa-home" aria-hidden="true"></i> button in the UR Panel, you must first select a place.',
+                                    PlaceNameInsertError: 'In order to use the <i class="w-icon w-icon-location"></i> button in the UR Panel, you must first select a place.',
                                     ReminderMessageAuto: 'Automatically sent reminder message to UR(s)',
                                     ResetSettings: 'Reset Settings',
                                     ResetSettingsComplete: 'Settings reset complete',
@@ -6715,7 +6657,7 @@
                                     RestrictionsEnforcedTitle: 'The following restrictions have been enforced',
                                     SelSegsFound: 'The selected comment contains \'$SELSEGS$\'.\n\nIn order to replace this text with the road name(s), please\nselect one or two segments and click the road '
                                                 + 'button in the\nUR panel.',
-                                    SelSegsInsertError: 'In order to use the <i class="fa fa-road" aria-hidden="true"></i> button in the UR Panel, you must first select one or two segments.',
+                                    SelSegsInsertError: 'In order to use the <i class="w-icon w-icon-road"></i> button in the UR Panel, you must first select one or two segments.',
                                     SetCustomSsIdFirst: 'Before you can select <b><i>Custom G Sheet</i></b> as your comment list, you must first set the <b><i>Custom Google Spreadsheet ID</i></b> setting on '
                                                 + 'the URC-E settings tab.',
                                     SpreadsheetUpdateRequired: 'You are using an older version of the URC-E spreadsheet, which has caused an error. Please update your spreadsheet to at least version: $VERSION$ '
