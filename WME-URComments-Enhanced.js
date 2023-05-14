@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.05.12.01
+// @version     2023.05.14.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -1134,12 +1134,11 @@
         if (!domElement.textContent.endsWith(')'))
             domElement.textContent += ` (${parseDaysAgo(_mapUpdateRequests[_selUr.urId].urceData.driveDaysOld)})`;
         if (W.model.mapUpdateRequests.objects[_selUr.urId].attributes.description) {
-            if ((await getDomElement('#panel-container .top-section .body .problem-data .description .content'))?.children.length === 0) {
-                const content = await getDomElement('#panel-container .top-section .body .problem-data .description .content');
-                if (content) {
-                    content.textContent = '';
-                    content.appendChild(createElem('div', { class: 'URCE-divDesc', textContent: content.textContent }));
-                }
+            const content = await getDomElement('#panel-container .top-section .body .problem-data .description .content');
+            if (content?.children.length === 0) {
+                const divElemRoot = createElem('div', { class: 'URCE-divDesc', textContent: content.textContent });
+                content.textContent = '';
+                content.appendChild(divElemRoot);
             }
         }
         if (_mapUpdateRequests[_selUr.urId].urceData.commentCount > 0) {
