@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.05.15.01
+// @version     2023.05.15.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -2152,7 +2152,7 @@
         stackList.push(urId);
         if (markerMapCollection) {
             Object.keys(markerMapCollection).forEach((marker) => {
-                if (markerMapCollection.hasOwnProperty(marker)) {
+                if (markerModelCollection.hasOwnProperty(marker)) {
                     // 2023.05.15.01: With URC-E recreation of the old markers object library (featureMarkers), the icon.imageDiv is now element.
                     const iconDiv = markerMapCollection[marker].marker.element;
                     if (!markerModelCollection[marker].attributes.geometry.urceRealX) {
@@ -2171,7 +2171,8 @@
                         offset += 1000;
                     }
                     if (!(iconDiv.classList.contains('recently-closed') && (W.map.getLayerByName('update_requests').showHidden === false))
-                        && ((iconDiv.style.display !== 'none') || (iconDiv.style.visibility !== 'hidden'))
+                        && (iconDiv.style.display !== 'none')
+                        && (iconDiv.style.visibility !== 'hidden')
                     ) {
                         if (+marker !== urId) {
                             const xDiff = unstackedX - parsePxString(iconDiv.style.left),
@@ -3236,7 +3237,7 @@
         }
         await updateUrceData(mUrsObjArr);
         updateUrMapMarkers(mUrsObjArr, filter);
-        // 2023.04.05.01: Used to check for conditions and either run handleUrOverflow or panel alert box or remove it. But now using W.app.on('change:loadingFeedMapData') event listener.
+        // 2023.04.05.01: Used to check for conditions and either run handleUrOverflow or panel alert box or remove it. But now using W.app.on('change:loadingIssueTrackerMapData') event listener.
         if (phase !== 'overflow')
             _filtersAppliedOnZoom = filter;
         doSpinner('handleUrLayer', false);
@@ -3244,9 +3245,9 @@
     }
 
     function getOverflowUrsFromUrl(urlStr) {
-        logDebug(`Getting URs from: ${urlStr}`);
         return new Promise((resolve) => {
             (async function retry(url, tries, toIndex) {
+                logDebug(`Getting URs from: ${urlStr} (Try: ${tries})`);
                 checkTimeout({ timeout: 'getOverflowUrsFromUrl', toIndex });
                 const errorObj = { error: false, url };
                 GM_xmlhttpRequest({
@@ -3301,7 +3302,7 @@
     }
 
     function handleUrOverflow(evt) {
-        if (evt?.changed?.loadingFeedMapData || evt?.changed?.attributes?.loadingFeedMapData)
+        if (evt?.changed?.loadingIssueTrackerMapData || evt?.attributes?.loadingIssueTrackerMapData)
             return;
         if (W.map.getZoom() < 10) {
             logDebug('UR overflow handling does not work with zoom levels < 10.');
@@ -3410,7 +3411,7 @@
         else
             dismissAlertBoxInPanel(undefined, 9999);
          *-/
-        // 2023.04.05.01: Used to check for conditions and either run handleUrOverflow or panel alert box or remove it. But now using W.app.on('change:loadingFeedMapData') event listener.
+        // 2023.04.05.01: Used to check for conditions and either run handleUrOverflow or panel alert box or remove it. But now using W.app.on('change:loadingIssueTrackerMapData') event listener.
     }
      */
 
@@ -3439,7 +3440,7 @@
             if (_filtersAppliedOnZoom && _settings.disableFilteringBelowZoom && (zoomLevel > _settings.disableFilteringBelowZoomLevel))
                 filter = false;
         }
-        // 2023.04.05.01: Used to check for conditions and either run handleUrOverflow or panel alert box or remove it. But now using W.app.on('change:loadingFeedMapData') event listener.
+        // 2023.04.05.01: Used to check for conditions and either run handleUrOverflow or panel alert box or remove it. But now using W.app.on('change:loadingIssueTrackerMapData') event listener.
         if (filter !== undefined)
             handleUrLayer('zoomEnd', filter, getMapUrsObjArr());
     }
@@ -4437,7 +4438,7 @@
             W.prefs.on('change:isImperial', invokeModeChange);
             W.model.mapUpdateRequests.on('objectsadded', mUrsAdded);
             W.model.mapUpdateRequests.on('objectsremoved', mUrsRemoved);
-            W.app.on('change:loadingFeedMapData', handleUrOverflow);
+            W.app.on('change:loadingIssueTrackerMapData', handleUrOverflow);
             W.model.states.on('objectsadded', checkRestrictions);
             W.model.countries.on('objectsadded', checkRestrictions);
         }
@@ -4480,7 +4481,7 @@
             W.map.events.unregister('mouseup', undefined, mouseUp);
             W.model.mapUpdateRequests.off('objectsadded', mUrsAdded);
             W.model.mapUpdateRequests.off('objectsremoved', mUrsRemoved);
-            W.app.off('change:loadingFeedMapData', handleUrOverflow);
+            W.app.off('change:loadingIssueTrackerMapData', handleUrOverflow);
             W.model.states.off('objectsadded', checkRestrictions);
             W.model.countries.off('objectsadded', checkRestrictions);
         }
@@ -6012,6 +6013,8 @@
                                 if (W.model.mapUpdateRequests.getObjectArray().length > _markerCountOnInit)
                                     handleUrLayer('init_end', undefined, getMapUrsObjArr());
                                 _markerCountOnInit = -1;
+                                if (W.model.mapUpdateRequests.getObjectArray().length > 499)
+                                    handleUrOverflow({ changed: { loadingIssueTrackerMapData: false } });
                                 maskBoxes(undefined, true, 'init', (urIdInUrl > 0));
                             });
                         }
