@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.05.15.02
+// @version     2023.05.16.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -86,7 +86,8 @@
             'CHANGE: A lot. Reverted to 100% vanilla JavaScript, removing reliance on jQuery.',
             'CHANGE: Switch to WazeWrap update checking.',
             'CHANGE: WME changes to repositories.',
-            'CHANGE: Switch to Waze icons instead of FontAwesome for continuity.'
+            'CHANGE: Switch to Waze icons instead of FontAwesome for continuity.',
+            'CHANGE: Remove unnecessary marker event listener.'
         ],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
@@ -219,11 +220,6 @@
                 if (!urceCounter && !newMarker.addedNodes[0].dataset.urceHasListeners) {
                     newMarker.addedNodes[0].addEventListener('mouseover', markerMouseOver);
                     newMarker.addedNodes[0].addEventListener('mouseout', markerMouseOut);
-                    newMarker.addedNodes[0].addEventListener('click', markerClick);
-                    newMarker.addedNodes[0].dataset.urceHasListeners = true;
-                }
-                if (urceCounter && !newMarker.addedNodes[0].dataset.urceHasListeners) {
-                    newMarker.addedNodes[0].addEventListener('click', pillClick);
                     newMarker.addedNodes[0].dataset.urceHasListeners = true;
                 }
             });
@@ -1336,7 +1332,7 @@
             }
         }
         if (_settings.autoCenterOnUr)
-            recenterOnUr();
+            recenterOnUr(_selUr.urId);
         doSpinner('handleUpdateRequestContainer', false);
     }
 
@@ -2424,6 +2420,10 @@
         restackMarkers();
     }
 
+    /**  2023.05.16.01: Removed markerClick(evt) as it is no longer needed with the the _urMarkerObserver now watching for 'marker-selected' class mutation.
+     *                  This change could have taken place back when the MO was updated, but wasn't really discovered as unncessary until troubleshooting pillClick()
+     *                  (now gone) being a problem.
+     *
     function markerClick(evt) {
         const evtUrId = evt.target.attributes?.['data-id']?.value;
         if (!_selUr.handling && _commentListLoaded && (!(_selUr.urId > 0) || (_selUr.urId !== +evtUrId))) {
@@ -2437,12 +2437,7 @@
             logDebug(`Clicked UR marker for urId: ${_selUr.urId}`);
         }
     }
-
-    function pillClick() {
-        const urId = this.id ? this.id.substring(13) : -1;
-        if (+urId > 0)
-            openUrPanel(+urId, false);
-    }
+    */
 
     function checkPopupTimeouts() {
         checkTimeout({ timeout: 'popup' });
@@ -2761,7 +2756,6 @@
                     if (!marker.dataset.urceHasListeners) {
                         marker.addEventListener('mouseover', markerMouseOver);
                         marker.addEventListener('mouseout', markerMouseOut);
-                        marker.addEventListener('click', markerClick);
                         marker.dataset.urceHasListeners = true;
                     }
                     if (marker.style.display === 'none') {
@@ -2815,7 +2809,7 @@
                             }
                             const divContainer = createElem('div', {
                                 id: `urceCounters-${mUrObj.attributes.id}`, 'data-id': mUrObj.attributes.id, style: 'clear:both; margin-bottom:10px;'
-                            }, [{ click: pillClick }]);
+                            });
                             divContainer.dataset.urceHasListeners = true;
                             divContainer.appendChild(createElem('div', {
                                 id: `urceCounters-${mUrObj.attributes.id}-text`,
@@ -4466,12 +4460,7 @@
                         const iconDiv = markerMapCollection[marker].marker.element;
                         iconDiv.removeEventListener('mouseover', markerMouseOver);
                         iconDiv.removeEventListener('mouseout', markerMouseOut);
-                        iconDiv.removeEventListener('click', markerClick);
                         iconDiv.dataset.urceHasListeners = false;
-                        if (iconDiv.firstChild) {
-                            iconDiv.firstChild.removeEventListener('click', pillClick);
-                            iconDiv.firstChild.dataset.urceHasListeners = false;
-                        }
                     }
                 });
             }
