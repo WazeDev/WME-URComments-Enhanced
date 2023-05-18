@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.05.16.01
+// @version     2023.05.18.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -87,7 +87,8 @@
             'CHANGE: Switch to WazeWrap update checking.',
             'CHANGE: WME changes to repositories.',
             'CHANGE: Switch to Waze icons instead of FontAwesome for continuity.',
-            'CHANGE: Remove unnecessary marker event listener.'
+            'CHANGE: Remove unnecessary marker event listener.',
+            'BUGFIX: Filter "hide with description".'
         ],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
@@ -1056,6 +1057,7 @@
     }
 
     async function handleUpdateRequestContainer() {
+        restackMarkers();
         if (!_commentListLoaded)
             return;
         const selectedUrId = document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value;
@@ -1201,16 +1203,22 @@
                 createIElem = (id = '', classStr = '', style = '', title = '') => createElem('i', {
                     id, class: classStr, style, title
                 }, [{ click: handleClickedShortcut }]),
-                createSeparator = (lPad = 4, rPad = 4) => createElem('div', { style: `display:inline-block;padding-left:${lPad}px;padding-right:${rPad}px;`, textContent: '||' });
+                createSeparator = (lPad = 4, rPad = 4) => {
+                    const elem = createElem('div', { class: 'separator', textContent: '||' });
+                    elem.style.padding = `0 ${rPad}px 0 ${lPad}px`;
+                    return elem;
+                };
             let divElemDiv = createElem('div', {
-                id: 'urceShortcutsExpand', style: 'padding-bottom:4px;font-size:13px;cursor:pointer;border-bottom:1px solid darkgray;', textContent: I18n.t('urce.urPanel.Shortcuts')
+                id: 'urceShortcutsExpand', textContent: I18n.t('urce.urPanel.Shortcuts')
             }, [{ click: urceShortcutsExpand }]);
-            let divElemDivDiv = createElem('div', { style: 'display:inline;float:right;' });
+            let divElemDivDiv = createElem('div', { class: 'chevron' });
             divElemDivDiv.appendChild(createElem('i', { class: `w-icon ${(_settings.expandShortcuts ? 'w-icon-chevron-up' : 'w-icon-chevron-down')} URCE-chevron` }));
             divElemDiv.appendChild(divElemDivDiv);
-            const divElemRoot = createElem('div', { id: 'urceShortcuts', style: 'text-align:left;padding-bottom:8px;font-size:12px;width:100%;' });
+            const divElemRoot = createElem('div', { id: 'urceShortcuts' });
             divElemRoot.appendChild(divElemDiv);
-            divElemDiv = createElem('div', { id: 'urceShortcutsExpandDiv', style: `${_settings.expandShortcuts ? '' : 'display:none;'}border-bottom:1px solid darkgray;padding: 5px 0 5px 0;` });
+            divElemDiv = createElem('div', { id: 'urceShortcutsExpandDiv' });
+            if (!_settings.expandShortcuts)
+                divElemDiv.style.display = 'none';
             divElemDivDiv = createElem('div');
             divElemDivDiv.appendChild(createIElem('urceShortcuts-selSegs', 'w-icon w-icon-road', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertSelSegsTitle')));
             divElemDivDiv.appendChild(createIElem('urceShortcuts-selSegsWithCity', 'w-icon w-icon-road', 'cursor:pointer;', I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')));
@@ -1220,7 +1228,7 @@
                 'cursor:pointer;float:left;margin:-6px 0 0 -5px;position:absolute;font-weight:600;',
                 I18n.t('urce.urPanel.InsertSelSegsWithCityTitle')
             ));
-            divElemDivDiv.appendChild(createSeparator(8, 4));
+            divElemDivDiv.appendChild(createSeparator(11, 4));
             divElemDivDiv.appendChild(createIElem('urceShortcuts-placeName', 'w-icon w-icon-hotel', 'cursor:pointer;', I18n.t('urce.urPanel.InsertPlaceNameTitle')));
             divElemDivDiv.appendChild(createIElem('urceShortcuts-placeAddress', 'w-icon w-icon-location', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertPlaceAddressTitle')));
             divElemDivDiv.appendChild(createSeparator());
@@ -1239,7 +1247,7 @@
             divElemDivDiv.appendChild(createIElem('urceShortcuts-driveTimeCasual', 'w-icon w-icon-clock', 'cursor:pointer;', I18n.t('urce.urPanel.InsertTimeCasualTitle')));
             divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDateCasual', 'w-icon w-icon-calendar', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDateCasualTitle')));
             divElemDivDiv.appendChild(createIElem('urceShortcuts-driveDateTimeCasualMode', 'w-icon w-icon-available-fill', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertDateTimeCasualModeTitle')));
-            divElemDivDiv.appendChild(createElem('div', { style: 'display:inline-block;padding-left:8px;', textContent: `- ${I18n.t('urce.urPanel.DriveDate')}` }));
+            divElemDivDiv.appendChild(createElem('div', { class: 'driveDateText', textContent: `- ${I18n.t('urce.urPanel.DriveDate')}` }));
             divElemDiv.appendChild(divElemDivDiv);
             divElemDivDiv = createElem('div');
             divElemDivDiv.appendChild(createIElem('urceShortcuts-currentTime', 'w-icon w-icon-clock', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentTimeTitle')));
@@ -1248,7 +1256,7 @@
             divElemDivDiv.appendChild(createSeparator());
             divElemDivDiv.appendChild(createIElem('urceShortcuts-currentTimeCasual', 'w-icon w-icon-clock', 'cursor:pointer;', I18n.t('urce.urPanel.InsertCurrentTimeCasualTitle')));
             divElemDivDiv.appendChild(createIElem('urceShortcuts-currentDateCasual', 'w-icon w-icon-calendar', 'cursor:pointer;padding-left:4px;', I18n.t('urce.urPanel.InsertCurrentDateCasualTitle')));
-            divElemDivDiv.appendChild(createElem('div', { style: 'display:inline-block;padding-left:24px;', textContent: `- ${I18n.t('urce.urPanel.CurrentDate')}` }));
+            divElemDivDiv.appendChild(createElem('div', { class: 'currentDateText', textContent: `- ${I18n.t('urce.urPanel.CurrentDate')}` }));
             divElemDiv.appendChild(divElemDivDiv);
             divElemRoot.appendChild(divElemDiv);
             domElement = document.querySelector('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form');
@@ -1917,8 +1925,8 @@
                 domElement.value = newVal;
                 domElement.dispatchEvent(new Event('input'));
                 domElement.dispatchEvent(new KeyboardEvent('keyup'));
-                domElement.focus();
                 domElement.setSelectionRange(cursorPos + outputText.length, cursorPos + outputText.length);
+                domElement.focus();
             }
         }
         else if (useCurrVal) {
@@ -1930,8 +1938,8 @@
                 domElement.value = outputText;
                 domElement.dispatchEvent(new Event('input'));
                 domElement.dispatchEvent(new KeyboardEvent('keyup'));
-                domElement.focus();
                 domElement.setSelectionRange(cursorPos + outputText.length, cursorPos + outputText.length);
+                domElement.focus();
             }
         }
         doSpinner('handleClickedShortcut', false);
@@ -2025,9 +2033,9 @@
             }
             else {
                 domElement.dispatchEvent(new KeyboardEvent('keyup'));
-                domElement.focus();
-                const selectionRange = newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls;
+                const selectionRange = (newCursorPos || 0) + comment.replace(/\\[r|n]+/gm, ' ').length + postNls;
                 domElement.setSelectionRange(selectionRange, selectionRange);
+                domElement.focus();
             }
         }
         doSpinner('postUrComment', false);
@@ -2144,28 +2152,13 @@
                 .map((marker) => ({ 'data-id': marker.element.attributes['data-id'].value, marker: { marker } }))
                 .reduce((obj, val) => ({ ...obj, [val['data-id']]: val.marker }), {}),
             markerModelCollection = { ...W.model.mapUpdateRequests.objects };
-        let offset = 1000000000;
+        let offset = 0.000000001;
         stackList.push(urId);
         if (markerMapCollection) {
             Object.keys(markerMapCollection).forEach((marker) => {
                 if (markerModelCollection.hasOwnProperty(marker)) {
                     // 2023.05.15.01: With URC-E recreation of the old markers object library (featureMarkers), the icon.imageDiv is now element.
                     const iconDiv = markerMapCollection[marker].marker.element;
-                    if (!markerModelCollection[marker].attributes.geometry.urceRealX) {
-                        markerModelCollection[marker].attributes.geometry.urceRealX = (markerModelCollection[marker].attributes.geometry.realX)
-                            ? markerModelCollection[marker].attributes.geometry.realX
-                            : markerModelCollection[marker].attributes.geometry.x;
-                        markerModelCollection[marker].attributes.geometry.x = (markerModelCollection[marker].attributes.geometry.realX)
-                            ? (markerModelCollection[marker].attributes.geometry.realX + offset)
-                            : (markerModelCollection[marker].attributes.geometry.x + offset);
-                        markerModelCollection[marker].attributes.geometry.urceRealY = (markerModelCollection[marker].attributes.geometry.realY)
-                            ? markerModelCollection[marker].attributes.geometry.realY
-                            : markerModelCollection[marker].attributes.geometry.y;
-                        markerModelCollection[marker].attributes.geometry.y = (markerModelCollection[marker].attributes.geometry.realY)
-                            ? (markerModelCollection[marker].attributes.geometry.realY + offset)
-                            : (markerModelCollection[marker].attributes.geometry.y + offset);
-                        offset += 1000;
-                    }
                     if (!(iconDiv.classList.contains('recently-closed') && (W.map.getLayerByName('update_requests').showHidden === false))
                         && (iconDiv.style.display !== 'none')
                         && (iconDiv.style.visibility !== 'hidden')
@@ -2202,6 +2195,21 @@
                         y = parsePxString(iconDiv.style.top);
                     _markerStackArray.push(stackListObj(thisUrId, x, y));
                     if (!((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
+                        if (!markerModelCollection[thisUrId].attributes.geometry.urceRealX) {
+                            markerModelCollection[thisUrId].attributes.geometry.urceRealX = (markerModelCollection[thisUrId].attributes.geometry.realX)
+                                ? markerModelCollection[thisUrId].attributes.geometry.realX
+                                : markerModelCollection[thisUrId].attributes.geometry.x;
+                            markerModelCollection[thisUrId].attributes.geometry.x = (markerModelCollection[thisUrId].attributes.geometry.realX)
+                                ? (markerModelCollection[thisUrId].attributes.geometry.realX + offset)
+                                : (markerModelCollection[thisUrId].attributes.geometry.x + offset);
+                            markerModelCollection[thisUrId].attributes.geometry.urceRealY = (markerModelCollection[thisUrId].attributes.geometry.realY)
+                                ? markerModelCollection[thisUrId].attributes.geometry.realY
+                                : markerModelCollection[thisUrId].attributes.geometry.y;
+                            markerModelCollection[thisUrId].attributes.geometry.y = (markerModelCollection[thisUrId].attributes.geometry.realY)
+                                ? (markerModelCollection[thisUrId].attributes.geometry.realY + offset)
+                                : (markerModelCollection[thisUrId].attributes.geometry.y + offset);
+                            offset += 0.000000001;
+                        }
                         iconDiv.style.left = `${unstackedX}px`;
                         iconDiv.style.top = `${unstackedY}px`;
                         unstackedX += 10;
@@ -2238,15 +2246,10 @@
             if ((markerId > 0) && ((_mousedOverMarkerId !== markerId) || (getComputedStyle(document.getElementById('urceDiv')).visibility === 'hidden'))) {
                 _mousedOverMarkerId = markerId;
                 // 2023.05.15.01: W.map.updateRequestLayer.featureMarkers is gone from prod WME. Also changed to W.map.getLayerByName.
-                const markerMapCollection = W.map.getLayerByName('update_requests').markers
-                        .map((marker) => ({ 'data-id': marker.element.attributes['data-id'].value, marker: { marker } }))
-                        .reduce((obj, val) => ({ ...obj, [val['data-id']]: val.marker }), {}),
-                    targetTab = `_urceTab_${Math.round(Math.random() * 1000000)}`,
+                const targetTab = `_urceTab_${Math.round(Math.random() * 1000000)}`,
                     popupXOffset = parsePxString(getComputedStyle(document.getElementById('sidebar')).width) + parsePxString(getComputedStyle(document.getElementById('drawer')).width),
-                    // 2023.05.15.01: With URC-E recreation of the old markers object library (featureMarkers), the icon.imageDiv is now element.
-                    iconDiv = markerMapCollection[markerId].marker.element,
-                    unstackedX = parsePxString(iconDiv.style.left),
-                    unstackedY = parsePxString(iconDiv.style.top);
+                    unstackedX = parsePxString(this.style.left),
+                    unstackedY = parsePxString(this.style.top);
                 checkMarkerStacking(markerId, unstackedX, unstackedY);
                 if (!_settings.disableUrMarkerPopup) {
                     doSpinner('markerMouseDown', true);
@@ -3149,10 +3152,10 @@
                         // Following, description, comments
                         || (_settings.hideFollowing && urSessionsObj.isFollowing)
                         || (_settings.hideNotFollowing && !urSessionsObj.isFollowing)
-                        || (_settings.hideDescription
-                            && (chunk[idx]?.attributes.description.length > 0) && (chunk[idx]?.attributes.description !== ''))
+                        || (_settings.hideWithDescription
+                            && (chunk[idx]?.attributes?.description?.length > 0) && (chunk[idx].attributes.description !== ''))
                         || (_settings.hideWithoutDescription
-                            && (!chunk[idx].attributes.description || (chunk[idx].attributes.description.length === 0) || (chunk[idx].attributes.description === '')))
+                            && (!chunk[idx]?.attributes?.description || (chunk[idx].attributes.description.length === 0) || (chunk[idx].attributes.description === '')))
                         || (_settings.hideWithCommentsFromMe && (urceData.commentsByMe))
                         || (_settings.hideWithoutCommentsFromMe && (!urceData.commentsByMe))
                         || (_settings.hideLastCommentByMe && (urceData.lastCommentBy === _wmeUserId))
@@ -4606,7 +4609,14 @@
                 + '#urceDiv .urceDivContent { padding:5px 15px 0px 5px; }'
                 + '#urceDiv .urceDivDisablePopups { float:right; cursor:pointer; margin-top:-12px; margin-right:10px; font-size:10px; text-decoration:underline; }'
                 // UR panel Manipulation
+                + '#urceShortcuts { text-align:left; padding-bottom:8px; font-size:14px; width:100%; }'
+                + '#urceShortcuts .chevron { display:inline; float:right; }'
+                + '#urceShortcuts .currentDateText { display:inline-block; padding-left:26px; font-size:12px; vertical-align:top; }'
+                + '#urceShortcuts .driveDateText { display:inline-block; padding-left:8px; font-size:12px; vertical-align:top; }'
+                + '#urceShortcuts .separator { display:inline-block; font-size:12px; vertical-align:text-top; }'
                 + '#urceShortcuts i.URCE-chevron { font-weight:900; }'
+                + '#urceShortcutsExpand { padding-bottom:4px; font-size:13px; cursor:pointer; border-bottom:1px solid darkgray; }'
+                + '#urceShortcutsExpandDiv { border-bottom:1px solid darkgray; padding: 5px 0 5px 0; }'
                 + '#panel-container .mapUpdateRequest.panel { width:380px; max-height:87vh; }'
                 + '#panel-container .mapUpdateRequest.panel>* { max-height:87vh; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment-list { padding: 0px 6px; margin-bottom: 6px; max-height: 26vh; }'
