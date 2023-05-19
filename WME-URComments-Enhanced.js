@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.05.19.01
+// @version     2023.05.19.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -81,7 +81,8 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['NEW: Further prep work for possible future spreadsheet changes.',
+        _SCRIPT_VERSION_CHANGES = ['NEW: Place cursor at start setting.',
+            'NEW: Further prep work for possible future spreadsheet changes.',
             'NEW: $URID$ now available as a variable to use in our comments. Will insert the UR ID number of the selected UR.',
             'CHANGE: A lot. Reverted to 100% vanilla JavaScript, removing reliance on jQuery.',
             'CHANGE: Switch to WazeWrap update checking.',
@@ -387,6 +388,7 @@
                 autoSetNewUrCommentSlur: false,
                 autoSetNewUrCommentWithDescription: false,
                 autoSetReminderUrComment: false,
+                placeCursorAtStart: false,
                 autoSwitchToUrCommentsTab: false,
                 autoZoomInOnNewUr: false,
                 autoZoomOutAfterClosePanel: false,
@@ -1920,7 +1922,7 @@
             }
             domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
             if (!domElement) {
-                logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut with selectRange.');
+                logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut with setSelectionRange.');
             }
             else {
                 domElement.value = newVal;
@@ -1933,7 +1935,7 @@
         else if (useCurrVal) {
             domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
             if (!domElement) {
-                logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut without selectRange.');
+                logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut without setSelectionRange.');
             }
             else {
                 domElement.value = outputText;
@@ -2023,7 +2025,7 @@
         else {
             domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
             if (!domElement) {
-                logError('Timed out waiting on text box to set value with selectRange.');
+                logError('Timed out waiting on text box to set value with setSelectionRange.');
                 handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
                 return;
             }
@@ -2033,8 +2035,17 @@
                 domElement.dispatchEvent(new Event('autoclicksendbutton', { bubbles: true }));
             }
             else {
+                let selectionRange;
+                if (newCursorPos === undefined) {
+                    if (_settings.perCommentListSettings[_currentCommentList].placeCursorAtStart)
+                        selectionRange = 0;
+                    else
+                        selectionRange = 0 + comment.replace(/\\[r|n]+/gm, ' ').length + postNls;
+                }
+                else {
+                    selectionRange = newCursorPos + comment.replace(/\\[r|n]+/gm, ' ').length + postNls;
+                }
                 domElement.dispatchEvent(new KeyboardEvent('keyup'));
-                const selectionRange = (newCursorPos || 0) + comment.replace(/\\[r|n]+/gm, ' ').length + postNls;
                 domElement.setSelectionRange(selectionRange, selectionRange);
                 domElement.focus();
             }
@@ -4141,6 +4152,8 @@
                 autoSetNewUrCommentWithDescription_useDefault: true,
                 autoSetReminderUrComment: _settings.autoSetReminderUrComment,
                 autoSetReminderUrComment_useDefault: true,
+                placeCursorAtStart: _settings.placeCursorAtStart,
+                placeCursorAtStart_useDefault: true,
                 customTagline: _settings.customTagline,
                 customTagline_useDefault: true,
                 tagEmail: _settings.tagEmail,
@@ -4327,7 +4340,8 @@
             };
         docFrags.appendChild(createElem('div', { textContent: `${I18n.t('urce.prefs.SettingsFor')}: ${getCommentListInfo(commentListIdx).name}` }));
         let divElemRoot = createElem('div', { class: 'URCE-controls' });
-        ['autoSendReminders', 'autoSendRemindersExceptTagged', 'autoSetNewUrComment', 'autoSetNewUrCommentSlur', 'autoSetNewUrCommentWithDescription', 'autoSetReminderUrComment'].forEach((settingId) => {
+        ['autoSendReminders', 'autoSendRemindersExceptTagged', 'autoSetNewUrComment', 'autoSetNewUrCommentSlur', 'autoSetNewUrCommentWithDescription', 'autoSetReminderUrComment', 'placeCursorAtStart'
+        ].forEach((settingId) => {
             divElemRoot.appendChild(createDivSettingCb(settingId, (settingId === 'autoSendReminders')));
         });
         docFrags.appendChild(divElemRoot);
@@ -5492,10 +5506,10 @@
         // URC-E Master Settings
         ({ fieldsetElem, contentDiv } = buildFieldsetSection('urc-e-prefs', I18n.t('urce.prefs.UrcePrefs')));
         ['autoCenterOnUr', 'autoClickOpenSolvedNi', 'autoCloseUrPanel', 'autoSaveAfterSolvedOrNiComment', 'autoSendReminders', 'autoSetNewUrComment', 'autoSetNewUrCommentSlur',
-            'autoSetNewUrCommentWithDescription', 'autoSetReminderUrComment', 'autoSwitchToUrCommentsTab', 'autoZoomInOnNewUr', 'autoZoomOutAfterClosePanel', 'autoZoomOutAfterComment',
-            'disableDoneNextButtons', 'replaceNextWithDoneButton', 'doubleClickLinkNiComments', 'doubleClickLinkOpenComments', 'doubleClickLinkSolvedComments', 'hideZoomOutLinks',
-            'unfollowUrAfterSend', 'enableUrOverflowHandling', 'enableAutoRefresh', 'expandMoreInfo', 'expandShortcuts', 'autoScrollComments',
-            'reverseCommentSort'].forEach((setting) => { contentDiv.appendChild(buildStandardCbSetting(setting, 'urce')); });
+            'autoSetNewUrCommentWithDescription', 'autoSetReminderUrComment', 'placeCursorAtStart', 'autoSwitchToUrCommentsTab', 'autoZoomInOnNewUr', 'autoZoomOutAfterClosePanel',
+            'autoZoomOutAfterComment', 'disableDoneNextButtons', 'replaceNextWithDoneButton', 'doubleClickLinkNiComments', 'doubleClickLinkOpenComments', 'doubleClickLinkSolvedComments',
+            'hideZoomOutLinks', 'unfollowUrAfterSend', 'enableUrOverflowHandling', 'enableAutoRefresh', 'expandMoreInfo', 'expandShortcuts', 'autoScrollComments', 'reverseCommentSort'
+        ].forEach((setting) => { contentDiv.appendChild(buildStandardCbSetting(setting, 'urce')); });
         contentDivDiv = createElem('div', { class: 'URCE-controls URCE-textFirst' });
         contentDivDiv.appendChild(buildTextFirstTextSetting('tagEmail', 'commentList'));
         contentDivDiv.appendChild(buildTextFirstNumSetting('reminderDays', 'urce', '0', '9999', '1', I18n.t('common.time.days', { days: 0 }).replaceAll('0 ', '')));
@@ -6309,6 +6323,8 @@
                                     AutoSetNewUrCommentWithDescriptionTitle: 'Automatically set the default UR comment for the UR type on new (do not already have comments) URs that have a description.',
                                     AutoSetReminderUrComment: 'Auto set reminder UR comment',
                                     AutoSetReminderUrCommentTitle: 'Automatically set the UR reminder comment for URs that are older than the \'Reminder days\' setting and have only one comment.',
+                                    PlaceCursorAtStart: 'Place cursor at start',
+                                    PlaceCursorAtStartTitle: 'Place the cursor at the start of new or reminder comment when automatically set via auto set options above.',
                                     AutoSwitchToUrCommentsTab: 'Auto switch to the URC-E tab',
                                     AutoSwitchToUrCommentsTabTitle: 'Automatically switch to the URComments-Enhanced tab when opening a UR. When the UR panel is closed you will be switched back to your previous '
                                                 + 'tab.',
