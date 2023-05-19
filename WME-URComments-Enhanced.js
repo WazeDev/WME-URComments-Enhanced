@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.05.18.01
+// @version     2023.05.19.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -81,14 +81,15 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['NEW: Further prepwork for possible future spreadsheet changes.',
+        _SCRIPT_VERSION_CHANGES = ['NEW: Further prep work for possible future spreadsheet changes.',
             'NEW: $URID$ now available as a variable to use in our comments. Will insert the UR ID number of the selected UR.',
             'CHANGE: A lot. Reverted to 100% vanilla JavaScript, removing reliance on jQuery.',
             'CHANGE: Switch to WazeWrap update checking.',
             'CHANGE: WME changes to repositories.',
             'CHANGE: Switch to Waze icons instead of FontAwesome for continuity.',
             'CHANGE: Remove unnecessary marker event listener.',
-            'BUGFIX: Filter "hide with description".'
+            'BUGFIX: Filter "hide with description".',
+            'BUGFIX: (2023.05.19.01) Incorrect minimum version # for old static comment list in version 2023.05.18.01.'
         ],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
@@ -3388,7 +3389,7 @@
     }
 
     /**
-     * 2024.04.05.01: With the removal of the handleUrOverflow call from this function, it and the event listener are no longer needed.
+     * 2023.04.05.01: With the removal of the handleUrOverflow call from this function, it and the event listener are no longer needed.
     function invokeMoveEnd(/* evt *-/) {
         /**
          * Enable Auto Refresh: Disabled 2023.03.29
@@ -3720,7 +3721,7 @@
                     let entryIdx;
                     logDebug(`Converting static comment list to URC-E format for comment list: ${oldVarName}`);
                     data[0] = ['URCE'];
-                    data[1] = ['2018.11.28.01'];
+                    data[1] = ['2019.03.01.01'];
                     data[2] = ['TITLE|COMMENT|URSTATUS|DR|DC|IT|IA|IR|MRA|GE|TNA|IJ|MBO|WDD|ME|MR|ML|BR|MSN|ISPS|SL'];
                     if (!/<br>/gi.test(oldUrcArr[0]) && (oldUrcArr[2] !== '')) {
                         data[3] = ['||GROUP TITLE||||||||||||||||||'];
