@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.05.19.02
+// @version     2023.05.23.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -89,6 +89,7 @@
             'CHANGE: WME changes to repositories.',
             'CHANGE: Switch to Waze icons instead of FontAwesome for continuity.',
             'CHANGE: Remove unnecessary marker event listener.',
+            'CHANGE: (2023.05.23.01) WME v2.162-3 changes compliance.',
             'BUGFIX: Filter "hide with description".',
             'BUGFIX: (2023.05.19.01) Incorrect minimum version # for old static comment list in version 2023.05.18.01.'
         ],
@@ -2538,9 +2539,8 @@
         if (this?.id === '_urceRecenterSession')
             openUrPanel(urId, true);
         hidePopup();
-        const urGeo = W.model.mapUpdateRequests.objects[urId].geometry,
-            lonlat = new OpenLayers.LonLat(urGeo.x, urGeo.y);
-        W.map.setCenter(lonlat);
+        const urGeo = W.model.mapUpdateRequests.objects[urId].geometry;
+        W.map.setCenter({ lon: urGeo.x, lat: urGeo.y });
     }
 
     function addCustomMarker(urId, urOpen, customType, node) {
@@ -3333,7 +3333,7 @@
             vpBounds = W.map.getExtent().transform(W.map.getProjectionObject(), new OpenLayers.Projection('EPSG:4326')),
             vpBoundsFrom = { lon: vpBounds.left, lat: vpBounds.bottom },
             vpBoundsTo = { lon: vpBounds.right, lat: vpBounds.top },
-            vpCenter = W.map.getCenter().transform(W.map.getProjectionObject(), new OpenLayers.Projection('EPSG:4326')),
+            vpCenter = W.map.getOLMap().getCenter().transform(W.map.getProjectionObject(), new OpenLayers.Projection('EPSG:4326')),
             processData = (data) => {
                 if (data.error) {
                     logWarning(data.error);
@@ -4413,7 +4413,7 @@
             ) {
                 logDebug('Enabling MOs.');
                 if (!_saveButtonObserver.isObserving) {
-                    _saveButtonObserver.observe(document.querySelector('wz-button[id="save-button"]'), {
+                    _saveButtonObserver.observe(document.getElementById('save-button'), {
                         childList: false, attributes: true, attributeOldValue: true, characterData: false, characterDataOldValue: false, subtree: false
                     });
                     _saveButtonObserver.isObserving = true;
