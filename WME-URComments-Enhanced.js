@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.05.23.01
+// @version     2023.06.02.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -81,18 +81,7 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['NEW: Place cursor at start setting.',
-            'NEW: Further prep work for possible future spreadsheet changes.',
-            'NEW: $URID$ now available as a variable to use in our comments. Will insert the UR ID number of the selected UR.',
-            'CHANGE: A lot. Reverted to 100% vanilla JavaScript, removing reliance on jQuery.',
-            'CHANGE: Switch to WazeWrap update checking.',
-            'CHANGE: WME changes to repositories.',
-            'CHANGE: Switch to Waze icons instead of FontAwesome for continuity.',
-            'CHANGE: Remove unnecessary marker event listener.',
-            'CHANGE: (2023.05.23.01) WME v2.162-3 changes compliance.',
-            'BUGFIX: Filter "hide with description".',
-            'BUGFIX: (2023.05.19.01) Incorrect minimum version # for old static comment list in version 2023.05.18.01.'
-        ],
+        _SCRIPT_VERSION_CHANGES = ['BUGFIX: Stacked markers.'],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
         _MIN_VERSION_COMMENTS = '2019.03.01.01',
@@ -2112,16 +2101,13 @@
             || (_settings.disableFilteringBelowZoom && (W.map.getZoom() > _settings.disableFilteringBelowZoomLevel))
         )
             filter = false;
-        // 2023.05.15.01: W.map.updateRequestLayer.featureMarkers is gone from prod WME. Also changed to W.map.getLayerByName.
-        const markerMapCollection = W.map.getLayerByName('update_requests').markers
-                .map((marker) => ({ 'data-id': marker.element.attributes['data-id'].value, marker: { marker } }))
-                .reduce((obj, val) => ({ ...obj, [val['data-id']]: val.marker }), {}),
+        const markerMapCollection = W.map.getLayerByName('update_requests').markers,
             markerModelCollection = { ...W.model.mapUpdateRequests.objects };
         if (markerMapCollection) {
-            Object.keys(markerMapCollection).forEach((marker) => {
-                if (markerMapCollection.hasOwnProperty(marker)) {
-                    const markerMapObj = markerMapCollection[marker];
-                    const markerModelObj = markerModelCollection[marker];
+            for (let idx = 0, { length } = markerMapCollection; idx < length; idx++) {
+                const markerDataId = markerMapCollection[idx].element?.attributes?.['data-id'].value;
+                if (markerDataId && markerModelCollection.hasOwnProperty(markerDataId)) {
+                    const markerModelObj = markerModelCollection[markerDataId];
                     if (markerModelObj.attributes.geometry.urceRealX) {
                         markerModelObj.attributes.geometry.x = markerModelObj.attributes.geometry.urceRealX;
                         markerModelObj.attributes.geometry.y = markerModelObj.attributes.geometry.urceRealY;
@@ -2130,23 +2116,21 @@
                     }
                     if (!(filter
                             && _settings.enableUrceUrFiltering
-                            && _mapUpdateRequests[marker]?.urceData?.hideUr
+                            && _mapUpdateRequests[markerDataId]?.urceData?.hideUr
                             && (!((_selUr.urId === markerModelObj.attributes.id) && _settings.doNotHideSelectedUr))
-                            && (!((_mapUpdateRequests[marker]?.urceData?.tagType !== -1) && _settings.doNotFilterTaggedUrs)))
+                            && (!((_mapUpdateRequests[markerDataId]?.urceData?.tagType !== -1) && _settings.doNotFilterTaggedUrs)))
                     ) {
-                        // 2023.05.15.01: With URC-E recreation of the old markers object library (featureMarkers), the icon.imageDiv is now element.
-                        const iconDiv = markerMapObj.marker.element;
-                        if (iconDiv.style.display === 'none')
-                            iconDiv.style.display = '';
+                        if (markerMapCollection[idx].element.style.display === 'none')
+                            markerMapCollection[idx].element.style.display = '';
                     }
                 }
-            });
+            }
             for (let idx = 0, { length } = _markerStackArray; idx < length; idx++) {
-                if (markerMapCollection[_markerStackArray[idx].urId]) {
-                    // 2023.05.15.01: With URC-E recreation of the old markers object library (featureMarkers), the icon.imageDiv is now element.
-                    const iconDiv = markerMapCollection[_markerStackArray[idx].urId].marker.element;
-                    iconDiv.style.left = `${_markerStackArray[idx].x}px`;
-                    iconDiv.style.top = `${_markerStackArray[idx].y}px`;
+                const markerStackArrayCurUrId = _markerStackArray[idx].urId.toString(),
+                    markerObj = markerMapCollection.find((marker) => marker.element?.attributes?.['data-id']?.value === markerStackArrayCurUrId);
+                if (markerObj) {
+                    markerObj.element.style.left = `${_markerStackArray[idx].x}px`;
+                    markerObj.element.style.top = `${_markerStackArray[idx].y}px`;
                 }
             }
             _markerStackArray = [];
@@ -2160,32 +2144,30 @@
             return;
         doSpinner('checkMarkerStacking', true);
         const stackList = [],
-            // 2023.05.15.01: W.map.updateRequestLayer.featureMarkers is gone from prod WME. Also changed to W.map.getLayerByName.
-            markerMapCollection = W.map.getLayerByName('update_requests').markers
-                .map((marker) => ({ 'data-id': marker.element.attributes['data-id'].value, marker: { marker } }))
-                .reduce((obj, val) => ({ ...obj, [val['data-id']]: val.marker }), {}),
+            markerMapCollection = W.map.getLayerByName('update_requests').markers,
             markerModelCollection = { ...W.model.mapUpdateRequests.objects };
         let offset = 0.000000001;
         stackList.push(urId);
         if (markerMapCollection) {
-            Object.keys(markerMapCollection).forEach((marker) => {
-                if (markerModelCollection.hasOwnProperty(marker)) {
-                    // 2023.05.15.01: With URC-E recreation of the old markers object library (featureMarkers), the icon.imageDiv is now element.
-                    const iconDiv = markerMapCollection[marker].marker.element;
-                    if (!(iconDiv.classList.contains('recently-closed') && (W.map.getLayerByName('update_requests').showHidden === false))
+            const layerShowHidden = W.map.getLayerByName('update_requests').showHidden;
+            for (let idx = 0, { length } = markerMapCollection; idx < length; idx++) {
+                const markerDataId = markerMapCollection[idx].element?.attributes?.['data-id'].value;
+                if (markerDataId && markerModelCollection.hasOwnProperty(markerDataId)) {
+                    const iconDiv = markerMapCollection[idx].element;
+                    if (!(iconDiv.classList.contains('recently-closed') && (layerShowHidden === false))
                         && (iconDiv.style.display !== 'none')
                         && (iconDiv.style.visibility !== 'hidden')
                     ) {
-                        if (+marker !== urId) {
+                        if (+markerDataId !== urId) {
                             const xDiff = unstackedX - parsePxString(iconDiv.style.left),
                                 yDiff = unstackedY - parsePxString(iconDiv.style.top),
                                 distSquared = ((xDiff * xDiff) + (yDiff * yDiff));
                             if (distSquared < (_settings.unstackSensitivity * _settings.unstackSensitivity))
-                                stackList.push(+marker);
+                                stackList.push(+markerDataId);
                         }
                     }
                 }
-            });
+            }
         }
         if (stackList.length > 0) {
             if (stackList.length === 1)
@@ -2202,8 +2184,8 @@
                 _markerStackArray.push(stackListObj(urId, unstackedX, unstackedY));
                 for (let idx = 0, { length } = stackList; idx < length; idx++) {
                     const thisUrId = stackList[idx],
-                        // 2023.05.15.01: With URC-E recreation of the old markers object library (featureMarkers), the icon.imageDiv is now element.
-                        iconDiv = markerMapCollection[thisUrId].marker.element,
+                        markerObj = markerMapCollection.find((marker) => marker.element?.attributes?.['data-id']?.value === thisUrId.toString()),
+                        iconDiv = markerObj?.element,
                         x = parsePxString(iconDiv.style.left),
                         y = parsePxString(iconDiv.style.top);
                     _markerStackArray.push(stackListObj(thisUrId, x, y));
@@ -2230,15 +2212,11 @@
                     }
                 }
                 if (!((W.map.getZoom() < _settings.unstackDisableAboveZoom) || (stackList.length === 1))) {
-                    Object.keys(markerMapCollection).forEach((marker) => {
-                        if (markerMapCollection.hasOwnProperty(marker)) {
-                            if (!isIdAlreadyUnstacked(+marker)) {
-                                // 2023.05.15.01: With URC-E recreation of the old markers object library (featureMarkers), the icon.imageDiv is now element.
-                                const iconDiv = markerMapCollection[marker].marker.element;
-                                iconDiv.style.display = 'none';
-                            }
-                        }
-                    });
+                    for (let idx = 0, { length } = markerMapCollection; idx < length; idx++) {
+                        const markerDataId = markerMapCollection[idx].element?.attributes?.['data-id'].value;
+                        if (markerDataId && !isIdAlreadyUnstacked(+markerDataId))
+                            markerMapCollection[idx].element.style.display = 'none';
+                    }
                 }
             }
         }
@@ -2258,7 +2236,6 @@
             const markerId = this.attributes?.['data-id']?.value ? +this.attributes['data-id'].value : -1;
             if ((markerId > 0) && ((_mousedOverMarkerId !== markerId) || (getComputedStyle(document.getElementById('urceDiv')).visibility === 'hidden'))) {
                 _mousedOverMarkerId = markerId;
-                // 2023.05.15.01: W.map.updateRequestLayer.featureMarkers is gone from prod WME. Also changed to W.map.getLayerByName.
                 const targetTab = `_urceTab_${Math.round(Math.random() * 1000000)}`,
                     popupXOffset = parsePxString(getComputedStyle(document.getElementById('sidebar')).width) + parsePxString(getComputedStyle(document.getElementById('drawer')).width),
                     unstackedX = parsePxString(this.style.left),
@@ -4467,20 +4444,16 @@
                 }
             }
             logDebug('Disabling event listeners for UR markers.');
-            // 2023.05.15.01: W.map.updateRequestLayer.featureMarkers is gone from prod WME. Also changed to W.map.getLayerByName.
-            const markerMapCollection = W.map.getLayerByName('update_requests').markers
-                .map((marker) => ({ 'data-id': marker.element.attributes['data-id'].value, marker: { marker } }))
-                .reduce((obj, val) => ({ ...obj, [val['data-id']]: val.marker }), {});
+            const markerMapCollection = W.map.getLayerByName('update_requests').markers;
             if (markerMapCollection) {
-                Object.keys(markerMapCollection).forEach((marker) => {
-                    if (markerMapCollection.hasOwnProperty(marker)) {
-                        // 2023.05.15.01: With URC-E recreation of the old markers object library (featureMarkers), the icon.imageDiv is now element.
-                        const iconDiv = markerMapCollection[marker].marker.element;
+                for (let idx = 0, { length } = markerMapCollection; idx < length; idx++) {
+                    if (markerMapCollection[idx].element?.attributes?.['data-id'].value) {
+                        const iconDiv = markerMapCollection[idx].element;
                         iconDiv.removeEventListener('mouseover', markerMouseOver);
                         iconDiv.removeEventListener('mouseout', markerMouseOut);
                         iconDiv.dataset.urceHasListeners = false;
                     }
-                });
+                }
             }
             logDebug('Unregistering map.events event hook.');
             W.map.events.unregister('mousedown', undefined, mouseDown);
