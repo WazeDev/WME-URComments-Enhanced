@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.08.03.01
+// @version     2023.09.29.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -81,7 +81,7 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['CHANGE: WME release v2.180-7-geb388e8d3 compatibility.'],
+        _SCRIPT_VERSION_CHANGES = ['CHANGE: WME beta release v2.188 compatibility.'],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
         _MIN_VERSION_COMMENTS = '2019.03.01.01',
@@ -1118,14 +1118,14 @@
             }
         }
         await updateUrceData(getMapUrsObjArr([_selUr.urId]));
-        let domElement = await getDomElement('#panel-container .top-section .header .main-title');
+        let domElement = await getDomElement('#panel-container .top-section .sub-title');
         if (!domElement) {
-            handleReadyError(true, true, 'handleUpdateRequestContainer', false, 'isDomElementReady: .main-title');
+            handleReadyError(true, true, 'handleUpdateRequestContainer', false, 'isDomElementReady: .sub-title');
             return;
         }
         if (!domElement.textContent.includes(_selUr.urId))
             domElement.append(` (${_selUr.urId}) `);
-        domElement = await getDomElement('#panel-container .top-section .header .reported');
+        domElement = await getDomElement('#panel-container .top-section .reported');
         if (!domElement) {
             handleReadyError(true, true, 'handleUpdateRequestContainer', false, '');
             return;
@@ -1180,7 +1180,7 @@
             if (domElement)
                 domElement.style.display = 'none';
         }
-        (await getDomElement('#panel-container .mapUpdateRequest .top-section .header .focus'))?.addEventListener('click', recenterOnUr);
+        (await getDomElement('#panel-container .mapUpdateRequest .top-section .focus'))?.addEventListener('click', recenterOnUr);
         domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
         if (!domElement) {
             handleReadyError(true, true, 'handleUpdateRequestContainer', false, '');
@@ -1273,6 +1273,7 @@
             textContent: '.wz-textarea textarea { font-size: 13px !important; line-height: 14px; padding: 6px !important; } '
                 + '.wz-textarea .length-text { font-size: 12px !important; padding: 2px 6px 0px 0px !important; }'
         }));
+        //Remove all of "unfollow" parts throughout code when current beta v2.188 is released to production.
         (await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form wz-checkbox[name=follow]'))?.shadowRoot.appendChild(createElem('style', {
             textContent: '.wz-checkbox { font-size: 12px !important; } .wz-checkbox .border { height: 15px !important; width: 15px !important; }'
         }));
@@ -4600,9 +4601,13 @@
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment-list { padding: 0px 6px; margin-bottom: 6px; max-height: 26vh; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .new-comment-form .new-comment-text { margin-bottom: 0px; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment .comment-title .date.urce { display: flex; justify-content: flex-end; margin-top: -4px; }'
+                //Remove the following 3 lines after beta v2.188 is released to production
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .header { padding-top: 5px; padding-bottom: 5px; font-size: 12px; line-height: 14px; padding-right: 0px; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .header .main-title { font-size: 14px; line-height: 14px; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .header .dot { top: 6px; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .issue-panel-header { padding-top: 5px; padding-bottom: 5px; font-size: 12px; line-height: 14px; padding-right: 0px; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .issue-panel-header .main-title { font-size: 14px; line-height: 14px; }'
+                + '#panel-container .mapUpdateRequest.panel .problem-edit .issue-panel-header .dot { top: 6px; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .section .content { padding: 5px 12px; font-size: 12px; line-height: 14px; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .section .content .URCE-divDesc { max-height: 82px; overflow-y: auto; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .section .title { padding: 0 6px 0 6px; font-size: 13px; line-height: 13px; }'
