@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.09.29.01
+// @version     2023.11.03.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -81,7 +81,7 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['CHANGE: WME beta release v2.188 compatibility.'],
+        _SCRIPT_VERSION_CHANGES = ['CHANGE: Remove setting unfollowUrAfterSend and all code references.'],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
         _MIN_VERSION_COMMENTS = '2019.03.01.01',
@@ -389,7 +389,6 @@
                 doubleClickLinkOpenComments: false,
                 doubleClickLinkSolvedComments: false,
                 hideZoomOutLinks: false,
-                unfollowUrAfterSend: false,
                 enableUrOverflowHandling: false,
                 enableAutoRefresh: false,
                 autoScrollComments: false,
@@ -592,7 +591,8 @@
             // Remove old settings
         ['autoCloseCommentWindow', 'hideClosedUrs', 'showOthersUrsPastReminderClose', 'onlyShowMyUrs', 'hideTaggedUrs', 'hideUrsWoComments', 'hideUrsWoCommentsOrDescriptions',
             'hideUrsWoCommentsWithDescriptions', 'hideUrsWithUserReplies', 'disableAboveZoomLevel', 'hideByAgeOfLastCommentLessThanDaysAgo',
-            'hideByAgeOfLastCommentMoreThanDaysAgo', 'hideByAgeOfFirstCommentMoreThanDaysAgo', 'hideByTypeWazeAutomatic', 'sortCommentsOldestFirst'].forEach((oldSetting) => {
+            'hideByAgeOfLastCommentMoreThanDaysAgo', 'hideByAgeOfFirstCommentMoreThanDaysAgo', 'hideByTypeWazeAutomatic', 'sortCommentsOldestFirst', 'unfollowUrAfterSend'
+        ].forEach((oldSetting) => {
             if (_settings.hasOwnProperty(oldSetting))
                 delete (_settings[oldSetting]);
         });
@@ -970,8 +970,6 @@
     async function handleAfterCommentMutation(domElem) {
         logDebug(`Handling new comment mutation for urId: ${_selUr.urId}`);
         doSpinner('handleAfterCommentMutation', true);
-        if (_settings.unfollowUrAfterSend)
-            unfollowUrAfterSend();
         if (_settings.autoZoomOutAfterComment)
             autoZoomOut();
         if (_settings.autoCloseUrPanel || _selUr.doubleClick) {
@@ -1273,10 +1271,6 @@
             textContent: '.wz-textarea textarea { font-size: 13px !important; line-height: 14px; padding: 6px !important; } '
                 + '.wz-textarea .length-text { font-size: 12px !important; padding: 2px 6px 0px 0px !important; }'
         }));
-        //Remove all of "unfollow" parts throughout code when current beta v2.188 is released to production.
-        (await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form wz-checkbox[name=follow]'))?.shadowRoot.appendChild(createElem('style', {
-            textContent: '.wz-checkbox { font-size: 12px !important; } .wz-checkbox .border { height: 15px !important; width: 15px !important; }'
-        }));
         if (!_urDataStateObserver.isObserving) {
             _urDataStateObserver.observe(document.querySelector('#panel-container .mapUpdateRequest.panel.show .problem-edit'), {
                 childList: false, attributes: true, attributeOldValue: true, characterData: false, characterDataOldValue: false, subtree: false
@@ -1414,18 +1408,6 @@
             _restoreTab = undefined;
             _restoreTabPosition = undefined;
         }
-    }
-
-    async function unfollowUrAfterSend() {
-        if (!W.model.updateRequestSessions.getObjectById(_selUr.urId)) {
-            const data = await W.controller.descartesClient.getUpdateRequestSessionsByIds([_selUr.urId]);
-            if (data.updateRequestSessions.objects.length > 0)
-                W.model.mergeResponse(data);
-            else
-                return;
-        }
-        await W.controller.descartesClient.followUpdateRequest({ follow: false, mapUpdateRequestID: _selUr.urId });
-        W.model.updateRequestSessions.getObjectById(_selUr.urId).setAttribute('isFollowing', false);
     }
 
     async function autoCloseUrPanel() {
@@ -3061,8 +3043,6 @@
                                 }
                                 else {
                                     autoSentRemindersFor.push(urId);
-                                    if (_settings.unfollowAfterSend)
-                                        unfollowUrAfterSend(urId);
                                     urceData = $extend({}, urceData, {
                                         commentCount: urceData.commentCount + 1,
                                         commentsByMe: true,
@@ -4601,10 +4581,6 @@
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment-list { padding: 0px 6px; margin-bottom: 6px; max-height: 26vh; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .new-comment-form .new-comment-text { margin-bottom: 0px; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment .comment-title .date.urce { display: flex; justify-content: flex-end; margin-top: -4px; }'
-                //Remove the following 3 lines after beta v2.188 is released to production
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .header { padding-top: 5px; padding-bottom: 5px; font-size: 12px; line-height: 14px; padding-right: 0px; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .header .main-title { font-size: 14px; line-height: 14px; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .header .dot { top: 6px; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .issue-panel-header { padding-top: 5px; padding-bottom: 5px; font-size: 12px; line-height: 14px; padding-right: 0px; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .issue-panel-header .main-title { font-size: 14px; line-height: 14px; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .issue-panel-header .dot { top: 6px; }'
@@ -5476,7 +5452,7 @@
         ['autoCenterOnUr', 'autoClickOpenSolvedNi', 'autoCloseUrPanel', 'autoSaveAfterSolvedOrNiComment', 'autoSendReminders', 'autoSetNewUrComment', 'autoSetNewUrCommentSlur',
             'autoSetNewUrCommentWithDescription', 'autoSetReminderUrComment', 'placeCursorAtStart', 'autoSwitchToUrCommentsTab', 'autoZoomInOnNewUr', 'autoZoomOutAfterClosePanel',
             'autoZoomOutAfterComment', 'disableDoneNextButtons', 'replaceNextWithDoneButton', 'doubleClickLinkNiComments', 'doubleClickLinkOpenComments', 'doubleClickLinkSolvedComments',
-            'hideZoomOutLinks', 'unfollowUrAfterSend', 'enableUrOverflowHandling', 'enableAutoRefresh', 'expandMoreInfo', 'expandShortcuts', 'autoScrollComments', 'reverseCommentSort'
+            'hideZoomOutLinks', 'enableUrOverflowHandling', 'enableAutoRefresh', 'expandMoreInfo', 'expandShortcuts', 'autoScrollComments', 'reverseCommentSort'
         ].forEach((setting) => { contentDiv.appendChild(buildStandardCbSetting(setting, 'urce')); });
         contentDivDiv = createElem('div', { class: 'URCE-controls URCE-textFirst' });
         contentDivDiv.appendChild(buildTextFirstTextSetting('tagEmail', 'commentList'));
@@ -6317,8 +6293,6 @@
                                                     + 'you double clicked, and then launch all of the other options that are enabled.',
                                     HideZoomOutLinks: 'Hide zoom out links',
                                     HideZoomOutLinksTitle: 'Hide the zoom out links on the comments tab.',
-                                    UnfollowUrAfterSend: 'Unfollow UR after send',
-                                    UnfollowUrAfterSendTitle: 'Unfollow the UR after sending a comment.',
                                     EnableUrOverflowHandling: 'Enable UR overflow handling',
                                     EnableUrOverflowHandlingTitle: 'If this setting is enabled and there are more than 499 URs on the screen, URC-E will attempt to gather more URs and add them to the map, '
                                                     + 'if they do not already exist.\nWME does not display more than 500 URs on a single screen on its own.',
