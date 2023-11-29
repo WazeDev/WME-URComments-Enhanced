@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.11.29.01
+// @version     2023.11.29.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -81,7 +81,10 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['CHANGE: Fix collapsing of containers after a WME update.'],
+        _SCRIPT_VERSION_CHANGES = [
+            'CHANGE: Fix collapsing of containers after a WME update.',
+            'BUGFIX: Custom sheet creation steps only worked with en-US locale.'
+        ],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
         _MIN_VERSION_COMMENTS = '2019.03.01.01',
@@ -3589,8 +3592,8 @@
             WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.ConversionLoadAddonFirst'));
             return;
         }
-        const createSteps = Object.keys(I18n.translations['en-US'].urce.tools).filter((k) => /^CreateStep[0-9]+/.test(k)),
-            finalSteps = Object.keys(I18n.translations['en-US'].urce.tools).filter((k) => /^FinalStep[0-9]+/.test(k));
+        const createSteps = Object.keys(I18n.translations[I18n.currentLocale()].urce.tools).filter((k) => /^CreateStep[0-9]+/.test(k)),
+            finalSteps = Object.keys(I18n.translations[I18n.currentLocale()].urce.tools).filter((k) => /^FinalStep[0-9]+/.test(k));
         let spreadsheetStep,
             downloadDefaultsStep,
             downloadCommentsStep;
@@ -3615,7 +3618,7 @@
             olElem.appendChild(liElem);
         }
         if (convert) {
-            const convertSteps = Object.keys(I18n.translations['en-US'].urce.tools).filter((k) => /^ConvertStep[0-9]+/.test(k));
+            const convertSteps = Object.keys(I18n.translations[I18n.currentLocale()].urce.tools).filter((k) => /^ConvertStep[0-9]+/.test(k));
             for (let i = 0, { length } = convertSteps; i < length; i++) {
                 if (I18n.t(`urce.tools.${convertSteps[i]}`).includes('$DOWNLOAD_DEFAULTS_LINK$'))
                     downloadDefaultsStep = createSteps.length + i + 1;
