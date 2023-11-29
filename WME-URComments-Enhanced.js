@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.11.03.01
+// @version     2023.11.29.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -81,7 +81,7 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['CHANGE: Remove setting unfollowUrAfterSend and all code references.'],
+        _SCRIPT_VERSION_CHANGES = ['CHANGE: Fix collapsing of containers after a WME update.'],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
         _MIN_VERSION_COMMENTS = '2019.03.01.01',
@@ -773,7 +773,7 @@
                 rObj = {};
             for (let idx = 0, { length } = getDivs; idx < length; idx++) {
                 if (getDivs[idx].id.includes('urceComments-for-'))
-                    rObj[getDivs[idx].id] = getDivs[idx].classList.contains('collapse');
+                    rObj[getDivs[idx].id] = getDivs[idx].classList.contains('URCE-collapsed');
             }
             resolve(rObj);
         });
@@ -3741,7 +3741,7 @@
                     legendClickToggle = function () {
                         this.firstChild.classList.toggle('w-icon-chevron-up');
                         this.firstChild.classList.toggle('w-icon-chevron-down');
-                        this.nextSibling.classList.toggle('collapse');
+                        this.nextSibling.classList.toggle('URCE-collapsed');
                         saveSettingsToStorage();
                     },
                     cidSingleClick = function () {
@@ -3805,9 +3805,9 @@
                                         && _settings.commentListCollapses[_settings.commentList].hasOwnProperty(`${groupDivId}_body_urce`)
                                         && (_settings.commentListCollapses[_settings.commentList][`${groupDivId}_body_urce`] === true)
                                     )
-                                        ? 'collapse'
+                                        ? 'URCE-collapsed'
                                         : '',
-                                    chevron = (collapsed === 'collapse') ? 'w-icon-chevron-down' : 'w-icon-chevron-up';
+                                    chevron = (collapsed === 'URCE-collapsed') ? 'w-icon-chevron-down' : 'w-icon-chevron-up';
                                 outputItems.push({
                                     chevron,
                                     collapsed,
@@ -3972,11 +3972,11 @@
                     const legends = document.querySelectorAll('legend[id^="urceComments-for"]');
                     for (let idx = 0, { length } = legends; idx < length; idx++) {
                         if (this.id === 'URCE-expandAllComments') {
-                            if (legends[idx].nextElementSibling.classList.contains('collapse'))
+                            if (legends[idx].nextElementSibling.classList.contains('URCE-collapsed'))
                                 legends[idx].click();
                         }
                         else if (this.id === 'URCE-collapseAllComments') {
-                            if (!legends[idx].nextElementSibling.classList.contains('collapse'))
+                            if (!legends[idx].nextElementSibling.classList.contains('URCE-collapsed'))
                                 legends[idx].click();
                         }
                     }
@@ -4531,6 +4531,7 @@
                 + '     cursor:pointer; font-size:18px;'
                 + '}'
                 + '#sidepanel-urc-e .URCE-divWarningBox { background-color:indianred; border:1px solid silver; margin:6px 0 6px 0; font-size:12px; border-radius:4px; padding:5px; font-weight:600; }'
+                + '#sidepanel-urc-e .URCE-collapsed { display:none; }'
                 + '#sidepanel-urc-e .URCE-expandCollapseAll { font-size:9px; margin-bottom:-10px; text-align:right; }'
                 + '#sidepanel-urc-e .URCE-expandCollapseAll.urStyle { margin-bottom:unset !important; }'
                 + '#sidepanel-urc-e .URCE-expandCollapseAllItem { display:inline; cursor:pointer; }'
@@ -4661,11 +4662,11 @@
                 const legends = document.querySelectorAll('legend[id^="urce-tools-legend"]');
                 for (let idx = 0, { length } = legends; idx < length; idx++) {
                     if (this.id === 'URCE-expandAllTools') {
-                        if (legends[idx].nextElementSibling.classList.contains('collapse'))
+                        if (legends[idx].nextElementSibling.classList.contains('URCE-collapsed'))
                             legends[idx].click();
                     }
                     else if (this.id === 'URCE-collapseAllTools') {
-                        if (!legends[idx].nextElementSibling.classList.contains('collapse'))
+                        if (!legends[idx].nextElementSibling.classList.contains('URCE-collapsed'))
                             legends[idx].click();
                     }
                 }
@@ -4735,7 +4736,7 @@
             legendClickToggle = function () {
                 this.firstChild.classList.toggle('w-icon-chevron-up');
                 this.firstChild.classList.toggle('w-icon-chevron-down');
-                this.nextSibling.classList.toggle('collapse');
+                this.nextSibling.classList.toggle('URCE-collapsed');
                 saveSettingsToStorage();
             },
             buildFieldsetSection = (idTag, textContent, divAttrs = { class: 'URCE-controls URCE-divCC' }) => {
@@ -4798,11 +4799,11 @@
                 const legends = document.querySelectorAll('legend[id^="urce-prefs-legend"');
                 for (let idx = 0, { length } = legends; idx < length; idx++) {
                     if (this.id === 'URCE-expandAllSettings') {
-                        if (legends[idx].nextElementSibling.classList.contains('collapse'))
+                        if (legends[idx].nextElementSibling.classList.contains('URCE-collapsed'))
                             legends[idx].click();
                     }
                     else if (this.id === 'URCE-collapseAllSettings') {
-                        if (!legends[idx].nextElementSibling.classList.contains('collapse'))
+                        if (!legends[idx].nextElementSibling.classList.contains('URCE-collapsed'))
                             legends[idx].click();
                     }
                 }
@@ -4810,7 +4811,7 @@
             legendClickToggle = function () {
                 this.firstChild.classList.toggle('w-icon-chevron-up');
                 this.firstChild.classList.toggle('w-icon-chevron-down');
-                this.nextSibling.classList.toggle('collapse');
+                this.nextSibling.classList.toggle('URCE-collapsed');
             },
             commentListSelectionChange = function () {
                 if ((+this.value === 1001) && (!_settings.customSsId || (_settings.customSsId.length < 1))) {
