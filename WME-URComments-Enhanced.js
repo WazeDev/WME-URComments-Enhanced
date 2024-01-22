@@ -82,8 +82,7 @@
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
         _SCRIPT_VERSION_CHANGES = [
-            'CHANGE: Fix collapsing of containers after a WME update.',
-            'BUGFIX: Custom sheet creation steps only worked with en-US locale.'
+            'BUGFIX: Fixes for WME2.206'
         ],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
