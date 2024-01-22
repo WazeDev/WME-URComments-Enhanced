@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2023.11.29.02
+// @version     2024.01.22.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -81,10 +81,7 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = [
-            'CHANGE: Fix collapsing of containers after a WME update.',
-            'BUGFIX: Custom sheet creation steps only worked with en-US locale.'
-        ],
+        _SCRIPT_VERSION_CHANGES = ['CHANGE: Compatibility with latest WME update. (Thanks to lacmacca)'],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
         _MIN_VERSION_COMMENTS = '2019.03.01.01',
@@ -1182,7 +1179,7 @@
                 domElement.style.display = 'none';
         }
         (await getDomElement('#panel-container .mapUpdateRequest .top-section .focus'))?.addEventListener('click', recenterOnUr);
-        domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+        domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
         if (!domElement) {
             handleReadyError(true, true, 'handleUpdateRequestContainer', false, '');
             return;
@@ -1368,7 +1365,7 @@
 
     async function handleClickedComment(commentNum, doubleClick) {
         _selUr.doubleClick = doubleClick;
-        const domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+        const domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
         if (!domElement) {
             logWarning('No comment box found after clicking a comment from the list.');
             WazeWrap.Alerts.info(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.NoCommentBox'));
@@ -1435,7 +1432,7 @@
 
     async function autoClickSendButton() {
         (await getDomElement('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-form .send-button'))?.click();
-        (await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text'))?.removeEventListener('autoclicksendbutton', autoClickSendButton);
+        (await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text'))?.removeEventListener('autoclicksendbutton', autoClickSendButton);
     }
 
     async function autoClickOpenSolvedNi(commentNum) {
@@ -1763,7 +1760,7 @@
     async function handleClickedShortcut() {
         const shortcut = this.id.substring(14);
         doSpinner('handleClickedShortcut', true);
-        let domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+        let domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
         if (!domElement) {
             handleReadyError(false, true, 'handleClickedShortcut', true, 'UR panel comment box is missing.');
             return;
@@ -1886,7 +1883,7 @@
                 doSpinner('handleClickedShortcut', false);
                 return;
             }
-            domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
             if (!domElement) {
                 logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut with setSelectionRange.');
             }
@@ -1899,7 +1896,7 @@
             }
         }
         else if (useCurrVal) {
-            domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
             if (!domElement) {
                 logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut without setSelectionRange.');
             }
@@ -1944,7 +1941,7 @@
             cursorPos,
             newCursorPos,
             postNls = 0;
-        let domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+        let domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
         if (!domElement) {
             logError('UR panel comment box is missing at beginning of postUrComment function.');
             handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
@@ -1989,7 +1986,7 @@
             logError(I18n.t('urce.prompts.CommentTooLong'));
         }
         else {
-            domElement = await getDomElement('textarea[id=id]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
+            domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text');
             if (!domElement) {
                 logError('Timed out waiting on text box to set value with setSelectionRange.');
                 handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
@@ -2837,7 +2834,7 @@
         let reopenPanel = false;
         if (!mUrsObjArr)
             return Promise.resolve();
-        const eg = W.map.getExtent().toGeometry(),
+        const eg = W.map.getExtent(),
             processMUrObjs = [...mUrsObjArr],
             reminderDays = _restrictionsEnforce.reminderDays || _settings.perCommentListSettings[_currentCommentList].reminderDays || 0,
             closeDays = _restrictionsEnforce.closeDays || _settings.perCommentListSettings[_currentCommentList].closeDays || 7,
@@ -2890,7 +2887,7 @@
             // eslint-disable-next-line no-await-in-loop
             const urSessions = await getUpdateRequestSessions(urIds);
             for (let idx = 0, { length } = chunk; idx < length; idx++) {
-                const urId = chunk[idx].attributes.id,
+                const urId = chunk[idx].getAttribute('id'),
                     urSessionsObj = urSessions[urId];
                 if (urSessionsObj) {
                     const comments = urSessionsObj.getAttribute('comments');
@@ -2909,7 +2906,7 @@
                         hideUr: false,
                         hideWithCommentBy: false,
                         hideWithoutCommentBy: false,
-                        inMapExtent: eg.intersects(chunk[idx].getLocation()),
+                        inMapExtent: eg.intersectsBounds(chunk[idx].getOLGeometry().getBounds()),
                         keywordIncluding: false,
                         keywordNotIncluding: false,
                         lastCommentBy: -2,
@@ -3967,7 +3964,7 @@
                     _settings[this.id.substring(3)] = this.checked;
                     if (W.map.panelRegion.currentView?.getOption('adapter')?.problem) {
                         document.querySelector('#panel-container .mapUpdateRequest .top-section .body .conversation .new-comment-text')
-                            .shadowRoot.querySelector('textarea[id=id').style.backgroundColor = this.checked ? 'peachpuff' : '';
+                            .shadowRoot.querySelector('textarea[id^=wz-textarea-]').style.backgroundColor = this.checked ? 'peachpuff' : '';
                     }
                     saveSettingsToStorage();
                 },
