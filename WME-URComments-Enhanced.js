@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2024.01.22.01
+// @version     2024.03.21.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -48,7 +48,8 @@
         _commentList = [],
         _commentListLoaded = false,
         _customReplaceVars = [],
-        _markerStackArray = [],
+        // 2024.03.21: Now that the UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085), don't have time to fix marker (un)stacking. Removing for now.
+        // _markerStackArray = [],
         _currentCommentList = null,
         _filtersAppliedOnZoom = false,
         _initialUrLayerScan = false,
@@ -56,14 +57,16 @@
         _mousedOverMarkerId = null,
         _mouseIsDown = false,
         _needTranslation = false,
-        _unstackedMasterId = null,
+        // 2024.03.21: Now that the UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085), don't have time to fix marker (un)stacking. Removing for now.
+        // _unstackedMasterId = null,
         _restoreZoom = null,
         _restoreDrawerTab,
         _restoreTab,
         _restoreTabPosition,
         _wmeUserId = null,
         _initUrIdInUrlObserver,
-        _needUrId = false,
+        // 2024.03.21: Let's just remove the needUrId safety net for now. This will keep the script "working" if something else breaks when looking for the URID.
+        // _needUrId = false,
         _mapUpdateRequests = {},
         _initError = false,
         _policyTrustedHTML,
@@ -81,7 +84,14 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['CHANGE: Compatibility with latest WME update. (Thanks to lacmacca)'],
+        _SCRIPT_VERSION_CHANGES = [
+            'CHANGE: Compatibility with latest WME update.',
+            // 2024.03.21: This change happened, but no reason to "tell" them in shortened release notes.
+            // 'CHANGE: Removed the black boxes if UR ID is not available. Now will just stop processing the script, only allowing for manual use of responses.',
+            'CHANGE: Marker (un)stacking has been removed for now.',
+            'CHANGE: Pill information (comments and days) on markers has been removed for now.',
+            'NOTE: There will likely be bugs with other things not working correctly, but this is at least "working".'
+        ],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
         _MIN_VERSION_COMMENTS = '2019.03.01.01',
@@ -216,6 +226,10 @@
                     newMarker.addedNodes[0].dataset.urceHasListeners = true;
                 }
             });
+            /** 2024.03.21: Let's just remove the needUrId safety net for now. This will keep the script "working" if something else breaks when looking for the URID.
+             *  This mutation observer would not be efficient, even if it can do it at all, in finding the UR ID as the ID no longer exists in the element itself. You
+             *  might be able to use the functions in W.userscripts to find the data model, but that would be expensive.
+             *
             if (_needUrId) {
                 const urId = mutations.filter(
                     (mutation) => ((mutation.attributeName === 'class') && !mutation.oldValue.includes('marker-selected') && mutation.target.classList.contains('marker-selected'))
@@ -228,6 +242,7 @@
                     handleUpdateRequestContainer();
                 }
             }
+            */
         }),
         _urceSidepanelContentObserver = new MutationObserver((mutations) => {
             if (mutations.some((mutation) => mutation.target.classList.contains('active')))
@@ -1056,10 +1071,13 @@
     }
 
     async function handleUpdateRequestContainer() {
-        restackMarkers();
+        // 2024.03.21: Now that the UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085), don't have time to fix marker (un)stacking. Removing for now.
+        // restackMarkers();
         if (!_commentListLoaded)
             return;
-        const selectedUrId = document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value;
+        // 2024.03.21: UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085).
+        // const selectedUrId = document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value;
+        const selectedUrId = W.map.getLayerByName('update_requests').features.filter((feature) => feature.attributes.wazeFeature.isSelected)[0]?.attributes?.wazeFeature?.id || -1;
         if ((+selectedUrId > 0)
             && (!(_selUr.urId > 0) || (_selUr.urId !== +selectedUrId))
         ) {
@@ -1067,12 +1085,15 @@
             logDebug(`Selected UR from handleURContainer: ${_selUr.urId}`);
         }
         else if (!(_selUr.urId > 0)) {
+            /** 2024.03.21: Let's just remove the needUrId safety net for now. This will keep the script "working" if something else breaks when looking for the URID.
+             *
             _needUrId = true;
             const docFrags = document.createDocumentFragment();
             docFrags.appendChild(createElem('div', { textContent: I18n.t('urce.prompts.WaitingToGetUrId') }));
             docFrags.appendChild(createElem('br'));
             docFrags.appendChild(createElem('div', { textContent: I18n.t('urce.common.PleaseWait') }));
             maskBoxes(docFrags, false, 'needUrId', true);
+            */
             return;
         }
         if (_settings.replaceNextWithDoneButton && W.map.panelRegion.currentView.getOption('showNext')) {
@@ -1699,9 +1720,11 @@
                 text = text.replaceAll('$URTYPE$', mapUrObj.getTypeText());
             if (text.includes('$PERMALINK$')) {
                 if (mapUrObj) {
-                    const lonLat = WazeWrap.Geometry.ConvertTo4326(mapUrObj.getLocation().x, mapUrObj.getLocation().y),
+                    // 2024.03.21: The location object changed in previous version of WME, but URC-E wasn't fixed for it until now.
+                    // const lonLat = WazeWrap.Geometry.ConvertTo4326(mapUrObj.getLocation().x, mapUrObj.getLocation().y),
+                    const [lon, lat] = mapUrObj.getLocation().coordinates,
                         urlParams = new URLSearchParams(window.location.search);
-                    const urPermalink = `https://${document.location.hostname.replace(/beta/i, 'www')}${document.location.pathname}?${(urlParams.get('env') ? `env=${urlParams.get('env')}&` : '')}lon=${lonLat.lon.toFixed(5)}&lat=${lonLat.lat.toFixed(5)}&s=20489175039&zoomLevel=17&mapUpdateRequest=${urId}`;
+                    const urPermalink = `https://${document.location.hostname.replace(/beta/i, 'www')}${document.location.pathname}?${(urlParams.get('env') ? `env=${urlParams.get('env')}&` : '')}lon=${lon.toFixed(5)}&lat=${lat.toFixed(5)}&s=20489175039&zoomLevel=17&mapUpdateRequest=${urId}`;
                     text = text.replaceAll('$PERMALINK$', urPermalink);
                 }
                 else {
@@ -2052,7 +2075,8 @@
         const numDaysAgo = Math.round((+today - +referenceDate) / msInDay);
         return numDaysAgo;
     }
-
+    /** 2024.03.21: Now that the UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085), don't have time to fix marker (un)stacking. Removing for now.
+     *
     function isIdAlreadyUnstacked(urId) {
         if (_markerStackArray.length === 0)
             return false;
@@ -2148,7 +2172,7 @@
             if (stackList.length === 1)
                 logDebug('Single marker highlighted. Adjusting geometry properties to prevent recentering.');
             else if (W.map.getOLMap().getZoom() < _settings.unstackDisableAboveZoom)
-                logDebug(`Zoom level is ${W.map.getOLMap().getZoom()} which is less than setting for disable above zoom of ${_settings.unstackDisableAboveZoom}. Adjusting geometry properties to prevent recentering.`);
+                logDebug(`Zoom level is ${W.map.getOLMap().getZoom()} which is less than setting for disable above zoom: ${_settings.unstackDisableAboveZoom}. Adjusting geometry properties to prevent recentering.`);
             else
                 logDebug(`${stackList.length} markers are stacked!`);
             if (_unstackedMasterId !== urId) {
@@ -2193,22 +2217,32 @@
         }
         doSpinner('checkMarkerStacking', false);
     }
+    */
 
     async function markerMouseOver() {
         if (_mouseIsDown)
             return;
-        const popupDelayTime = (Date.now() + (_settings.urMarkerPopupDelay * 100));
+        const popupDelayTime = (Date.now() + (_settings.urMarkerPopupDelay * 100)),
+            wazeFeature = W.userscripts.getDataModelByFeatureElement(this);
         let popupX,
             popupY;
-        if (this.className.includes('user-generated')) {
-            const markerId = this.attributes?.['data-id']?.value ? +this.attributes['data-id'].value : -1;
+        // 2024.03.21: UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085).
+        // if (this.className.includes('user-generated')) {
+        if (wazeFeature?.type === 'mapUpdateRequest') {
+            // 2024.03.21: UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085).
+            // const markerId = this.attributes?.['data-id']?.value ? +this.attributes['data-id'].value : -1;
+            const markerId = wazeFeature.getID();
             if ((markerId > 0) && ((_mousedOverMarkerId !== markerId) || (getComputedStyle(document.getElementById('urceDiv')).visibility === 'hidden'))) {
                 _mousedOverMarkerId = markerId;
                 const targetTab = `_urceTab_${Math.round(Math.random() * 1000000)}`,
                     popupXOffset = parsePxString(getComputedStyle(document.getElementById('sidebar')).width) + parsePxString(getComputedStyle(document.getElementById('drawer')).width),
-                    unstackedX = parsePxString(this.style.left),
-                    unstackedY = parsePxString(this.style.top);
-                checkMarkerStacking(markerId, unstackedX, unstackedY);
+                    // 2024.03.21: UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085).
+                    // unstackedX = parsePxString(this.style.left),
+                    // unstackedY = parsePxString(this.style.top);
+                    unstackedX = +this.getAttribute('x'),
+                    unstackedY = +this.getAttribute('y');
+                // 2024.03.21: Now that the UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085), don't have time to fix marker (un)stacking. Removing for now.
+                // checkMarkerStacking(markerId, unstackedX, unstackedY);
                 if (!_settings.disableUrMarkerPopup) {
                     doSpinner('markerMouseDown', true);
                     if (!_mapUpdateRequests[markerId]?.urceData)
@@ -2226,18 +2260,19 @@
                     else if (mapUrObj.getLocation().realX)
                         x = mapUrObj.getLocation().realX;
                     else
-                        ({ x } = mapUrObj.getLocation());
+                        ([x] = mapUrObj.getLocation().coordinates);
                     if (mapUrObj.getLocation().urceRealY)
                         y = mapUrObj.getLocation().urceRealY;
                     else if (mapUrObj.getLocation().realY)
                         y = mapUrObj.getLocation().realY;
                     else
-                        ({ y } = mapUrObj.getLocation());
-                    const urPos = WazeWrap.Geometry.ConvertTo4326(x, y);
+                        ([, y] = mapUrObj.getLocation().coordinates);
+                    // 2024.03.21: The location object changed in previous version of WME, but URC-E wasn't fixed for it until now.
+                    // const urPos = WazeWrap.Geometry.ConvertTo4326(x, y);
                     urLink = document.location.href;
-                    urLink = `${urLink.substring(0, urLink.indexOf('?zoom'))}?zoomLevel=17&lat=${urPos.lat}&lon=${urPos.lon}&mapUpdateRequest=${markerId}`;
-                    popupX = unstackedX - parsePxString(W.map.getSegmentLayer().div.style.left) + popupXOffset + 10;
-                    popupY = unstackedY - parsePxString(W.map.getSegmentLayer().div.style.top) + 10;
+                    urLink = `${urLink.substring(0, urLink.indexOf('?zoom'))}?zoomLevel=17&lat=${y}&lon=${x}&mapUpdateRequest=${markerId}`;
+                    popupX = unstackedX - parsePxString(W.map.getSegmentLayer().div.style.left) + popupXOffset + 20;
+                    popupY = unstackedY - parsePxString(W.map.getSegmentLayer().div.style.top) + 20;
                     docFrags.appendChild(createElem('div', {
                         style: 'font-weight:bold;', textContent: `${I18n.t('problems.panel.titles.map_update_request')} (${markerId}): ${I18n.t(`update_requests.types.${mapUrObj.getAttribute('type')}`)}`
                     }));
@@ -2346,7 +2381,7 @@
                     if (lmLink) {
                         liElem = createElem('li');
                         liElem.appendChild(createElem('a', {
-                            href: `${(lmLink.includes('?') ? lmLink.substring(0, lmLink.indexOf('?')) : lmLink)}?zoomLevel=17&lat=${urPos.lat}&lon=${urPos.lon}&layers=BTTTT`,
+                            href: `${(lmLink.includes('?') ? lmLink.substring(0, lmLink.indexOf('?')) : lmLink)}?zoomLevel=17&lat=${y}&lon=${x}&layers=BTTTT`,
                             target: `${targetTab}_lmTab`,
                             textContent: I18n.t('urce.mouseOver.OpenInNewLivemapTab')
                         }));
@@ -2372,14 +2407,16 @@
 
     function markerMouseOut(evt) {
         const newUrId = evt.relatedTarget?.attributes?.['data-id']?.value;
-        if (((+newUrId > 0) && isIdAlreadyUnstacked(+newUrId))
-            || ((evt.relatedTarget?.id === 'urceDiv') || evt?.relatedTarget?.id?.includes('urceCounts') || evt?.relatedTarget?.parentNode?.id?.includes('urce'))
+        // 2024.03.21: Now that the UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085), don't have time to fix marker (un)stacking. Removing for now.
+        // if (((+newUrId > 0) && isIdAlreadyUnstacked(+newUrId)) ||
+        if (((evt.relatedTarget?.id === 'urceDiv') || evt?.relatedTarget?.id?.includes('urceCounts') || evt?.relatedTarget?.parentNode?.id?.includes('urce'))
         )
             return;
         if (!+newUrId)
             _mousedOverMarkerId = null;
         hidePopup();
-        restackMarkers();
+        // 2024.03.21: Now that the UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085), don't have time to fix marker (un)stacking. Removing for now.
+        // restackMarkers();
     }
 
     /**  2023.05.16.01: Removed markerClick(evt) as it is no longer needed with the the _urMarkerObserver now watching for 'marker-selected' class mutation.
@@ -2441,16 +2478,18 @@
         checkTimeout({ timeout: 'popup' });
         if (getComputedStyle(document.getElementById('urceDiv')).visibility !== 'hidden')
             document.getElementById('urceDiv').style.visibility = 'hidden';
-        if (((+newUrId > 0) && isIdAlreadyUnstacked(+newUrId))
-            || ((evt?.relatedTarget?.id === 'urceDiv') || evt?.relatedTarget?.id?.includes('urceCounts') || evt?.relatedTarget?.parentNode?.id?.includes('urce'))
+        // 2024.03.21: Now that the UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085), don't have time to fix marker (un)stacking. Removing for now.
+        // if (((+newUrId > 0) && isIdAlreadyUnstacked(+newUrId)) ||
+        if (((evt?.relatedTarget?.id === 'urceDiv') || evt?.relatedTarget?.id?.includes('urceCounts') || evt?.relatedTarget?.parentNode?.id?.includes('urce'))
         ) {
             if (!evt?.doubleClick)
                 return;
         }
         if (!+newUrId && (evt?.type === 'mouseleave') && ((evt?.target?.id === 'urceDiv') || (evt?.target?.offsetParent?.id === 'urceDiv')))
             _mousedOverMarkerId = null;
-        if (!_mousedOverMarkerId)
-            restackMarkers();
+        // 2024.03.21: Now that the UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085), don't have time to fix marker (un)stacking. Removing for now.
+        // if (!_mousedOverMarkerId)
+            // restackMarkers();
     }
 
     async function openUrPanel(urId = -1, closeUrPanel = false) {
@@ -2702,7 +2741,9 @@
             };
         mUrsObjArr.forEach((mUrObj) => {
             const mUrObjUrId = mUrObj.getID(),
-                marker = document.querySelector(`.map-problem.user-generated[data-id="${mUrObjUrId}"]`),
+                // 2024.03.21: UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085).
+                // marker = document.querySelector(`.map-problem.user-generated[data-id="${mUrObjUrId}"]`),
+                marker = W.userscripts.getFeatureElementByDataModel(mUrObj),
                 mUrObjUrceData = _mapUpdateRequests[mUrObjUrId];
             if (marker && mUrObjUrceData?.urceData) {
                 if (filter
