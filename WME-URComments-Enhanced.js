@@ -1059,7 +1059,7 @@
         restackMarkers();
         if (!_commentListLoaded)
             return;
-        const selectedUrId = document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value;
+        const selectedUrId = W.map.getLayerByName('update_requests').features.filter((feature) => feature.attributes.wazeFeature.isSelected)[0].attributes.wazeFeature.id;
         if ((+selectedUrId > 0)
             && (!(_selUr.urId > 0) || (_selUr.urId !== +selectedUrId))
         ) {
@@ -1699,9 +1699,9 @@
                 text = text.replaceAll('$URTYPE$', mapUrObj.getTypeText());
             if (text.includes('$PERMALINK$')) {
                 if (mapUrObj) {
-                    const lonLat = WazeWrap.Geometry.ConvertTo4326(mapUrObj.getLocation().x, mapUrObj.getLocation().y),
+                    const lonLat = mapUrObj.getLocation().coordinates,
                         urlParams = new URLSearchParams(window.location.search);
-                    const urPermalink = `https://${document.location.hostname.replace(/beta/i, 'www')}${document.location.pathname}?${(urlParams.get('env') ? `env=${urlParams.get('env')}&` : '')}lon=${lonLat.lon.toFixed(5)}&lat=${lonLat.lat.toFixed(5)}&s=20489175039&zoomLevel=17&mapUpdateRequest=${urId}`;
+                    const urPermalink = `https://${document.location.hostname.replace(/beta/i, 'www')}${document.location.pathname}?${(urlParams.get('env') ? `env=${urlParams.get('env')}&` : '')}lon=${lonLat[1].toFixed(5)}&lat=${lonLat[0].toFixed(5)}&s=20489175039&zoomLevel=17&mapUpdateRequest=${urId}`;
                     text = text.replaceAll('$PERMALINK$', urPermalink);
                 }
                 else {
@@ -2119,14 +2119,14 @@
             return;
         doSpinner('checkMarkerStacking', true);
         const stackList = [],
-            markerMapCollection = W.map.getLayerByName('update_requests').markers,
+            markerMapCollection = W.map.getLayerByName('update_requests').features,
             markerModelCollection = Object.fromEntries(W.model.mapUpdateRequests.getObjectArray().map((o) => [o.getID(), o]));
         let offset = 0.000000001;
         stackList.push(urId);
         if (markerMapCollection) {
             const layerShowHidden = W.map.getLayerByName('update_requests').showHidden;
             for (let idx = 0, { length } = markerMapCollection; idx < length; idx++) {
-                const markerDataId = markerMapCollection[idx].element?.attributes?.['data-id'].value;
+                const markerDataId = markerMapCollection[idx].id;
                 if (markerDataId && markerModelCollection.hasOwnProperty(markerDataId)) {
                     const iconDiv = markerMapCollection[idx].element;
                     if (!(iconDiv.classList.contains('recently-closed') && (layerShowHidden === false))
@@ -2194,20 +2194,21 @@
         doSpinner('checkMarkerStacking', false);
     }
 
-    async function markerMouseOver() {
+    async function markerMouseOver(event) {
         if (_mouseIsDown)
             return;
         const popupDelayTime = (Date.now() + (_settings.urMarkerPopupDelay * 100));
         let popupX,
             popupY;
-        if (this.className.includes('user-generated')) {
-            const markerId = this.attributes?.['data-id']?.value ? +this.attributes['data-id'].value : -1;
+        let mapUrObj = W.map.getLayerByName('update_requests').getFeatureFromEvent(event).attributes.wazeFeature._wmeObject;
+        if (mapUrObj.type === 'mapUpdateRequest') {
+            const markerId = mapUrObj.attributes.id;
             if ((markerId > 0) && ((_mousedOverMarkerId !== markerId) || (getComputedStyle(document.getElementById('urceDiv')).visibility === 'hidden'))) {
                 _mousedOverMarkerId = markerId;
                 const targetTab = `_urceTab_${Math.round(Math.random() * 1000000)}`,
                     popupXOffset = parsePxString(getComputedStyle(document.getElementById('sidebar')).width) + parsePxString(getComputedStyle(document.getElementById('drawer')).width),
-                    unstackedX = parsePxString(this.style.left),
-                    unstackedY = parsePxString(this.style.top);
+                    unstackedX = this.x.baseVal.value,
+                    unstackedY = this.y.baseVal.value;
                 checkMarkerStacking(markerId, unstackedX, unstackedY);
                 if (!_settings.disableUrMarkerPopup) {
                     doSpinner('markerMouseDown', true);
@@ -2219,25 +2220,24 @@
                         y;
                     const docFrags = document.createDocumentFragment(),
                         popupDelay = (Date.now() > popupDelayTime) ? -1 : (popupDelayTime - Date.now()),
-                        ulElem = createElem('ul'),
-                        mapUrObj = W.model.mapUpdateRequests.getObjectById(markerId);
+                        ulElem = createElem('ul');
                     if (mapUrObj.getLocation().urceRealX)
                         x = mapUrObj.getLocation().urceRealX;
                     else if (mapUrObj.getLocation().realX)
                         x = mapUrObj.getLocation().realX;
                     else
-                        ({ x } = mapUrObj.getLocation());
+                        x = mapUrObj.getLocation().coordinates[0];
                     if (mapUrObj.getLocation().urceRealY)
                         y = mapUrObj.getLocation().urceRealY;
                     else if (mapUrObj.getLocation().realY)
                         y = mapUrObj.getLocation().realY;
                     else
-                        ({ y } = mapUrObj.getLocation());
-                    const urPos = WazeWrap.Geometry.ConvertTo4326(x, y);
+                        y = mapUrObj.getLocation().coordinates[1];
+                    const urPos = {x, y};
                     urLink = document.location.href;
-                    urLink = `${urLink.substring(0, urLink.indexOf('?zoom'))}?zoomLevel=17&lat=${urPos.lat}&lon=${urPos.lon}&mapUpdateRequest=${markerId}`;
-                    popupX = unstackedX - parsePxString(W.map.getSegmentLayer().div.style.left) + popupXOffset + 10;
-                    popupY = unstackedY - parsePxString(W.map.getSegmentLayer().div.style.top) + 10;
+                    urLink = `${urLink.substring(0, urLink.indexOf('?zoom'))}?zoomLevel=17&lat=${urPos.y}&lon=${urPos.x}&mapUpdateRequest=${markerId}`;
+                    popupX = unstackedX - parsePxString(W.map.getSegmentLayer().div.style.left) + popupXOffset + this.width.baseVal.value;
+                    popupY = unstackedY - parsePxString(W.map.getSegmentLayer().div.style.top) + this.height.baseVal.value;
                     docFrags.appendChild(createElem('div', {
                         style: 'font-weight:bold;', textContent: `${I18n.t('problems.panel.titles.map_update_request')} (${markerId}): ${I18n.t(`update_requests.types.${mapUrObj.getAttribute('type')}`)}`
                     }));
@@ -2346,7 +2346,7 @@
                     if (lmLink) {
                         liElem = createElem('li');
                         liElem.appendChild(createElem('a', {
-                            href: `${(lmLink.includes('?') ? lmLink.substring(0, lmLink.indexOf('?')) : lmLink)}?zoomLevel=17&lat=${urPos.lat}&lon=${urPos.lon}&layers=BTTTT`,
+                            href: `${(lmLink.includes('?') ? lmLink.substring(0, lmLink.indexOf('?')) : lmLink)}?zoomLevel=17&lat=${urPos.y}&lon=${urPos.x}&layers=BTTTT`,
                             target: `${targetTab}_lmTab`,
                             textContent: I18n.t('urce.mouseOver.OpenInNewLivemapTab')
                         }));
@@ -2371,7 +2371,7 @@
     }
 
     function markerMouseOut(evt) {
-        const newUrId = evt.relatedTarget?.attributes?.['data-id']?.value;
+        const newUrId = W.map.getLayerByName('update_requests').getFeatureFromEvent(evt).attributes.wazeFeature._wmeObject.attributes.id;
         if (((+newUrId > 0) && isIdAlreadyUnstacked(+newUrId))
             || ((evt.relatedTarget?.id === 'urceDiv') || evt?.relatedTarget?.id?.includes('urceCounts') || evt?.relatedTarget?.parentNode?.id?.includes('urce'))
         )
@@ -2701,8 +2701,8 @@
                 }
             };
         mUrsObjArr.forEach((mUrObj) => {
-            const mUrObjUrId = mUrObj.getID(),
-                marker = document.querySelector(`.map-problem.user-generated[data-id="${mUrObjUrId}"]`),
+            const mUrObjUrId = mUrObj.getID();
+            const marker = document.getElementById(W.map.getLayerByName('update_requests').featureMap.get(mUrObjUrId).geometry.id),
                 mUrObjUrceData = _mapUpdateRequests[mUrObjUrId];
             if (marker && mUrObjUrceData?.urceData) {
                 if (filter
@@ -4373,7 +4373,7 @@
                     _urPanelContainerObserver.isObserving = true;
                 }
                 if (!_urMarkerObserver.isObserving) {
-                    _urMarkerObserver.observe(W.map.getLayerByName('update_requests').div, {
+                    _urMarkerObserver.observe(W.map.getLayerByName('update_requests').renderer.root, {
                         childList: true, attributes: true, attributeOldValue: true, characterData: false, characterDataOldValue: false, subtree: true
                     });
                     _urMarkerObserver.isObserving = true;
