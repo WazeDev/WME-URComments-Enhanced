@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2024.06.06.01
+// @version     2024.06.06.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -86,7 +86,7 @@
         _SCRIPT_VERSION = GM_info.script.version.toString(),
         _SCRIPT_VERSION_CHANGES = [
             'CHANGE: Compatibility with latest WME update.',
-            'CHANGE: Auto set new UR comment with description restriction will ignore if description is "Reported map issue".'
+            'CHANGE: A UR with "Reported map issue" as the decsription is treated as if it were "without description".'
         ],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
@@ -1320,14 +1320,12 @@
             const { commentNum } = Object.values(_defaultComments).find((defaultComment) => defaultComment.urNum === mapUrObj.getAttribute('type'));
             if (_selUr.urOpen && commentNum) {
                 if (
-                    (!mapUrObj.getAttribute('description')
+                    ((!mapUrObj.getAttribute('description') || (mapUrObj.getAttribute('description').toLowerCase() === 'reported map issue'))
                         && (_settings.perCommentListSettings[_currentCommentList].autoSetNewUrComment || (_restrictionsEnforce.autoSetNewUrComment === true))
                         && (_restrictionsEnforce.autoSetNewUrComment !== false))
                     || (mapUrObj.getAttribute('description')
                         && (_settings.perCommentListSettings[_currentCommentList].autoSetNewUrCommentWithDescription || (_restrictionsEnforce.autoSetNewUrCommentWithDescription === true))
-                        && ((_restrictionsEnforce.autoSetNewUrCommentWithDescription !== false)
-                            || ((_restrictionsEnforce.autoSetNewUrCommentWithDescription === false) && (mapUrObj.getAttribute('description').toLowerCase() === 'reported map issue'))
-                        )
+                        && ((_restrictionsEnforce.autoSetNewUrCommentWithDescription !== false))
                         && (mapUrObj.getAttribute('type') !== 23))
                     || ((_settings.perCommentListSettings[_currentCommentList].autoSetNewUrCommentSlur || (_restrictionsEnforce.autoSetNewUrCommentSlur === true))
                         && (_restrictionsEnforce.autoSetNewUrCommentSlur !== false)
@@ -4623,6 +4621,7 @@
                 + '#urceShortcutsExpand { padding-bottom:4px; font-size:13px; cursor:pointer; border-bottom:1px solid darkgray; }'
                 + '#urceShortcutsExpandDiv { border-bottom:1px solid darkgray; padding: 5px 0 5px 0; }'
                 + '#panel-container .mapUpdateRequest.panel { width:380px; max-height:87vh; }'
+                + '#panel-container .mapUpdateRequest.panel wz-card[class^="panel"].problem-edit { --wz-card-width: 100%; }'
                 + '#panel-container .mapUpdateRequest.panel>* { max-height:87vh; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment-list { padding: 0px 6px; margin-bottom: 6px; max-height: 26vh; }'
                 + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .new-comment-form .new-comment-text { margin-bottom: 0px; }'
