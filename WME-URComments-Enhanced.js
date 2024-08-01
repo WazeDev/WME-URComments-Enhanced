@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2024.06.06.02
+// @version     2024.08.01.03
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -85,8 +85,11 @@
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
         _SCRIPT_VERSION_CHANGES = [
-            'CHANGE: Compatibility with latest WME update.',
-            'CHANGE: A UR with "Reported map issue" as the decsription is treated as if it were "without description".'
+            'NEW: Option to automatically expand or collapse user preferences in UR Panel.',
+            'NEW: Option to use a preposition phrase (on/near) with the segment name(s) shortcuts.',
+            'NEW: First available city name will be included if one exists on primary or alternate addresses for a segment with the segment name(s) with city shortcut.',
+            'NEW: With addition of available city on alternate addresses, change "in" to "in" or "near" in the shortcut for segment name(s) with city.,',
+            'BUGFIX: Selecting different comment lists caused multiple "per comment list" setting boxes to appear in settings.'
         ],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
@@ -366,6 +369,7 @@
                 lastVersion: undefined,
                 wmeUserId: undefined,
                 expandMoreInfo: false,
+                expandUserPreferences: true,
                 expandShortcuts: true,
                 // Comment List
                 commentList: 0,
@@ -404,6 +408,7 @@
                 enableAutoRefresh: false,
                 autoScrollComments: false,
                 reverseCommentSort: false,
+                usePrepositionForSegmentNamesShortcut: false,
                 reminderDays: 0,
                 closeDays: 7,
                 // UR Marker Settings
@@ -1073,7 +1078,7 @@
             return;
         // 2024.03.21: UR markers layer is no longer a marker layer and is a feature layer in latest WME (v2.217-13-g1d79af085).
         // const selectedUrId = document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value;
-        const selectedUrId = W.map.getLayerByName('update_requests').features.filter((feature) => feature.attributes.wazeFeature.isSelected)[0]?.attributes?.wazeFeature?.id || -1;
+        const selectedUrId = W.map.getLayerByName('update_requests')?.features?.filter((feature) => feature.attributes?.wazeFeature?.isSelected)[0]?.attributes?.wazeFeature?.id || -1;
         if ((+selectedUrId > 0)
             && (!(_selUr.urId > 0) || (_selUr.urId !== +selectedUrId))
         ) {
@@ -1102,6 +1107,13 @@
                     _settings.expandMoreInfo = true;
                 else
                     _settings.expandMoreInfo = false;
+                saveSettingsToStorage();
+            },
+            expandUserPreferencesCallback = function () {
+                if (this?.parentElement?.classList?.contains('collapsed'))
+                    _settings.expandUserPreferences = true;
+                else
+                    _settings.expandUserPreferences = false;
                 saveSettingsToStorage();
             };
         _selUr.handling = true;
@@ -1308,6 +1320,12 @@
                 (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .more-info .title'))?.click();
         }
         (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .more-info .title'))?.addEventListener('click', expandMoreInfoCallback);
+        domElement = await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .reporter-preferences');
+        if (_settings.expandUserPreferences && domElement.classList.contains('collapsed'))
+            (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .reporter-preferences .title'))?.click();
+        else if (!_settings.expandUserPreferences && !domElement.classList.contains('collapsed'))
+            (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .reporter-preferences .title'))?.click();
+        (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .reporter-preferences .title'))?.addEventListener('click', expandUserPreferencesCallback);
         if ((await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation'))?.classList?.contains('collapsed'))
             (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .title'))?.click();
         domElement = await getDomElement('#panel-container .mapUpdateRequest div[class^="container"]');
@@ -1503,41 +1521,57 @@
         if (!(urId > 0) && _selUr?.urId)
             ({ urId } = _selUr);
         if (replaceVars && shortcutClicked && text.includes('$SELSEGS')) {
-            const selFeatures = W.selectionManager.getSelectedDataModelObjects();
+            const selFeatures = W.selectionManager.getSelectedDataModelObjects(),
+                getStreetName = function (address) {
+                    if (!address.isEmptyStreet())
+                        return address.getStreetName();
+                    if (address.getAltStreets().length > 0) {
+                        const altStreets = address.getAltStreets();
+                        for (let i = 0, { length } = altStreets; i < length; i++) {
+                            if (!altStreets[i].isEmptyStreet())
+                                return altStreets[i].getStreetName();
+                        }
+                    }
+                    return I18n.t('urce.tools.UnknownRoadName');
+                },
+                getCityName = function (address) {
+                    if (!address.getCity().isEmpty())
+                        return { cityName: address.getCityName(), inOrNear: I18n.t('urce.common.In') };
+                    if (address.getAltStreets().length > 0) {
+                        const altStreets = address.getAltStreets();
+                        for (let i = 0, end = altStreets.length; i < end; i++) {
+                            if (!altStreets[i].getCity().isEmpty())
+                                return { cityName: altStreets[i].getCityName(), inOrNear: I18n.t('urce.common.Near') };
+                        }
+                    }
+                    return { cityName: '', inOrNear: '' };
+                };
             let output = '';
             if ((selFeatures.length > 0) && (selFeatures.length < 3)) {
                 let street1Name = '',
                     street2Name = '',
-                    cityName = '',
-                    firstCityId;
+                    inOrNear = '',
+                    cityName = '';
                 for (let idx = 0, { length } = selFeatures; idx < length; idx++) {
                     if (selFeatures[idx].getType() === 'segment') {
                         if (selFeatures.length > 1) {
-                            const streetObj = W.model.streets.getObjectById(selFeatures[idx].getPrimaryStreetID());
+                            const address = selFeatures[idx].getAddress();
                             if (idx === 0) {
-                                street1Name = (streetObj.getName()?.length > 0) ? streetObj.getName() : I18n.t('urce.tools.UnknownRoadName');
-                                firstCityId = streetObj.getAttribute('cityID');
+                                street1Name = getStreetName(address);
+                                if (text.includes('$SELSEGS_WITH_CITY$'))
+                                    ({ cityName, inOrNear } = getCityName(address));
                             }
                             else {
-                                street2Name = (streetObj.getName()?.length > 0) ? streetObj.getName() : I18n.t('urce.tools.UnknownRoadName');
-                                if ((firstCityId !== 999940) && text.includes('$SELSEGS_WITH_CITY$')) {
-                                    if ((firstCityId === streetObj.getAttribute('cityID')) || (streetObj.getAttribute('cityID') === 999940)) {
-                                        const cityObj = W.model.cities.getObjectById(firstCityId);
-                                        cityName = (cityObj.getName()?.length > 0) ? cityObj.getName() : '';
-                                    }
-                                }
-                                else if ((firstCityId === 999940) && (streetObj.getAttribute('cityID') !== 999940) && text.includes('$SELSEGS_WITH_CITY$')) {
-                                    const cityObj = W.model.cities.getObjectById(streetObj.getAttribute('cityID'));
-                                    cityName = (cityObj.getName()?.length > 0) ? cityObj.getName() : '';
-                                }
+                                street2Name = getStreetName(address);
+                                if ((cityName === '') && text.includes('$SELSEGS_WITH_CITY$'))
+                                    ({ cityName, inOrNear } = getCityName(address));
                             }
                         }
                         else {
-                            const streetObj = W.model.streets.getObjectById(selFeatures[idx].getPrimaryStreetID());
-                            street1Name = (streetObj.getName()?.length > 0) ? streetObj.getName() : '';
-                            const cityObj = W.model.cities.getObjectById(streetObj.getAttribute('cityID'));
-                            if ((cityObj.getName()?.length > 0) && (street1Name !== '') && text.includes('$SELSEGS_WITH_CITY$'))
-                                cityName = cityObj.getName();
+                            const address = selFeatures[idx].getAddress();
+                            street1Name = getStreetName(address);
+                            if (text.includes('$SELSEGS_WITH_CITY$'))
+                                ({ cityName, inOrNear } = getCityName(address));
                         }
                     }
                 }
@@ -1554,7 +1588,9 @@
                     else {
                         output = '$SEG1NAME$';
                     }
-                    output = output.replaceAll('$SEGCITY$', cityName).replaceAll('$SEG1NAME$', street1Name).replaceAll('$SEG2NAME$', street2Name);
+                    output = output.replaceAll('$SEGCITY$', cityName).replaceAll('$SEG1NAME$', street1Name).replaceAll('$SEG2NAME$', street2Name).replaceAll('$IN_NEAR$', inOrNear);
+                    if (_settings.usePrepositionForSegmentNamesShortcut)
+                        output = `${((selFeatures.length > 1) ? I18n.t('urce.common.Near') : I18n.t('edit.on').toLowerCase())} ${output}`;
                     text = text.replace(/\$SELSEGS(\$|_WITH_CITY\$)?/gm, output);
                 }
                 else {
@@ -3991,7 +4027,7 @@
     function buildCommentList(commentListIdx, phase, autoSwitch) {
         return new Promise((resolve, reject) => {
             doSpinner('buildCommentList', true);
-            commentListIdx = commentListIdx || _settings.commentList;
+            commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
             const docFrags = document.createDocumentFragment(),
                 commentListInfo = getCommentListInfo(commentListIdx),
                 selectionChange = function () {
@@ -4037,7 +4073,7 @@
             _commentLists.forEach((cList) => {
                 if (cList.status !== 'disabled') {
                     selectElem.appendChild(createElem('option', {
-                        value: cList.idx, textContent: !autoSwitch ? cList.name : `${cList.name} (${I18n.t('urce.common.AutoSwitched')})`, selected: (cList.idx === commentListIdx)
+                        value: cList.idx, textContent: (autoSwitch && (cList.idx === commentListIdx)) ? `${cList.name} (${I18n.t('urce.common.AutoSwitched')})` : cList.name, selected: (cList.idx === commentListIdx)
                     }));
                 }
             });
@@ -4341,7 +4377,7 @@
             divElemRoot.appendChild(createDivSettingInput(settingId));
         });
         docFrags.appendChild(divElemRoot);
-        document.getElementById('URCE-divPerCommentListSettings').appendChild(docFrags);
+        document.getElementById('URCE-divPerCommentListSettings').replaceChildren(docFrags);
     }
 
     function handleError(err) {
@@ -5497,7 +5533,8 @@
         ['autoCenterOnUr', 'autoClickOpenSolvedNi', 'autoCloseUrPanel', 'autoSaveAfterSolvedOrNiComment', 'autoSendReminders', 'autoSetNewUrComment', 'autoSetNewUrCommentSlur',
             'autoSetNewUrCommentWithDescription', 'autoSetReminderUrComment', 'placeCursorAtStart', 'autoSwitchToUrCommentsTab', 'autoZoomInOnNewUr', 'autoZoomOutAfterClosePanel',
             'autoZoomOutAfterComment', 'disableDoneNextButtons', 'replaceNextWithDoneButton', 'doubleClickLinkNiComments', 'doubleClickLinkOpenComments', 'doubleClickLinkSolvedComments',
-            'hideZoomOutLinks', 'enableUrOverflowHandling', 'enableAutoRefresh', 'expandMoreInfo', 'expandShortcuts', 'autoScrollComments', 'reverseCommentSort'
+            'hideZoomOutLinks', 'enableUrOverflowHandling', 'enableAutoRefresh', 'expandMoreInfo', 'expandUserPreferences', 'expandShortcuts', 'autoScrollComments', 'reverseCommentSort',
+            'usePrepositionForSegmentNamesShortcut'
         ].forEach((setting) => { contentDiv.appendChild(buildStandardCbSetting(setting, 'urce')); });
         contentDivDiv = createElem('div', { class: 'URCE-controls URCE-textFirst' });
         contentDivDiv.appendChild(buildTextFirstTextSetting('tagEmail', 'commentList'));
@@ -6221,12 +6258,14 @@
                                     Failed: 'Failed',
                                     Finish: 'Finish',
                                     Following: 'Following',
+                                    In: 'in',
                                     LessThan: 'Less than',
                                     Link: 'Link',
                                     List: 'List',
                                     ListOwner: 'List owner',
                                     Loading: 'Loading',
                                     MoreThan: 'More than',
+                                    Near: 'near',
                                     NeedsChecked: 'Needs checked',
                                     No: 'No',
                                     None: 'None',
@@ -6346,12 +6385,16 @@
                                                     + 'level is between 15 and 22, there are not pending edits, and there are more than 499 URs loaded.',
                                     ExpandMoreInfo: 'Auto expand more info section',
                                     ExpandMoreInfoTitle: 'Automatically expand the more info section of the UR Panel.',
+                                    ExpandUserPreferences: 'Auto expand user preferences section',
+                                    ExpandUserPreferencesTitle: 'Automatically expand the user preferences section of the UR Panel.',
                                     ExpandShortcuts: 'Auto expand shortcuts section',
                                     ExpandShortcutsTitle: 'Automatically expand the shortcuts section of the UR Panel.',
                                     AutoScrollComments: 'Auto scroll comments in UR panel',
                                     AutoScrollCommentsTitle: 'Automatically scroll the comments in the UR panel to the bottom if enabled, or top if disabled.',
                                     ReverseCommentSort: 'Sort Comments in reverse order',
                                     ReverseCommentSortTitle: 'Sort comments in the UR Panel in the reverse order.',
+                                    UsePrepositionForSegmentNamesShortcut: 'Use preposition phrase for segment names shortcut',
+                                    UsePrepositionForSegmentNamesShortcutTitle: 'Use preposition phrase (on/near) for segment names shortcut.',
                                     UrMarkerPrefs: 'UR Marker Settings',
                                     EnableUrPillCounts: 'Enable UR pill counts',
                                     EnableUrPillCountsTitle: 'Enable or disable the pill with UR counts on the map marker.',
