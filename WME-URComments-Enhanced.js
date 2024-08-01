@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2024.08.01.01
+// @version     2024.08.01.02
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -1558,22 +1558,23 @@
                             const address = selFeatures[idx].getAddress();
                             if (idx === 0) {
                                 street1Name = getStreetName(address);
-                                ({ cityName, inOrNear } = getCityName(address));
+                                if (text.includes('$SELSEGS_WITH_CITY$'))
+                                    ({ cityName, inOrNear } = getCityName(address));
                             }
                             else {
                                 street2Name = getStreetName(address);
-                                if (cityName === '')
+                                if ((cityName === '') && text.includes('$SELSEGS_WITH_CITY$'))
                                     ({ cityName, inOrNear } = getCityName(address));
                             }
                         }
                         else {
                             const address = selFeatures[idx].getAddress();
                             street1Name = getStreetName(address);
-                            ({ cityName, inOrNear } = getCityName(address));
+                            if (text.includes('$SELSEGS_WITH_CITY$'))
+                                ({ cityName, inOrNear } = getCityName(address));
                         }
                     }
                 }
-
                 if ((street1Name !== '') || (street2Name !== '')) {
                     if (street2Name !== '') {
                         if (cityName !== '')
