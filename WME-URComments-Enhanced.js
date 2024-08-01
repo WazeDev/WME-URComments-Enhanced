@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2024.08.01.02
+// @version     2024.08.01.03
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -1589,13 +1589,13 @@
                         output = '$SEG1NAME$';
                     }
                     output = output.replaceAll('$SEGCITY$', cityName).replaceAll('$SEG1NAME$', street1Name).replaceAll('$SEG2NAME$', street2Name).replaceAll('$IN_NEAR$', inOrNear);
+                    if (_settings.usePrepositionForSegmentNamesShortcut)
+                        output = `${((selFeatures.length > 1) ? I18n.t('urce.common.Near') : I18n.t('edit.on').toLowerCase())} ${output}`;
                     text = text.replace(/\$SELSEGS(\$|_WITH_CITY\$)?/gm, output);
                 }
                 else {
                     WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.SelSegsInsertError'));
                 }
-                if (_settings.usePrepositionForSegmentNamesShortcut)
-                    text = `${((selFeatures.length > 1) ? I18n.t('urce.common.Near') : I18n.t('edit.on').toLowerCase())} ${text}`;
             }
             else {
                 WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.SelSegsInsertError'));
@@ -4027,7 +4027,7 @@
     function buildCommentList(commentListIdx, phase, autoSwitch) {
         return new Promise((resolve, reject) => {
             doSpinner('buildCommentList', true);
-            commentListIdx = commentListIdx || _settings.commentList;
+            commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
             const docFrags = document.createDocumentFragment(),
                 commentListInfo = getCommentListInfo(commentListIdx),
                 selectionChange = function () {
@@ -4073,7 +4073,7 @@
             _commentLists.forEach((cList) => {
                 if (cList.status !== 'disabled') {
                     selectElem.appendChild(createElem('option', {
-                        value: cList.idx, textContent: !autoSwitch ? cList.name : `${cList.name} (${I18n.t('urce.common.AutoSwitched')})`, selected: (cList.idx === commentListIdx)
+                        value: cList.idx, textContent: (autoSwitch && (cList.idx === commentListIdx)) ? `${cList.name} (${I18n.t('urce.common.AutoSwitched')})` : cList.name, selected: (cList.idx === commentListIdx)
                     }));
                 }
             });
