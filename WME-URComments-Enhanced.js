@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2024.08.01.03
+// @version     2024.08.20.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -84,13 +84,7 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = [
-            'NEW: Option to automatically expand or collapse user preferences in UR Panel.',
-            'NEW: Option to use a preposition phrase (on/near) with the segment name(s) shortcuts.',
-            'NEW: First available city name will be included if one exists on primary or alternate addresses for a segment with the segment name(s) with city shortcut.',
-            'NEW: With addition of available city on alternate addresses, change "in" to "in" or "near" in the shortcut for segment name(s) with city.,',
-            'BUGFIX: Selecting different comment lists caused multiple "per comment list" setting boxes to appear in settings.'
-        ],
+        _SCRIPT_VERSION_CHANGES = ['CHANGE: WME release v2.242 compatibility.'],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
         _MIN_VERSION_COMMENTS = '2019.03.01.01',
@@ -357,6 +351,15 @@
 
     function getRandomId() {
         return Math.random().toString(36).slice(2);
+    }
+
+    function getOLMapExtent() {
+        let extent = W.map.getExtent();
+        if (Array.isArray(extent)) {
+            extent = new OpenLayers.Bounds(extent);
+            extent.transform('EPSG:4326', 'EPSG:3857');
+        }
+        return extent;
     }
 
     async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
@@ -2913,7 +2916,7 @@
         let reopenPanel = false;
         if (!mUrsObjArr)
             return Promise.resolve();
-        const eg = W.map.getExtent(),
+        const eg = getOLMapExtent(),
             processMUrObjs = [...mUrsObjArr],
             reminderDays = _restrictionsEnforce.reminderDays || _settings.perCommentListSettings[_currentCommentList].reminderDays || 0,
             closeDays = _restrictionsEnforce.closeDays || _settings.perCommentListSettings[_currentCommentList].closeDays || 7,
@@ -3357,10 +3360,10 @@
         doSpinner('handleUrOverflow', true);
         const baseUrl = `https://${document.location.host}${W.Config.paths.features}?language=en&mapUpdateRequestFilter=`
                 + `${((W.issueTrackerController.getOption('app').get('issueTrackerFilter').get('mapUpdateRequestsFilter').get('status') === 'BOTH') ? '3' : '1')}%2C0&bbox=`,
-            vpBounds = W.map.getExtent().transform(W.map.getProjectionObject(), new OpenLayers.Projection('EPSG:4326')),
+            vpBounds = getOLMapExtent().transform(W.map.getProjectionObject(), new OpenLayers.Projection('EPSG:4326')),
             vpBoundsFrom = { lon: vpBounds.left, lat: vpBounds.bottom },
             vpBoundsTo = { lon: vpBounds.right, lat: vpBounds.top },
-            vpCenter = W.map.getOLMap().getCenter().transform(W.map.getProjectionObject(), new OpenLayers.Projection('EPSG:4326')),
+            vpCenter = getOLMapExtent().getCenter().transform(W.map.getProjectionObject(), new OpenLayers.Projection('EPSG:4326')),
             processData = (data) => {
                 if (data.error) {
                     logWarning(data.error);
