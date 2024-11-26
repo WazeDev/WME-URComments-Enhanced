@@ -1134,7 +1134,7 @@
          * 2024.11.26
          * Commented out because we are back to needing to know if the urPanel closes and opens in the same mutation set.
          * This can likely be deleted in next update if no issues are found from removing it. It is in one other place in the code.
-         * 
+         *
         _urPanelContainerObserver.disconnect();
         _urPanelContainerObserver.observe(document.getElementById('panel-container'), {
             childList: true, attributes: false, attributeOldValue: false, characterData: false, characterDataOldValue: false, subtree: false
