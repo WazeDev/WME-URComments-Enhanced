@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2024.08.20.01
+// @version     2024.11.26.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -84,7 +84,7 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['CHANGE: WME release v2.242 compatibility.'],
+        _SCRIPT_VERSION_CHANGES = ['CHANGE: WME release vv2.261-6-gce1dd85be compatibility.'],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
         _MIN_VERSION_COMMENTS = '2019.03.01.01',
@@ -199,14 +199,14 @@
                 && (mutations.filter(
                     (mutation) => (mutation.removedNodes.length > 0) && mutation.target.matches('#panel-container')
                 ).filter(
-                    (removedChild) => removedChild.removedNodes[0].classList.contains('show') && removedChild.removedNodes[0].classList.contains('mapUpdateRequest')
+                    (removedChild) => removedChild.removedNodes[0].classList.contains('show') && removedChild.removedNodes[0].classList.contains('panel')
                 ).length > 0)
             )
                 handleAfterCloseUpdateContainer();
             else if (mutations.filter(
                 (mutation) => (mutation.type === 'attributes')
             ).filter(
-                (mutation) => (mutation.oldValue?.includes('mapUpdateRequest panel') && mutation.target.classList.contains('show'))
+                (mutation) => (mutation.oldValue?.includes('panel') && mutation.target.classList.contains('show'))
             ).length > 0)
                 handleUpdateRequestContainer();
         }),
@@ -738,7 +738,7 @@
                 checkTimeout({ timeout: 'isPanelReady', toIndex });
                 if (tries > maxNumTries)
                     resolve({ error: true });
-                else if (!W.map.panelRegion.currentView?.getOption('model')?.get(waitForAttrStr))
+                else if (!W.problemsController?.editController?.viewModel?.get(waitForAttrStr))
                     resolve({ error: false });
                 else
                     _timeouts.isPanelReady[toIndex] = window.setTimeout(retry, retryInt, waitForAttrStr, ++tries, toIndex, retryInt, maxNumTries);
@@ -1009,7 +1009,7 @@
                 domElem.firstChild.appendChild(divElemRoot);
             }
             if (_settings.reverseCommentSort) {
-                const commentList = await getDomElement('#panel-container .mapUpdateRequest.panel.show div[class^="container"] .body .conversation.section .conversation-view .comment-list'),
+                const commentList = await getDomElement('#panel-container .panel.show div[class^="container"] .body .conversation.section .conversation-view .comment-list'),
                     numComments = commentList.children.length;
                 domElem.remove();
                 commentList.insertBefore(domElem, commentList.firstChild);
@@ -1100,7 +1100,7 @@
             */
             return;
         }
-        if (_settings.replaceNextWithDoneButton && W.map.panelRegion.currentView.getOption('showNext')) {
+        if (_settings.replaceNextWithDoneButton && W.problemsController.editController.showNext) {
             openUrPanel(_selUr.urId, true);
             return;
         }
@@ -1173,11 +1173,11 @@
             }
         }
         if (_mapUpdateRequests[_selUr.urId].urceData.commentCount > 0) {
-            if (!(await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .comment .comment-title'))) {
+            if (!(await getDomElement('#panel-container .panel div[class^="container"] .body .conversation .comment .comment-title'))) {
                 handleReadyError(false, false, '', false, 'isConversationLoaded: loadingConversation');
             }
             else {
-                const comments = document.querySelectorAll('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .comment .comment-title');
+                const comments = document.querySelectorAll('#panel-container .panel div[class^="container"] .body .conversation .comment .comment-title');
                 for (let idx = 0, { commentCount } = _mapUpdateRequests[_selUr.urId].urceData; idx < commentCount; idx++) {
                     const currComment = comments[idx];
                     if (currComment.getElementsByClassName('date urce').length === 0) {
@@ -1193,7 +1193,7 @@
                 }
             }
             if (_settings.reverseCommentSort && (_mapUpdateRequests[_selUr.urId].urceData.commentCount > 1)) {
-                const commentList = await getDomElement('#panel-container .mapUpdateRequest.panel.show div[class^="container"] .body .conversation.section .conversation-view .comment-list');
+                const commentList = await getDomElement('#panel-container .panel.show div[class^="container"] .body .conversation.section .conversation-view .comment-list');
                 if (commentList) {
                     const docFrags = document.createDocumentFragment(),
                         reverseCommentList = [...commentList.querySelectorAll('wz-list-item.comment')].reverse();
@@ -1206,12 +1206,12 @@
         if (_settings.autoSwitchToUrCommentsTab)
             autoSwitchToUrceTab();
         if (_settings.disableDoneNextButtons) {
-            domElement = await getDomElement('#panel-container .mapUpdateRequest .actions .content .navigation');
+            domElement = await getDomElement('#panel-container .panel .actions .content .navigation');
             if (domElement)
                 domElement.style.display = 'none';
         }
-        (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .focus'))?.addEventListener('click', recenterOnUr);
-        domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-text');
+        (await getDomElement('#panel-container .panel div[class^="container"] .focus'))?.addEventListener('click', recenterOnUr);
+        domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .panel div[class^="container"] .body .conversation .new-comment-text');
         if (!domElement) {
             handleReadyError(true, true, 'handleUpdateRequestContainer', false, '');
             return;
@@ -1292,46 +1292,46 @@
             divElemDivDiv.appendChild(createElem('div', { class: 'currentDateText', textContent: `- ${I18n.t('urce.urPanel.CurrentDate')}` }));
             divElemDiv.appendChild(divElemDivDiv);
             divElemRoot.appendChild(divElemDiv);
-            domElement = document.querySelector('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-form');
+            domElement = document.querySelector('#panel-container .panel div[class^="container"] .body .conversation .new-comment-form');
             domElement.insertBefore(divElemRoot, domElement.firstChild);
         }
-        (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-form .send-button'))?.addEventListener('click', clickedSendToSendComment);
-        (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-form .send-button'))?.shadowRoot.appendChild(createElem('style', {
+        (await getDomElement('#panel-container .panel div[class^="container"] .body .conversation .new-comment-form .send-button'))?.addEventListener('click', clickedSendToSendComment);
+        (await getDomElement('#panel-container .panel div[class^="container"] .body .conversation .new-comment-form .send-button'))?.shadowRoot.appendChild(createElem('style', {
             textContent: '.wz-button.md { height: 30px !important; min-width: 60px !important; max-widt: 140px !important; padding: 0px 10px !important; overflow: hidden; }'
         }));
-        (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-form .new-comment-text'))?.shadowRoot.appendChild(createElem('style', {
+        (await getDomElement('#panel-container .panel div[class^="container"] .body .conversation .new-comment-form .new-comment-text'))?.shadowRoot.appendChild(createElem('style', {
             textContent: '.wz-textarea textarea { font-size: 13px !important; line-height: 14px; padding: 6px !important; } '
                 + '.wz-textarea .length-text { font-size: 12px !important; padding: 2px 6px 0px 0px !important; }'
         }));
         if (!_urDataStateObserver.isObserving) {
-            _urDataStateObserver.observe(document.querySelector('#panel-container .mapUpdateRequest.panel.show .problem-edit'), {
+            _urDataStateObserver.observe(document.querySelector('#panel-container .panel.show .problem-edit'), {
                 childList: false, attributes: true, attributeOldValue: true, characterData: false, characterDataOldValue: false, subtree: false
             });
             _urDataStateObserver.isObserving = true;
         }
         if (!_urCommentsObserver.isObserving) {
-            _urCommentsObserver.observe(document.querySelector('#panel-container .mapUpdateRequest.panel.show div[class^="container"] .body .conversation.section .conversation-view .comment-list'), {
+            _urCommentsObserver.observe(document.querySelector('#panel-container .panel.show div[class^="container"] .body .conversation.section .conversation-view .comment-list'), {
                 childList: true, attributes: false, attributeOldValue: false, characterData: false, characterDataOldValue: false, subtree: false
             });
             _urCommentsObserver.isObserving = true;
         }
         if (!(await isPanelReady('loadingMoreInfo', 10, 200)).error) {
-            domElement = await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .more-info');
-            if (_settings.expandMoreInfo && W.map.panelRegion.currentView.getOption('adapter').isMoreInfoAvailable() && domElement.classList.contains('collapsed'))
-                (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .more-info .title'))?.click();
+            domElement = await getDomElement('#panel-container .panel div[class^="container"] .body .more-info');
+            if (_settings.expandMoreInfo && W.problemsController.editController.adapter.isMoreInfoAvailable() && domElement.classList.contains('collapsed'))
+                (await getDomElement('#panel-container .panel div[class^="container"] .body .more-info .title'))?.click();
             else if (!_settings.expandMoreInfo && !domElement.classList.contains('collapsed'))
-                (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .more-info .title'))?.click();
+                (await getDomElement('#panel-container .panel div[class^="container"] .body .more-info .title'))?.click();
         }
-        (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .more-info .title'))?.addEventListener('click', expandMoreInfoCallback);
-        domElement = await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .reporter-preferences');
+        (await getDomElement('#panel-container .panel div[class^="container"] .body .more-info .title'))?.addEventListener('click', expandMoreInfoCallback);
+        domElement = await getDomElement('#panel-container .panel div[class^="container"] .body .reporter-preferences');
         if (_settings.expandUserPreferences && domElement.classList.contains('collapsed'))
-            (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .reporter-preferences .title'))?.click();
+            (await getDomElement('#panel-container .panel div[class^="container"] .body .reporter-preferences .title'))?.click();
         else if (!_settings.expandUserPreferences && !domElement.classList.contains('collapsed'))
-            (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .reporter-preferences .title'))?.click();
-        (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .reporter-preferences .title'))?.addEventListener('click', expandUserPreferencesCallback);
-        if ((await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation'))?.classList?.contains('collapsed'))
-            (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .title'))?.click();
-        domElement = await getDomElement('#panel-container .mapUpdateRequest div[class^="container"]');
+            (await getDomElement('#panel-container .panel div[class^="container"] .body .reporter-preferences .title'))?.click();
+        (await getDomElement('#panel-container .panel div[class^="container"] .body .reporter-preferences .title'))?.addEventListener('click', expandUserPreferencesCallback);
+        if ((await getDomElement('#panel-container .panel div[class^="container"] .body .conversation'))?.classList?.contains('collapsed'))
+            (await getDomElement('#panel-container .panel div[class^="container"] .body .conversation .title'))?.click();
+        domElement = await getDomElement('#panel-container .panel div[class^="container"]');
         if (domElement)
             domElement.scrollTop = domElement.scrollHeight;
         autoScrollComments(_mapUpdateRequests[_selUr.urId].urceData.commentCount, 10, 1);
@@ -1392,18 +1392,17 @@
                 title = I18n.t('urce.prompts.PlaceNameFound');
             else
                 title = I18n.t('urce.prompts.VarFound').replaceAll('$VARSFOUND$', varsFound.join(', '));
-            document.querySelector('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-form .send-button').disabled = true;
-            document.querySelector('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-form .send-button').setAttribute('title', title);
+            document.querySelector('#panel-container .panel div[class^="container"] .body .conversation .new-comment-form .send-button').setAttribute('title', title);
         }
-        else if (document.querySelector('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-form .send-button').disabled) {
-            document.querySelector('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-form .send-button').disabled = false;
-            document.querySelector('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-form .send-button').setAttribute('title', '');
+        else if (document.querySelector('#panel-container .panel div[class^="container"] .body .conversation .new-comment-form .send-button').disabled) {
+            document.querySelector('#panel-container .panel div[class^="container"] .body .conversation .new-comment-form .send-button').disabled = false;
+            document.querySelector('#panel-container .panel div[class^="container"] .body .conversation .new-comment-form .send-button').setAttribute('title', '');
         }
     }
 
     async function handleClickedComment(commentNum, doubleClick) {
         _selUr.doubleClick = doubleClick;
-        const domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-text');
+        const domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .panel div[class^="container"] .body .conversation .new-comment-text');
         if (!domElement) {
             logWarning('No comment box found after clicking a comment from the list.');
             WazeWrap.Alerts.info(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.NoCommentBox'));
@@ -1454,7 +1453,7 @@
                 checkTimeout({ timeout: 'autoCloseUrPanel' });
                 if (tries > maxNumTries)
                     resolve({ error: true });
-                else if (document.querySelector('#panel-container .mapUpdateRequest div[class^="container"] .body .problem-data .more-info')?.classList?.contains('loading') === false)
+                else if (document.querySelector('#panel-container .panel div[class^="container"] .body .problem-data .more-info')?.classList?.contains('loading') === false)
                     resolve({ error: false });
                 else
                     _timeouts.autoCloseUrPanel = window.setTimeout(retry, ++tries, retryInt, maxNumTries);
@@ -1464,23 +1463,23 @@
             handleReadyError(false, false, '', false, '');
             return Promise.resolve();
         }
-        W?.map?.panelRegion?.currentView?.destroy();
+        W.problemsController.editController.destroy();
         return Promise.resolve();
     }
 
     async function autoClickSendButton() {
-        (await getDomElement('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-form .send-button'))?.click();
-        (await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-text'))
+        (await getDomElement('#panel-container .panel div[class^="container"] .body .conversation .new-comment-form .send-button'))?.click();
+        (await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .panel div[class^="container"] .body .conversation .new-comment-text'))
             ?.removeEventListener('autoclicksendbutton', autoClickSendButton);
     }
 
     async function autoClickOpenSolvedNi(commentNum) {
         if ((_commentList[commentNum].urstatus === 'notidentified') && (_selUr.newStatus !== 'notidentified'))
-            (await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="not-identified"]'))?.click();
+            (await getDomElement('#panel-container .panel .actions .content .controls-container input[value="not-identified"]'))?.click();
         else if ((_commentList[commentNum].urstatus === 'solved') && (_selUr.newStatus !== 'solved'))
-            (await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="solved"]'))?.click();
+            (await getDomElement('#panel-container .panel .actions .content .controls-container input[value="solved"]'))?.click();
         else if ((_commentList[commentNum].urstatus === 'open') && ((_selUr.newStatus === 'solved') || (_selUr.newStatus === 'notidentified')))
-            (await getDomElement('#panel-container .mapUpdateRequest .actions .content .controls-container input[value="open"]'))?.click();
+            (await getDomElement('#panel-container .panel .actions .content .controls-container input[value="open"]'))?.click();
     }
 
     function autoZoomIn() {
@@ -1824,7 +1823,7 @@
     async function handleClickedShortcut() {
         const shortcut = this.id.substring(14);
         doSpinner('handleClickedShortcut', true);
-        let domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-text');
+        let domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .panel div[class^="container"] .body .conversation .new-comment-text');
         if (!domElement) {
             handleReadyError(false, true, 'handleClickedShortcut', true, 'UR panel comment box is missing.');
             return;
@@ -1947,7 +1946,7 @@
                 doSpinner('handleClickedShortcut', false);
                 return;
             }
-            domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-text');
+            domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .panel div[class^="container"] .body .conversation .new-comment-text');
             if (!domElement) {
                 logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut with setSelectionRange.');
             }
@@ -1960,7 +1959,7 @@
             }
         }
         else if (useCurrVal) {
-            domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-text');
+            domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .panel div[class^="container"] .body .conversation .new-comment-text');
             if (!domElement) {
                 logWarning('Timed out waiting for DOM elements before setting value of comment box after clicking a shortcut without setSelectionRange.');
             }
@@ -2005,7 +2004,7 @@
             cursorPos,
             newCursorPos,
             postNls = 0;
-        let domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-text');
+        let domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .panel div[class^="container"] .body .conversation .new-comment-text');
         if (!domElement) {
             logError('UR panel comment box is missing at beginning of postUrComment function.');
             handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
@@ -2050,7 +2049,7 @@
             logError(I18n.t('urce.prompts.CommentTooLong'));
         }
         else {
-            domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-text');
+            domElement = await getDomElement('textarea[id^=wz-textarea-]', '#panel-container .panel div[class^="container"] .body .conversation .new-comment-text');
             if (!domElement) {
                 logError('Timed out waiting on text box to set value with setSelectionRange.');
                 handleReadyError(false, true, 'postUrComment', true, 'UR panel comment box is missing.');
@@ -3515,7 +3514,7 @@
                 domElement.insertBefore(divElemRoot, domElement.firstChild);
             }
             if (maskUrPanel && !document.getElementById(`urPanelLightbox-${phase}`)) {
-                const domElement = await getDomElement('#panel-container .mapUpdateRequest.panel.show');
+                const domElement = await getDomElement('#panel-container .panel.show');
                 if (!domElement) {
                     handleReadyError(false, false, '', false, 'Timed out trying to add mask to UR panel.');
                 }
@@ -3539,7 +3538,7 @@
                 logWarning(`Timed out trying to scroll to the bottom. commentCount: ${commentCountInt}, tries: ${tries}, retryInt: ${retryInt}, maxTries: ${maxTries}`);
                 return;
             }
-            const commentList = await getDomElement('#panel-container .mapUpdateRequest.panel.show div[class^="container"] .body .conversation.section .conversation-view .comment-list');
+            const commentList = await getDomElement('#panel-container .panel.show div[class^="container"] .body .conversation.section .conversation-view .comment-list');
             if (commentList && (commentCountInt > 0)
                 && (commentCountInt === commentList.children.length)
                 && (!_settings.autoScrollComments
@@ -3547,7 +3546,7 @@
                 )
             )
                 commentList.scrollTop = _settings.autoScrollComments ? commentList.scrollHeight : 0;
-            else if ((commentCountInt !== 0) && W.map.panelRegion.currentView.getOption('model').get('loadingConversation'))
+            else if ((commentCountInt !== 0) && W.problemsController.editController.viewModel.get('loadingConversation'))
                 _timeouts.autoScrollComments = window.setTimeout(retry, retryInt, commentCountInt, ++tries, retryInt, maxNumTries);
         }(commentCount, 1, retryInterval, maxTries));
     }
@@ -4044,8 +4043,8 @@
                 },
                 appendModeToggle = function () {
                     _settings[this.id.substring(3)] = this.checked;
-                    if (W.map.panelRegion.currentView?.getOption('adapter')?.problem) {
-                        document.querySelector('#panel-container .mapUpdateRequest div[class^="container"] .body .conversation .new-comment-text')
+                    if (W.problemsController.editController.adapter.problem) {
+                        document.querySelector('#panel-container .panel div[class^="container"] .body .conversation .new-comment-text')
                             .shadowRoot.querySelector('textarea[id^=wz-textarea-]').style.backgroundColor = this.checked ? 'peachpuff' : '';
                     }
                     saveSettingsToStorage();
@@ -4659,29 +4658,29 @@
                 + '#urceShortcuts i.URCE-chevron { font-weight:900; }'
                 + '#urceShortcutsExpand { padding-bottom:4px; font-size:13px; cursor:pointer; border-bottom:1px solid darkgray; }'
                 + '#urceShortcutsExpandDiv { border-bottom:1px solid darkgray; padding: 5px 0 5px 0; }'
-                + '#panel-container .mapUpdateRequest.panel { width:380px; max-height:87vh; }'
-                + '#panel-container .mapUpdateRequest.panel wz-card[class^="panel"].problem-edit { --wz-card-width: 100%; }'
-                + '#panel-container .mapUpdateRequest.panel>* { max-height:87vh; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment-list { padding: 0px 6px; margin-bottom: 6px; max-height: 26vh; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .new-comment-form .new-comment-text { margin-bottom: 0px; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .conversation-view .comment .comment-title .date.urce { display: flex; justify-content: flex-end; margin-top: -4px; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .issue-panel-header { padding-top: 5px; padding-bottom: 5px; font-size: 12px; line-height: 14px; padding-right: 0px; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .issue-panel-header .main-title { font-size: 14px; line-height: 14px; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .issue-panel-header .dot { top: 6px; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .section .content { padding: 5px 12px; font-size: 12px; line-height: 14px; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .section .content .URCE-divDesc { max-height: 82px; overflow-y: auto; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .section .title { padding: 0 6px 0 6px; font-size: 13px; line-height: 13px; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .controls-container { margin-top: -2px; margin-bottom: -2px; text-align: center; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .more-info .more-info-checkbox label { font-size: 12px; line-height: 14px; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .controls-container label[for|="state"] { height: 22px; width: unset; min-width: 162px; line-height: 26px; margin: 2px; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="open"] .actions .controls-container label[for="state-solved"]  { display: inline-block; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="open"] .actions .controls-container label[for|="state-not-identified"] { display: inline-block; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="solved"] .actions .controls-container label[for|="state-open"], '
-                + '     #panel-container .mapUpdateRequest.panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-open"] { display: inline-block !important; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-not-identified"], '
-                + '     #panel-container .mapUpdateRequest.panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-solved"] { display: none !important; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .navigation .waze-plain-btn { height: 30px; line-height: 18px; font-size: 13px; }'
-                + '#panel-container .mapUpdateRequest.panel .problem-edit .actions .no-permissions-alert { margin-bottom: 8px; margin-top: 2px; padding: 4px; }'
+                + '#panel-container .panel { width:380px; max-height:87vh; }'
+                + '#panel-container .panel wz-card[class^="panel"].problem-edit { --wz-card-width: 100%; }'
+                + '#panel-container .panel>* { max-height:87vh; }'
+                + '#panel-container .panel .problem-edit .conversation-view .comment-list { padding: 0px 6px; margin-bottom: 6px; max-height: 26vh; }'
+                + '#panel-container .panel .problem-edit .conversation-view .new-comment-form .new-comment-text { margin-bottom: 0px; }'
+                + '#panel-container .panel .problem-edit .conversation-view .comment .comment-title .date.urce { display: flex; justify-content: flex-end; margin-top: -4px; }'
+                + '#panel-container .panel .problem-edit .issue-panel-header { padding-top: 5px; padding-bottom: 5px; font-size: 12px; line-height: 14px; padding-right: 0px; }'
+                + '#panel-container .panel .problem-edit .issue-panel-header .main-title { font-size: 14px; line-height: 14px; }'
+                + '#panel-container .panel .problem-edit .issue-panel-header .dot { top: 6px; }'
+                + '#panel-container .panel .problem-edit .section .content { padding: 5px 12px; font-size: 12px; line-height: 14px; }'
+                + '#panel-container .panel .problem-edit .section .content .URCE-divDesc { max-height: 82px; overflow-y: auto; }'
+                + '#panel-container .panel .problem-edit .section .title { padding: 0 6px 0 6px; font-size: 13px; line-height: 13px; }'
+                + '#panel-container .panel .problem-edit .actions .controls-container { margin-top: -2px; margin-bottom: -2px; text-align: center; }'
+                + '#panel-container .panel .problem-edit .more-info .more-info-checkbox label { font-size: 12px; line-height: 14px; }'
+                + '#panel-container .panel .problem-edit .actions .controls-container label[for|="state"] { height: 22px; width: unset; min-width: 162px; line-height: 26px; margin: 2px; }'
+                + '#panel-container .panel .problem-edit[data-state="open"] .actions .controls-container label[for="state-solved"]  { display: inline-block; }'
+                + '#panel-container .panel .problem-edit[data-state="open"] .actions .controls-container label[for|="state-not-identified"] { display: inline-block; }'
+                + '#panel-container .panel .problem-edit[data-state="solved"] .actions .controls-container label[for|="state-open"], '
+                + '     #panel-container .panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-open"] { display: inline-block !important; }'
+                + '#panel-container .panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-not-identified"], '
+                + '     #panel-container .panel .problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-solved"] { display: none !important; }'
+                + '#panel-container .panel .problem-edit .actions .navigation .waze-plain-btn { height: 30px; line-height: 18px; font-size: 13px; }'
+                + '#panel-container .panel .problem-edit .actions .no-permissions-alert { margin-bottom: 8px; margin-top: 2px; padding: 4px; }'
                 // Map content
                 + '.urceCountersPill { color:black; position:absolute; top:30px; display:block; width:auto; white-space:nowrap; padding-left:5px; padding-right:5px; border:1px solid; border-radius:25px; }'
                 // URCE Lightbox
@@ -4693,7 +4692,7 @@
     function initCommentsTab() {
         logDebug('Initializing Comments tab.');
         const zoomOutLinkClicked = function () {
-            if (document.querySelector('#panel-container .mapUpdateRequest div[class^="container"] .close-panel'))
+            if (document.querySelector('#panel-container .panel div[class^="container"] .close-panel'))
                 autoCloseUrPanel();
             W.map.getOLMap().zoomTo(+this.getAttribute('zoomTo'));
         };
