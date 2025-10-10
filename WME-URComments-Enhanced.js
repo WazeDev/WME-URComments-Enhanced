@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced (beta)
 // @namespace   https://greasyfork.org/users/166843
-// @version     2025.07.29.01
+// @version     2025.10.10.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -84,7 +84,7 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['CHANGE: WME release v2.305-10-g34435bea76 compatibility.'],
+        _SCRIPT_VERSION_CHANGES = ['CHANGE: WME release v2.318-4-g276514d544 compatibility.'],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
         _MIN_VERSION_COMMENTS = '2019.03.01.01',
@@ -980,10 +980,10 @@
         let data = {};
         try {
             data = await W.controller.descartesClient.getUpdateRequestSessionsByIds(urIds);
-            if (data?.updateRequestSessions?.objects.length > 0)
+            if (data[0]?.updateRequestSessions?.objects.length > 0)
                 // 2023.04.05.01: No need to merge the data to the W.map.mapUpdateRequests repo. Let WME control that repo.
                 // W.model.mergeResponse(data);
-                data = Object.fromEntries(data.updateRequestSessions.objects.map((o) => [o.getID(), o]));
+                data = Object.fromEntries(data[0].updateRequestSessions.objects.map((o) => [o.getID(), o]));
             else
                 data = {};
         }
