@@ -343,7 +343,7 @@
             headers,
             onload(res) {
                 if (shouldFallback(res)) {
-                    fetchFallback(res, onload);
+                    fetchFallback(res, onerror);
                     return;
                 }
                 onload(res);
