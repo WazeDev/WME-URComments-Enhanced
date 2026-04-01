@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2025.12.09.01
+// @version     2026.04.01.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
 // @match       *://*.waze.com/*editor*
 // @exclude     *://*.waze.com/user/editor*
-// @require     https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
+// @require     https://update.greasyfork.org/scripts/24851/WazeWrap.js
 // @author      dBsooner
 // @license     MIT/BSD/X11
 // @connect     greasyfork.org
@@ -275,6 +275,87 @@
     function logDebug(message, data = '') {
         if (_DEBUG)
             log(message, data);
+    }
+
+    function formatXhrError(res, label = 'Request error') {
+        if (!res)
+            return label;
+        const details = [];
+        if (typeof res.status !== 'undefined')
+            details.push(`status ${res.status}`);
+        if (res.statusText)
+            details.push(res.statusText);
+        if (res.finalUrl)
+            details.push(res.finalUrl);
+        if (res.responseText) {
+            try {
+                const parsed = JSON.parse(res.responseText);
+                if (parsed?.error?.message)
+                    details.push(parsed.error.message);
+            }
+            catch (e) {
+                // Ignore JSON parsing issues and keep collected request metadata only.
+            }
+        }
+        return `${label}${details.length > 0 ? `: ${details.join(' | ')}` : ''}`;
+    }
+
+    function requestWithReferrerFallback(options) {
+        const { url, method = 'GET', headers = {}, onload, onerror } = options;
+        const shouldFallback = (res) => {
+            const body = res?.responseText || '';
+            return (res?.status === 403) && (/referer\s*<empty>/i.test(body) || /requests from referer/i.test(body));
+        };
+        const fetchFallback = async (originalRes, routeTo) => {
+            try {
+                const pageWindow = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
+                // Referer is a forbidden header in fetch; use page context to inherit normal browser referrer behavior.
+                const safeHeaders = { ...headers };
+                delete safeHeaders.Referer;
+                delete safeHeaders.referer;
+                const response = await pageWindow.fetch(url, {
+                    method,
+                    headers: safeHeaders,
+                    credentials: 'omit'
+                });
+                const responseText = await response.text();
+                const fallbackRes = {
+                    status: response.status,
+                    statusText: response.statusText,
+                    responseText,
+                    finalUrl: response.url || url
+                };
+                onload(fallbackRes);
+            }
+            catch (fetchErr) {
+                const fallbackErr = {
+                    status: 0,
+                    statusText: fetchErr?.message || 'fetch failed',
+                    finalUrl: url,
+                    responseText: ''
+                };
+                if (typeof onerror === 'function') {
+                    onerror(fallbackErr);
+                } else if (typeof routeTo === 'function') {
+                    routeTo(fallbackErr);
+                }
+            }
+        };
+        GM_xmlhttpRequest({
+            url,
+            method,
+            headers,
+            onload(res) {
+                if (shouldFallback(res)) {
+                    fetchFallback(res, onerror);
+                    return;
+                }
+                onload(res);
+            },
+            onerror(res) {
+                fetchFallback(res, onerror);
+            }
+        });
     }
 
     function dynamicSort(property) {
@@ -4022,7 +4103,7 @@
             commentListIdx = (isNaN(commentListIdx)) ? _settings.commentList : commentListIdx;
             const commentListInfo = getCommentListInfo(commentListIdx);
             logDebug(`Beginning comment list async for comment list: ${commentListInfo.name}`);
-            GM_xmlhttpRequest({
+            requestWithReferrerFallback({
                 url: `https://sheets.googleapis.com/v4/spreadsheets/${((commentListIdx === 1001) ? _settings.customSsId : dec(_URCE_SPREADSHEET_ID))}/values/${commentListInfo.gSheetRange}?key=${dec(_URCE_API_KEY)}`,
                 headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
                 method: 'GET',
@@ -4407,8 +4488,19 @@
 
     function handleError(err) {
         const divElemRoot = createElem('div', { class: 'URCE-divLoading' });
-        if (err.message?.includes('|') > -1) {
-            const [reason, version] = err.message.split('|');
+        let errMessage = (typeof err === 'string') ? err : (err?.message || '');
+        if (!errMessage && (typeof err === 'object')) {
+            try {
+                errMessage = JSON.stringify(err);
+            }
+            catch (e) {
+                errMessage = String(err);
+            }
+        }
+        if (errMessage === '[object Object]')
+            errMessage = formatXhrError(err, 'Unexpected error');
+        if (errMessage.includes('|')) {
+            const [reason, version] = errMessage.split('|');
             if ((reason === 'updateRequired') || (reason === 'spreadsheetUpdateRequired')) {
                 const scriptLink = createElem('a', {
                         href: _IS_BETA_VERSION ? dec(_BETA_DL_URL) : _PROD_DL_URL, target: '_blank', textContent: _IS_BETA_VERSION ? dec(_BETA_DL_URL) : _PROD_DL_URL
@@ -4427,6 +4519,10 @@
         }
         else {
             divElemRoot.appendChild(createElem('div', { textContent: (err.commentList === 1001) ? I18n.t('urce.prompts.CustomGSheetLoadError') : I18n.t('urce.common.ErrorGeneric') }));
+            if (errMessage.length > 0) {
+                divElemRoot.appendChild(createElem('br'));
+                divElemRoot.appendChild(createElem('div', { textContent: `Details: ${errMessage}` }));
+            }
         }
         logError(divElemRoot.textContent);
         _commentListLoaded = false;
@@ -5815,7 +5911,7 @@
                     resolve();
                 }
             };
-            GM_xmlhttpRequest({
+            requestWithReferrerFallback({
                 url: `https://sheets.googleapis.com/v4/spreadsheets/${dec(_URCE_SPREADSHEET_ID)}/values/CommentLists!A3:G?key=${dec(_URCE_API_KEY)}`,
                 headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
                 method: 'GET',
@@ -5868,12 +5964,12 @@
                         }
                     }
                     else {
-                        errorText = errorText || res;
+                        errorText = errorText || formatXhrError(res, 'Comment list request failed');
                     }
                     postProcess(errorText);
                 },
                 onerror(res) {
-                    postProcess(`xmlhttpRequest error: ${JSON.stringify(res)}`);
+                    postProcess(formatXhrError(res, 'Comment list request failed'));
                 }
             });
         });
@@ -5883,12 +5979,11 @@
         return new Promise((resolve, reject) => {
             logDebug('Initializing auto switch setup.');
             const postProcess = function (errorText) {
-                if (!errorText || (errorText && _STATIC_ONLY_USERS.includes(W.loginManager.user.getUsername())))
-                    resolve();
-                else
-                    reject(new Error(errorText));
+                if (errorText)
+                    logWarning(`Auto-switch setup unavailable: ${errorText}`);
+                resolve();
             };
-            GM_xmlhttpRequest({
+            requestWithReferrerFallback({
                 url: `https://sheets.googleapis.com/v4/spreadsheets/${dec(_URCE_SPREADSHEET_ID)}/values/CommentLists_AutoSwitch!A3:ZZ?majorDimension=COLUMNS&key=${dec(_URCE_API_KEY)}`,
                 headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
                 method: 'GET',
@@ -5927,12 +6022,12 @@
                         }
                     }
                     else {
-                        errorText = errorText || res;
+                        errorText = errorText || formatXhrError(res, 'Auto-switch request failed');
                     }
                     postProcess(errorText);
                 },
                 onerror(res) {
-                    postProcess(`xmlhttpRequest error: ${JSON.stringify(res)}`);
+                    postProcess(formatXhrError(res, 'Auto-switch request failed'));
                 }
             });
         });
@@ -5942,12 +6037,11 @@
         return new Promise((resolve, reject) => {
             logDebug('Initializing restrictions.');
             const postProcess = function (errorText) {
-                if (!errorText || (errorText && _STATIC_ONLY_USERS.includes(W.loginManager.user.getUsername())))
-                    resolve();
-                else
-                    reject(new Error(errorText));
+                if (errorText)
+                    logWarning(`Restrictions setup unavailable: ${errorText}`);
+                resolve();
             };
-            GM_xmlhttpRequest({
+            requestWithReferrerFallback({
                 url: `https://sheets.googleapis.com/v4/spreadsheets/${dec(_URCE_SPREADSHEET_ID)}/values/Restrictions!A3:ZZ?majorDimension=COLUMNS&key=${dec(_URCE_API_KEY)}`,
                 headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
                 method: 'GET',
@@ -5996,12 +6090,12 @@
                         }
                     }
                     else {
-                        errorText = errorText || res;
+                        errorText = errorText || formatXhrError(res, 'Restrictions request failed');
                     }
                     postProcess(errorText);
                 },
                 onerror(res) {
-                    postProcess(`xmlhttpRequest error: ${JSON.stringify(res)}`);
+                    postProcess(formatXhrError(res, 'Restrictions request failed'));
                 }
             });
         });
@@ -6203,7 +6297,7 @@
                 });
             }
             /* END FIX */
-            GM_xmlhttpRequest({
+            requestWithReferrerFallback({
                 url: `https://sheets.googleapis.com/v4/spreadsheets/${dec(_URCE_SPREADSHEET_ID)}/values/Script_Translations!A3:AA?key=${dec(_URCE_API_KEY)}`,
                 headers: { 'Content-Type': 'application/json', Referer: 'https://www.waze.com' },
                 method: 'GET',
@@ -6774,12 +6868,12 @@
                             _needTranslation = true;
                     }
                     else {
-                        errorText = errorText || res;
+                        errorText = errorText || formatXhrError(res, 'Translations request failed');
                     }
                     postProcess(errorText);
                 },
                 onerror(res) {
-                    postProcess(`xmlhttpRequest error: ${JSON.stringify(res)}`);
+                    postProcess(formatXhrError(res, 'Translations request failed'));
                 }
             });
         });
