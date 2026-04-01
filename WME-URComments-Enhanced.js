@@ -334,7 +334,11 @@
                     finalUrl: url,
                     responseText: ''
                 };
-                routeTo(fallbackErr);
+                if (typeof onerror === 'function') {
+                    onerror(fallbackErr);
+                } else if (typeof routeTo === 'function') {
+                    routeTo(fallbackErr);
+                }
             }
         };
         GM_xmlhttpRequest({
