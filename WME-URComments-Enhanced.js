@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2025.12.09.01
+// @version     2026.04.19.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -369,6 +369,14 @@
             extent.transform('EPSG:4326', 'EPSG:3857');
         }
         return extent;
+    }
+
+    function convertTo900913(lon, lat) {
+        return new OpenLayers.LonLat(lon, lat).transform('EPSG:4326', 'EPSG:900913');
+    }
+
+    function convertTo4326(lon, lat) {
+        return new OpenLayers.LonLat(lon, lat).transform('EPSG:900913', 'EPSG:4326');
     }
 
     async function loadSettingsFromStorage(restoreSettings, proceedWithRestore) {
@@ -1505,7 +1513,7 @@
                 lonlat = new OpenLayers.LonLat(urGeo.x, urGeo.y);
             */
             const [x, y] = W.model.mapUpdateRequests.getObjectById(_selUr.urId).getLocation().coordinates,
-                lonlat = WazeWrap.Geometry.ConvertTo900913(x, y);
+                lonlat = convertTo900913(x, y);
             W.map.getOLMap().moveTo(lonlat, 17);
         }
     }
@@ -1776,7 +1784,7 @@
             if (text.includes('$PERMALINK$')) {
                 if (mapUrObj) {
                     // 2024.03.21: The location object changed in previous version of WME, but URC-E wasn't fixed for it until now.
-                    // const lonLat = WazeWrap.Geometry.ConvertTo4326(mapUrObj.getLocation().x, mapUrObj.getLocation().y),
+                    // const lonLat = convertTo4326(mapUrObj.getLocation().x, mapUrObj.getLocation().y),
                     const [lon, lat] = mapUrObj.getLocation().coordinates,
                         urlParams = new URLSearchParams(window.location.search);
                     const urPermalink = `https://${document.location.hostname.replace(/beta/i, 'www')}${document.location.pathname}?${(urlParams.get('env') ? `env=${urlParams.get('env')}&` : '')}lon=${lon.toFixed(5)}&lat=${lat.toFixed(5)}&s=20489175039&zoomLevel=17&mapUpdateRequest=${urId}`;
@@ -2324,7 +2332,7 @@
                     else
                         ([, y] = mapUrObj.getLocation().coordinates);
                     // 2024.03.21: The location object changed in previous version of WME, but URC-E wasn't fixed for it until now.
-                    // const urPos = WazeWrap.Geometry.ConvertTo4326(x, y);
+                    // const urPos = convertTo4326(x, y);
                     urLink = document.location.href;
                     urLink = `${urLink.substring(0, urLink.indexOf('?zoom'))}?zoomLevel=17&lat=${y}&lon=${x}&mapUpdateRequest=${markerId}`;
                     popupX = unstackedX - parsePxString(W.map.getSegmentLayer().div.style.left) + popupXOffset + 20;
@@ -3386,9 +3394,9 @@
                 else if (data.mapUpdateRequests?.objects?.length > 499) {
                     logDebug('More than 499 objects returned in overflow request, queueing sub quadrants for further checking.');
                     const bbox = data.url.split('bbox=')[1].split(','),
-                        bboxFrom = WazeWrap.Geometry.ConvertTo900913(bbox[0], bbox[1]),
-                        bboxTo = WazeWrap.Geometry.ConvertTo900913(bbox[2], bbox[3]),
-                        subQuadCenter = WazeWrap.Geometry.ConvertTo4326((bboxFrom.lon - ((bboxFrom.lon - bboxTo.lon) / 2)), (bboxTo.lat - ((bboxTo.lat - bboxFrom.lat) / 2)));
+                        bboxFrom = convertTo900913(bbox[0], bbox[1]),
+                        bboxTo = convertTo900913(bbox[2], bbox[3]),
+                        subQuadCenter = convertTo4326((bboxFrom.lon - ((bboxFrom.lon - bboxTo.lon) / 2)), (bboxTo.lat - ((bboxTo.lat - bboxFrom.lat) / 2)));
                     [`${baseUrl}${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)},${bbox[2]},${bbox[3]}`,
                         `${baseUrl}${bbox[0]},${subQuadCenter.lat.toFixed(6)},${subQuadCenter.lon.toFixed(6)},${bbox[3]}`,
                         `${baseUrl}${bbox[0]},${bbox[1]},${subQuadCenter.lon.toFixed(6)},${subQuadCenter.lat.toFixed(6)}`,
