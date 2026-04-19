@@ -608,12 +608,6 @@
         const loadedSettings = (restoreSettings === 'resetSettings') ? {} : restoreSettings || JSON.parse(localStorage.getItem(_SETTINGS_STORE_NAME));
         _settings = $extend(true, {}, defaultSettings, loadedSettings);
 
-        const serverSettings = await WazeWrap.Remote.RetrieveSettings(_SETTINGS_STORE_NAME);
-        if (!restoreSettings && (serverSettings?.lastSaved > _settings.lastSaved)) {
-            _settings = $extend(true, _settings, serverSettings);
-            _timeouts.saveSettingsToStorage = window.setTimeout(saveSettingsToStorage, 5000);
-        }
-
         if (_settings.wmeUserId !== _wmeUserId)
             _settings.wmeUserId = _wmeUserId;
             // Remove old settings
@@ -671,7 +665,6 @@
             _settings.lastVersion = _SCRIPT_VERSION;
             _settings.lastSaved = Date.now();
             localStorage.setItem(_SETTINGS_STORE_NAME, JSON.stringify(_settings));
-            WazeWrap.Remote.SaveSettings(_SETTINGS_STORE_NAME, _settings);
             logDebug('Settings saved.');
         }
     }
