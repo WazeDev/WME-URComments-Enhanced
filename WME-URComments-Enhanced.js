@@ -1580,7 +1580,7 @@
                 for (let idx = 0, { length } = selFeatures; idx < length; idx++) {
                     if (selFeatures[idx].getType() === 'segment') {
                         if (selFeatures.length > 1) {
-                            const address = selFeatures[idx].getAddress();
+                            const address = selFeatures[idx].getAddress(W.model);
                             if (idx === 0) {
                                 street1Name = getStreetName(address);
                                 if (text.includes('$SELSEGS_WITH_CITY$'))
@@ -1593,7 +1593,7 @@
                             }
                         }
                         else {
-                            const address = selFeatures[idx].getAddress();
+                            const address = selFeatures[idx].getAddress(W.model);
                             street1Name = getStreetName(address);
                             if (text.includes('$SELSEGS_WITH_CITY$'))
                                 ({ cityName, inOrNear } = getCityName(address));
@@ -1829,8 +1829,8 @@
         }
         if (replaceVars && text.includes('$PLACE_ADDRESS$')) {
             const placeObj = W.selectionManager.getSelectedDataModelObjects()[0];
-            if ((placeObj?.type === 'venue') && placeObj.getAddress().format())
-                text = text.replaceAll('$PLACE_ADDRESS$', placeObj.getAddress().format());
+            if ((placeObj?.type === 'venue') && placeObj.getAddress(W.model).format())
+                text = text.replaceAll('$PLACE_ADDRESS$', placeObj.getAddress(W.model).format());
             else
                 WazeWrap.Alerts.error(_SCRIPT_SHORT_NAME, I18n.t('urce.prompts.PlaceAddressInsertError'));
         }
