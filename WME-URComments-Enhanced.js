@@ -2934,6 +2934,11 @@
                 }
             }
             else if (!marker && mUrObjUrceData?.urceData) {
+                if (document.getElementById(`urceCounters-${mUrObjUrId}`)) {
+                    markerChanges.pills.removed.push(mUrObjUrId);
+                    document.getElementById(`urceCounters-${mUrObjUrId}`).remove();
+                }
+                removeCustomMarker(mUrObjUrId);
                 markerChanges.markers.missing.push(mUrObjUrId);
                 missingMarkerObjs.push(mUrObj);
             }
