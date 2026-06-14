@@ -71,6 +71,7 @@
         // 2024.03.21: Let's just remove the needUrId safety net for now. This will keep the script "working" if something else breaks when looking for the URID.
         // _needUrId = false,
         _mapUpdateRequests = {},
+        _autoSentReminderUrIds = new Set(),
         _initError = false,
         _policyTrustedHTML,
         _policyUntrustedHTML;
@@ -2029,12 +2030,10 @@
                 else
                     throw new Error(`Failed to merge updateRequestSession for urId ${urId}`);
             }
-            await sdk.DataModel.MapUpdateRequests.addComment({ mapUpdateRequestId: urId, text: comment })
-            W.model.mapUpdateRequests.getObjectById(urId).setAttribute('autoSentReminder', true);
+            await sdk.DataModel.MapUpdateRequests.addComment({ mapUpdateRequestId: urId, text: comment });
             return Promise.resolve({ error: false });
         }
         catch (error) {
-            W.model.mapUpdateRequests.getObjectById(urId).setAttribute('autoSentReminder', false);
             return Promise.resolve({ error: true, message: error });
         }
     }
@@ -3081,8 +3080,12 @@
                                     && !urceData.containsSquareBrackets
                                     && ((+W.loginManager.user.getRank() > 2) || ((+W.loginManager.user.getRank() === 2) && W.loginManager.user.getAttribute('isAreaManager')))
                                     && !chunk[idx].getAttribute('autoSentReminder')
+                                    && !_autoSentReminderUrIds.has(+urId)
                                 ){
-                                    autoSendReminder = true;}
+                                    autoSendReminder = true;
+                                    chunk[idx].setAttribute('autoSentReminder', true);
+                                    _autoSentReminderUrIds.add(+urId);
+                                }
                                 else
                                     urceData.needsReminder = true;
                             }
@@ -3172,6 +3175,8 @@
                                 // eslint-disable-next-line no-await-in-loop
                                 const autoPostReminderCommentResult = await autoPostReminderComment(urId);
                                 if (autoPostReminderCommentResult.error) {
+                                    chunk[idx].setAttribute('autoSentReminder', false);
+                                    _autoSentReminderUrIds.delete(+urId);
                                     if (autoPostReminderCommentResult.message === 'zoomIn')
                                         logDebug(`Did not auto post reminder comment due to zoom being less than 10 (Zoom: ${W.map.getOLMap().getZoom()}) for urId ${urId}.`);
                                     else
@@ -3187,12 +3192,11 @@
                                         needsReminder: false,
                                         waiting: true
                                     });
+                                    const selectedUrId = W.map.getLayerByName('update_requests')?.features?.filter((feature) => feature.attributes?.wazeFeature?.isSelected)[0]?.attributes?.wazeFeature?.id || -1;
+                                    if (selectedUrId === _selUr.urId)
+                                        reopenPanel = true;
+                                    updateMarkersArr.push(chunk[idx]);
                                 }
-                                // const selectedMarkerUrId = document.querySelector('.update-requests .marker-selected')?.attributes?.['data-id']?.value;
-                                const selectedUrId = W.map.getLayerByName('update_requests')?.features?.filter((feature) => feature.attributes?.wazeFeature?.isSelected)[0]?.attributes?.wazeFeature?.id || -1;
-                                if (selectedUrId === _selUr.urId)
-                                    reopenPanel = true;
-                                updateMarkersArr.push(chunk[idx]);
                             }
                             catch (error) {
                                 logWarning(error);
