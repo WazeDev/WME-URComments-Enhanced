@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2026.06.13.02
+// @version     2026.06.19.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -88,7 +88,7 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['CHANGE: Latest WME release compatibility.', 'CHANGE: Pill counts are back!'],
+        _SCRIPT_VERSION_CHANGES = ['CHANGE: CSS fix for action buttons.', 'CHANGE: Pill counts are back!'],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
         _MIN_VERSION_COMMENTS = '2019.03.01.01',
@@ -3616,8 +3616,14 @@
                 )
             )
                 commentList.scrollTop = _settings.autoScrollComments ? commentList.scrollHeight : 0;
-            else if ((commentCountInt !== 0) && W.problemsController.editController.viewModel.get('loadingConversation'))
-                _timeouts.autoScrollComments = window.setTimeout(retry, retryInt, commentCountInt, ++tries, retryInt, maxNumTries);
+            else {
+                const pend = W.app.attributes.pendingOperations.length;
+                if (pend > 0) {
+                    logDebug('autoScrollComments - pending: ' + W.app.attributes.pendingOperations.join());
+                }
+                if ((commentCountInt !== 0) && pend > 0 /* W.problemsController.editController.viewModel.get('loadingConversation')*/ )
+                    _timeouts.autoScrollComments = window.setTimeout(retry, retryInt, commentCountInt, ++tries, retryInt, maxNumTries);
+            }
         }(commentCount, 1, retryInterval, maxTries));
     }
 
@@ -4742,15 +4748,15 @@
                 + '.overlay-container wz-card[class^="panel"].problem-edit .section .content { padding: 5px 12px; font-size: 12px; line-height: 14px; }'
                 + '.overlay-container wz-card[class^="panel"].problem-edit .section .content .URCE-divDesc { max-height: 82px; overflow-y: auto; }'
                 + '.overlay-container wz-card[class^="panel"].problem-edit .section .title { padding: 0 6px 0 6px; font-size: 13px; line-height: 13px; }'
-                + '.overlay-container wz-card[class^="panel"].problem-edit .actions .controls-container { margin-top: -2px; margin-bottom: -2px; text-align: center; }'
+                + '.overlay-container wz-card[class^="panel"].problem-edit .actions form[class^="controlsContainer"] { margin-top: -2px; margin-bottom: -2px; text-align: center; }'
                 + '.overlay-container wz-card[class^="panel"].problem-edit .more-info .more-info-checkbox label { font-size: 12px; line-height: 14px; }'
-                + '.overlay-container wz-card[class^="panel"].problem-edit .actions .controls-container label[for|="state"] { height: 22px; width: unset; min-width: 162px; line-height: 26px; margin: 2px; }'
-                + '.overlay-container wz-card[class^="panel"].problem-edit[data-state="open"] .actions .controls-container label[for="state-solved"]  { display: inline-block; }'
-                + '.overlay-container wz-card[class^="panel"].problem-edit[data-state="open"] .actions .controls-container label[for|="state-not-identified"] { display: inline-block; }'
-                + '.overlay-container wz-card[class^="panel"].problem-edit[data-state="solved"] .actions .controls-container label[for|="state-open"], '
-                + '     .overlay-container wz-card[class^="panel"].problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-open"] { display: inline-block !important; }'
-                + '.overlay-container wz-card[class^="panel"].problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-not-identified"], '
-                + '     .overlay-container wz-card[class^="panel"].problem-edit[data-state="not-identified"] .actions .controls-container label[for|="state-solved"] { display: none !important; }'
+                + '.overlay-container wz-card[class^="panel"].problem-edit .actions form[class^="controlsContainer"] label[for|="state"] { height: 22px; width: unset; min-width: 162px; line-height: 26px; margin: 2px; }'
+                + '.overlay-container wz-card[class^="panel"].problem-edit[data-state="open"] .actions form[class^="controlsContainer"] label[for="state-solved"]  { display: inline-block; }'
+                + '.overlay-container wz-card[class^="panel"].problem-edit[data-state="open"] .actions form[class^="controlsContainer"] label[for|="state-not-identified"] { display: inline-block; }'
+                + '.overlay-container wz-card[class^="panel"].problem-edit[data-state="solved"] .actions form[class^="controlsContainer"] label[for|="state-open"], '
+                + '     .overlay-container wz-card[class^="panel"].problem-edit[data-state="not-identified"] .actions form[class^="controlsContainer"] label[for|="state-open"] { display: inline-block !important; }'
+                + '.overlay-container wz-card[class^="panel"].problem-edit[data-state="not-identified"] .actions form[class^="controlsContainer"] label[for|="state-not-identified"], '
+                + '     .overlay-container wz-card[class^="panel"].problem-edit[data-state="not-identified"] .actions form[class^="controlsContainer"] label[for|="state-solved"] { display: none !important; }'
                 + '.overlay-container wz-card[class^="panel"].problem-edit .actions .navigation .waze-plain-btn { height: 30px; line-height: 18px; font-size: 13px; }'
                 + '.overlay-container wz-card[class^="panel"].problem-edit .actions .no-permissions-alert { margin-bottom: 8px; margin-top: 2px; padding: 4px; }'
                 // Map content
