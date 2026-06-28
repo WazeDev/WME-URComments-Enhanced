@@ -1034,7 +1034,7 @@
                 }));
                 const divElemRoot = createElem('div', { class: 'date urce' });
                 divElemRoot.appendChild(createElem('div', {
-                    textContent: `(${parseDaysAgo(daysAgo(W.model.updateRequestSessions.getObjectById(_selUr.urId).getAttribute('comments')[(_mapUpdateRequests[_selUr.urId].urceData.commentCount - 1)].createdOn))})`
+                    textContent: `(${parseDaysAgo(daysAgo(W.model.updateRequestSessions.getObjectById(_selUr.urId).getAttribute('comments')[(_mapUpdateRequests[_selUr.urId].urceData.commentCount - 1)]?.createdOn))})`
                 }));
                 domElem.firstChild.appendChild(divElemRoot);
             }
@@ -1222,7 +1222,7 @@
                 const comments = document.querySelectorAll('.overlay-container wz-card[class^="panel"].problem-edit div[class^="container"] .body .conversation .comment .comment-title');
                 for (let idx = 0, { commentCount } = _mapUpdateRequests[_selUr.urId].urceData; idx < commentCount; idx++) {
                     const currComment = comments[idx];
-                    if (currComment.getElementsByClassName('date urce').length === 0) {
+                    if (currComment.getElementsByClassName('date urce')?.length === 0) {
                         currComment.querySelector('span.date').style.float = 'right';
                         currComment.parentElement.shadowRoot.appendChild(createElem('style', {
                             textContent: '.key-with-image-wrapper, .key-wrapper { width: 100% } '
