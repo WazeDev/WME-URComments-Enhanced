@@ -1034,7 +1034,7 @@
                 }));
                 const divElemRoot = createElem('div', { class: 'date urce' });
                 divElemRoot.appendChild(createElem('div', {
-                    textContent: `(${parseDaysAgo(daysAgo(W.model.updateRequestSessions.getObjectById(_selUr.urId).getAttribute('comments')[(_mapUpdateRequests[_selUr.urId].urceData.commentCount - 1)]?.createdOn))})`
+                    textContent: `(${parseDaysAgo(daysAgo(W.model.updateRequestSessions.getObjectById(_selUr.urId).getAttribute('comments')[(_mapUpdateRequests[_selUr.urId].urceData.commentCount - 1)]?.createdOn ?? 0))})`
                 }));
                 domElem.firstChild.appendChild(divElemRoot);
             }
