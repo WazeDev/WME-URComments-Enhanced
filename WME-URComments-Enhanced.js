@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2026.06.19.01
+// @version     2026.06.28.01
 // eslint-disable-next-line max-len
 // @description URComments-Enhanced (URC-E) allows Waze editors to handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, plus much, much, more!
 // @grant       GM_xmlhttpRequest
@@ -88,7 +88,7 @@
         _BETA_DL_URL = 'YUhSMGNITTZMeTluY21WaGMzbG1iM0pyTG05eVp5OXpZM0pwY0hSekx6TTNOelEyTkMxM2JXVXRkWEpqYjIxdFpXNTBjeTFsYm1oaGJtTmxaQzFpWlhSaEwyTnZaR1V2VjAxRkxWVlNRMjl0YldWdWRITXRSVzVvWVc1alpXUXVkWE5sY2k1cWN3PT0=',
         _ALERT_UPDATE = true,
         _SCRIPT_VERSION = GM_info.script.version.toString(),
-        _SCRIPT_VERSION_CHANGES = ['CHANGE: CSS fix for action buttons.', 'CHANGE: Pill counts are back!'],
+        _SCRIPT_VERSION_CHANGES = ['CHANGE: minor fixes in a few spots.', 'CHANGE: Pill counts are back!'],
         _MIN_VERSION_AUTOSWITCH = '2019.01.11.01',
         _MIN_VERSION_COMMENTLISTS = '2018.01.01.01',
         _MIN_VERSION_COMMENTS = '2019.03.01.01',
@@ -876,7 +876,7 @@
                     _timeouts.checkRestrictions[toIndex] = window.setTimeout(retry, 500, ++tries, toIndex, event);
                 }
                 else if (tries < 301) {
-                    if ((event?.[0]?.type === 'state') && (event?.[0]?.getName() === W.model.getTopState().getName())) {
+                    if ((event?.[0]?.type === 'state') && (event?.[0]?.getName() === W.model.getTopState()?.getName())) {
                         country = (event[0].getAttribute('countryID') !== 0) ? W.model.countries.getObjectById(event[0].getAttribute('countryID')).getAttribute('abbr') : W.model.getTopCountry().getAttribute('abbr');
                         state = event[0].getName();
                     }
@@ -1034,7 +1034,7 @@
                 }));
                 const divElemRoot = createElem('div', { class: 'date urce' });
                 divElemRoot.appendChild(createElem('div', {
-                    textContent: `(${parseDaysAgo(daysAgo(W.model.updateRequestSessions.getObjectById(_selUr.urId).getAttribute('comments')[(_mapUpdateRequests[_selUr.urId].urceData.commentCount - 1)].createdOn))})`
+                    textContent: `(${parseDaysAgo(daysAgo(W.model.updateRequestSessions.getObjectById(_selUr.urId).getAttribute('comments')[(_mapUpdateRequests[_selUr.urId].urceData.commentCount - 1)]?.createdOn ?? 0))})`
                 }));
                 domElem.firstChild.appendChild(divElemRoot);
             }
@@ -1222,7 +1222,7 @@
                 const comments = document.querySelectorAll('.overlay-container wz-card[class^="panel"].problem-edit div[class^="container"] .body .conversation .comment .comment-title');
                 for (let idx = 0, { commentCount } = _mapUpdateRequests[_selUr.urId].urceData; idx < commentCount; idx++) {
                     const currComment = comments[idx];
-                    if (currComment.getElementsByClassName('date urce').length === 0) {
+                    if (currComment.getElementsByClassName('date urce')?.length === 0) {
                         currComment.querySelector('span.date').style.float = 'right';
                         currComment.parentElement.shadowRoot.appendChild(createElem('style', {
                             textContent: '.key-with-image-wrapper, .key-wrapper { width: 100% } '
@@ -2398,7 +2398,7 @@
                         if (mapUrObj.getAttribute('resolvedBy')) {
                             divElemRoot.appendChild(createTextNode(` ${I18n.t('element_history.changed_by')} `));
                             divElemRoot.appendChild(createElem('a', {
-                                href: W.Config.user_profile.url + getUsernameAndRank(mapUrObj.getAttribute('resolvedBy')).username,
+                                href: sdk.DataModel.Users.getUserProfileLink({ userName: getUsernameAndRank(mapUrObj.getAttribute('resolvedBy')).username.toString() }),
                                 textContent: getUsernameAndRank(mapUrObj.getAttribute('resolvedBy')).username
                             }));
                             divElemRoot.appendChild(createTextNode(` (${getUsernameAndRank(mapUrObj.getAttribute('resolvedBy')).rank})`));
