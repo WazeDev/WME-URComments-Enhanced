@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        WME URComments-Enhanced
 // @namespace   https://greasyfork.org/users/166843
-// @version     2026.07.08.01
+// @version     2026.09.10.01
 // @description URComments-Enhanced (URC-E) handle WME update requests more quickly and efficiently. Also adds many UR filtering options, ability to change the markers, and more!
 // @grant       GM_xmlhttpRequest
 // @match       *://*.waze.com/*editor*
@@ -1791,10 +1791,13 @@
                 }
             }
             if (text.includes('$URD')) {
-                if (mapUrObj.getAttribute('description'))
-                    text = text.replace(/("?\$URD\$?"?)+/gmi, `"${mapUrObj.getAttribute('description')}"`).replace(/\n+/gmi, '');
-                else
+                if (mapUrObj.getAttribute('description')) {
+                    const urDescription = mapUrObj.getAttribute('description').replace(/^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*:\s*/, '');
+                    text = text.replace(/("?\$URD\$?"?)+/gmi, `"${urDescription}"`).replace(/\n+/gmi, '');
+                }
+                else {
                     text = text.replace(/("?\$URD\$?"?)+/gmi, '');
+                }
             }
             if (text.includes('$CUSTOMTAGLINE$')) {
                 if (_settings.perCommentListSettings[_currentCommentList].customTagline.length > 0)
